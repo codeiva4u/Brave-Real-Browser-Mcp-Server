@@ -101,9 +101,9 @@ If you're just using this MCP server (not developing it), you don't need to run 
 ```json
 {
   "mcpServers": {
-    "puppeteer-real-browser": {
+    "brave-puppeteer-real-browser": {
       "command": "npx",
-      "args": ["puppeteer-real-browser-mcp-server@latest"]
+      "args": ["brave-puppeteer-real-browser-mcp-server@latest"]
     }
   }
 }
@@ -180,25 +180,27 @@ assistants to control a real browser, extract content, and more.
 
 - Node.js >= 18.0.0
 - npm or yarn
-- Google Chrome or Chromium browser installed
+- **Brave browser installed** (recommended) or Chromium browser as fallback
 - Basic understanding of TypeScript/JavaScript (for development)
 
 ### Platform-Specific Requirements
 
 **Windows:**
-- Google Chrome installation (automatic detection in v1.3.0+ includes):
-  - Standard installations: `C:\Program Files\Google\Chrome\Application\chrome.exe`
-  - 32-bit installations: `C:\Program Files (x86)\Google\Chrome\Application\chrome.exe`
-  - User installations: `%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe`
-  - Chrome Canary: `%LOCALAPPDATA%\Google\Chrome SxS\Application\chrome.exe`
+- **Brave browser installation** (automatic detection in v2.0.0+ includes):
+  - Standard installations: `C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe`
+  - 32-bit installations: `C:\Program Files (x86)\BraveSoftware\Brave-Browser\Application\brave.exe`
+  - User installations: `%LOCALAPPDATA%\BraveSoftware\Brave-Browser\Application\brave.exe`
   - Portable installations and Registry-detected paths
-  - Manual path specification: Use `CHROME_PATH` environment variable
+  - Manual path specification: Use `BRAVE_PATH` environment variable
+- **Fallback**: Chrome/Chromium if Brave not available
 
 **macOS:**
-- Google Chrome or Chromium must be installed in `/Applications/`
+- **Brave browser** must be installed in `/Applications/Brave Browser.app/`
+- **Fallback**: Chrome or Chromium in `/Applications/`
 
 **Linux:**
-- Install Chrome/Chromium: `sudo apt-get install -y google-chrome-stable` or `sudo apt-get install -y chromium-browser`
+- Install Brave browser: `sudo apt install brave-browser` or download from [brave.com](https://brave.com/download/)
+- **Fallback**: Install Chrome/Chromium: `sudo apt-get install -y google-chrome-stable` or `sudo apt-get install -y chromium-browser`
 - Install xvfb for headless operation: `sudo apt-get install -y xvfb`
 
 ## Installation for Developers
