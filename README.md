@@ -246,18 +246,150 @@ npm run dev
 
 ### With Claude Desktop
 
-The configuration below uses `npx` to automatically download and run the latest version. No installation required!
+The MCP server supports three different modes for Claude Desktop integration. Choose the one that best fits your needs:
+
+#### Mode 1: STDIO (Default - Recommended)
+
+Standard configuration using direct stdin/stdout communication:
 
 ```json
 {
   "mcpServers": {
-    "puppeteer-real-browser": {
+    "brave-puppeteer-real-browser": {
       "command": "npx",
-      "args": ["puppeteer-real-browser-mcp-server@latest"]
+      "args": ["brave-puppeteer-real-browser-mcp-server@latest"]
     }
   }
 }
 ```
+
+#### Mode 2: HTTP Server (For Remote Access with 0.0.0.0 Binding)
+
+HTTP-based MCP server with **0.0.0.0 binding** for remote access from any IP on your network:
+
+```json
+{
+  "mcpServers": {
+    "brave-puppeteer-http": {
+      "command": "npx",
+      "args": [
+        "brave-puppeteer-real-browser-mcp-server@latest",
+        "--mode=http",
+        "--port=3000",
+        "--host=0.0.0.0"
+      ],
+      "env": {
+        "HTTP_HOST": "0.0.0.0",
+        "HTTP_PORT": "3000"
+      }
+    }
+  }
+}
+```
+
+**HTTP Endpoints accessible from ANY network device:**
+- Health Check: `http://localhost:3000/health` (local) or `http://YOUR_SERVER_IP:3000/health` (remote)
+- MCP Communication: `http://localhost:3000/mcp`
+- Server Info: `http://localhost:3000/info`
+- Direct Tool Access: `http://localhost:3000/tools/{toolName}`
+
+**Remote Access Example:**
+```bash
+# Test from another machine on your network
+curl http://192.168.1.100:3000/health  # Replace with your server's IP
+```
+
+#### Mode 3: WebSocket Server (For Real-time Communication with 0.0.0.0 Binding)
+
+WebSocket-based MCP server with **0.0.0.0 binding** for remote access from any IP on your network:
+
+```json
+{
+  "mcpServers": {
+    "brave-puppeteer-websocket": {
+      "command": "npx",
+      "args": [
+        "brave-puppeteer-real-browser-mcp-server@latest",
+        "--mode=websocket",
+        "--port=3001",
+        "--host=0.0.0.0"
+      ],
+      "env": {
+        "WS_HOST": "0.0.0.0",
+        "WS_PORT": "3001"
+      }
+    }
+  }
+}
+```
+
+**WebSocket Connection accessible from ANY network device:**
+- Local: `ws://localhost:3001/mcp`
+- Remote: `ws://YOUR_SERVER_IP:3001/mcp` (from other machines on network)
+- Real-time bidirectional communication
+- Persistent connection for faster interactions
+
+**Remote Access Example:**
+```javascript
+// Test WebSocket connection from another machine's browser console
+const ws = new WebSocket('ws://192.168.1.100:3001/mcp');  // Replace with your server's IP
+ws.onopen = () => console.log('Connected to remote MCP server!');
+ws.onmessage = (event) => console.log('Received:', event.data);
+```
+
+#### Advanced Configuration: Remote Access
+
+To enable remote access from other machines on your network:
+
+**HTTP Mode with Remote Access:**
+```json
+{
+  "mcpServers": {
+    "brave-puppeteer-remote-http": {
+      "command": "npx",
+      "args": [
+        "brave-puppeteer-real-browser-mcp-server@latest",
+        "--mode=http",
+        "--port=3000",
+        "--host=0.0.0.0"
+      ],
+      "env": {
+        "HTTP_HOST": "0.0.0.0"
+      }
+    }
+  }
+}
+```
+
+**WebSocket Mode with Remote Access:**
+```json
+{
+  "mcpServers": {
+    "brave-puppeteer-remote-ws": {
+      "command": "npx",
+      "args": [
+        "brave-puppeteer-real-browser-mcp-server@latest",
+        "--mode=websocket",
+        "--port=3001",
+        "--host=0.0.0.0"
+      ],
+      "env": {
+        "WS_HOST": "0.0.0.0"
+      }
+    }
+  }
+}
+```
+
+**⚠️ Security Note:** Using `0.0.0.0` makes the server accessible from any network interface. Only use this in trusted networks or behind proper firewall/VPN.
+
+#### Configuration Comparison
+
+| Mode | Use Case | Performance | Setup Complexity | Remote Access |
+|------|----------|-------------|------------------|---------------|
+| **STDIO** | Local Claude Desktop | Fastest | Simplest | No |
+| **HTTP** | API calls, remote access | Good | Moderate | Yes |
+| **WebSocket** | Real-time communication | Good | Moderate | Yes |
 
 > **What does npx do?** The `npx` command downloads and runs the package without permanently installing it. The `@latest` ensures you always get the newest version with all bug fixes and improvements.
 
