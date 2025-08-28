@@ -33,6 +33,146 @@ Provides AI assistants with powerful, detection-resistant browser automation cap
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+## 🚀 One-Click Installation & Setup
+
+### For Claude Desktop Users
+[![Install for Claude Desktop](https://img.shields.io/badge/Claude%20Desktop-One%20Click%20Setup-blue?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTIwIDEySDE0TDExIDlINFYxOUgyMFYxMloiIGZpbGw9IndoaXRlIi8+CjxwYXRoIGQ9Ik00IDVIMTFMMTQgOEgyMFYxOUg0VjVaIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiIGZpbGw9Im5vbmUiLz4KPHN2Zz4K)]()
+
+**Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+**Mac:** `~/Library/Application Support/Claude/claude_desktop_config.json`  
+**Linux:** `~/.config/Claude/claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "brave-puppeteer-real-browser": {
+      "command": "npx",
+      "args": ["brave-puppeteer-real-browser-mcp-server@latest"]
+    }
+  }
+}
+```
+
+### For Claude Code CLI Users
+[![Install for Claude Code CLI](https://img.shields.io/badge/Claude%20Code%20CLI-Add%20Server-green?style=for-the-badge&logo=terminal)]()
+
+```bash
+# One command installation
+claude mcp add brave-puppeteer-real-browser -- npx brave-puppeteer-real-browser-mcp-server@latest
+
+# For team sharing (project scope)
+claude mcp add brave-puppeteer-real-browser -s project -- npx brave-puppeteer-real-browser-mcp-server@latest
+
+# Check server status
+/mcp
+```
+
+### For Cursor IDE Users
+[![Install for Cursor IDE](https://img.shields.io/badge/Cursor%20IDE-One%20Click%20Install-purple?style=for-the-badge&logo=cursor)]()
+
+**Method 1: One-Click (Recommended)**
+1. Open Cursor IDE → Command Palette (`Ctrl+Shift+P`)
+2. Search "MCP Servers" → Browse → Install browser automation
+
+**Method 2: Manual Config**
+Create `.cursor/mcp.json`:
+```json
+{
+  "mcpServers": {
+    "brave-puppeteer-real-browser": {
+      "command": "npx",
+      "args": ["brave-puppeteer-real-browser-mcp-server@latest"]
+    }
+  }
+}
+```
+
+### For Direct Usage (Developers)
+[![NPX Run](https://img.shields.io/badge/NPX-Direct%20Run-orange?style=for-the-badge&logo=npm)]()
+
+```bash
+# STDIO mode (default)
+npx brave-puppeteer-real-browser-mcp-server@latest
+
+# HTTP mode (for remote access)
+npx brave-puppeteer-real-browser-mcp-server@latest --mode=http --port=3000
+
+# WebSocket mode (for real-time communication)
+npx brave-puppeteer-real-browser-mcp-server@latest --mode=websocket --port=3001
+```
+
+### Docker Multi-Platform Images
+[![Docker Pull](https://img.shields.io/badge/Docker-Multi%20Platform-blue?style=for-the-badge&logo=docker)]()
+
+```bash
+# Pull latest multi-platform image (AMD64/ARM64)
+docker pull ghcr.io/ivan-sunil-arya/brave-puppeteer-real-browser-mcp-server:latest
+
+# Run with STDIO mode
+docker run -it --rm ghcr.io/ivan-sunil-arya/brave-puppeteer-real-browser-mcp-server:latest
+
+# Run with HTTP mode (accessible from network)
+docker run -it --rm -p 3000:3000 \
+  -e HTTP_HOST=0.0.0.0 \
+  ghcr.io/ivan-sunil-arya/brave-puppeteer-real-browser-mcp-server:latest --mode=http
+
+# Run with WebSocket mode (real-time)
+docker run -it --rm -p 3001:3001 \
+  -e WS_HOST=0.0.0.0 \
+  ghcr.io/ivan-sunil-arya/brave-puppeteer-real-browser-mcp-server:latest --mode=websocket
+```
+
+## ✨ Comprehensive Feature Set
+
+### 🦁 Brave Browser Integration
+- **Anti-Detection by Default**: Built-in stealth capabilities
+- **ARM64 Support**: Full Linux ARM64 compatibility (Chrome alternative)
+- **Auto-Installation**: Automatically detects and installs Brave browser
+- **Multi-Platform**: Windows, macOS, Linux support
+- **Privacy-First**: Enhanced privacy and security features
+
+### 🌐 Server Modes (v2.0.0+)
+- **STDIO Mode**: Direct stdin/stdout communication (default)
+- **HTTP Mode**: REST API endpoints for remote access
+- **WebSocket Mode**: Real-time bidirectional communication
+- **Remote Access**: 0.0.0.0 binding for network accessibility
+- **Multi-Client Support**: WebSocket connections from multiple clients
+
+### 🔧 Advanced Automation Tools
+- **Dynamic Selector Discovery**: Intelligent element finding without hardcoded selectors
+- **Natural Scrolling**: Random scrolling patterns to avoid detection
+- **Captcha Solving**: reCAPTCHA, hCaptcha, and Turnstile support
+- **Proxy Integration**: Built-in proxy configuration
+- **Custom Chrome Paths**: Registry-based detection + manual configuration
+
+### 🛡️ Anti-Detection Features
+- **Stealth by Default**: All browser instances use anti-detection
+- **Human-like Interactions**: Natural timing and behavior patterns
+- **Detection Evasion**: Advanced techniques to bypass bot detection
+- **Real Browser**: Uses actual Brave browser (not headless)
+- **Plugin Support**: Custom browser extensions and plugins
+
+### 🐳 Docker & Cloud Ready
+- **Multi-Architecture**: AMD64 and ARM64 Docker images
+- **GitHub Container Registry**: Automated image builds and deployment
+- **Headless Support**: Xvfb integration for headless environments
+- **CI/CD Integration**: GitHub Actions workflow included
+- **Cloud Deployment**: Ready for cloud providers and containers
+
+### 📊 Enterprise Features
+- **Connection Resilience**: 5 different connection strategies
+- **Error Recovery**: Circuit breaker patterns and retry logic
+- **Stack Overflow Protection**: Comprehensive recursion prevention
+- **Performance Monitoring**: Built-in performance benchmarking
+- **Debug Tools**: Comprehensive environment diagnostics
+
+### 🔒 Security & Compliance
+- **Secure Token Management**: GH_TOKEN and environment variable support
+- **Network Security**: Configurable host binding and access control
+- **Audit Logging**: npm audit integration and security scanning
+- **CodeQL Analysis**: Static code analysis for security vulnerabilities
+- **Environment Detection**: Smart GUI/headless environment detection
+
 ## Table of Contents
 
 1. [Quick Start for Beginners](#quick-start-for-beginners)

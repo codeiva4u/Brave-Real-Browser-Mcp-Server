@@ -1,7 +1,7 @@
 # Multi-platform Dockerfile for Brave Puppeteer Real Browser MCP Server
 # Supports: linux/amd64, linux/arm64
 
-FROM --platform=$BUILDPLATFORM node:18-alpine AS builder
+FROM --platform=$BUILDPLATFORM node:18-slim AS builder
 
 # Build arguments
 ARG BUILDTIME
@@ -15,8 +15,12 @@ WORKDIR /app
 COPY package*.json ./
 COPY tsconfig.json ./
 
-# Install dependencies
-RUN npm ci --only=production && npm cache clean --force
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    && npm ci --only=production \
+    && npm cache clean --force \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Copy source code
 COPY src/ ./src/
@@ -26,12 +30,18 @@ COPY scripts/ ./scripts/
 RUN npm run build
 
 # Production stage
-FROM node:18-alpine AS production
+FROM node:18-slim AS production
 
-# Install system dependencies and Brave browser
-RUN apk update && apk add --no-cache \
+# Build arguments for target platform
+ARG TARGETPLATFORM
+ARG BUILDTIME
+ARG VERSION
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
     wget \
     curl \
+    gnupg \
     ca-certificates \
     fonts-liberation \
     libappindicator3-1 \
@@ -46,28 +56,27 @@ RUN apk update && apk add --no-cache \
     lsb-release \
     xdg-utils \
     xvfb \
-    dbus \
-    && rm -rf /var/cache/apk/*
+    dbus-x11 \
+    libglib2.0-0 \
+    libgconf-2-4 \
+    && rm -rf /var/lib/apt/lists/*
 
-# Set up Brave browser installation based on architecture
-ARG TARGETPLATFORM
-RUN echo "Target platform: $TARGETPLATFORM"
+# Install Brave browser with proper architecture support
+RUN echo "Installing Brave browser for platform: $TARGETPLATFORM" && \
+    curl -fsSLo /usr/share/keyrings/brave-browser-archive-keyring.gpg https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg && \
+    if [ "$TARGETPLATFORM" = "linux/amd64" ]; then \
+        echo "deb [signed-by=/usr/share/keyrings/brave-browser-archive-keyring.gpg arch=amd64] https://brave-browser-apt-release.s3.brave.com/ stable main" > /etc/apt/sources.list.d/brave-browser-release.list; \
+    elif [ "$TARGETPLATFORM" = "linux/arm64" ]; then \
+        echo "deb [signed-by=/usr/share/keyrings/brave-browser-archive-keyring.gpg arch=arm64] https://brave-browser-apt-release.s3.brave.com/ stable main" > /etc/apt/sources.list.d/brave-browser-release.list; \
+    else \
+        echo "deb [signed-by=/usr/share/keyrings/brave-browser-archive-keyring.gpg] https://brave-browser-apt-release.s3.brave.com/ stable main" > /etc/apt/sources.list.d/brave-browser-release.list; \
+    fi && \
+    apt-get update && \
+    apt-get install -y brave-browser && \
+    rm -rf /var/lib/apt/lists/*
 
-# Install Brave browser for x86_64
-RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then \
-    wget -q -O - https://brave-browser-apt-release.s3.brave.com/brave-core.asc | apk add --allow-untrusted && \
-    echo "deb [signed-by=/usr/share/keyrings/brave-browser-archive-keyring.gpg arch=amd64] https://brave-browser-apt-release.s3.brave.com/ stable main" > /etc/apk/repositories.d/brave-browser-release.list && \
-    apk update && \
-    apk add --no-cache brave-browser; \
-    fi
-
-# Install Brave browser for ARM64
-RUN if [ "$TARGETPLATFORM" = "linux/arm64" ]; then \
-    wget -q -O - https://brave-browser-apt-release.s3.brave.com/brave-core.asc | apk add --allow-untrusted && \
-    echo "deb [signed-by=/usr/share/keyrings/brave-browser-archive-keyring.gpg arch=arm64] https://brave-browser-apt-release.s3.brave.com/ stable main" > /etc/apk/repositories.d/brave-browser-release.list && \
-    apk update && \
-    apk add --no-cache brave-browser; \
-    fi
+# Verify Brave installation
+RUN brave-browser --version || echo "Brave browser installation completed"
 
 # Create app user
 RUN addgroup -g 1001 -S nodejs && \

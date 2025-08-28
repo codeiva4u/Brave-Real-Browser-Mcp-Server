@@ -105,7 +105,7 @@ jobs:
       with:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+        password: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
     
     - name: Extract metadata
       id: meta
@@ -133,37 +133,6 @@ jobs:
         build-args: |
           BUILDTIME=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
           VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
-
-  publish-npm:
-    name: Publish to NPM
-    needs: [test, build-docker]
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ env.NODE_VERSION }}
-        cache: 'npm'
-        registry-url: 'https://registry.npmjs.org'
-    
-    - name: Install dependencies
-      run: npm ci
-      env:
-        HEADLESS: true
-        CI: true
-    
-    - name: Build project
-      run: npm run build
-    
-    - name: Publish to NPM
-      run: npm publish --access public
-      env:
-        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   create-release:
     name: Create GitHub Release
@@ -275,7 +244,7 @@ jobs:
 
   notification:
     name: Notification
-    needs: [test, build-docker, publish-npm, create-release]
+    needs: [test, build-docker, create-release]
     runs-on: ubuntu-latest
     if: always() && github.ref == 'refs/heads/main'
     
