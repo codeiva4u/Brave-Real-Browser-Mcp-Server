@@ -1,0 +1,302 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  NODE_VERSION: '18'
+
+jobs:
+  test:
+    name: Test on ${{ matrix.os }} (${{ matrix.arch }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        arch: [x64]
+        include:
+          - os: ubuntu-latest
+            arch: arm64
+          - os: macos-latest
+            arch: arm64
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        architecture: ${{ matrix.arch }}
+    
+    - name: Install dependencies
+      run: npm ci
+      env:
+        HEADLESS: true
+        CI: true
+    
+    - name: Install Brave Browser (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt update
+        sudo apt install -y curl
+        sudo curl -fsSLo /usr/share/keyrings/brave-browser-archive-keyring.gpg https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg
+        echo "deb [signed-by=/usr/share/keyrings/brave-browser-archive-keyring.gpg arch=amd64] https://brave-browser-apt-release.s3.brave.com/ stable main" | sudo tee /etc/apt/sources.list.d/brave-browser-release.list
+        sudo apt update
+        sudo apt install -y brave-browser xvfb
+    
+    - name: Install Brave Browser (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        brew install --cask brave-browser
+    
+    - name: Install Brave Browser (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        choco install brave -y
+    
+    - name: Build project
+      run: npm run build
+    
+    - name: Run tests
+      run: npm test
+      env:
+        HEADLESS: true
+        CI: true
+        XVFB_AVAILABLE: ${{ matrix.os == 'ubuntu-latest' && 'true' || 'false' }}
+    
+    - name: Run integration tests
+      run: npm run test:debug
+      env:
+        HEADLESS: true
+        CI: true
+
+  build-docker:
+    name: Build Single Multi-Platform Docker Image
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    
+    permissions:
+      contents: read
+      packages: write
+    
+    outputs:
+      image-digest: ${{ steps.build.outputs.digest }}
+      image-tags: ${{ steps.meta.outputs.tags }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up QEMU for multi-platform builds
+      uses: docker/setup-qemu-action@v3
+      with:
+        platforms: linux/amd64,linux/arm64
+    
+    - name: Set up Docker Buildx for multi-platform support
+      uses: docker/setup-buildx-action@v3
+      with:
+        driver-opts: |
+          image=moby/buildkit:buildx-stable-1
+    
+    - name: Log in to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
+    
+    - name: Generate Docker metadata for single image
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=semver,pattern={{major}}
+          type=raw,value=latest,enable={{is_default_branch}}
+        labels: |
+          org.opencontainers.image.title=Brave Puppeteer Real Browser MCP Server
+          org.opencontainers.image.description=Multi-platform Docker image supporting AMD64 and ARM64
+          org.opencontainers.image.vendor=Brave Puppeteer MCP Server
+          org.opencontainers.image.documentation=https://github.com/${{ github.repository }}
+    
+    - name: Build and push single multi-platform Docker image
+      id: build
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        build-args: |
+          BUILDTIME=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+          VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+        provenance: false
+        sbom: false
+    
+    - name: Verify multi-platform image
+      run: |
+        echo "✅ Successfully built single Docker image with multi-platform support:"
+        echo "📦 Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+        echo "🏗️  Platforms: linux/amd64, linux/arm64"
+        echo "🔖 Tags: ${{ steps.meta.outputs.tags }}"
+        echo "🆔 Digest: ${{ steps.build.outputs.digest }}"
+        
+        # Verify the image exists and supports multiple platforms
+        docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+  create-release:
+    name: Create GitHub Release
+    needs: [test, build-docker]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    
+    permissions:
+      contents: write
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+      env:
+        HEADLESS: true
+        CI: true
+    
+    - name: Build project
+      run: npm run build
+    
+    - name: Create release package
+      run: |
+        npm pack
+        mkdir release-assets
+        mv *.tgz release-assets/
+        cp README.md release-assets/
+        cp CHANGELOG.md release-assets/ 2>/dev/null || echo "No CHANGELOG.md found"
+    
+    - name: Generate release notes
+      run: |
+        echo "## 🦁 Brave Puppeteer Real Browser MCP Server" >> release-notes.md
+        echo "" >> release-notes.md
+        echo "### Features" >> release-notes.md
+        echo "- ✅ Multi-platform Brave browser automation" >> release-notes.md
+        echo "- 🌐 HTTP/WebSocket MCP server support" >> release-notes.md
+        echo "- 🔧 Auto-detection and installation" >> release-notes.md
+        echo "- 🖥️ Headless/GUI environment detection" >> release-notes.md
+        echo "- 🐧 Full Linux ARM64 support" >> release-notes.md
+        echo "" >> release-notes.md
+        echo "### 🐳 Single Multi-Platform Docker Image" >> release-notes.md
+        echo "" >> release-notes.md
+        echo "**One image supports both AMD64 and ARM64 architectures:**" >> release-notes.md
+        echo "" >> release-notes.md
+        echo "\`\`\`bash" >> release-notes.md
+        echo "# Pull the single multi-platform Docker image (works on AMD64 and ARM64)" >> release-notes.md
+        echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}" >> release-notes.md
+        echo "" >> release-notes.md
+        echo "# Verify multi-platform support" >> release-notes.md
+        echo "docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}" >> release-notes.md
+        echo "" >> release-notes.md
+        echo "# Run with STDIO mode (works on both AMD64 and ARM64)" >> release-notes.md
+        echo "docker run -it --rm ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}" >> release-notes.md
+        echo "" >> release-notes.md
+        echo "# Run with HTTP mode (accessible from network)" >> release-notes.md
+        echo "docker run -it --rm -p 3000:3000 ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }} --mode=http" >> release-notes.md
+        echo "" >> release-notes.md
+        echo "# Run with WebSocket mode (real-time communication)" >> release-notes.md
+        echo "docker run -it --rm -p 3001:3001 ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }} --mode=websocket" >> release-notes.md
+        echo "\`\`\`" >> release-notes.md
+    
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        name: Release ${{ github.ref_name }}
+        body_path: release-notes.md
+        files: release-assets/*
+        draft: false
+        prerelease: ${{ contains(github.ref_name, 'rc') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'alpha') }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  security-scan:
+    name: Security Scan
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    
+    permissions:
+      contents: read
+      security-events: write
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci --audit
+      env:
+        HEADLESS: true
+        CI: true
+    
+    - name: Run npm audit
+      run: npm audit --audit-level high
+      continue-on-error: true
+    
+    - name: Run CodeQL Analysis
+      uses: github/codeql-action/analyze@v2
+      with:
+        languages: javascript
+      continue-on-error: true
+
+  notification:
+    name: Notification
+    needs: [test, build-docker, create-release]
+    runs-on: ubuntu-latest
+    if: always() && github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Notify Success
+      if: needs.test.result == 'success' && needs.build-docker.result == 'success'
+      run: |
+        echo "🎉 CI/CD Pipeline completed successfully!"
+        echo "✅ Tests passed on all platforms (Windows, macOS, Linux)"
+        echo "🐳 Single multi-platform Docker image built and published (AMD64 + ARM64)"
+        echo "🦁 Brave Puppeteer MCP Server is ready for all architectures!"
+        echo "📦 Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+    
+    - name: Notify Failure
+      if: contains(needs.*.result, 'failure')
+      run: |
+        echo "❌ CI/CD Pipeline failed!"
+        echo "Please check the logs for details."
+        exit 1
