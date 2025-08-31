@@ -1,0 +1,78 @@
+# Development and test files
+test/
+tests/
+test-*.js
+*.test.js
+*.test.ts
+test-output/
+coverage/
+.nyc_output/
+
+# Source TypeScript files (keeping JS)
+src/**/*.ts
+src/**/*.test.js
+*.ts
+!*.d.ts
+
+# Config files
+.github/
+.vscode/
+.git/
+.gitignore
+.editorconfig
+.eslintrc*
+.prettierrc*
+
+# Build files
+tsconfig.json
+vitest.config.ts
+vitest.config.js
+webpack.config.js
+rollup.config.js
+
+# Documentation
+docs/
+examples/
+*.md
+!README.md
+!CHANGELOG.md
+
+# Temporary files
+*.log
+*.tmp
+.env
+.env.local
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+*.sublime-*
+
+# NPM/Yarn files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm/
+.yarn/
+
+# OS files
+Desktop.ini
+.Spotlight-V100
+.Trashes
+
+# MCP config examples (user-specific)
+claude_desktop_config.json
+WORKING_SOLUTION.md
+MCP_SETUP_GUIDE.md
+NPM_PUBLISH_SOLUTION.md
+
+# Docker files (if not needed for npm package)
+Dockerfile
+docker-compose.yml
+.dockerignore

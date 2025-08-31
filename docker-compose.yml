@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  puppeteer-brave-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        TARGETPLATFORM: linux/amd64
+        TARGETARCH: amd64
+    image: puppeteer-brave-mcp:latest
+    container_name: puppeteer-brave-mcp-server
+    environment:
+      - NODE_ENV=production
+      - BRAVE_PATH=/usr/bin/brave-browser
+      - BRAVE_EXECUTABLE_PATH=/usr/bin/brave-browser
+      - PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+      - DISPLAY=:99
+      # Optional: Set these if you want to use a specific Brave path
+      # - BRAVE_PATH=/custom/path/to/brave
+      # Optional: Enable debug logging
+      # - DEBUG=puppeteer:*
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount config files if needed
+      - ./config:/app/config:ro
+      # Mount for screenshots/downloads
+      - ./downloads:/home/pptruser/Downloads
+    restart: unless-stopped
+    # Add shared memory size for browser stability
+    shm_size: '2gb'
+    # Security options
+    security_opt:
+      - seccomp=unconfined
+    cap_add:
+      - SYS_ADMIN
+    networks:
+      - puppeteer-network
+
+  # Optional: Add a test service
+  test-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: test
+    image: puppeteer-brave-mcp:test
+    container_name: puppeteer-brave-test
+    environment:
+      - NODE_ENV=test
+      - BRAVE_PATH=/usr/bin/brave-browser
+    command: npm test
+    depends_on:
+      - puppeteer-brave-mcp
+    networks:
+      - puppeteer-network
+    profiles:
+      - test
+
+networks:
+  puppeteer-network:
+    driver: bridge
+
+volumes:
+  downloads:
+    driver: local
