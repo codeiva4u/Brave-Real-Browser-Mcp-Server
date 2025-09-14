@@ -1,13 +1,13 @@
 #!/usr/bin/env node
-import { Server } from '@modelContextProtocol/sdk/server/index.js';
-import { StdioServerTransport } from '@modelContextProtocol/sdk/server/stdio.js';
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
   ListResourcesRequestSchema,
   ListPromptsRequestSchema,
   InitializeRequestSchema,
-} from '@modelContextProtocol/sdk/types.js';
+} from '@modelcontextprotocol/sdk/types.js';
 import { connect } from 'puppeteer-real-browser';
 import { randomScroll } from './stealth-actions.js';
 import { setTimeout as sleep } from 'node:timers/promises';
