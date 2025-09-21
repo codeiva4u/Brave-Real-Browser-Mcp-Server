@@ -13,20 +13,24 @@ Provides AI assistants with powerful, detection-resistant browser automation cap
 2. [Introduction](#introduction)
 3. [Features](#features)
 4. [Prerequisites](#prerequisites)
-5. [Installation](#installation)
-6. [Usage](#usage)
+5. [Platform-Specific Installation](#platform-specific-installation)
+   - [Windows Installation](#windows-installation)
+   - [macOS Installation](#macos-installation)
+   - [Linux Installation](#linux-installation)
+6. [Installation](#installation)
+7. [Usage](#usage)
    - [With Claude Desktop](#with-claude-desktop)
    - [With Claude Code CLI](#with-claude-code-cli)
    - [With Cursor IDE](#with-cursor-ide)
    - [With Other AI Assistants](#with-other-ai-assistants)
-7. [Available Tools](#available-tools)
-8. [Advanced Features](#advanced-features)
-9. [Configuration](#configuration)
-10. [Troubleshooting](#troubleshooting)
-11. [Development](#development)
-12. [Testing](#testing)
-13. [Contributing](#contributing)
-14. [License](#license)
+8. [Available Tools](#available-tools)
+9. [Advanced Features](#advanced-features)
+10. [Configuration](#configuration)
+11. [Troubleshooting](#troubleshooting)
+12. [Development](#development)
+13. [Testing](#testing)
+14. [Contributing](#contributing)
+15. [License](#license)
 
 ## Quick Start for Beginners
 
@@ -179,6 +183,341 @@ complex web automation tasks with human-like behavior.
   sudo apt-get install -y chromium-browser
   ```
 - Install xvfb for headless operation: `sudo apt-get install -y xvfb`
+
+## Platform-Specific Installation
+
+> **🎯 Choose Your Platform:** Select the installation method that matches your operating system. Each section includes complete setup commands for both Brave Browser and MCP server configuration.
+
+### Windows Installation
+
+#### Method 1: Complete Windows Setup (Recommended)
+
+**Step 1: Install Node.js**
+```powershell
+# Download and install from nodejs.org, or use winget
+winget install OpenJS.NodeJS
+
+# Verify installation
+node --version
+npm --version
+```
+
+**Step 2: Install Brave Browser (Recommended)**
+```powershell
+# Option 1: Download from brave.com
+# Visit: https://brave.com/download/
+
+# Option 2: Use winget
+winget install BraveSoftware.BraveBrowser
+
+# Option 3: Use Chocolatey
+choco install brave
+
+# Verify installation
+& "C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe" --version
+```
+
+**Step 3: Setup Claude Desktop MCP Configuration**
+```powershell
+# Create Claude config directory
+$configPath = "$env:APPDATA\Claude"
+if (!(Test-Path $configPath)) { New-Item -ItemType Directory -Path $configPath }
+
+# Create MCP configuration file
+@"
+{
+  "mcpServers": {
+    "brave-real-browser": {
+      "command": "npx",
+      "args": ["brave-real-browser-mcp-server@latest"]
+    }
+  }
+}
+"@ | Out-File -FilePath "$configPath\claude_desktop_config.json" -Encoding UTF8
+
+echo "✅ Claude Desktop MCP configuration created successfully!"
+echo "📁 Config file location: $configPath\claude_desktop_config.json"
+```
+
+**Step 4: Setup Environment Variables (Optional)**
+```powershell
+# Set Brave Browser path (if not auto-detected)
+[Environment]::SetEnvironmentVariable("BRAVE_PATH", "C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe", "User")
+
+# Alternative: Set Chrome path
+# [Environment]::SetEnvironmentVariable("CHROME_PATH", "C:\Program Files\Google\Chrome\Application\chrome.exe", "User")
+
+echo "✅ Environment variables set successfully!"
+```
+
+**Step 5: Test MCP Server**
+```powershell
+# Test the MCP server directly
+npx brave-real-browser-mcp-server@latest --help
+
+# Test with Claude Desktop (restart Claude first)
+echo "🔄 Restart Claude Desktop and test with: 'Initialize a browser and navigate to google.com'"
+```
+
+#### Method 2: Quick Setup (One-liner)
+```powershell
+# Complete Windows setup in one command
+iex ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/codeiva4u/Brave-Real-Browser-Mcp-Server/main/scripts/install-windows.ps1'))
+```
+
+### macOS Installation
+
+#### Method 1: Complete macOS Setup (Recommended)
+
+**Step 1: Install Node.js**
+```bash
+# Option 1: Download from nodejs.org
+# Visit: https://nodejs.org/
+
+# Option 2: Use Homebrew
+brew install node
+
+# Option 3: Use nvm (Node Version Manager)
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+source ~/.bashrc
+nvm install node
+
+# Verify installation
+node --version
+npm --version
+```
+
+**Step 2: Install Brave Browser (Recommended)**
+```bash
+# Option 1: Download from brave.com
+# Visit: https://brave.com/download/
+
+# Option 2: Use Homebrew
+brew install --cask brave-browser
+
+# Option 3: Use Mac App Store
+# Search for "Brave Browser" in App Store
+
+# Verify installation
+"/Applications/Brave Browser.app/Contents/MacOS/Brave Browser" --version
+```
+
+**Step 3: Setup Claude Desktop MCP Configuration**
+```bash
+# Create Claude config directory
+mkdir -p ~/"Library/Application Support/Claude"
+
+# Create MCP configuration file
+cat << 'EOF' > ~/"Library/Application Support/Claude/claude_desktop_config.json"
+{
+  "mcpServers": {
+    "brave-real-browser": {
+      "command": "npx",
+      "args": ["brave-real-browser-mcp-server@latest"]
+    }
+  }
+}
+EOF
+
+echo "✅ Claude Desktop MCP configuration created successfully!"
+echo "📁 Config file location: ~/Library/Application Support/Claude/claude_desktop_config.json"
+```
+
+**Step 4: Setup Environment Variables (Optional)**
+```bash
+# Add to your shell profile (.bashrc, .zshrc, etc.)
+echo 'export BRAVE_PATH="/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"' >> ~/.zshrc
+
+# Alternative: Set Chrome path
+# echo 'export CHROME_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"' >> ~/.zshrc
+
+# Reload shell configuration
+source ~/.zshrc
+
+echo "✅ Environment variables set successfully!"
+```
+
+**Step 5: Test MCP Server**
+```bash
+# Test the MCP server directly
+npx brave-real-browser-mcp-server@latest --help
+
+# Test browser launch
+node -e "console.log('Testing browser paths:'); console.log('Brave:', process.env.BRAVE_PATH);"
+
+echo "🔄 Restart Claude Desktop and test with: 'Initialize a browser and navigate to google.com'"
+```
+
+#### Method 2: Quick Setup (One-liner)
+```bash
+# Complete macOS setup in one command
+curl -fsSL https://raw.githubusercontent.com/codeiva4u/Brave-Real-Browser-Mcp-Server/main/scripts/install-macos.sh | bash
+```
+
+### Linux Installation
+
+#### Method 1: Complete Linux Setup (Ubuntu/Debian)
+
+**Step 1: Install Node.js**
+```bash
+# Option 1: Using NodeSource repository (recommended)
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+# Option 2: Using snap
+sudo snap install node --classic
+
+# Option 3: Using package manager
+sudo apt update
+sudo apt install -y nodejs npm
+
+# Verify installation
+node --version
+npm --version
+```
+
+**Step 2: Install Brave Browser (Recommended)**
+```bash
+# Install Brave Browser
+sudo curl -fsSLo /usr/share/keyrings/brave-browser-archive-keyring.gpg https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg
+
+echo "deb [signed-by=/usr/share/keyrings/brave-browser-archive-keyring.gpg] https://brave-browser-apt-release.s3.brave.com/ stable main" | sudo tee /etc/apt/sources.list.d/brave-browser-release.list
+
+sudo apt update
+sudo apt install -y brave-browser
+
+# Install dependencies for headless operation
+sudo apt-get install -y xvfb
+
+# Verify installation
+brave-browser --version
+```
+
+**Step 3: Setup Claude Desktop MCP Configuration**
+```bash
+# Create Claude config directory
+mkdir -p ~/.config/Claude
+
+# Create MCP configuration file
+cat << 'EOF' > ~/.config/Claude/claude_desktop_config.json
+{
+  "mcpServers": {
+    "brave-real-browser": {
+      "command": "npx",
+      "args": ["brave-real-browser-mcp-server@latest"]
+    }
+  }
+}
+EOF
+
+echo "✅ Claude Desktop MCP configuration created successfully!"
+echo "📁 Config file location: ~/.config/Claude/claude_desktop_config.json"
+```
+
+**Step 4: Setup Environment Variables**
+```bash
+# Add to your shell profile
+echo 'export BRAVE_PATH="/usr/bin/brave-browser"' >> ~/.bashrc
+echo 'export DISPLAY=:99' >> ~/.bashrc  # For headless operation
+
+# Alternative browser paths
+# echo 'export CHROME_PATH="/usr/bin/google-chrome"' >> ~/.bashrc
+# echo 'export CHROME_PATH="/usr/bin/chromium-browser"' >> ~/.bashrc
+
+# Reload shell configuration
+source ~/.bashrc
+
+echo "✅ Environment variables set successfully!"
+```
+
+**Step 5: Setup Headless Display (For Server Usage)**
+```bash
+# Start virtual display for headless operation
+sudo apt-get install -y xvfb
+
+# Create xvfb service (optional)
+sudo tee /etc/systemd/system/xvfb.service << 'EOF'
+[Unit]
+Description=X Virtual Frame Buffer Service
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/Xvfb :99 -screen 0 1024x768x24
+Restart=on-failure
+RestartSec=2
+User=nobody
+Group=nogroup
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Enable and start xvfb service
+sudo systemctl enable xvfb
+sudo systemctl start xvfb
+
+echo "✅ Headless display configured successfully!"
+```
+
+**Step 6: Test MCP Server**
+```bash
+# Test the MCP server directly
+npx brave-real-browser-mcp-server@latest --help
+
+# Test headless operation
+export DISPLAY=:99
+node -e "console.log('Testing browser paths:'); console.log('Brave:', process.env.BRAVE_PATH); console.log('Display:', process.env.DISPLAY);"
+
+# Test browser launch
+echo "🔄 Testing browser launch..."
+timeout 10s brave-browser --headless --dump-dom --disable-gpu https://google.com > /dev/null && echo "✅ Browser test successful!" || echo "❌ Browser test failed"
+
+echo "🔄 Restart Claude Desktop and test with: 'Initialize a browser and navigate to google.com'"
+```
+
+#### Method 2: CentOS/RHEL/Fedora Setup
+```bash
+# Install Node.js
+curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash -
+sudo yum install -y nodejs
+
+# Install Brave Browser
+sudo dnf install dnf-plugins-core
+sudo dnf config-manager --add-repo https://brave-browser-rpm-release.s3.brave.com/x86_64/
+sudo rpm --import https://brave-browser-rpm-release.s3.brave.com/brave-core.asc
+sudo dnf install brave-browser
+
+# Continue with steps 3-6 from Ubuntu setup above
+```
+
+#### Method 3: Quick Setup (One-liner for Ubuntu/Debian)
+```bash
+# Complete Linux setup in one command
+curl -fsSL https://raw.githubusercontent.com/codeiva4u/Brave-Real-Browser-Mcp-Server/main/scripts/install-linux.sh | bash
+```
+
+### Post-Installation Verification
+
+**Test MCP Server on All Platforms:**
+```bash
+# 1. Test Node.js and npm
+node --version && npm --version
+
+# 2. Test MCP server installation
+npx brave-real-browser-mcp-server@latest --version
+
+# 3. Test browser availability
+# Windows: & "C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe" --version
+# macOS: "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser" --version  
+# Linux: brave-browser --version
+
+# 4. Verify MCP configuration
+# Check if claude_desktop_config.json exists and contains brave-real-browser server
+
+# 5. Test with Claude Desktop
+# Restart Claude Desktop completely
+# Try: "Initialize a browser and navigate to example.com, then get the page title"
+```
 
 ## Installation for Developers
 
