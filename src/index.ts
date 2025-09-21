@@ -5,15 +5,15 @@ console.error(`🔍 [DEBUG] Process starting - PID: ${process.pid}, Node: ${proc
 console.error(`🔍 [DEBUG] Working directory: ${process.cwd()}`);
 console.error(`🔍 [DEBUG] Command args: ${process.argv.join(' ')}`);
 
-import { Server } from '@modelContextProtocol/sdk/server/index.js';
-import { StdioServerTransport } from '@modelContextProtocol/sdk/server/stdio.js';
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
   ListResourcesRequestSchema,
   ListPromptsRequestSchema,
   InitializeRequestSchema,
-} from '@modelContextProtocol/sdk/types.js';
+} from '@modelcontextprotocol/sdk/types.js';
 
 console.error('🔍 [DEBUG] MCP SDK imports completed successfully');
 
@@ -46,7 +46,7 @@ console.error('🔍 [DEBUG] MCP server instance created successfully');
 
 // Register initialize handler (CRITICAL - missing handler can cause crash)
 console.error('🔍 [DEBUG] Registering initialize handler...');
-server.setRequestHandler(InitializeRequestSchema, async (request) => {
+server.setRequestHandler(InitializeRequestSchema, async (request: any) => {
   console.error(`🔍 [DEBUG] Initialize request received: ${JSON.stringify(request)}`);
   
   // Use the client's protocol version to ensure compatibility
@@ -95,7 +95,7 @@ server.setRequestHandler(ListPromptsRequestSchema, async () => {
 
 // Main tool call handler
 console.error('🔍 [DEBUG] Registering tool call handler...');
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
+server.setRequestHandler(CallToolRequestSchema, async (request: any) => {
   const { name, arguments: args } = request.params;
   console.error(`🔍 [DEBUG] Tool call received: ${name} with args: ${JSON.stringify(args)}`);
 
