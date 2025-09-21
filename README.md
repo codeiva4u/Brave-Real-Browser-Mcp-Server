@@ -244,7 +244,7 @@ echo "📁 Config file location: $configPath\claude_desktop_config.json"
 # Set Brave Browser path (if not auto-detected)
 [Environment]::SetEnvironmentVariable("BRAVE_PATH", "C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe", "User")
 
-# Alternative: Set Chrome path
+# Alternative: Set Chrome path (if Brave not available)
 # [Environment]::SetEnvironmentVariable("CHROME_PATH", "C:\Program Files\Google\Chrome\Application\chrome.exe", "User")
 
 echo "✅ Environment variables set successfully!"
@@ -328,7 +328,7 @@ echo "📁 Config file location: ~/Library/Application Support/Claude/claude_des
 # Add to your shell profile (.bashrc, .zshrc, etc.)
 echo 'export BRAVE_PATH="/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"' >> ~/.zshrc
 
-# Alternative: Set Chrome path
+# Alternative: Set Chrome path (if Brave not available)
 # echo 'export CHROME_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"' >> ~/.zshrc
 
 # Reload shell configuration
@@ -605,7 +605,7 @@ claude mcp add brave-real-browser \
   -e PROXY_URL="http://proxy:8080" \
   -- npx brave-real-browser-mcp-server@latest
 
-# Or for Chrome
+# Alternative for Chrome (if Brave not available)
 claude mcp add brave-real-browser \
   -e CHROME_PATH="/path/to/chrome" \
   -e PROXY_URL="http://proxy:8080" \
@@ -640,7 +640,7 @@ claude mcp add-json brave-real-browser '{
   }
 }'
 
-# Or for Chrome
+# Alternative for Chrome (if Brave not available)
 claude mcp add-json brave-real-browser '{
   "type": "stdio",
   "command": "npx",
@@ -736,7 +736,7 @@ Cursor IDE uses the same npx approach - no installation needed! Here are the set
 }
 ```
 
-**Alternative Chrome Configuration:**
+**Alternative Chrome Configuration (if Brave not available):**
 ```json
 {
   "mcpServers": {
@@ -769,13 +769,13 @@ Alternative Brave paths:
 - `"C:/Program Files (x86)/BraveSoftware/Brave-Browser/Application/brave.exe"`
 - `"%LOCALAPPDATA%/BraveSoftware/Brave-Browser/Application/brave.exe"`
 
-**Windows (Chrome Alternative):**
+**Windows (Chrome Alternative - if Brave not available):**
 ```json
 "env": {
   "CHROME_PATH": "C:/Program Files/Google/Chrome/Application/chrome.exe"
 }
 ```
-Alternative Chrome paths:
+Alternative Chrome paths (use only if Brave is not installed):
 - `"C:/Program Files (x86)/Google/Chrome/Application/chrome.exe"`
 - `"%LOCALAPPDATA%/Google/Chrome/Application/chrome.exe"`
 
@@ -785,7 +785,7 @@ Alternative Chrome paths:
   "BRAVE_PATH": "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"
 }
 ```
-**macOS (Chrome Alternative):**
+**macOS (Chrome Alternative - if Brave not available):**
 ```json
 "env": {
   "CHROME_PATH": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
@@ -798,13 +798,13 @@ Alternative Chrome paths:
   "BRAVE_PATH": "/usr/bin/brave-browser"
 }
 ```
-**Linux (Chrome Alternative):**
+**Linux (Chrome Alternative - if Brave not available):**
 ```json
 "env": {
   "CHROME_PATH": "/usr/bin/google-chrome"
 }
 ```
-Alternative paths: `/usr/bin/chromium-browser`, `/snap/bin/chromium`
+Alternative Chrome paths (use only if Brave is not installed): `/usr/bin/chromium-browser`, `/snap/bin/chromium`
 
 
 #### Testing Cursor IDE Setup
@@ -830,7 +830,7 @@ If successful, you should see:
 
 2. **"Browser failed to launch" on Windows**
    - Add explicit Brave browser path: `"BRAVE_PATH": "C:/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe"`
-   - Alternative: Add Chrome path: `"CHROME_PATH": "C:/Program Files/Google/Chrome/Application/chrome.exe"`
+   - Alternative (if Brave not available): Add Chrome path: `"CHROME_PATH": "C:/Program Files/Google/Chrome/Application/chrome.exe"`
    - Try running Cursor IDE as Administrator
    - Check Windows Defender isn't blocking browser
 
