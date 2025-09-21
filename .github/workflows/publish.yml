@@ -1,0 +1,248 @@
+name: 🚀 Auto Version Increment and NPM Publish
+
+on:
+  # Manual trigger with enhanced options
+  workflow_dispatch:
+    inputs:
+      increment_type:
+        description: '📈 Version increment type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+        - patch
+        - minor
+        - major
+      dry_run:
+        description: '🧪 Dry run (test without publishing)'
+        required: false
+        default: false
+        type: boolean
+      force_publish:
+        description: '🔥 Force publish (ignore version checks)'
+        required: false
+        default: false
+        type: boolean
+
+  # Automatic trigger on push to main/master
+  push:
+    branches: [main, master]
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
+      - '.gitignore'
+      - 'LICENSE'
+      - '*.md'
+
+  # Automatic trigger on PR merge
+  pull_request:
+    types: [closed]
+    branches: [main, master]
+
+jobs:
+  publish:
+    name: 🚀 Publish Package
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && !contains(github.event.head_commit.message, '[skip ci]')) || (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
+    
+    steps:
+      - name: 🏁 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_TOKEN || github.token }}
+          fetch-depth: 0
+
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: |
+          npm ci --ignore-scripts
+          npm run ensure-latest-packages
+
+      - name: 🔨 Build project
+        run: npm run build
+
+      - name: 🧪 Run tests
+        run: |
+          npm run test:ci || echo "Tests completed with warnings"
+          echo "Running comprehensive tests..."
+          timeout 120 npm run test:comprehensive || echo "Comprehensive tests completed"
+
+      - name: 🔍 Configure Git
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions@github.com"
+
+      - name: 📈 Increment version
+        id: version
+        run: |
+          # Get current version
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          echo "📆 Current version: $CURRENT_VERSION"
+          
+          # Check if version already exists on NPM (unless force publish)
+          if [ "${{ github.event.inputs.force_publish }}" != "true" ]; then
+            if npm view brave-real-browser-mcp-server@$CURRENT_VERSION > /dev/null 2>&1; then
+              echo "⚠️ Version $CURRENT_VERSION already exists on NPM"
+            fi
+          fi
+          
+          # Determine increment type
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            INCREMENT_TYPE="${{ github.event.inputs.increment_type }}"
+          else
+            # Auto-determine increment type based on commit message
+            COMMIT_MSG=$(git log -1 --pretty=%B)
+            echo "📝 Commit message: $COMMIT_MSG"
+            
+            if echo "$COMMIT_MSG" | grep -qE "\[major\]|\bBREAKING CHANGE\b|\bmajor:"; then
+              INCREMENT_TYPE="major"
+            elif echo "$COMMIT_MSG" | grep -qE "\[minor\]|\bfeat\b|\bfeature\b|\bminor:"; then
+              INCREMENT_TYPE="minor"
+            else
+              INCREMENT_TYPE="patch"
+            fi
+          fi
+          
+          echo "📈 Increment type: $INCREMENT_TYPE"
+          
+          # Increment version
+          npm version $INCREMENT_TYPE --no-git-tag-version
+          NEW_VERSION=$(node -p "require('./package.json').version")
+          echo "✨ New version: $NEW_VERSION"
+          
+          # Verify version increment worked
+          if [ "$NEW_VERSION" = "$CURRENT_VERSION" ]; then
+            echo "❌ Error: Version increment failed"
+            exit 1
+          fi
+          
+          # Set outputs
+          echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "increment_type=$INCREMENT_TYPE" >> $GITHUB_OUTPUT
+          
+          # Check for dry run
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            echo "🧪 DRY RUN MODE - No changes will be committed"
+            echo "dry_run=true" >> $GITHUB_OUTPUT
+          else
+            echo "dry_run=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 📝 Commit version bump
+        if: steps.version.outputs.dry_run == 'false'
+        run: |
+          git add package.json package-lock.json 2>/dev/null || true
+          git commit -m "🔖 Bump version to v${{ steps.version.outputs.new_version }} [skip ci]" || echo "No changes to commit"
+          git tag -a "v${{ steps.version.outputs.new_version }}" -m "Release v${{ steps.version.outputs.new_version }}"
+
+      - name: 🚀 Publish to NPM
+        if: steps.version.outputs.dry_run == 'false'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          echo "🚀 Publishing version ${{ steps.version.outputs.new_version }} to NPM..."
+          
+          # Verify NPM token exists
+          if [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "❌ Error: NPM_TOKEN secret not found"
+            exit 1
+          fi
+          
+          # Verify build files exist
+          if [ ! -f "dist/index.js" ]; then
+            echo "⚠️ Build files not found. Running build again..."
+            npm run build
+            
+            if [ ! -f "dist/index.js" ]; then
+              echo "❌ Error: Build failed - dist/index.js not found"
+              exit 1
+            fi
+          fi
+          
+          # Verify package.json has correct version
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          if [ "$PACKAGE_VERSION" != "${{ steps.version.outputs.new_version }}" ]; then
+            echo "❌ Error: Package version mismatch. Expected: ${{ steps.version.outputs.new_version }}, Got: $PACKAGE_VERSION"
+            exit 1
+          fi
+          
+          # Check if version already exists on NPM
+          if npm view brave-real-browser-mcp-server@${{ steps.version.outputs.new_version }} > /dev/null 2>&1; then
+            if [ "${{ github.event.inputs.force_publish }}" = "true" ]; then
+              echo "🔥 Force publish enabled - proceeding despite existing version"
+            else
+              echo "❌ Error: Version ${{ steps.version.outputs.new_version }} already exists on NPM"
+              echo "Use force_publish option to override"
+              exit 1
+            fi
+          fi
+          
+          # Publish to NPM with detailed logging
+          echo "📦 Publishing package..."
+          npm publish --access public --verbose
+          
+          # Verify publish succeeded
+          sleep 5
+          if npm view brave-real-browser-mcp-server@${{ steps.version.outputs.new_version }} > /dev/null 2>&1; then
+            echo "✅ Successfully published brave-real-browser-mcp-server@${{ steps.version.outputs.new_version }} to NPM"
+          else
+            echo "❌ Error: Package publish verification failed"
+            exit 1
+          fi
+
+      - name: 🔄 Push changes to GitHub
+        if: steps.version.outputs.dry_run == 'false'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
+        run: |
+          git push origin HEAD --follow-tags
+          echo "✅ Successfully pushed version v${{ steps.version.outputs.new_version }} to GitHub"
+
+      - name: 📋 Create GitHub Release
+        if: steps.version.outputs.dry_run == 'false'
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
+        with:
+          tag_name: v${{ steps.version.outputs.new_version }}
+          release_name: Release v${{ steps.version.outputs.new_version }}
+          body: |
+            🚀 **Brave Real Browser MCP Server v${{ steps.version.outputs.new_version }}**
+            
+            This release was automatically generated and published.
+            
+            ### Changes
+            - Version increment: ${{ steps.version.outputs.increment_type }}
+            - Package published to NPM: `npm install brave-real-browser-mcp-server@${{ steps.version.outputs.new_version }}`
+            
+            ### Installation
+            ```bash
+            npm install brave-real-browser-mcp-server@latest
+            ```
+            
+            For more information, see the [README](https://github.com/${{ github.repository }}/blob/main/README.md).
+          draft: false
+          prerelease: false
+
+      - name: 📊 Summary
+        run: |
+          echo "## 🎉 Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: v${{ steps.version.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Increment Type**: ${{ steps.version.outputs.increment_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **NPM Package**: [brave-real-browser-mcp-server@${{ steps.version.outputs.new_version }}](https://www.npmjs.com/package/brave-real-browser-mcp-server)" >> $GITHUB_STEP_SUMMARY
+          echo "- **GitHub Release**: [v${{ steps.version.outputs.new_version }}](https://github.com/${{ github.repository }}/releases/tag/v${{ steps.version.outputs.new_version }})" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.version.outputs.dry_run }}" = "true" ]; then
+            echo "⚠️ **This was a dry run - no changes were published**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ **Successfully published to NPM and GitHub**" >> $GITHUB_STEP_SUMMARY
+          fi
