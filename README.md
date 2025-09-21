@@ -104,17 +104,22 @@ Once set up, you can ask Claude to:
 ## Introduction
 
 The Brave Real Browser MCP Server acts as a bridge between AI assistants
-and browser automation. It leverages brave-real-browser to provide stealth
-browsing capabilities that can bypass common bot detection mechanisms.
+and browser automation. It leverages the **brave-real-browser** package to provide
+advanced stealth browsing capabilities that can bypass common bot detection mechanisms.
+
+**🎯 Optimized for Brave Browser**: While compatible with Chrome and Chromium,
+this server is specifically optimized for Brave Browser, providing enhanced
+privacy, ad-blocking, and anti-fingerprinting capabilities out-of-the-box.
 
 This server implements the Model Context Protocol (MCP), allowing AI
-assistants to control a real browser, extract content, and more.
+assistants to control a real browser, extract content, solve CAPTCHAs, and perform
+complex web automation tasks with human-like behavior.
 
 ## Features
 
 - **Stealth by default**: All browser instances use anti-detection features
-- **Enhanced Windows support**: Comprehensive Chrome detection and ECONNREFUSED error fixes (v1.3.0)
-- **Smart Chrome detection**: Registry-based detection + 15+ installation paths (Windows)
+- **Enhanced Windows support**: Comprehensive Brave/Chrome detection and ECONNREFUSED error fixes
+- **Smart browser detection**: Registry-based detection + 15+ installation paths for Brave and Chrome (Windows)
 - **Connection resilience**: Automatic localhost/127.0.0.1 fallback with port management
 - **Multiple retry strategies**: 5 different connection approaches with progressive fallback
 - **Advanced configuration**: Full support for all brave-real-browser options
@@ -132,25 +137,47 @@ assistants to control a real browser, extract content, and more.
 
 - Node.js >= 18.0.0
 - npm or yarn
-- Google Chrome or Chromium browser installed
+- **Brave Browser** (recommended) or Google Chrome/Chromium browser installed
 - Basic understanding of TypeScript/JavaScript (for development)
 
 ### Platform-Specific Requirements
 
 **Windows:**
-- Google Chrome installation (automatic detection in v1.3.0+ includes):
-  - Standard installations: `C:\Program Files\Google\Chrome\Application\chrome.exe`
-  - 32-bit installations: `C:\Program Files (x86)\Google\Chrome\Application\chrome.exe`
-  - User installations: `%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe`
-  - Chrome Canary: `%LOCALAPPDATA%\Google\Chrome SxS\Application\chrome.exe`
+- **Brave Browser** (recommended) or Google Chrome installation (automatic detection includes):
+  - **Brave Browser paths:**
+    - Standard: `C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe`
+    - 32-bit: `C:\Program Files (x86)\BraveSoftware\Brave-Browser\Application\brave.exe`
+    - User: `%LOCALAPPDATA%\BraveSoftware\Brave-Browser\Application\brave.exe`
+    - Nightly: `%LOCALAPPDATA%\BraveSoftware\Brave-Browser-Nightly\Application\brave.exe`
+  - **Google Chrome paths:**
+    - Standard: `C:\Program Files\Google\Chrome\Application\chrome.exe`
+    - 32-bit: `C:\Program Files (x86)\Google\Chrome\Application\chrome.exe`
+    - User: `%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe`
+    - Canary: `%LOCALAPPDATA%\Google\Chrome SxS\Application\chrome.exe`
   - Portable installations and Registry-detected paths
-  - Manual path specification: Use `CHROME_PATH` environment variable
+  - Manual path specification: Use `CHROME_PATH` or `BRAVE_PATH` environment variable
 
 **macOS:**
-- Google Chrome or Chromium must be installed in `/Applications/`
+- **Brave Browser** (recommended): Install from [brave.com](https://brave.com) or App Store
+- Alternative: Google Chrome or Chromium in `/Applications/`
+- **Brave paths:**
+  - `/Applications/Brave Browser.app/Contents/MacOS/Brave Browser`
+  - `/Applications/Brave Browser Nightly.app/Contents/MacOS/Brave Browser Nightly`
 
 **Linux:**
-- Install Chrome/Chromium: `sudo apt-get install -y google-chrome-stable` or `sudo apt-get install -y chromium-browser`
+- **Brave Browser** (recommended):
+  ```bash
+  # Install Brave Browser
+  sudo curl -fsSLo /usr/share/keyrings/brave-browser-archive-keyring.gpg https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg
+  echo "deb [signed-by=/usr/share/keyrings/brave-browser-archive-keyring.gpg] https://brave-browser-apt-release.s3.brave.com/ stable main" | sudo tee /etc/apt/sources.list.d/brave-browser-release.list
+  sudo apt update && sudo apt install brave-browser
+  ```
+- **Alternative Chrome/Chromium:**
+  ```bash
+  sudo apt-get install -y google-chrome-stable
+  # or
+  sudo apt-get install -y chromium-browser
+  ```
 - Install xvfb for headless operation: `sudo apt-get install -y xvfb`
 
 ## Installation for Developers
@@ -230,9 +257,16 @@ This command:
 
 #### Method 2: Add with Environment Variables
 
-If you need to configure proxy settings or custom Chrome paths:
+If you need to configure proxy settings or custom browser paths:
 
 ```bash
+# For Brave Browser (recommended)
+claude mcp add brave-real-browser \
+  -e BRAVE_PATH="/path/to/brave" \
+  -e PROXY_URL="http://proxy:8080" \
+  -- npx brave-real-browser-mcp-server@latest
+
+# Or for Chrome
 claude mcp add brave-real-browser \
   -e CHROME_PATH="/path/to/chrome" \
   -e PROXY_URL="http://proxy:8080" \
@@ -256,6 +290,18 @@ claude mcp add brave-real-browser -s project -- npx brave-real-browser-mcp-serve
 For advanced users who want precise control:
 
 ```bash
+# For Brave Browser (recommended)
+claude mcp add-json brave-real-browser '{
+  "type": "stdio",
+  "command": "npx",
+  "args": ["brave-real-browser-mcp-server@latest"],
+  "env": {
+    "BRAVE_PATH": "/path/to/brave",
+    "PROXY_URL": "http://proxy:8080"
+  }
+}'
+
+# Or for Chrome
 claude mcp add-json brave-real-browser '{
   "type": "stdio",
   "command": "npx",
@@ -298,7 +344,7 @@ After adding the server:
 
 - **Automatic Updates**: Using `@latest` ensures you get bug fixes and improvements
 - **No Installation**: npx handles downloading and running automatically  
-- **Environment Variables**: Easy configuration of proxies, Chrome paths, etc.
+- **Environment Variables**: Easy configuration of proxies, Brave/Chrome paths, etc.
 - **Scope Control**: Choose where the server is available (local/project/user)
 - **Team Sharing**: Project scope allows sharing configurations with teammates
 - **Status Monitoring**: Built-in `/mcp` command for server health checks
@@ -336,7 +382,22 @@ Cursor IDE uses the same npx approach - no installation needed! Here are the set
 
 > **Important:** Just like Claude Desktop, Cursor will use `npx` to automatically download and run the server. You don't need to install anything with npm!
 
-**Windows-Specific Configuration (if experiencing Chrome path issues):**
+**Windows-Specific Configuration (Brave Browser Recommended):**
+```json
+{
+  "mcpServers": {
+    "brave-real-browser": {
+      "command": "npx",
+      "args": ["brave-real-browser-mcp-server@latest"],
+      "env": {
+        "BRAVE_PATH": "C:/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe"
+      }
+    }
+  }
+}
+```
+
+**Alternative Chrome Configuration:**
 ```json
 {
   "mcpServers": {
@@ -353,51 +414,58 @@ Cursor IDE uses the same npx approach - no installation needed! Here are the set
 
 > **Note**: Browser options like headless mode should be configured when initializing the browser through the `browser_init` tool, not via environment variables.
 
-**Advanced Configuration with Custom Chrome Path:**
-```json
-{
-  "mcpServers": {
-    "brave-real-browser": {
-      "command": "npx",
-      "args": ["brave-real-browser-mcp-server@latest"],
-      "env": {
-        "CHROME_PATH": "C:/Program Files/Google/Chrome/Application/chrome.exe"
-      }
-    }
-  }
-}
-```
-
 > **Note**: Proxy settings and browser options should be configured when asking Claude to initialize the browser using the `browser_init` tool.
 
-#### Platform-Specific Chrome Paths for Cursor IDE
+#### Platform-Specific Browser Paths for Cursor IDE
 
-If Chrome auto-detection fails, you can specify the Chrome path using the `CHROME_PATH` environment variable:
+If browser auto-detection fails, you can specify the browser path using environment variables:
 
-**Windows:**
+**Windows (Brave Browser Recommended):**
+```json
+"env": {
+  "BRAVE_PATH": "C:/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe"
+}
+```
+Alternative Brave paths:
+- `"C:/Program Files (x86)/BraveSoftware/Brave-Browser/Application/brave.exe"`
+- `"%LOCALAPPDATA%/BraveSoftware/Brave-Browser/Application/brave.exe"`
+
+**Windows (Chrome Alternative):**
 ```json
 "env": {
   "CHROME_PATH": "C:/Program Files/Google/Chrome/Application/chrome.exe"
 }
 ```
-Alternative Windows paths:
+Alternative Chrome paths:
 - `"C:/Program Files (x86)/Google/Chrome/Application/chrome.exe"`
 - `"%LOCALAPPDATA%/Google/Chrome/Application/chrome.exe"`
 
-**macOS:**
+**macOS (Brave Browser Recommended):**
+```json
+"env": {
+  "BRAVE_PATH": "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"
+}
+```
+**macOS (Chrome Alternative):**
 ```json
 "env": {
   "CHROME_PATH": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 }
 ```
 
-**Linux:**
+**Linux (Brave Browser Recommended):**
+```json
+"env": {
+  "BRAVE_PATH": "/usr/bin/brave-browser"
+}
+```
+**Linux (Chrome Alternative):**
 ```json
 "env": {
   "CHROME_PATH": "/usr/bin/google-chrome"
 }
 ```
-Alternative Linux paths: `/usr/bin/chromium-browser`, `/snap/bin/chromium`
+Alternative paths: `/usr/bin/chromium-browser`, `/snap/bin/chromium`
 
 
 #### Testing Cursor IDE Setup
@@ -422,9 +490,10 @@ If successful, you should see:
    - Ensure Node.js 18+ is installed
 
 2. **"Browser failed to launch" on Windows**
-   - Add explicit Chrome path in `executablePath`
+   - Add explicit Brave browser path: `"BRAVE_PATH": "C:/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe"`
+   - Alternative: Add Chrome path: `"CHROME_PATH": "C:/Program Files/Google/Chrome/Application/chrome.exe"`
    - Try running Cursor IDE as Administrator
-   - Check Windows Defender isn't blocking Chrome
+   - Check Windows Defender isn't blocking browser
 
 3. **"Permission denied"**
    - Use `sudo npm install -g brave-real-browser-mcp-server` on Linux/Mac
