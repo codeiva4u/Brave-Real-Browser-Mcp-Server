@@ -5,15 +5,15 @@ console.error(`🔍 [DEBUG] Process starting - PID: ${process.pid}, Node: ${proc
 console.error(`🔍 [DEBUG] Working directory: ${process.cwd()}`);
 console.error(`🔍 [DEBUG] Command args: ${process.argv.join(' ')}`);
 
-import { Server } from '@modelContextProtocol/sdk/server/index.js';
-import { StdioServerTransport } from '@modelContextProtocol/sdk/server/stdio.js';
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
   ListResourcesRequestSchema,
   ListPromptsRequestSchema,
   InitializeRequestSchema,
-} from '@modelContextProtocol/sdk/types.js';
+} from '@modelcontextprotocol/sdk/types.js';
 
 console.error('🔍 [DEBUG] MCP SDK imports completed successfully');
 
