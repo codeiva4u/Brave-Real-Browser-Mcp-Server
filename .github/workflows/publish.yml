@@ -110,8 +110,13 @@ jobs:
           BASE_VERSION=$(echo -e "$CURRENT_VERSION\n$LATEST_VERSION" | sort -V | tail -n1)
           echo "🎯 Base version for increment: $BASE_VERSION"
           
-          # Set package.json to base version before incrementing
-          npm version $BASE_VERSION --no-git-tag-version
+          # Only set package.json to base version if it's different from current
+          if [ "$CURRENT_VERSION" != "$BASE_VERSION" ]; then
+            echo "📝 Updating package.json from $CURRENT_VERSION to $BASE_VERSION"
+            npm version $BASE_VERSION --no-git-tag-version --allow-same-version
+          else
+            echo "✅ Package.json already at base version $BASE_VERSION"
+          fi
           
           # Determine increment type
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
@@ -132,17 +137,24 @@ jobs:
             echo "🤖 Auto-detected increment type: $INCREMENT_TYPE"
           fi
           
-          # Increment version
+          # Increment version from BASE_VERSION
           echo "📈 Incrementing version: $BASE_VERSION + $INCREMENT_TYPE"
-          npm version $INCREMENT_TYPE --no-git-tag-version
-          NEW_VERSION=$(node -p "require('./package.json').version")
-          echo "✨ New version: $NEW_VERSION"
+          NEW_VERSION=$(node -e "const semver = require('path').resolve('node_modules', 'semver'); const v = '$BASE_VERSION'.split('.'); const type = '$INCREMENT_TYPE'; if(type === 'major') { console.log((parseInt(v[0])+1) + '.0.0'); } else if(type === 'minor') { console.log(v[0] + '.' + (parseInt(v[1])+1) + '.0'); } else { console.log(v[0] + '.' + v[1] + '.' + (parseInt(v[2])+1)); }")
+          echo "✨ Calculated new version: $NEW_VERSION"
+          
+          # Set the new version
+          npm version $NEW_VERSION --no-git-tag-version --allow-same-version
+          FINAL_VERSION=$(node -p "require('./package.json').version")
+          echo "🎯 Final version set: $FINAL_VERSION"
           
           # Verify version increment worked
-          if [ "$NEW_VERSION" = "$BASE_VERSION" ]; then
+          if [ "$FINAL_VERSION" = "$BASE_VERSION" ]; then
             echo "❌ Error: Version increment failed - versions are same"
             exit 1
           fi
+          
+          # Update NEW_VERSION to FINAL_VERSION for consistency
+          NEW_VERSION=$FINAL_VERSION
           
           # Check if new version already exists as tag
           if git tag -l | grep -q "v$NEW_VERSION"; then
