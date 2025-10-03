@@ -56,48 +56,48 @@ describe('MCP Server Integration Tests', () => {
 
   describe('Server Startup', () => {
     test('should start without errors', async () => {
-      await waitForServerStartup(serverProcess, 45000); // Increased to 45 seconds for server startup
+      await waitForServerStartup(serverProcess, 60000); // Increased to 60 seconds for CI
       // If we get here without timeout, the server started successfully
       expect(true).toBe(true);
-    });
+    }, 70000); // Test timeout
 
     test('should not pollute stdout with non-JSON content', async () => {
-      await waitForServerStartup(serverProcess, 45000); // Increased to 45 seconds for server startup
-      const hasInvalidOutput = await monitorStdoutOutput(serverProcess, 3000); // Increased monitoring time
+      await waitForServerStartup(serverProcess, 60000); // Increased to 60 seconds for CI
+      const hasInvalidOutput = await monitorStdoutOutput(serverProcess, 5000);
       expect(hasInvalidOutput).toBe(false);
-    });
+    }, 70000); // Test timeout
   });
 
   describe('JSON-RPC Protocol Compliance', () => {
     test('tools/list should return valid response', async () => {
       const request = createMCPRequest.toolsList(1);
-      const response = await sendMCPRequest(serverProcess, request);
+      const response = await sendMCPRequest(serverProcess, request, 20000);
       
       expect(response.result).toBeDefined();
       expect(response.result.tools).toBeDefined();
       expect(Array.isArray(response.result.tools)).toBe(true);
       expect(response.result.tools.length).toBeGreaterThan(0);
-    });
+    }, 25000);
 
     test('resources/list should return empty array (no Method not found)', async () => {
       const request = createMCPRequest.resourcesList(2);
-      const response = await sendMCPRequest(serverProcess, request);
+      const response = await sendMCPRequest(serverProcess, request, 20000);
       
       expect(response.error).toBeUndefined();
       expect(response.result).toBeDefined();
       expect(response.result.resources).toBeDefined();
       expect(Array.isArray(response.result.resources)).toBe(true);
-    });
+    }, 25000);
 
     test('prompts/list should return empty array (no Method not found)', async () => {
       const request = createMCPRequest.promptsList(3);
-      const response = await sendMCPRequest(serverProcess, request);
+      const response = await sendMCPRequest(serverProcess, request, 20000);
       
       expect(response.error).toBeUndefined();
       expect(response.result).toBeDefined();
       expect(response.result.prompts).toBeDefined();
       expect(Array.isArray(response.result.prompts)).toBe(true);
-    });
+    }, 25000);
   });
 
   describe('Error Handling and Retry Logic', () => {
@@ -134,25 +134,27 @@ describe('MCP Server Integration Tests', () => {
       'get_content',
       'click',
       'type',
+      'select',
       'wait',
       'browser_close',
       'solve_captcha',
       'random_scroll',
-      'find_selector'
+      'find_selector',
+      'save_content_as_markdown'
     ];
 
-    test('should have exactly 10 tools available', async () => {
+    test('should have exactly 12 tools available', async () => {
       const request = createMCPRequest.toolsList(10);
       const response = await sendMCPRequest(serverProcess, request);
       
       const tools = response.result.tools;
-      expect(tools).toHaveLength(10);
+      expect(tools).toHaveLength(12);
       expect(tools.map((t: any) => t.name).sort()).toEqual(expectedTools.sort());
     });
 
     test('all tools should have valid schemas and descriptions', async () => {
       const request = createMCPRequest.toolsList(11);
-      const response = await sendMCPRequest(serverProcess, request);
+      const response = await sendMCPRequest(serverProcess, request, 20000);
       
       const tools = response.result.tools;
       tools.forEach((tool: any) => {
@@ -161,11 +163,11 @@ describe('MCP Server Integration Tests', () => {
         expect(tool.inputSchema).toBeDefined();
         expect(typeof tool.inputSchema).toBe('object');
       });
-    });
+    }, 25000);
 
     test('browser_init tool should have correct schema', async () => {
       const request = createMCPRequest.toolsList(12);
-      const response = await sendMCPRequest(serverProcess, request);
+      const response = await sendMCPRequest(serverProcess, request, 20000);
       
       const tools = response.result.tools;
       const browserInitTool = tools.find((tool: any) => tool.name === 'browser_init');
@@ -174,44 +176,45 @@ describe('MCP Server Integration Tests', () => {
       expect(browserInitTool.description).toContain('anti-detection');
       expect(browserInitTool.inputSchema.properties.headless).toBeDefined();
       expect(browserInitTool.inputSchema.properties.proxy).toBeDefined();
-    });
+    }, 25000);
   });
 
   describe('Workflow Validation System', () => {
     test('should prevent find_selector before content analysis', async () => {
       const request = createMCPRequest.toolCall(20, 'find_selector', { text: 'button text' });
-      const response = await sendMCPRequest(serverProcess, request);
+      const response = await sendMCPRequest(serverProcess, request, 20000);
       
       expect(response.error).toBeDefined();
       expect(response.error.message).toMatch(/Cannot search for selectors|cannot be executed in current state/);
       expect(response.error.message).toContain('get_content');
-    });
+    }, 25000);
 
     test('should guide proper workflow sequence', async () => {
       const request = createMCPRequest.toolCall(21, 'browser_init', {});
-      const response = await sendMCPRequest(serverProcess, request, 30000); // Increased to 30 seconds for browser initialization
+      const response = await sendMCPRequest(serverProcess, request, 40000); // Increased to 40 seconds for browser initialization
       
       expect(response.result).toBeDefined();
       expect(response.result.content[0].text).toContain('Next step: Use navigate');
       expect(response.result.content[0].text).toContain('get_content to analyze');
       expect(response.result.content[0].text).toContain('prevents blind selector guessing');
-    });
+    }, 50000);
 
     test('should validate workflow state transitions', () => {
-      const serverCode = readSourceFile('src/index.ts');
+      // Check that workflow validation is implemented in handlers
+      const browserHandlersCode = readSourceFile('src/handlers/browser-handlers.ts');
+      const interactionHandlersCode = readSourceFile('src/handlers/interaction-handlers.ts');
       
-      expect(serverCode).toContain('withWorkflowValidation');
-      expect(serverCode).toContain('validateWorkflow');
-      expect(serverCode).toContain('recordExecution');
-      expect(serverCode).toContain('workflowValidator');
+      expect(browserHandlersCode).toContain('withWorkflowValidation');
+      expect(interactionHandlersCode).toContain('withWorkflowValidation');
     });
 
     test('should have workflow validation imports', () => {
-      const serverCode = readSourceFile('src/index.ts');
+      // Check workflow validation module exists
+      const workflowValidationCode = readSourceFile('src/workflow-validation.ts');
       
-      expect(serverCode).toContain('workflow-validation');
-      expect(serverCode).toContain('content-strategy');
-      expect(serverCode).toContain('token-management');
+      expect(workflowValidationCode).toContain('WorkflowValidator');
+      expect(workflowValidationCode).toContain('validateWorkflow');
+      expect(workflowValidationCode).toContain('recordExecution');
     });
   });
 

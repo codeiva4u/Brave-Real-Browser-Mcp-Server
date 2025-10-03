@@ -80,14 +80,15 @@ describe.sequential('E2E Visual Browser Tests', () => {
         // Step 1: Initialize browser (visible)
         console.log('\n1️⃣ Initializing visible browser...');
         const initResult = await handleBrowserInit({
-          headless: false, // VISIBLE browser
+          headless: process.env.CI === 'true', // Use headless in CI, visible locally
           disableXvfb: true, // Ensure no virtual display
           customConfig: {
             args: [
               '--disable-setuid-sandbox',
               '--disable-web-security',
               '--disable-features=VizDisplayCompositor',
-              '--window-size=1200,800'
+              '--window-size=1200,800',
+              '--no-sandbox' // Required for CI environments
             ]
           }
         });
@@ -149,10 +150,10 @@ describe.sequential('E2E Visual Browser Tests', () => {
         // Initialize browser
         console.log('\n1️⃣ Opening browser for form demo...');
         await handleBrowserInit({
-          headless: false,
+          headless: process.env.CI === 'true', // Use headless in CI
           disableXvfb: true,
           customConfig: {
-            args: ['--window-size=1200,800']
+            args: ['--window-size=1200,800', '--no-sandbox']
           }
         });
         
@@ -212,11 +213,11 @@ describe.sequential('E2E Visual Browser Tests', () => {
       console.log('👀 Watch browser analyze content from different websites');
       
       try {
-        // Initialize browser
-        console.log('\n1️⃣ Opening browser for content analysis...');
-        await handleBrowserInit({
-          headless: false,
-          disableXvfb: true,
+          // Initialize browser
+          console.log('\n1️⃣ Opening browser for content analysis...');
+          await handleBrowserInit({
+            headless: process.env.CI === 'true',
+            disableXvfb: true,
           contentPriority: {
             prioritizeContent: true,
             autoSuggestGetContent: true
