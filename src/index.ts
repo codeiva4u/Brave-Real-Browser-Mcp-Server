@@ -19,7 +19,7 @@ console.error('🔍 [DEBUG] MCP SDK imports completed successfully');
 
 // Import extracted modules
 console.error('🔍 [DEBUG] Loading tool definitions...');
-import { TOOLS, SERVER_INFO, CAPABILITIES, TOOL_NAMES, NavigateArgs, ClickArgs, TypeArgs, WaitArgs, SolveCaptchaArgs, FindSelectorArgs, SaveContentAsMarkdownArgs } from './tool-definitions.js';
+import { TOOLS, SERVER_INFO, CAPABILITIES, TOOL_NAMES, NavigateArgs, ClickArgs, TypeArgs, SelectArgs, WaitArgs, SolveCaptchaArgs, FindSelectorArgs, SaveContentAsMarkdownArgs } from './tool-definitions.js';
 console.error('🔍 [DEBUG] Loading system utils...');
 import { withErrorHandling } from './system-utils.js';
 console.error('🔍 [DEBUG] Loading browser manager...');
@@ -115,6 +115,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       case TOOL_NAMES.TYPE:
         return await handleType(args as unknown as TypeArgs);
+
+      case TOOL_NAMES.SELECT:
+        return await handleSelect(args as unknown as SelectArgs);
 
       case TOOL_NAMES.WAIT:
         return await handleWait(args as unknown as WaitArgs);
