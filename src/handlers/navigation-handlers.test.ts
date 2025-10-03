@@ -32,14 +32,15 @@ vi.mock('../workflow-validation', () => ({
 }));
 
 // Mock setTimeout globally - track delays without immediate execution for exponential backoff testing
+const originalSetTimeout = global.setTimeout;
 const setTimeoutMock = vi.fn((callback: (...args: any[]) => void, delay: number) => {
   // Store the delay for assertion while allowing async execution
-  setTimeout(() => {
+  // Use the original setTimeout to avoid recursion
+  return originalSetTimeout(() => {
     if (typeof callback === 'function') {
       callback();
     }
-  }, 0); // Execute asynchronously but immediately for test speed
-  return 1 as any;
+  }, 0) as any; // Execute asynchronously but immediately for test speed
 });
 vi.stubGlobal('setTimeout', setTimeoutMock);
 

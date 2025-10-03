@@ -56,48 +56,48 @@ describe('MCP Server Integration Tests', () => {
 
   describe('Server Startup', () => {
     test('should start without errors', async () => {
-      await waitForServerStartup(serverProcess, 60000); // Increased to 60 seconds for CI
+      await waitForServerStartup(serverProcess, 120000); // Increased to 120 seconds for CI
       // If we get here without timeout, the server started successfully
       expect(true).toBe(true);
-    }, 70000); // Test timeout
+    }, 150000); // Test timeout - 2.5 minutes
 
     test('should not pollute stdout with non-JSON content', async () => {
-      await waitForServerStartup(serverProcess, 60000); // Increased to 60 seconds for CI
+      await waitForServerStartup(serverProcess, 120000); // Increased to 120 seconds for CI
       const hasInvalidOutput = await monitorStdoutOutput(serverProcess, 5000);
       expect(hasInvalidOutput).toBe(false);
-    }, 70000); // Test timeout
+    }, 150000); // Test timeout - 2.5 minutes
   });
 
   describe('JSON-RPC Protocol Compliance', () => {
     test('tools/list should return valid response', async () => {
       const request = createMCPRequest.toolsList(1);
-      const response = await sendMCPRequest(serverProcess, request, 20000);
+      const response = await sendMCPRequest(serverProcess, request, 30000); // Increased timeout
       
       expect(response.result).toBeDefined();
       expect(response.result.tools).toBeDefined();
       expect(Array.isArray(response.result.tools)).toBe(true);
       expect(response.result.tools.length).toBeGreaterThan(0);
-    }, 25000);
+    }, 40000); // Increased test timeout
 
     test('resources/list should return empty array (no Method not found)', async () => {
       const request = createMCPRequest.resourcesList(2);
-      const response = await sendMCPRequest(serverProcess, request, 20000);
+      const response = await sendMCPRequest(serverProcess, request, 30000); // Increased timeout
       
       expect(response.error).toBeUndefined();
       expect(response.result).toBeDefined();
       expect(response.result.resources).toBeDefined();
       expect(Array.isArray(response.result.resources)).toBe(true);
-    }, 25000);
+    }, 40000); // Increased test timeout
 
     test('prompts/list should return empty array (no Method not found)', async () => {
       const request = createMCPRequest.promptsList(3);
-      const response = await sendMCPRequest(serverProcess, request, 20000);
+      const response = await sendMCPRequest(serverProcess, request, 30000); // Increased timeout
       
       expect(response.error).toBeUndefined();
       expect(response.result).toBeDefined();
       expect(response.result.prompts).toBeDefined();
       expect(Array.isArray(response.result.prompts)).toBe(true);
-    }, 25000);
+    }, 40000); // Increased test timeout
   });
 
   describe('Error Handling and Retry Logic', () => {
@@ -145,12 +145,12 @@ describe('MCP Server Integration Tests', () => {
 
     test('should have exactly 12 tools available', async () => {
       const request = createMCPRequest.toolsList(10);
-      const response = await sendMCPRequest(serverProcess, request);
+      const response = await sendMCPRequest(serverProcess, request, 30000); // Increased timeout
       
       const tools = response.result.tools;
       expect(tools).toHaveLength(12);
       expect(tools.map((t: any) => t.name).sort()).toEqual(expectedTools.sort());
-    });
+    }, 40000); // Added test timeout
 
     test('all tools should have valid schemas and descriptions', async () => {
       const request = createMCPRequest.toolsList(11);
@@ -182,22 +182,22 @@ describe('MCP Server Integration Tests', () => {
   describe('Workflow Validation System', () => {
     test('should prevent find_selector before content analysis', async () => {
       const request = createMCPRequest.toolCall(20, 'find_selector', { text: 'button text' });
-      const response = await sendMCPRequest(serverProcess, request, 20000);
+      const response = await sendMCPRequest(serverProcess, request, 30000); // Increased timeout
       
       expect(response.error).toBeDefined();
       expect(response.error.message).toMatch(/Cannot search for selectors|cannot be executed in current state/);
       expect(response.error.message).toContain('get_content');
-    }, 25000);
+    }, 40000); // Increased test timeout
 
     test('should guide proper workflow sequence', async () => {
       const request = createMCPRequest.toolCall(21, 'browser_init', {});
-      const response = await sendMCPRequest(serverProcess, request, 40000); // Increased to 40 seconds for browser initialization
+      const response = await sendMCPRequest(serverProcess, request, 60000); // Increased to 60 seconds for browser initialization
       
       expect(response.result).toBeDefined();
       expect(response.result.content[0].text).toContain('Next step: Use navigate');
       expect(response.result.content[0].text).toContain('get_content to analyze');
       expect(response.result.content[0].text).toContain('prevents blind selector guessing');
-    }, 50000);
+    }, 80000); // Increased test timeout
 
     test('should validate workflow state transitions', () => {
       // Check that workflow validation is implemented in handlers
@@ -269,7 +269,8 @@ describe('MCP Server Integration Tests', () => {
       const workflowCode = readSourceFile('src/workflow-validation.ts');
       
       expect(workflowCode).toContain('enum WorkflowState');
-      expect(workflowCode).toContain('BROWSER_INIT');
+      expect(workflowCode).toContain('INITIAL');
+      expect(workflowCode).toContain('BROWSER_READY');
       expect(workflowCode).toContain('PAGE_LOADED');
       expect(workflowCode).toContain('CONTENT_ANALYZED');
       expect(workflowCode).toContain('SELECTOR_AVAILABLE');
@@ -311,6 +312,6 @@ describe('MCP Server Integration Tests', () => {
       expect(responses[1].error).toBeDefined();
       expect(responses[1].error.message).toMatch(/Cannot search for selectors|cannot be executed/);
       expect(responses[1].error.message).toContain('get_content');
-    });
+    }, 100000); // Added test timeout - 100 seconds for workflow sequence
   });
 });

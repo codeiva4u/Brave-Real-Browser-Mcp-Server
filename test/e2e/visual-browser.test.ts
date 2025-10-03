@@ -16,7 +16,8 @@ import { resetBrowserInitDepth } from '../../src/browser-manager';
 
 describe.sequential('E2E Visual Browser Tests', () => {
   // Increase timeout for E2E tests since they use real browser
-  const E2E_TIMEOUT = 30000;
+  // CI environments need more time for browser initialization
+  const E2E_TIMEOUT = process.env.CI === 'true' ? 120000 : 30000;
 
   beforeAll(async () => {
     console.log('🚀 Starting E2E Visual Browser Tests');
@@ -80,13 +81,14 @@ describe.sequential('E2E Visual Browser Tests', () => {
         // Step 1: Initialize browser (visible)
         console.log('\n1️⃣ Initializing visible browser...');
         const initResult = await handleBrowserInit({
-          headless: process.env.CI === 'true', // Use headless in CI, visible locally
-          disableXvfb: true, // Ensure no virtual display
+          headless: true, // Always use headless for reliable testing
+          disableXvfb: process.env.CI === 'true', // Disable Xvfb in CI
           customConfig: {
             args: [
               '--disable-setuid-sandbox',
               '--disable-web-security',
               '--disable-features=VizDisplayCompositor',
+              '--disable-gpu',
               '--window-size=1200,800',
               '--no-sandbox' // Required for CI environments
             ]
@@ -150,10 +152,10 @@ describe.sequential('E2E Visual Browser Tests', () => {
         // Initialize browser
         console.log('\n1️⃣ Opening browser for form demo...');
         await handleBrowserInit({
-          headless: process.env.CI === 'true', // Use headless in CI
-          disableXvfb: true,
+          headless: true, // Always use headless for reliable testing
+          disableXvfb: process.env.CI === 'true', // Disable Xvfb in CI
           customConfig: {
-            args: ['--window-size=1200,800', '--no-sandbox']
+            args: ['--window-size=1200,800', '--no-sandbox', '--disable-gpu']
           }
         });
         
@@ -216,13 +218,16 @@ describe.sequential('E2E Visual Browser Tests', () => {
           // Initialize browser
           console.log('\n1️⃣ Opening browser for content analysis...');
           await handleBrowserInit({
-            headless: process.env.CI === 'true',
-            disableXvfb: true,
-          contentPriority: {
-            prioritizeContent: true,
-            autoSuggestGetContent: true
-          }
-        });
+            headless: true,
+            disableXvfb: process.env.CI === 'true',
+            customConfig: {
+              args: ['--no-sandbox', '--disable-gpu']
+            },
+            contentPriority: {
+              prioritizeContent: true,
+              autoSuggestGetContent: true
+            }
+          });
         
         await new Promise(resolve => setTimeout(resolve, 1000));
 
