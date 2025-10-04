@@ -1,0 +1,6 @@
+{
+  "name": "brave-test-esm",
+  "type": "module",
+  "version": "1.0.0",
+  "description": "ESM test for brave-real-browser"
+}

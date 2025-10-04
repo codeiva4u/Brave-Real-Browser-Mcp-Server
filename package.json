@@ -33,7 +33,10 @@
     "test:performance": "node tests/performance/performance-tests.js",
     "test:debug": "node debug-server.js",
     "test:all": "npm run test:ci && npm run test:full && npm run test:performance",
-    "test:dashboard": "node test-runner.js"
+    "test:dashboard": "node test-runner.js",
+    "test:brave:cjs": "node test-brave/cjs/test.cjs",
+    "test:brave:esm": "node test-brave/esm/test.js",
+    "test:brave": "npm run test:brave:cjs && npm run test:brave:esm"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.19.1",

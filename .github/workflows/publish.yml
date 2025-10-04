@@ -131,8 +131,13 @@ jobs:
           BASE_VERSION=$(echo -e "$CURRENT_VERSION\n$LATEST_VERSION" | sort -V | tail -n1)
           echo "🎯 Base version for increment: $BASE_VERSION"
           
-          # Set package.json to base version before incrementing
-          npm version $BASE_VERSION --no-git-tag-version
+          # Only set package.json to base version if they differ
+          if [ "$CURRENT_VERSION" != "$BASE_VERSION" ]; then
+            echo "📝 Updating package.json from $CURRENT_VERSION to $BASE_VERSION"
+            npm version $BASE_VERSION --no-git-tag-version --allow-same-version
+          else
+            echo "✅ Package.json already at base version $BASE_VERSION"
+          fi
           
           # Determine increment type
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
