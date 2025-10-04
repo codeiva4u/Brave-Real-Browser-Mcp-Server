@@ -3,7 +3,7 @@ import { withErrorHandling } from '../system-utils.js';
 import { validateWorkflow, recordExecution, workflowValidator } from '../workflow-validation.js';
 import { selfHealingLocators } from '../self-healing-locators.js';
 import { randomScroll } from '../stealth-actions.js';
-import { ClickArgs, TypeArgs, SelectArgs, SolveCaptchaArgs } from '../tool-definitions.js';
+import { ClickArgs, TypeArgs, SolveCaptchaArgs } from '../tool-definitions.js';
 import { setTimeout as sleep } from 'node:timers/promises';
 
 // Click handler
@@ -203,72 +203,6 @@ export async function handleType(args: TypeArgs) {
       }
     }, 'Failed to type text');
   });
-}
-
-
-// Select dropdown handler
-export async function handleSelect(args: SelectArgs) {
-  return await withWorkflowValidation('select', args, async () => {
-    return await withErrorHandling(async () => {
-      const pageInstance = getPageInstance();
-      if (!pageInstance) {
-        throw new Error('Browser not initialized. Call browser_init first.');
-      }
-
-      const { selector, value } = args;
-
-      const elementResult = await selfHealingLocators.findElementWithFallbacks(pageInstance, selector);
-      if (!elementResult) {
-        const fallbackSummary = await selfHealingLocators.getFallbackSummary(pageInstance, selector);
-        throw new Error(`Select dropdown not found: ${selector}\n\n` +
-          '?? Self-healing locators tried multiple fallback strategies but could not find the select element.\n\n' +
-          '?? Troubleshooting suggestions:\n' +
-          '  • Use find_selector to locate select elements\n' +
-          '  • Verify the selector with get_content first\n' +
-          '  • Ensure the select dropdown is visible and enabled\n\n' +
-          fallbackSummary);
-      }
-
-      const { element, usedSelector, strategy } = elementResult;
-      let strategyMessage = '';
-      if (strategy !== 'primary') {
-        strategyMessage = `\n?? Self-healing: Used ${strategy} fallback selector: ${usedSelector}`;
-        console.warn(`Self-healing select: Primary selector '${selector}' failed, used '${usedSelector}' (${strategy})`);
-      }
-
-      try {
-        await pageInstance.waitForSelector(usedSelector, { timeout: 5000 });
-        
-        await pageInstance.evaluate((sel: string, val: string) => {
-          const selectElement = document.querySelector(sel) as HTMLSelectElement;
-          if (!selectElement) {
-            throw new Error(`Select element not found: ${sel}`);
-          }
-          selectElement.value = val;
-          selectElement.dispatchEvent(new Event('change', { bubbles: true }));
-          selectElement.dispatchEvent(new Event('input', { bubbles: true }));
-          if (selectElement.onchange) {
-            selectElement.onchange(new Event('change'));
-          }
-        }, usedSelector, value);
-        
-        await pageInstance.waitForTimeout(1000);
-        
-        return {
-          content: [
-            {
-              type: 'text' as const,
-              text: `Selected option with value '${value}' in: ${usedSelector}${strategyMessage}\n\n? Select operation completed successfully through validated workflow`,
-            },
-          ],
-        };
-      } catch (selectError) {
-        throw new Error(`Select operation failed on element: ${usedSelector}. ` +
-          `Error: ${selectError instanceof Error ? selectError.message : String(selectError)}`);
-      }
-    }, 'Failed to select dropdown option');
-  });
-
 }
 
 // Solve captcha handler

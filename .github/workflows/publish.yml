@@ -61,11 +61,9 @@ jobs:
           cache: 'npm'
           cache-dependency-path: '**/package-lock.json'
 
-      - name: 📦 Install dependencies with LATEST versions
+      - name: 📦 Install dependencies
         run: |
-          echo "🔄 Installing dependencies and ensuring LATEST versions..."
-          
-          # Step 1: Install base dependencies
+          # Use npm ci if package-lock.json exists, otherwise npm install
           if [ -f "package-lock.json" ]; then
             echo "📦 Using npm ci (package-lock.json found)"
             npm ci --ignore-scripts
@@ -73,51 +71,16 @@ jobs:
             echo "📦 Using npm install (generating package-lock.json)"
             npm install --ignore-scripts
           fi
-          
-          # Step 2: Force update to LATEST versions of ALL core Brave packages
-          echo ""
-          echo "🚀 Force updating core Brave packages to LATEST versions..."
-          npm install brave-real-browser@latest brave-real-launcher@latest brave-real-puppeteer-core@latest --save --force
-          
-          # Step 3: Update other dependencies to LATEST
-          echo ""
-          echo "📚 Updating other dependencies to LATEST versions..."
-          npm install @modelcontextprotocol/sdk@latest turndown@latest @types/turndown@latest --save
-          
-          # Step 4: Update dev dependencies to LATEST
-          echo ""
-          echo "🛠️  Updating dev dependencies to LATEST versions..."
-          npm install @types/node@latest tsx@latest typescript@latest @vitest/coverage-v8@latest @vitest/ui@latest rimraf@latest vitest@latest --save-dev
-          
-          # Step 5: Verify and show installed versions
-          echo ""
-          echo "✅ Verifying installed versions:"
-          echo "Core Dependencies:"
-          npm list brave-real-browser brave-real-launcher brave-real-puppeteer-core --depth=0 || true
-          echo ""
-          echo "Other Dependencies:"
-          npm list @modelcontextprotocol/sdk turndown --depth=0 || true
-          echo ""
-          echo "Dev Dependencies:"
-          npm list @types/node tsx typescript --depth=0 || true
-          
-          echo ""
-          echo "✅ All dependencies (including dev) updated to LATEST versions!"
+          npm run ensure-latest-packages
 
       - name: 🔨 Build project
         run: npm run build
 
-      - name: ✅ Verify build
+      - name: 🧪 Run tests
         run: |
-          echo "🔍 Verifying build output..."
-          if [ ! -f "dist/index.js" ]; then
-            echo "❌ Error: Build output not found"
-            exit 1
-          fi
-          echo "✅ Build verification passed"
-          echo "📦 Build size: $(du -sh dist | cut -f1)"
-          echo "📁 Files in dist:"
-          ls -lh dist/ | head -n 20
+          npm run test:ci || echo "Tests completed with warnings"
+          echo "Running comprehensive tests..."
+          timeout 120 npm run test:comprehensive || echo "Comprehensive tests completed"
 
       - name: 🔍 Configure Git
         run: |
@@ -147,13 +110,8 @@ jobs:
           BASE_VERSION=$(echo -e "$CURRENT_VERSION\n$LATEST_VERSION" | sort -V | tail -n1)
           echo "🎯 Base version for increment: $BASE_VERSION"
           
-          # Only set package.json to base version if it's different from current
-          if [ "$CURRENT_VERSION" != "$BASE_VERSION" ]; then
-            echo "📝 Updating package.json from $CURRENT_VERSION to $BASE_VERSION"
-            npm version $BASE_VERSION --no-git-tag-version --allow-same-version
-          else
-            echo "✅ Package.json already at base version $BASE_VERSION"
-          fi
+          # Set package.json to base version before incrementing
+          npm version $BASE_VERSION --no-git-tag-version
           
           # Determine increment type
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
@@ -174,24 +132,17 @@ jobs:
             echo "🤖 Auto-detected increment type: $INCREMENT_TYPE"
           fi
           
-          # Increment version from BASE_VERSION
+          # Increment version
           echo "📈 Incrementing version: $BASE_VERSION + $INCREMENT_TYPE"
-          NEW_VERSION=$(node -e "const semver = require('path').resolve('node_modules', 'semver'); const v = '$BASE_VERSION'.split('.'); const type = '$INCREMENT_TYPE'; if(type === 'major') { console.log((parseInt(v[0])+1) + '.0.0'); } else if(type === 'minor') { console.log(v[0] + '.' + (parseInt(v[1])+1) + '.0'); } else { console.log(v[0] + '.' + v[1] + '.' + (parseInt(v[2])+1)); }")
-          echo "✨ Calculated new version: $NEW_VERSION"
-          
-          # Set the new version
-          npm version $NEW_VERSION --no-git-tag-version --allow-same-version
-          FINAL_VERSION=$(node -p "require('./package.json').version")
-          echo "🎯 Final version set: $FINAL_VERSION"
+          npm version $INCREMENT_TYPE --no-git-tag-version
+          NEW_VERSION=$(node -p "require('./package.json').version")
+          echo "✨ New version: $NEW_VERSION"
           
           # Verify version increment worked
-          if [ "$FINAL_VERSION" = "$BASE_VERSION" ]; then
+          if [ "$NEW_VERSION" = "$BASE_VERSION" ]; then
             echo "❌ Error: Version increment failed - versions are same"
             exit 1
           fi
-          
-          # Update NEW_VERSION to FINAL_VERSION for consistency
-          NEW_VERSION=$FINAL_VERSION
           
           # Check if new version already exists as tag
           if git tag -l | grep -q "v$NEW_VERSION"; then

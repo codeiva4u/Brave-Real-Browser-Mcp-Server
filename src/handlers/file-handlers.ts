@@ -1,23 +1,11 @@
 import { promises as fs } from 'fs';
 import { dirname, extname, resolve, relative } from 'path';
 import TurndownService from 'turndown';
-
-// Ensure proper Turndown instance creation
-const TurndownConstructor = (TurndownService as any).default || TurndownService;
 import { getPageInstance } from '../browser-manager.js';
 import { withErrorHandling, withTimeout } from '../system-utils.js';
 import { validateWorkflow, recordExecution, workflowValidator } from '../workflow-validation.js';
 import { tokenManager } from '../token-management.js';
 import { SaveContentAsMarkdownArgs } from '../tool-definitions.js';
-import { 
-  categorizeError,
-  createBrowserNotInitializedError,
-  createFileWriteError,
-  createInvalidFilePathError,
-  ErrorCategory,
-  FileError,
-  MCPError
-} from '../errors/index.js';
 
 // Path validation and security functions
 function validateFilePath(filePath: string): void {
@@ -54,7 +42,7 @@ function createTurndownService(formatOptions: SaveContentAsMarkdownArgs['formatO
     cleanupWhitespace = true
   } = formatOptions;
 
-  const turndownService = new TurndownConstructor({
+  const turndownService = new TurndownService({
     headingStyle,
     bulletListMarker: '-',
     codeBlockStyle: 'fenced',
@@ -69,7 +57,7 @@ function createTurndownService(formatOptions: SaveContentAsMarkdownArgs['formatO
   // Customize table handling
   turndownService.addRule('table', {
     filter: 'table',
-    replacement: function(content: string) {
+    replacement: function(content) {
       return '\n\n' + content + '\n\n';
     }
   });
@@ -77,7 +65,7 @@ function createTurndownService(formatOptions: SaveContentAsMarkdownArgs['formatO
   // Improve list handling
   turndownService.addRule('listItem', {
     filter: 'li',
-    replacement: function(content: string, node: any, options: any) {
+    replacement: function(content, node, options) {
       content = content
         .replace(/^\n+/, '') // remove leading newlines
         .replace(/\n+$/, '\n') // replace trailing newlines with just one
@@ -92,7 +80,7 @@ function createTurndownService(formatOptions: SaveContentAsMarkdownArgs['formatO
   if (!preserveLinks) {
     turndownService.addRule('stripLinks', {
       filter: 'a',
-      replacement: function(content: string) {
+      replacement: function(content) {
         return content;
       }
     });
@@ -117,7 +105,7 @@ timestamp: ${timestamp}
 `;
   }
 
-  metadata += `extracted_by: Puppeteer Real Browser MCP Server
+  metadata += `extracted_by: Brave Real Browser MCP Server
 ---
 
 `;
@@ -140,6 +128,11 @@ function cleanupMarkdownWhitespace(content: string): string {
 export async function handleSaveContentAsMarkdown(args: SaveContentAsMarkdownArgs) {
   return await withWorkflowValidation('save_content_as_markdown', args, async () => {
     return await withErrorHandling(async () => {
+      const pageInstance = getPageInstance();
+      if (!pageInstance) {
+        throw new Error('Browser not initialized. Call browser_init first.');
+      }
+
       const {
         filePath,
         contentType = 'text',
@@ -147,13 +140,8 @@ export async function handleSaveContentAsMarkdown(args: SaveContentAsMarkdownArg
         formatOptions = {}
       } = args;
 
-      // Validate file path for security BEFORE any other operations
+      // Validate file path for security
       validateFilePath(filePath);
-      
-      const pageInstance = getPageInstance();
-      if (!pageInstance) {
-        throw new Error('Browser not initialized. Call browser_init first.');
-      }
 
       // Ensure directory exists
       const dirPath = dirname(filePath);

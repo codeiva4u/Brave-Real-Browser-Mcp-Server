@@ -136,7 +136,7 @@ claude mcp add puppeteer-test-server -- node /Users/linda/Documents/DEV/brave-re
 **Steps:**
 1. [ ] Use the test prompt:
    ```
-   @/Users/linda/Documents/DEV/puppeteer-real-browser-mcp-server/tests/mcp-testing/claude-prompts/test-browser-lifecycle.txt
+   @/Users/linda/Documents/DEV/brave-real-browser-mcp-server/tests/mcp-testing/claude-prompts/test-browser-lifecycle.txt
    ```
 2. [ ] Or run these commands sequentially:
    ```
@@ -179,7 +179,7 @@ claude mcp add puppeteer-test-server -- node /Users/linda/Documents/DEV/brave-re
 **Steps:**
 1. [ ] Use test prompt:
    ```
-   @/Users/linda/Documents/DEV/puppeteer-real-browser-mcp-server/tests/mcp-testing/claude-prompts/test-cursor-scenario.txt
+   @/Users/linda/Documents/DEV/brave-real-browser-mcp-server/tests/mcp-testing/claude-prompts/test-cursor-scenario.txt
    ```
 2. [ ] Monitor Claude's response for:
    - [ ] Retry attempts mentioned
@@ -196,7 +196,7 @@ claude mcp add puppeteer-test-server -- node /Users/linda/Documents/DEV/brave-re
 **Steps:**
 1. [ ] Use test prompt:
    ```
-   @/Users/linda/Documents/DEV/puppeteer-real-browser-mcp-server/tests/mcp-testing/claude-prompts/test-error-handling.txt
+   @/Users/linda/Documents/DEV/brave-real-browser-mcp-server/tests/mcp-testing/claude-prompts/test-error-handling.txt
    ```
 2. [ ] For each error test, note:
    - [ ] Error message clarity
@@ -407,7 +407,7 @@ Test navigation to:
 - [ ] **For persistent errors**:
   ```bash
   # Rebuild project
-  cd /Users/linda/Documents/DEV/puppeteer-real-browser-mcp-server
+  cd /Users/linda/Documents/DEV/brave-real-browser-mcp-server
   npx tsc
   # Then re-add server
   ```
@@ -419,7 +419,7 @@ Test navigation to:
    ```
 2. [ ] Test server directly:
    ```bash
-   node /Users/linda/Documents/DEV/puppeteer-real-browser-mcp-server/dist/index.js
+   node /Users/linda/Documents/DEV/brave-real-browser-mcp-server/dist/index.js
    ```
 3. [ ] Check for port conflicts or process issues
 
@@ -663,4 +663,4 @@ Use puppeteer-test-server to navigate to 5 different sites rapidly
 
 ---
 
-This comprehensive testing plan ensures thorough validation of the puppeteer-real-browser MCP server through Claude Code CLI. Follow the phases sequentially and document all results for effective debugging and improvement.
+This comprehensive testing plan ensures thorough validation of the brave-real-browser MCP server through Claude Code CLI. Follow the phases sequentially and document all results for effective debugging and improvement.

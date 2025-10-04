@@ -1,13 +1,7 @@
 import { initializeBrowser, closeBrowser, getBrowserInstance, getPageInstance, getContentPriorityConfig, updateContentPriorityConfig } from '../browser-manager.js';
 import { withErrorHandling } from '../system-utils.js';
-import { workflowValidator } from '../workflow-validation.js';
+import { validateWorkflow, recordExecution, workflowValidator } from '../workflow-validation.js';
 import { BrowserInitArgs } from '../tool-definitions.js';
-import { 
-  categorizeError, 
-  createBrowserInitializationError,
-  MCPError 
-} from '../errors/index.js';
-import { withWorkflowValidation } from '../errors/workflow-wrapper.js';
 
 // Browser initialization handler
 export async function handleBrowserInit(args: BrowserInitArgs) {
@@ -64,6 +58,46 @@ export async function handleBrowserClose() {
   });
 }
 
+// Workflow validation wrapper
+async function withWorkflowValidation<T>(
+  toolName: string,
+  args: any,
+  operation: () => Promise<T>
+): Promise<T> {
+  // Validate workflow state before execution
+  const validation = validateWorkflow(toolName, args);
+  
+  if (!validation.isValid) {
+    let errorMessage = validation.errorMessage || `Tool '${toolName}' is not allowed in current workflow state.`;
+    
+    if (validation.suggestedAction) {
+      errorMessage += `\n\n💡 Next Steps: ${validation.suggestedAction}`;
+    }
+    
+    // Add workflow context for debugging
+    const workflowSummary = workflowValidator.getValidationSummary();
+    errorMessage += `\n\n🔍 ${workflowSummary}`;
+    
+    // Record failed execution
+    recordExecution(toolName, args, false, errorMessage);
+    
+    throw new Error(errorMessage);
+  }
+  
+  try {
+    // Execute the operation
+    const result = await operation();
+    
+    // Record successful execution
+    recordExecution(toolName, args, true);
+    
+    return result;
+  } catch (error) {
+    // Record failed execution
+    recordExecution(toolName, args, false, error instanceof Error ? error.message : String(error));
+    throw error;
+  }
+}
 
 // Get current browser instances (for other handlers)
 export function getCurrentBrowserInstances() {

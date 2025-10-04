@@ -1,4 +1,4 @@
-# Brave-Real-Browser Screenshot Implementation Guide
+# Puppeteer-Real-Browser Screenshot Implementation Guide
 
 ## Overview
 
@@ -89,7 +89,7 @@ async function retryOperation<T>(
 }
 ```
 
-## Best Practices for Brave-Real-Browser Screenshots
+## Best Practices for Puppeteer-Real-Browser Screenshots
 
 ### 1. Always Use Safe Mode by Default
 
@@ -107,7 +107,7 @@ const result = await safeScreenshot(page, {
 async function takeScreenshotSafely(url: string) {
   let browser = null;
   try {
-    browser = await braveRealBrowser.connect({
+    browser = await puppeteerRealBrowser.connect({
       headless: false,
       customConfig: {
         ignoreDefaultFlags: false, // CRITICAL: Must be false

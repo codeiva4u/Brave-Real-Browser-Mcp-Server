@@ -4,15 +4,6 @@ import { validateWorkflow, recordExecution, workflowValidator } from '../workflo
 import { contentStrategy } from '../content-strategy.js';
 import { tokenManager } from '../token-management.js';
 import { GetContentArgs, FindSelectorArgs } from '../tool-definitions.js';
-import { 
-  categorizeError,
-  createBrowserNotInitializedError,
-  createContentRetrievalError,
-  createElementNotFoundError,
-  ErrorCategory,
-  ContentError,
-  MCPError
-} from '../errors/index.js';
 
 // Get content handler
 export async function handleGetContent(args: GetContentArgs) {

@@ -187,24 +187,6 @@ export const TOOLS = [
     },
   },
   {
-    name: 'select',
-    description: 'Select an option from a dropdown (select element)',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        selector: {
-          type: 'string',
-          description: 'CSS selector of the select dropdown element',
-        },
-        value: {
-          type: 'string',
-          description: 'Value of the option to select',
-        },
-      },
-      required: ['selector', 'value'],
-    },
-  },
-  {
     name: 'wait',
     description: 'Wait for various conditions',
     inputSchema: {
@@ -344,7 +326,6 @@ export const TOOL_NAMES = {
   GET_CONTENT: 'get_content',
   CLICK: 'click',
   TYPE: 'type',
-  SELECT: 'select',
   WAIT: 'wait',
   BROWSER_CLOSE: 'browser_close',
   SOLVE_CAPTCHA: 'solve_captcha',
@@ -387,11 +368,6 @@ export interface TypeArgs {
   selector: string;
   text: string;
   delay?: number;
-}
-
-export interface SelectArgs {
-  selector: string;
-  value: string;
 }
 
 export interface WaitArgs {
@@ -439,6 +415,6 @@ export type ToolArgs =
 export const TOOL_CATEGORIES = {
   BROWSER_MANAGEMENT: [TOOL_NAMES.BROWSER_INIT, TOOL_NAMES.BROWSER_CLOSE],
   NAVIGATION: [TOOL_NAMES.NAVIGATE, TOOL_NAMES.WAIT],
-  INTERACTION: [TOOL_NAMES.CLICK, TOOL_NAMES.TYPE, TOOL_NAMES.SELECT, TOOL_NAMES.SOLVE_CAPTCHA, TOOL_NAMES.RANDOM_SCROLL],
+  INTERACTION: [TOOL_NAMES.CLICK, TOOL_NAMES.TYPE, TOOL_NAMES.SOLVE_CAPTCHA, TOOL_NAMES.RANDOM_SCROLL],
   CONTENT: [TOOL_NAMES.GET_CONTENT, TOOL_NAMES.FIND_SELECTOR, TOOL_NAMES.SAVE_CONTENT_AS_MARKDOWN],
 } as const;

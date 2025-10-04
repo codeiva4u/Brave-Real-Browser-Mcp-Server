@@ -1,6 +1,6 @@
 # MCP Server Test Suite ✅
 
-This directory contains a comprehensive test suite for the puppeteer-real-browser MCP server, implementing all test phases from TESTING_CHECKLIST.md.
+This directory contains a comprehensive test suite for the brave-real-browser MCP server, implementing all test phases from TESTING_CHECKLIST.md.
 
 ## Current Status: ALL TESTS PASSING 🎉
 - **Total Tests**: 31

@@ -1,4 +1,4 @@
-# Screenshot Integration Guide for Brave-Real-Browser MCP Server
+# Screenshot Integration Guide for Puppeteer-Real-Browser MCP Server
 
 ## Table of Contents
 
@@ -15,11 +15,11 @@
 
 ## Overview
 
-This document provides comprehensive guidance for integrating safe screenshot functionality into the Brave-Real-Browser MCP Server. The implementation addresses the critical stack overflow issues identified in GitHub Issue #7 while maintaining compatibility with brave-real-browser's anti-detection features.
+This document provides comprehensive guidance for integrating safe screenshot functionality into the Puppeteer-Real-Browser MCP Server. The implementation addresses the critical stack overflow issues identified in GitHub Issue #7 while maintaining compatibility with brave-real-browser's anti-detection features.
 
 ### Problem Statement
 
-Brave-real-browser uses Rebrowser patches to avoid automation detection. These patches modify the browser runtime and can cause:
+Puppeteer-real-browser uses Rebrowser patches to avoid automation detection. These patches modify the browser runtime and can cause:
 - Stack overflow errors during screenshot operations
 - Infinite recursion in retry logic
 - Browser session instability
@@ -1387,4 +1387,4 @@ export class BrowserPool {
 
 ---
 
-**This comprehensive guide provides everything needed to successfully integrate screenshot functionality into the Brave-Real-Browser MCP Server while avoiding the stack overflow issues and maintaining compatibility with anti-detection features.**
+**This comprehensive guide provides everything needed to successfully integrate screenshot functionality into the Puppeteer-Real-Browser MCP Server while avoiding the stack overflow issues and maintaining compatibility with anti-detection features.**

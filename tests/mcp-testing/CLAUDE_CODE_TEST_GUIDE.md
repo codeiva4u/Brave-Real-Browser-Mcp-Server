@@ -1,7 +1,7 @@
 # Claude Code MCP Server Testing Guide
 
 ## Overview
-This guide explains how to test the puppeteer-real-browser MCP server using Claude Code CLI, which is different from traditional testing approaches.
+This guide explains how to test the brave-real-browser MCP server using Claude Code CLI, which is different from traditional testing approaches.
 
 ## Understanding the Difference
 
@@ -19,7 +19,7 @@ This guide explains how to test the puppeteer-real-browser MCP server using Clau
 
 ### 1. Build the MCP Server
 ```bash
-cd /Users/linda/Documents/DEV/puppeteer-real-browser-mcp-server
+cd /Users/linda/Documents/DEV/brave-real-browser-mcp-server
 npx tsc
 ```
 
@@ -29,7 +29,7 @@ npx tsc
 claude mcp remove puppeteer-test-server
 
 # Add the server
-claude mcp add puppeteer-test-server -- node /Users/linda/Documents/DEV/puppeteer-real-browser-mcp-server/dist/index.js
+claude mcp add puppeteer-test-server -- node /Users/linda/Documents/DEV/brave-real-browser-mcp-server/dist/index.js
 ```
 
 ### 3. Verify Server Installation
