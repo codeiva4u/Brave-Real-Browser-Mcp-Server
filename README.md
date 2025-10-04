@@ -112,6 +112,7 @@ assistants to control a real browser, extract content, and more.
 
 ## Features
 
+- **🔄 Auto-Update System**: Automatically updates all dependencies to latest versions on every `npm install`
 - **Stealth by default**: All browser instances use anti-detection features
 - **Enhanced Windows support**: Comprehensive Chrome detection and ECONNREFUSED error fixes (v1.3.0)
 - **Smart Chrome detection**: Registry-based detection + 15+ installation paths (Windows)

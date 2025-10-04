@@ -62,10 +62,12 @@ jobs:
           cache-dependency-path: '**/package-lock.json'
 
       - name: 📦 Install dependencies with LATEST versions
+        env:
+          SKIP_AUTO_UPDATE: 'true'
         run: |
           echo "🔄 Installing dependencies and ensuring LATEST versions..."
           
-          # Step 1: Install base dependencies
+          # Step 1: Install base dependencies (skip postinstall in CI)
           if [ -f "package-lock.json" ]; then
             echo "📦 Using npm ci (package-lock.json found)"
             npm ci --ignore-scripts

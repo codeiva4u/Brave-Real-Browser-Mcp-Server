@@ -5,6 +5,7 @@
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
+    "postinstall": "node scripts/update-to-latest.cjs || echo 'Auto-update skipped'",
     "clean": "rimraf dist",
     "clean:cache": "npm cache clean --force",
     "fix-cache-permissions": "echo 'Run: sudo chown -R $(whoami):$(id -gn) ~/.npm' && echo 'This fixes npm cache permission issues'",
@@ -35,10 +36,10 @@
     "test:dashboard": "node test-runner.js"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "latest",
-    "@types/turndown": "latest",
-    "brave-real-browser": "latest",
-    "turndown": "latest"
+    "@modelcontextprotocol/sdk": "^1.19.1",
+    "@types/turndown": "^5.0.5",
+    "brave-real-browser": "^1.5.102",
+    "turndown": "^7.2.1"
   },
   "devDependencies": {
     "@types/node": "latest",
