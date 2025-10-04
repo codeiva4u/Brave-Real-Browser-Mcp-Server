@@ -24,7 +24,10 @@
     "rebuild": "npm run clean && npm run build",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
-    "test": "echo '✅ No automated tests - Server is production-ready. Run: npm start' && exit 0"
+    "test": "echo '✅ Running MCP Integration Tests...' && node tests/brave-tests/mcp-integration-test.js",
+    "test:brave:esm": "node tests/brave-tests/esm/test.js",
+    "test:brave:cjs": "node tests/brave-tests/cjs/test.js",
+    "test:anti-detection": "npm run test:brave:esm"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.19.1",
