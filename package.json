@@ -1,6 +1,6 @@
 {
   "name": "brave-real-browser-mcp-server",
-  "version": "2.0.0",
+  "version": "2.0.7",
   "description": "MCP server for brave-real-browser",
   "type": "module",
   "main": "dist/index.js",
@@ -42,9 +42,9 @@
     "@modelcontextprotocol/sdk": ">=1.0.0",
     "@types/node": "^20.0.0",
     "@types/turndown": "^5.0.5",
-    "brave-real-browser": "^2.0.0",
-    "brave-real-launcher": "^2.0.0",
-    "brave-real-puppeteer-core": "^2.0.0",
+    "brave-real-browser": "latest",
+    "brave-real-launcher": "latest",
+    "brave-real-puppeteer-core": "latest",
     "turndown": "^7.2.0"
   },
   "peerDependencies": {
