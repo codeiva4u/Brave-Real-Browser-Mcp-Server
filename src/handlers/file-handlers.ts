@@ -69,7 +69,7 @@ function createTurndownService(formatOptions: SaveContentAsMarkdownArgs['formatO
   // Customize table handling
   turndownService.addRule('table', {
     filter: 'table',
-    replacement: function(content) {
+    replacement: function(content: string) {
       return '\n\n' + content + '\n\n';
     }
   });
@@ -77,7 +77,7 @@ function createTurndownService(formatOptions: SaveContentAsMarkdownArgs['formatO
   // Improve list handling
   turndownService.addRule('listItem', {
     filter: 'li',
-    replacement: function(content, node, options) {
+    replacement: function(content: string, node: any, options: any) {
       content = content
         .replace(/^\n+/, '') // remove leading newlines
         .replace(/\n+$/, '\n') // replace trailing newlines with just one
@@ -92,7 +92,7 @@ function createTurndownService(formatOptions: SaveContentAsMarkdownArgs['formatO
   if (!preserveLinks) {
     turndownService.addRule('stripLinks', {
       filter: 'a',
-      replacement: function(content) {
+      replacement: function(content: string) {
         return content;
       }
     });
