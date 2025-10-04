@@ -20,17 +20,33 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Configuration - सभी core dependencies
+// Configuration - सभी dependencies
 const CORE_DEPENDENCIES = [
   'brave-real-browser',
   'brave-real-launcher',
   'brave-real-puppeteer-core'
 ];
 
+const OTHER_DEPENDENCIES = [
+  '@modelcontextprotocol/sdk',
+  'turndown',
+  '@types/turndown'
+];
+
+const DEV_DEPENDENCIES = [
+  '@types/node',
+  'tsx',
+  'typescript',
+  '@vitest/coverage-v8',
+  '@vitest/ui',
+  'rimraf',
+  'vitest'
+];
+
 const ALL_DEPENDENCIES = [
   ...CORE_DEPENDENCIES,
-  '@modelcontextprotocol/sdk',
-  'turndown'
+  ...OTHER_DEPENDENCIES,
+  ...DEV_DEPENDENCIES
 ];
 
 // Check if auto-update should be skipped
@@ -143,7 +159,7 @@ const updateDependencies = () => {
 
     // Update other dependencies (without --force)
     const otherUpdates = outdatedPackages.filter(pkg => 
-      !CORE_DEPENDENCIES.includes(pkg.name)
+      !CORE_DEPENDENCIES.includes(pkg.name) && !DEV_DEPENDENCIES.includes(pkg.name)
     );
 
     if (otherUpdates.length > 0) {
@@ -157,6 +173,25 @@ const updateDependencies = () => {
         console.log('✅ Other dependencies updated successfully!\n');
       } catch (error) {
         console.error('⚠️  Warning: Some dependencies failed to update');
+      }
+    }
+
+    // Update dev dependencies
+    const devUpdates = outdatedPackages.filter(pkg => 
+      DEV_DEPENDENCIES.includes(pkg.name)
+    );
+
+    if (devUpdates.length > 0) {
+      console.log('🛠️  Updating dev dependencies...');
+      const devPackages = devUpdates.map(pkg => `${pkg.name}@latest`).join(' ');
+      try {
+        execSync(`npm install ${devPackages} --save-dev`, {
+          stdio: 'inherit',
+          encoding: 'utf8'
+        });
+        console.log('✅ Dev dependencies updated successfully!\n');
+      } catch (error) {
+        console.error('⚠️  Warning: Some dev dependencies failed to update');
       }
     }
 

@@ -82,15 +82,27 @@ jobs:
           # Step 3: Update other dependencies to LATEST
           echo ""
           echo "📚 Updating other dependencies to LATEST versions..."
-          npm install @modelcontextprotocol/sdk@latest turndown@latest --save
+          npm install @modelcontextprotocol/sdk@latest turndown@latest @types/turndown@latest --save
           
-          # Step 4: Verify and show installed versions
+          # Step 4: Update dev dependencies to LATEST
+          echo ""
+          echo "🛠️  Updating dev dependencies to LATEST versions..."
+          npm install @types/node@latest tsx@latest typescript@latest @vitest/coverage-v8@latest @vitest/ui@latest rimraf@latest vitest@latest --save-dev
+          
+          # Step 5: Verify and show installed versions
           echo ""
           echo "✅ Verifying installed versions:"
-          npm list brave-real-browser brave-real-launcher brave-real-puppeteer-core @modelcontextprotocol/sdk turndown --depth=0 || true
+          echo "Core Dependencies:"
+          npm list brave-real-browser brave-real-launcher brave-real-puppeteer-core --depth=0 || true
+          echo ""
+          echo "Other Dependencies:"
+          npm list @modelcontextprotocol/sdk turndown --depth=0 || true
+          echo ""
+          echo "Dev Dependencies:"
+          npm list @types/node tsx typescript --depth=0 || true
           
           echo ""
-          echo "✅ All dependencies updated to LATEST versions!"
+          echo "✅ All dependencies (including dev) updated to LATEST versions!"
 
       - name: 🔨 Build project
         run: npm run build
