@@ -5,6 +5,8 @@
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
+    "preinstall": "node scripts/auto-update.js || echo 'Auto-update check skipped'",
+    "postinstall": "echo '✅ Installation complete with latest dependencies!'",
     "clean": "rimraf dist",
     "clean:cache": "npm cache clean --force",
     "fix-cache-permissions": "echo 'Run: sudo chown -R $(whoami):$(id -gn) ~/.npm' && echo 'This fixes npm cache permission issues'",
@@ -12,6 +14,8 @@
     "clean:all": "npm run clean:modules && npm run clean:cache && npm run clean",
     "update-brave-packages": "npm install brave-real-browser@latest brave-real-launcher@latest brave-real-puppeteer-core@latest --save --force",
     "ensure-latest-packages": "node scripts/ensure-latest-packages.js",
+    "check-updates": "npm outdated || true",
+    "upgrade-all": "node scripts/auto-update.js && echo '📦 All dependencies updated to latest versions!'",
     "fresh-install": "npm run clean:all && npm install && npm run ensure-latest-packages",
     "fresh-start": "npm run fresh-install && npm run build && npm start",
     "fresh-dev": "npm run fresh-install && npm run build && npm run dev",

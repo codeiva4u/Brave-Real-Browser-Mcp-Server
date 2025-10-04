@@ -184,6 +184,73 @@ complex web automation tasks with human-like behavior.
   ```
 - Install xvfb for headless operation: `sudo apt-get install -y xvfb`
 
+## 🚀 Auto-Update Feature
+
+This package **automatically updates all dependencies to their latest versions** whenever you run `npm install` during development. This ensures you always have the most recent bug fixes, security patches, and feature improvements from the underlying Brave browser packages.
+
+### How it works:
+- ✅ Automatically checks for outdated dependencies on every `npm install`
+- ✅ Updates core Brave packages (`brave-real-browser`, `brave-real-launcher`, `brave-real-puppeteer-core`) with `--force`
+- ✅ Updates other dependencies (`@modelcontextprotocol/sdk`, `turndown`) separately  
+- ✅ Works in CI/CD environments (GitHub Actions workflow)
+- ✅ Can be disabled if needed via environment variable
+- ✅ Smart recursion prevention to avoid loops
+
+### For End Users (Using NPX):
+If you're using this package via `npx` (as recommended in Claude Desktop config), you don't need to worry about updates - `npx` with `@latest` always fetches the newest version automatically. This auto-update feature is primarily for developers.
+
+### For Developers:
+
+**Auto-update is enabled by default:**
+```bash
+npm install
+```
+This will automatically update all dependencies to their latest versions.
+
+**To disable auto-update temporarily:**
+```bash
+# On Windows (PowerShell)
+$env:SKIP_AUTO_UPDATE="true"; npm install
+
+# On Windows (CMD)
+set SKIP_AUTO_UPDATE=true && npm install
+
+# On macOS/Linux
+SKIP_AUTO_UPDATE=true npm install
+```
+
+**Manual update commands:**
+```bash
+# Check for outdated dependencies
+npm run check-updates
+
+# Update all core Brave packages
+npm run update-brave-packages
+
+# Update using ensure-latest script (with verification)
+npm run ensure-latest-packages
+
+# Run auto-update script manually
+npm run upgrade-all
+
+# Complete fresh install with latest packages
+npm run fresh-install
+```
+
+**In CI/CD:**
+The GitHub Actions workflow automatically updates dependencies during the build process using the `ensure-latest-packages` script.
+
+### Why Auto-Update?
+
+The underlying `brave-real-browser` ecosystem is actively maintained with frequent updates for:
+- 🐛 Bug fixes
+- 🔒 Security patches  
+- 🎯 Anti-detection improvements
+- 🚀 New features
+- 🌐 Browser compatibility updates
+
+Auto-updates ensure you're always running the most stable and secure version.
+
 ## Platform-Specific Installation
 
 > **🎯 Choose Your Platform:** Select the installation method that matches your operating system. Each section includes complete setup commands for both Brave Browser and MCP server configuration.
