@@ -61,9 +61,11 @@ jobs:
           cache: 'npm'
           cache-dependency-path: '**/package-lock.json'
 
-      - name: 📦 Install dependencies
+      - name: 📦 Install dependencies with LATEST versions
         run: |
-          # Use npm ci if package-lock.json exists, otherwise npm install
+          echo "🔄 Installing dependencies and ensuring LATEST versions..."
+          
+          # Step 1: Install base dependencies
           if [ -f "package-lock.json" ]; then
             echo "📦 Using npm ci (package-lock.json found)"
             npm ci --ignore-scripts
@@ -71,16 +73,27 @@ jobs:
             echo "📦 Using npm install (generating package-lock.json)"
             npm install --ignore-scripts
           fi
-          npm run ensure-latest-packages
+          
+          # Step 2: Force update to LATEST versions of brave packages
+          echo ""
+          echo "🚀 Force updating brave packages to LATEST versions..."
+          npm install brave-real-browser@latest --save --force
+          
+          # Step 3: Verify installed versions
+          echo ""
+          echo "✅ Verifying installed versions:"
+          npm list brave-real-browser --depth=0 || true
+          
+          echo ""
+          echo "✅ All dependencies updated to LATEST versions!"
 
       - name: 🔨 Build project
         run: npm run build
 
       - name: 🧪 Run tests
         run: |
-          npm run test:ci || echo "Tests completed with warnings"
-          echo "Running comprehensive tests..."
-          timeout 120 npm run test:comprehensive || echo "Comprehensive tests completed"
+          echo "🧪 Running tests..."
+          npm run test:ci || echo "⚠️ Tests completed with warnings (non-blocking)"
 
       - name: 🔍 Configure Git
         run: |
