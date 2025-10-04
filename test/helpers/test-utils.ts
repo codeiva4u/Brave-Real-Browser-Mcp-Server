@@ -32,7 +32,9 @@ export function waitForServerStartup(serverProcess: ChildProcess, timeoutMs: num
       const output = data.toString();
       if (output.includes('Brave Real Browser MCP Server started successfully')) {
         clearTimeout(timeout);
-        resolve();
+        // Add small delay to ensure server is fully initialized and ready for requests
+        // This is especially important on Windows where stdin/stdout pipes need time to settle
+        setTimeout(() => resolve(), 2000);
       }
     });
   });
@@ -74,10 +76,18 @@ export function sendMCPRequest(
       });
     };
 
+    // Setup stdout listener first
     serverProcess.stdout?.on('data', dataHandler);
 
-    // Send the request immediately - server should already be started
-    serverProcess.stdin?.write(message);
+    // Send the request after a small delay to ensure listener is ready
+    // This is especially important on Windows
+    setTimeout(() => {
+      if (serverProcess.stdin && !serverProcess.stdin.destroyed) {
+        serverProcess.stdin.write(message);
+      } else {
+        reject(new Error('Server stdin is not available'));
+      }
+    }, 100);
   });
 }
 
