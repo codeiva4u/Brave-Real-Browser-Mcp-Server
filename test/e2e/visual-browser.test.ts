@@ -14,7 +14,11 @@ import { handleGetContent, handleFindSelector } from '../../src/handlers/content
 import { handleClick, handleType } from '../../src/handlers/interaction-handlers';
 import { resetBrowserInitDepth } from '../../src/browser-manager';
 
-describe.sequential('E2E Visual Browser Tests', () => {
+// Skip E2E visual tests in CI environment (they require display and are for demo purposes)
+const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
+const describeOrSkip = isCI ? describe.skip : describe;
+
+describeOrSkip.sequential('E2E Visual Browser Tests', () => {
   // Increase timeout for E2E tests since they use real browser
   const E2E_TIMEOUT = 30000;
 
