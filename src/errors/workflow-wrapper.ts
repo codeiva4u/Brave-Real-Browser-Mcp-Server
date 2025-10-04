@@ -24,20 +24,22 @@ export async function withWorkflowValidation<T>(
   const validation = validateWorkflow(toolName, args);
   
   if (!validation.isValid) {
-    // Create workflow violation error using centralized system
-    const workflowSummary = workflowValidator.getValidationSummary();
-    const suggestedAction = validation.suggestedAction || 'Follow the recommended workflow';
+    // Use validation error message if available, otherwise create generic error
+    let errorMessage = validation.errorMessage || `Workflow violation: Cannot execute '${toolName}'`;
     
-    const error = createWorkflowViolationError(
-      toolName,
-      workflowSummary,
-      suggestedAction
-    );
+    // Add suggested action if available
+    if (validation.suggestedAction) {
+      errorMessage += `\n\n💡 Next Steps: ${validation.suggestedAction}`;
+    }
+    
+    // Add workflow context
+    const workflowSummary = workflowValidator.getValidationSummary();
+    errorMessage += `\n\n🔍 ${workflowSummary}`;
     
     // Record failed execution
-    recordExecution(toolName, args, false, error.message);
+    recordExecution(toolName, args, false, errorMessage);
     
-    throw error;
+    throw new Error(errorMessage);
   }
   
   try {

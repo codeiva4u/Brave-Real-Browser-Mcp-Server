@@ -21,7 +21,7 @@ export async function handleNavigate(args: NavigateArgs) {
         throw new Error('Browser not initialized. Call browser_init first.');
       }
 
-      const { url, waitUntil = 'domcontentloaded' } = args;
+      const { url, waitUntil = 'networkidle2' } = args;
       
       console.error(`🔄 Navigating to: ${url}`);
       

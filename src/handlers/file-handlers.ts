@@ -1,6 +1,9 @@
 import { promises as fs } from 'fs';
 import { dirname, extname, resolve, relative } from 'path';
 import TurndownService from 'turndown';
+
+// Ensure proper Turndown instance creation
+const TurndownConstructor = (TurndownService as any).default || TurndownService;
 import { getPageInstance } from '../browser-manager.js';
 import { withErrorHandling, withTimeout } from '../system-utils.js';
 import { validateWorkflow, recordExecution, workflowValidator } from '../workflow-validation.js';
@@ -51,7 +54,7 @@ function createTurndownService(formatOptions: SaveContentAsMarkdownArgs['formatO
     cleanupWhitespace = true
   } = formatOptions;
 
-  const turndownService = new TurndownService({
+  const turndownService = new TurndownConstructor({
     headingStyle,
     bulletListMarker: '-',
     codeBlockStyle: 'fenced',
@@ -137,11 +140,6 @@ function cleanupMarkdownWhitespace(content: string): string {
 export async function handleSaveContentAsMarkdown(args: SaveContentAsMarkdownArgs) {
   return await withWorkflowValidation('save_content_as_markdown', args, async () => {
     return await withErrorHandling(async () => {
-      const pageInstance = getPageInstance();
-      if (!pageInstance) {
-        throw new Error('Browser not initialized. Call browser_init first.');
-      }
-
       const {
         filePath,
         contentType = 'text',
@@ -149,8 +147,13 @@ export async function handleSaveContentAsMarkdown(args: SaveContentAsMarkdownArg
         formatOptions = {}
       } = args;
 
-      // Validate file path for security
+      // Validate file path for security BEFORE any other operations
       validateFilePath(filePath);
+      
+      const pageInstance = getPageInstance();
+      if (!pageInstance) {
+        throw new Error('Browser not initialized. Call browser_init first.');
+      }
 
       // Ensure directory exists
       const dirPath = dirname(filePath);

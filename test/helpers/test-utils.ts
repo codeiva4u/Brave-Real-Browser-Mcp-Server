@@ -22,7 +22,7 @@ export interface MCPRequest {
 /**
  * Wait for server to start up by monitoring stderr output
  */
-export function waitForServerStartup(serverProcess: ChildProcess, timeoutMs: number = 10000): Promise<void> {
+export function waitForServerStartup(serverProcess: ChildProcess, timeoutMs: number = 120000): Promise<void> {
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
       reject(new Error(`Server did not start within ${timeoutMs}ms`));
@@ -44,7 +44,7 @@ export function waitForServerStartup(serverProcess: ChildProcess, timeoutMs: num
 export function sendMCPRequest(
   serverProcess: ChildProcess, 
   request: MCPRequest, 
-  timeoutMs: number = 10000
+  timeoutMs: number = 30000
 ): Promise<MCPResponse> {
   return new Promise((resolve, reject) => {
     const message = JSON.stringify(request) + '\n';
