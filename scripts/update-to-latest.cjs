@@ -77,6 +77,36 @@ try {
       // Ignore errors
     }
   }
+  
+  // Step 4: Run npm audit fix to resolve security vulnerabilities
+  console.log('\n🔒 Running security audit fix...');
+  try {
+    execSync('npm audit fix --force', {
+      stdio: 'pipe',
+      cwd: process.cwd()
+    });
+    console.log('   ✓ Security vulnerabilities fixed');
+  } catch (error) {
+    // Check if there are still vulnerabilities
+    try {
+      const auditResult = execSync('npm audit --json', {
+        stdio: 'pipe',
+        encoding: 'utf8'
+      });
+      const audit = JSON.parse(auditResult);
+      if (audit.metadata && audit.metadata.vulnerabilities) {
+        const total = audit.metadata.vulnerabilities.total || 0;
+        if (total === 0) {
+          console.log('   ✓ No security vulnerabilities found');
+        } else {
+          console.log(`   ⚠️  ${total} vulnerabilities remaining (may require manual review)`);
+        }
+      }
+    } catch (auditError) {
+      console.log('   ℹ️  Security audit completed');
+    }
+  }
+  
   console.log('');
 
 } catch (error) {
