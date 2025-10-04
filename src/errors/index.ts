@@ -511,6 +511,9 @@ export function categorizeError(error: unknown): MCPError {
   if (message.includes('session closed') || message.includes('target closed')) {
     return createProtocolErrorFromPuppeteer(err);
   }
+  if (message.includes('protocol error') || message.includes('protocol')) {
+    return createProtocolErrorFromPuppeteer(err);
+  }
   
   // Element errors
   if (message.includes('element') || message.includes('selector')) {
