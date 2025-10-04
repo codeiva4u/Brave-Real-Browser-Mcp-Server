@@ -141,6 +141,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error(`Tool ${name} failed:`, errorMessage);
     
+    // For workflow validation errors, throw them so MCP SDK handles them properly
+    if (errorMessage.includes('cannot be executed in current state') || 
+        errorMessage.includes('Cannot search for selectors') ||
+        errorMessage.includes('Next Steps:')) {
+      throw error;
+    }
+    
+    // For other errors, return formatted response
     return {
       content: [
         {

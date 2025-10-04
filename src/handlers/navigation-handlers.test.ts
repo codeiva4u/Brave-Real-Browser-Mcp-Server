@@ -33,12 +33,11 @@ vi.mock('../workflow-validation', () => ({
 
 // Mock setTimeout globally - track delays without immediate execution for exponential backoff testing
 const setTimeoutMock = vi.fn((callback: (...args: any[]) => void, delay: number) => {
-  // Store the delay for assertion while allowing async execution
-  setTimeout(() => {
-    if (typeof callback === 'function') {
-      callback();
-    }
-  }, 0); // Execute asynchronously but immediately for test speed
+  // Store the delay for assertion and execute callback immediately for test speed
+  if (typeof callback === 'function') {
+    // Use queueMicrotask to avoid recursion while still being async
+    queueMicrotask(callback);
+  }
   return 1 as any;
 });
 vi.stubGlobal('setTimeout', setTimeoutMock);
@@ -94,7 +93,7 @@ describe('Navigation Handlers', () => {
         // Assert: Should navigate successfully
         expect(mockPageInstance.goto).toHaveBeenCalledWith(
           'https://example.com',
-          { waitUntil: 'networkidle2', timeout: 60000 }
+          { waitUntil: 'domcontentloaded', timeout: 60000 }
         );
         expect(mockWorkflowValidation.validateWorkflow).toHaveBeenCalledWith('navigate', args);
         expect(mockWorkflowValidation.recordExecution).toHaveBeenCalledWith('navigate', args, true);

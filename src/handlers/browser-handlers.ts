@@ -7,12 +7,12 @@ import { BrowserInitArgs } from '../tool-definitions.js';
 export async function handleBrowserInit(args: BrowserInitArgs) {
   return await withWorkflowValidation('browser_init', args, async () => {
     return await withErrorHandling(async () => {
+      await initializeBrowser(args);
+      
       // Update content priority configuration if provided
       if (args.contentPriority) {
         updateContentPriorityConfig(args.contentPriority);
       }
-      
-      await initializeBrowser(args);
       
       const config = getContentPriorityConfig();
       const configMessage = config.prioritizeContent 
