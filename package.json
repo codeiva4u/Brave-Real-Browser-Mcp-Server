@@ -43,16 +43,13 @@
     "test:comprehensive": "node test.cjs"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": ">=1.0.0",
+    "@modelcontextprotocol/sdk": "^1.19.1",
     "@types/node": "^20.0.0",
     "@types/turndown": "^5.0.5",
-    "brave-real-browser": "latest",
-    "brave-real-launcher": "latest",
-    "brave-real-puppeteer-core": "latest",
-    "turndown": "^7.2.0"
-  },
-  "peerDependencies": {
-    "@modelcontextprotocol/sdk": ">=1.0.0"
+    "brave-real-browser": "^1.5.102",
+    "brave-real-launcher": "^1.2.15",
+    "brave-real-puppeteer-core": "^24.23.0-patch.1",
+    "turndown": "^7.2.1"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^3.2.4",
