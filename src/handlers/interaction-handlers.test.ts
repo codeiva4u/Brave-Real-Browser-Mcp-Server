@@ -434,6 +434,7 @@ describe('Interaction Handlers', () => {
   describe('Random Scroll Handler', () => {
     it('should perform random scrolling successfully', async () => {
       // Arrange: Random scroll setup
+      mockBrowserManager.getPageInstance.mockReturnValue(mockPageInstance);
       mockStealthActions.randomScroll.mockResolvedValue(undefined);
 
       // Act: Perform random scroll

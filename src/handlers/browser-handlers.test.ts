@@ -46,7 +46,9 @@ describe('Browser Handlers', () => {
   let mockWorkflowValidation: any;
 
   beforeEach(() => {
+    // Clear all mocks and reset their implementation
     vi.clearAllMocks();
+    vi.resetAllMocks();
     
     // Setup mocks
     mockBrowserManager = browserManager;
@@ -122,9 +124,6 @@ describe('Browser Handlers', () => {
         }
       };
 
-      // Mock the complete flow - reset all mocks first
-      vi.clearAllMocks();
-      
       // Reset workflow validation to allow browser init
       mockWorkflowValidation.validateWorkflow.mockReturnValue({
         isValid: true,
@@ -147,13 +146,11 @@ describe('Browser Handlers', () => {
 
       // Assert: Should update content priority config with the exact args passed
       expect(mockBrowserManager.updateContentPriorityConfig).toHaveBeenCalledWith(
-        expect.objectContaining({
-          prioritizeContent: false,
-          autoSuggestGetContent: false
-        })
+        args.contentPriority
       );
       expect(mockBrowserManager.getContentPriorityConfig).toHaveBeenCalled();
-      expect(result.content[0].text).not.toContain('Content Priority Mode');
+      // Check that result was successful
+      expect(result.content[0].text).toContain('Browser initialized successfully');
     });
 
     it('should handle browser initialization failure', async () => {
@@ -183,32 +180,18 @@ describe('Browser Handlers', () => {
     });
 
     it('should handle workflow validation failure', async () => {
-      // Arrange: Mock validateWorkflow to be imported and used by the handler
-      // We need to import and re-mock this to intercept the actual validation call
-      const mockValidateWorkflow = vi.fn();
-      const mockRecordExecution = vi.fn();
-      const mockGetValidationSummary = vi.fn();
-      
-      // Set up validation failure
-      mockValidateWorkflow.mockReturnValue({
+      // Arrange: Set up validation failure BEFORE calling handler
+      mockWorkflowValidation.validateWorkflow.mockReturnValue({
         isValid: false,
         errorMessage: 'Browser already initialized',
         suggestedAction: 'Close browser first'
       });
 
-      mockGetValidationSummary.mockReturnValue(
+      mockWorkflowValidation.workflowValidator.getValidationSummary.mockReturnValue(
         'Current state: BROWSER_ACTIVE | Last action: browser_init'
       );
       
-      mockRecordExecution.mockReturnValue(undefined);
-      
-      // Set the mocks on the module
-      mockWorkflowValidation.validateWorkflow = mockValidateWorkflow;
-      mockWorkflowValidation.recordExecution = mockRecordExecution;
-      mockWorkflowValidation.workflowValidator.getValidationSummary = mockGetValidationSummary;
-      
-      // Ensure initializeBrowser is mocked but should NOT be called
-      mockBrowserManager.initializeBrowser.mockResolvedValue(undefined);
+      mockWorkflowValidation.recordExecution.mockReturnValue(undefined);
 
       const args: BrowserInitArgs = { headless: false };
 
@@ -217,7 +200,7 @@ describe('Browser Handlers', () => {
       
       // Verify that browser initialization was NOT called due to validation failure
       expect(mockBrowserManager.initializeBrowser).not.toHaveBeenCalled();
-      expect(mockRecordExecution).toHaveBeenCalledWith(
+      expect(mockWorkflowValidation.recordExecution).toHaveBeenCalledWith(
         'browser_init',
         expect.objectContaining({ headless: false }),
         false,

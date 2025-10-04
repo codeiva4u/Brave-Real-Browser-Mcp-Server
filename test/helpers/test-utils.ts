@@ -30,7 +30,7 @@ export function waitForServerStartup(serverProcess: ChildProcess, timeoutMs: num
 
     serverProcess.stderr?.on('data', (data) => {
       const output = data.toString();
-      if (output.includes('Puppeteer Real Browser MCP Server started successfully')) {
+      if (output.includes('Brave Real Browser MCP Server started successfully')) {
         clearTimeout(timeout);
         resolve();
       }
@@ -76,10 +76,8 @@ export function sendMCPRequest(
 
     serverProcess.stdout?.on('data', dataHandler);
 
-    // Wait for server to be ready, then send the request
-    waitForServerStartup(serverProcess).then(() => {
-      serverProcess.stdin?.write(message);
-    }).catch(reject);
+    // Send the request immediately - server should already be started
+    serverProcess.stdin?.write(message);
   });
 }
 
