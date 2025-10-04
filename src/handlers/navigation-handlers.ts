@@ -2,6 +2,15 @@ import { getBrowserInstance, getPageInstance } from '../browser-manager.js';
 import { withErrorHandling, withTimeout } from '../system-utils.js';
 import { validateWorkflow, recordExecution, workflowValidator } from '../workflow-validation.js';
 import { NavigateArgs, WaitArgs } from '../tool-definitions.js';
+import { 
+  categorizeError,
+  createBrowserNotInitializedError,
+  createNavigationError,
+  createNavigationTimeoutError,
+  ErrorCategory,
+  NavigationError,
+  MCPError
+} from '../errors/index.js';
 
 // Navigation handler
 export async function handleNavigate(args: NavigateArgs) {

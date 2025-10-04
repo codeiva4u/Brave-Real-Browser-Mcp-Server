@@ -6,6 +6,15 @@ import { withErrorHandling, withTimeout } from '../system-utils.js';
 import { validateWorkflow, recordExecution, workflowValidator } from '../workflow-validation.js';
 import { tokenManager } from '../token-management.js';
 import { SaveContentAsMarkdownArgs } from '../tool-definitions.js';
+import { 
+  categorizeError,
+  createBrowserNotInitializedError,
+  createFileWriteError,
+  createInvalidFilePathError,
+  ErrorCategory,
+  FileError,
+  MCPError
+} from '../errors/index.js';
 
 // Path validation and security functions
 function validateFilePath(filePath: string): void {

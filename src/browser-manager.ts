@@ -2,6 +2,16 @@ import { connect } from 'brave-real-browser';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as net from 'net';
+import { 
+  categorizeError as categorizeErrorMCP,
+  createBrowserInitializationError,
+  createBrowserNotInitializedError,
+  createProtocolErrorFromPuppeteer,
+  BrowserError,
+  ProtocolError,
+  MCPError,
+  ErrorCategory as MCPErrorCategory
+} from './errors/index.js';
 
 // Content prioritization configuration
 export interface ContentPriorityConfig {
@@ -78,30 +88,33 @@ export async function initializeBrowserForTesting(options?: any) {
 
 let sessionValidationInProgress = false;
 
-// Error handling functions
+// Error handling functions - now uses centralized error system
+// Legacy function kept for backward compatibility
 export function categorizeError(error: Error): BrowserErrorType {
-  const message = error.message.toLowerCase();
+  const mcpError = categorizeErrorMCP(error);
+  
+  // Map MCPError categories to BrowserErrorType for backward compatibility
+  switch (mcpError.category) {
+    case MCPErrorCategory.FRAME_DETACHED:
+      return BrowserErrorType.FRAME_DETACHED;
+    case MCPErrorCategory.SESSION_CLOSED:
+      return BrowserErrorType.SESSION_CLOSED;
+    case MCPErrorCategory.TARGET_CLOSED:
+      return BrowserErrorType.TARGET_CLOSED;
+    case MCPErrorCategory.PROTOCOL_ERROR:
+      return BrowserErrorType.PROTOCOL_ERROR;
+    case MCPErrorCategory.NAVIGATION_TIMEOUT:
+      return BrowserErrorType.NAVIGATION_TIMEOUT;
+    case MCPErrorCategory.ELEMENT_NOT_FOUND:
+      return BrowserErrorType.ELEMENT_NOT_FOUND;
+    default:
+      return BrowserErrorType.UNKNOWN;
+  }
+}
 
-  if (message.includes('navigating frame was detached')) {
-    return BrowserErrorType.FRAME_DETACHED;
-  }
-  if (message.includes('session closed')) {
-    return BrowserErrorType.SESSION_CLOSED;
-  }
-  if (message.includes('target closed')) {
-    return BrowserErrorType.TARGET_CLOSED;
-  }
-  if (message.includes('protocol error')) {
-    return BrowserErrorType.PROTOCOL_ERROR;
-  }
-  if (message.includes('navigation timeout') || message.includes('timeout')) {
-    return BrowserErrorType.NAVIGATION_TIMEOUT;
-  }
-  if (message.includes('element not found') || message.includes('no node found')) {
-    return BrowserErrorType.ELEMENT_NOT_FOUND;
-  }
-
-  return BrowserErrorType.UNKNOWN;
+// New function that returns MCPError for better error handling
+export function categorizeBrowserError(error: unknown): MCPError {
+  return categorizeErrorMCP(error);
 }
 
 // Timeout wrapper for operations that may hang
