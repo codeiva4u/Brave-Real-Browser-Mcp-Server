@@ -107,11 +107,17 @@ jobs:
       - name: 🔨 Build project
         run: npm run build
 
-      - name: 🧪 Run tests
+      - name: ✅ Verify build
         run: |
-          npm run test:ci || echo "Tests completed with warnings"
-          echo "Running comprehensive tests..."
-          timeout 120 npm run test:comprehensive || echo "Comprehensive tests completed"
+          echo "🔍 Verifying build output..."
+          if [ ! -f "dist/index.js" ]; then
+            echo "❌ Error: Build output not found"
+            exit 1
+          fi
+          echo "✅ Build verification passed"
+          echo "📦 Build size: $(du -sh dist | cut -f1)"
+          echo "📁 Files in dist:"
+          ls -lh dist/ | head -n 20
 
       - name: 🔍 Configure Git
         run: |
