@@ -74,15 +74,15 @@ jobs:
             npm install --ignore-scripts
           fi
           
-          # Step 2: Force update to LATEST versions of brave packages
+          # Step 2: Force update to LATEST versions of ALL packages
           echo ""
-          echo "🚀 Force updating brave packages to LATEST versions..."
-          npm install brave-real-browser@latest --save --force
+          echo "🚀 Force updating all packages to LATEST versions..."
+          npm install brave-real-browser@latest @modelcontextprotocol/sdk@latest --save --force
           
           # Step 3: Verify installed versions
           echo ""
           echo "✅ Verifying installed versions:"
-          npm list brave-real-browser --depth=0 || true
+          npm list brave-real-browser @modelcontextprotocol/sdk --depth=0 || true
           
           echo ""
           echo "✅ All dependencies updated to LATEST versions!"

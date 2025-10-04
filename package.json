@@ -35,13 +35,10 @@
     "test:dashboard": "node test-runner.js"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": ">=1.0.0",
-    "@types/turndown": "^5.0.5",
-    "brave-real-browser": "^1.5.102",
-    "turndown": "^7.2.0"
-  },
-  "peerDependencies": {
-    "@modelcontextprotocol/sdk": ">=1.0.0"
+    "@modelcontextprotocol/sdk": "latest",
+    "@types/turndown": "latest",
+    "brave-real-browser": "latest",
+    "turndown": "latest"
   },
   "devDependencies": {
     "@types/node": "latest",
