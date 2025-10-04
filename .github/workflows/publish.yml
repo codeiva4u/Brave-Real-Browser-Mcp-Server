@@ -61,9 +61,11 @@ jobs:
           cache: 'npm'
           cache-dependency-path: '**/package-lock.json'
 
-      - name: 📦 Install dependencies
+      - name: 📦 Install dependencies with LATEST versions
         run: |
-          # Use npm ci if package-lock.json exists, otherwise npm install
+          echo "🔄 Installing dependencies and ensuring LATEST versions..."
+          
+          # Step 1: Install base dependencies
           if [ -f "package-lock.json" ]; then
             echo "📦 Using npm ci (package-lock.json found)"
             npm ci --ignore-scripts
@@ -71,7 +73,24 @@ jobs:
             echo "📦 Using npm install (generating package-lock.json)"
             npm install --ignore-scripts
           fi
-          npm run ensure-latest-packages
+          
+          # Step 2: Force update to LATEST versions of ALL core Brave packages
+          echo ""
+          echo "🚀 Force updating core Brave packages to LATEST versions..."
+          npm install brave-real-browser@latest brave-real-launcher@latest brave-real-puppeteer-core@latest --save --force
+          
+          # Step 3: Update other dependencies to LATEST
+          echo ""
+          echo "📚 Updating other dependencies to LATEST versions..."
+          npm install @modelcontextprotocol/sdk@latest turndown@latest --save
+          
+          # Step 4: Verify and show installed versions
+          echo ""
+          echo "✅ Verifying installed versions:"
+          npm list brave-real-browser brave-real-launcher brave-real-puppeteer-core @modelcontextprotocol/sdk turndown --depth=0 || true
+          
+          echo ""
+          echo "✅ All dependencies updated to LATEST versions!"
 
       - name: 🔨 Build project
         run: npm run build
