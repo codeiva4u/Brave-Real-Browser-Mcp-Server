@@ -334,6 +334,7 @@ describe('Interaction Handlers', () => {
 
         mockPageInstance.type.mockRejectedValue(new Error('Type failed'));
         mockPageInstance.evaluate
+          .mockResolvedValueOnce(false) // Check dropdown
           .mockResolvedValueOnce(undefined) // Clear content
           .mockResolvedValueOnce(undefined); // JavaScript typing
 
@@ -342,7 +343,7 @@ describe('Interaction Handlers', () => {
 
         // Assert: Should use JavaScript fallback
         expect(mockPageInstance.type).toHaveBeenCalled();
-        expect(mockPageInstance.evaluate).toHaveBeenCalledTimes(2); // Clear + JavaScript type
+        expect(mockPageInstance.evaluate).toHaveBeenCalledTimes(3); // Dropdown check + Clear + JavaScript type
         expect(result.content[0].text).toContain('Typed text using JavaScript fallback');
       });
     });
@@ -369,6 +370,7 @@ describe('Interaction Handlers', () => {
 
         mockPageInstance.type.mockRejectedValue(new Error('Type operation failed'));
         mockPageInstance.evaluate
+          .mockResolvedValueOnce(false) // Check dropdown
           .mockResolvedValueOnce(undefined) // Clear content succeeds
           .mockRejectedValueOnce(new Error('JavaScript type failed')); // JavaScript type fails
 
