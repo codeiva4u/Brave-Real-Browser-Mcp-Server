@@ -148,20 +148,72 @@ export async function handleType(args: TypeArgs) {
         // Wait for element to be ready and interactable
         await pageInstance.waitForSelector(usedSelector, { timeout: 5000 });
 
-        // Focus on the element first
-        await element.focus();
-
-        // Clear existing content
-        await pageInstance.evaluate((sel: string) => {
-          const el = document.querySelector(sel) as HTMLInputElement | HTMLTextAreaElement;
-          if (el) {
-            el.select();
-            el.value = '';
-          }
+        // Check if element is a dropdown/select
+        const isDropdown = await pageInstance.evaluate((sel: string) => {
+          const el = document.querySelector(sel);
+          return el?.tagName.toLowerCase() === 'select';
         }, usedSelector);
 
-        // Type the new text
-        await pageInstance.type(usedSelector, text, { delay });
+        if (isDropdown) {
+          // Handle dropdown selection with proper event triggering
+          await pageInstance.evaluate((sel: string, value: string) => {
+            const selectEl = document.querySelector(sel) as HTMLSelectElement;
+            if (!selectEl) return;
+
+            // Human-like behavior: Focus first
+            selectEl.focus();
+
+            // Find option by text or value
+            const options = Array.from(selectEl.options);
+            const matchedOption = options.find(opt => 
+              opt.text.toLowerCase().includes(value.toLowerCase()) ||
+              opt.value.toLowerCase().includes(value.toLowerCase())
+            );
+
+            if (matchedOption) {
+              // Set the value
+              selectEl.value = matchedOption.value;
+
+              // Fire all relevant events for dynamic dropdowns
+              selectEl.dispatchEvent(new Event('input', { bubbles: true }));
+              selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+              selectEl.dispatchEvent(new Event('blur', { bubbles: true }));
+              
+              // Trigger jQuery change event if jQuery exists
+              if (typeof (window as any).jQuery !== 'undefined') {
+                (window as any).jQuery(selectEl).trigger('change');
+              }
+            }
+          }, usedSelector, text);
+
+          // Wait a bit for dependent dropdowns to load
+          await sleep(1500);
+        } else {
+          // Regular input field
+          // Focus on the element first
+          await element.focus();
+
+          // Clear existing content
+          await pageInstance.evaluate((sel: string) => {
+            const el = document.querySelector(sel) as HTMLInputElement | HTMLTextAreaElement;
+            if (el) {
+              el.select();
+              el.value = '';
+            }
+          }, usedSelector);
+
+          // Type the new text with human-like delay
+          await pageInstance.type(usedSelector, text, { delay });
+          
+          // Fire events for dynamic forms
+          await pageInstance.evaluate((sel: string) => {
+            const el = document.querySelector(sel);
+            if (el) {
+              el.dispatchEvent(new Event('input', { bubbles: true }));
+              el.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+          }, usedSelector);
+        }
 
         return {
           content: [
