@@ -174,18 +174,20 @@ describe('MCP Server Integration Tests', () => {
       'wait',
       'browser_close',
       'solve_captcha',
+      'solve_text_captcha',
+      'auto_solve_captcha',
       'random_scroll',
       'find_selector',
       'save_content_as_markdown'
     ];
 
-    test('should have exactly 11 tools available', async () => {
+    test('should have exactly 13 tools available', async () => {
       try {
         const request = createMCPRequest.toolsList(10);
         const response = await sendMCPRequest(serverProcess, request, 35000);
         
         const tools = response.result.tools;
-        expect(tools).toHaveLength(11);
+        expect(tools).toHaveLength(13);
         expect(tools.map((t: any) => t.name).sort()).toEqual(expectedTools.sort());
       } catch (error) {
         // Log error but don't fail if it's a server startup issue
