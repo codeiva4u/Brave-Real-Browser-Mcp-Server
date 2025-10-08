@@ -67,7 +67,11 @@ describe('Browser Handlers', () => {
     
     // Ensure updateContentPriorityConfig is properly mocked
     mockBrowserManager.updateContentPriorityConfig.mockReturnValue(undefined);
-    mockBrowserManager.initializeBrowser.mockResolvedValue(undefined);
+    // Mock initializeBrowser to return valid browser/page objects
+    mockBrowserManager.initializeBrowser.mockResolvedValue({
+      browser: { isConnected: () => true },
+      page: { url: () => 'about:blank' }
+    });
     mockBrowserManager.closeBrowser.mockResolvedValue(undefined);
     
     // Ensure workflow validation functions are properly mocked
@@ -84,7 +88,10 @@ describe('Browser Handlers', () => {
         disableXvfb: false
       };
 
-      mockBrowserManager.initializeBrowser.mockResolvedValue(undefined);
+      mockBrowserManager.initializeBrowser.mockResolvedValue({
+        browser: { isConnected: () => true },
+        page: { url: () => 'about:blank' }
+      });
 
       // Act: Initialize browser
       const result = await handleBrowserInit(args);
@@ -128,7 +135,10 @@ describe('Browser Handlers', () => {
         errorMessage: null,
         suggestedAction: null
       });
-      mockBrowserManager.initializeBrowser.mockResolvedValue(undefined);
+      mockBrowserManager.initializeBrowser.mockResolvedValue({
+        browser: { isConnected: () => true },
+        page: { url: () => 'about:blank' }
+      });
       
       // Mock updateContentPriorityConfig to actually update the returned config
       mockBrowserManager.updateContentPriorityConfig.mockImplementation((newConfig: any) => {
@@ -228,7 +238,10 @@ describe('Browser Handlers', () => {
       });
       
       const args: BrowserInitArgs = { headless: false };
-      mockBrowserManager.initializeBrowser.mockResolvedValue(undefined);
+      mockBrowserManager.initializeBrowser.mockResolvedValue({
+        browser: { isConnected: () => true },
+        page: { url: () => 'about:blank' }
+      });
 
       // Act: Initialize browser
       const result = await handleBrowserInit(args);
@@ -342,7 +355,10 @@ describe('Browser Handlers', () => {
     it('should validate workflow before executing operation', async () => {
       // Arrange: Valid workflow state
       const args: BrowserInitArgs = { headless: false };
-      mockBrowserManager.initializeBrowser.mockResolvedValue(undefined);
+      mockBrowserManager.initializeBrowser.mockResolvedValue({
+        browser: { isConnected: () => true },
+        page: { url: () => 'about:blank' }
+      });
 
       // Act: Execute browser init (uses workflow validation)
       await handleBrowserInit(args);
@@ -355,7 +371,10 @@ describe('Browser Handlers', () => {
     it('should record execution results for successful operations', async () => {
       // Arrange: Successful operation
       const args: BrowserInitArgs = { headless: false };
-      mockBrowserManager.initializeBrowser.mockResolvedValue(undefined);
+      mockBrowserManager.initializeBrowser.mockResolvedValue({
+        browser: { isConnected: () => true },
+        page: { url: () => 'about:blank' }
+      });
 
       // Act: Execute successful operation
       await handleBrowserInit(args);
@@ -419,7 +438,10 @@ describe('Browser Handlers', () => {
     it('should use system error handling wrapper', async () => {
       // Arrange: Browser init with error handling
       const args: BrowserInitArgs = { headless: false };
-      mockBrowserManager.initializeBrowser.mockResolvedValue(undefined);
+      mockBrowserManager.initializeBrowser.mockResolvedValue({
+        browser: { isConnected: () => true },
+        page: { url: () => 'about:blank' }
+      });
 
       // Act: Execute browser init
       await handleBrowserInit(args);
