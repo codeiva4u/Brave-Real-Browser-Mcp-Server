@@ -196,16 +196,35 @@ describe('MCP Server Integration Tests', () => {
       'extract_pagination_info',
       'parse_sitemap',
       'extract_contact_info',
-      'harvest_attributes'
+      'harvest_attributes',
+      'clean_text',
+      'parse_price',
+      'normalize_date',
+      'wait_for_ajax',
+      'extract_shadow_dom',
+      'extract_from_iframe',
+      'detect_modal',
+      'close_modal',
+      'login',
+      'save_session',
+      'load_session',
+      'keyword_search',
+      'regex_search',
+      'xpath_query',
+      'take_screenshot',
+      'generate_pdf',
+      'classify_content',
+      'analyze_sentiment',
+      'generate_summary'
     ];
 
-    test('should have exactly 31 tools available', async () => {
+    test('should have exactly 50 tools available', async () => {
       try {
         const request = createMCPRequest.toolsList(10);
         const response = await sendMCPRequest(serverProcess, request, 35000);
         
         const tools = response.result.tools;
-        expect(tools).toHaveLength(31);
+        expect(tools).toHaveLength(50);
         expect(tools.map((t: any) => t.name).sort()).toEqual(expectedTools.sort());
       } catch (error) {
         // Log error but don't fail if it's a server startup issue
