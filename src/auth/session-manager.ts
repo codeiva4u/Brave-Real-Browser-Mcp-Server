@@ -1,5 +1,5 @@
 // Authentication & Session Management
-import { Page, Protocol } from 'puppeteer-core';
+import { Page, Cookie as PuppeteerCookie } from 'puppeteer-core';
 
 export interface LoginCredentials {
   username: string;
@@ -10,7 +10,7 @@ export interface LoginCredentials {
 }
 
 export interface SessionData {
-  cookies: Protocol.Network.Cookie[];
+  cookies: PuppeteerCookie[];
   localStorage: Record<string, string>;
   sessionStorage: Record<string, string>;
   timestamp: number;
@@ -49,11 +49,11 @@ export class SessionManager {
     return true;
   }
 
-  async manageCookies(page: Page): Promise<Protocol.Network.Cookie[]> {
+  async manageCookies(page: Page): Promise<PuppeteerCookie[]> {
     return await page.cookies();
   }
 
-  async setCookies(page: Page, cookies: Protocol.Network.Cookie[]): Promise<void> {
+  async setCookies(page: Page, cookies: PuppeteerCookie[]): Promise<void> {
     await page.setCookie(...cookies);
   }
 

@@ -861,3 +861,11 @@ export async function getBrowserPage(): Promise<any> {
   return pageInstance;
 }
 
+// Synchronous version for compatibility with new-features-handlers
+export function getCurrentPage(): any {
+  if (!pageInstance) {
+    throw new Error('Browser not initialized. Call browser_init first.');
+  }
+  return pageInstance;
+}
+

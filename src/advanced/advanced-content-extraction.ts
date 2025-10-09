@@ -117,9 +117,10 @@ export async function extractFromShadowDom(
       // Extract all elements from shadow DOM
       const elements = Array.from(shadowRoot.querySelectorAll('*')).map(el => {
         const attributes: Record<string, string> = {};
-        for (const attr of el.attributes) {
+        // Convert NamedNodeMap to array for iteration
+        Array.from(el.attributes).forEach((attr: Attr) => {
           attributes[attr.name] = attr.value;
-        }
+        });
         return {
           tag: el.tagName.toLowerCase(),
           text: el.textContent || '',
@@ -152,8 +153,8 @@ export async function extractFromShadowDom(
 export async function querySelectorDeep(
   page: Page,
   selector: string
-): Promise<ElementHandle | null> {
-  return await page.evaluateHandle((sel) => {
+): Promise<ElementHandle<Element> | null> {
+  const handle = await page.evaluateHandle((sel) => {
     // Helper function to find element in shadow DOM recursively
     function findInShadowDom(root: Document | ShadowRoot, selector: string): Element | null {
       // Try normal querySelector first
@@ -161,7 +162,7 @@ export async function querySelectorDeep(
       if (element) return element;
 
       // Search in shadow roots
-      const allElements = root.querySelectorAll('*');
+      const allElements = Array.from(root.querySelectorAll('*'));
       for (const el of allElements) {
         if (el.shadowRoot) {
           element = findInShadowDom(el.shadowRoot, selector);
@@ -173,7 +174,10 @@ export async function querySelectorDeep(
     }
 
     return findInShadowDom(document, sel);
-  }, selector).then(handle => handle.asElement());
+  }, selector);
+  
+  const element = handle.asElement();
+  return element as ElementHandle<Element> | null;
 }
 
 /**
@@ -378,7 +382,7 @@ export async function closeModal(
     if (modalInfo?.closeButtonSelector) {
       try {
         await page.click(modalInfo.closeButtonSelector);
-        await page.waitForTimeout(500);
+        await new Promise(resolve => setTimeout(resolve, 500));
         return { success: true, method: 'close_button' };
       } catch {
         // Close button didn't work, try other methods
@@ -388,7 +392,7 @@ export async function closeModal(
     // Try pressing Escape key
     try {
       await page.keyboard.press('Escape');
-      await page.waitForTimeout(500);
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       // Check if modal is still visible
       const stillVisible = modalInfo
@@ -416,7 +420,7 @@ export async function closeModal(
         const backdrop = await page.$(`${modalInfo.selector} ~ .modal-backdrop, ${modalInfo.selector} ~ [class*="backdrop"]`);
         if (backdrop) {
           await backdrop.click();
-          await page.waitForTimeout(500);
+          await new Promise(resolve => setTimeout(resolve, 500));
           return { success: true, method: 'backdrop_click' };
         }
       } catch {

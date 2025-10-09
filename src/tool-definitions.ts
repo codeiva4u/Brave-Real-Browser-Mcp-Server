@@ -623,45 +623,6 @@ export const TOOLS = [
   },
 ];
 
-// Tool name constants for type safety
-export const TOOL_NAMES = {
-  BROWSER_INIT: 'browser_init',
-  NAVIGATE: 'navigate',
-  GET_CONTENT: 'get_content',
-  CLICK: 'click',
-  TYPE: 'type',
-  WAIT: 'wait',
-  BROWSER_CLOSE: 'browser_close',
-  SOLVE_CAPTCHA: 'solve_captcha',
-  RANDOM_SCROLL: 'random_scroll',
-  FIND_SELECTOR: 'find_selector',
-  SAVE_CONTENT_AS_MARKDOWN: 'save_content_as_markdown',
-  // Smart Data Extractors
-  EXTRACT_TABLES: 'extract_tables',
-  EXTRACT_LISTS: 'extract_lists',
-  EXTRACT_JSON: 'extract_json',
-  EXTRACT_META_TAGS: 'extract_meta_tags',
-  EXTRACT_SCHEMA_ORG: 'extract_schema_org',
-  // Multi-Element Extractors
-  BATCH_EXTRACT_ELEMENTS: 'batch_extract_elements',
-  EXTRACT_PRODUCTS: 'extract_products',
-  EXTRACT_ARTICLES: 'extract_articles',
-  // Content Type Extractors
-  EXTRACT_IMAGES: 'extract_images',
-  EXTRACT_LINKS: 'extract_links',
-  EXTRACT_MEDIA: 'extract_media',
-  EXTRACT_DOWNLOADABLE_FILES: 'extract_downloadable_files',
-  EXTRACT_SOCIAL_MEDIA: 'extract_social_media',
-  // Pagination & Navigation
-  AUTO_PAGINATE: 'auto_paginate',
-  HANDLE_INFINITE_SCROLL: 'handle_infinite_scroll',
-  EXTRACT_BREADCRUMBS: 'extract_breadcrumbs',
-  EXTRACT_PAGINATION_INFO: 'extract_pagination_info',
-  PARSE_SITEMAP: 'parse_sitemap',
-  // Data Processing
-  EXTRACT_CONTACT_INFO: 'extract_contact_info',
-  HARVEST_ATTRIBUTES: 'harvest_attributes',
-} as const;
 
 // Type definitions for tool inputs
 export interface BrowserInitArgs {

@@ -1,9 +1,12 @@
 #!/usr/bin/env node
 
-// Debug logging setup - Log process start
-console.error(`🔍 [DEBUG] Process starting - PID: ${process.pid}, Node: ${process.version}, Platform: ${process.platform}`);
-console.error(`🔍 [DEBUG] Working directory: ${process.cwd()}`);
-console.error(`🔍 [DEBUG] Command args: ${process.argv.join(' ')}`);
+// Debug logging flag - only enable if DEBUG_MCP env var is set
+const DEBUG = process.env.DEBUG_MCP === 'true';
+const debug = (...args: any[]) => DEBUG && console.error(...args);
+
+debug(`🔍 [DEBUG] Process starting - PID: ${process.pid}, Node: ${process.version}, Platform: ${process.platform}`);
+debug(`🔍 [DEBUG] Working directory: ${process.cwd()}`);
+debug(`🔍 [DEBUG] Command args: ${process.argv.join(' ')}`);
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -15,20 +18,20 @@ import {
   InitializeRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 
-console.error('🔍 [DEBUG] MCP SDK imports completed successfully');
+debug('🔍 [DEBUG] MCP SDK imports completed successfully');
 
 // Import extracted modules
-console.error('🔍 [DEBUG] Loading tool definitions...');
+debug('🔍 [DEBUG] Loading tool definitions...');
 import { TOOLS, SERVER_INFO, CAPABILITIES, TOOL_NAMES, NavigateArgs, ClickArgs, TypeArgs, WaitArgs, SolveCaptchaArgs, FindSelectorArgs, SaveContentAsMarkdownArgs } from './tool-definitions.js';
-console.error('🔍 [DEBUG] Loading system utils...');
+debug('🔍 [DEBUG] Loading system utils...');
 import { withErrorHandling } from './system-utils.js';
-console.error('🔍 [DEBUG] Loading browser manager...');
+debug('🔍 [DEBUG] Loading browser manager...');
 import { closeBrowser, forceKillAllChromeProcesses } from './browser-manager.js';
-console.error('🔍 [DEBUG] Loading core infrastructure...');
+debug('🔍 [DEBUG] Loading core infrastructure...');
 import { setupProcessCleanup, MCP_SERVER_CONFIG } from './core-infrastructure.js';
 
 // Import handlers
-console.error('🔍 [DEBUG] Loading handlers...');
+debug('🔍 [DEBUG] Loading handlers...');
 import { handleBrowserInit, handleBrowserClose } from './handlers/browser-handlers.js';
 import { handleNavigate, handleWait } from './handlers/navigation-handlers.js';
 import { handleClick, handleType, handleSolveCaptcha, handleRandomScroll } from './handlers/interaction-handlers.js';
@@ -57,69 +60,60 @@ import {
   handleHarvestAttributes
 } from './handlers/advanced-scraping-handlers.js';
 
-console.error('🔍 [DEBUG] All modules loaded successfully');
-console.error(`🔍 [DEBUG] Server info: ${JSON.stringify(SERVER_INFO)}`);
-console.error(`🔍 [DEBUG] Available tools: ${TOOLS.length} tools loaded`);
+debug('🔍 [DEBUG] All modules loaded successfully');
+debug(`🔍 [DEBUG] Server info: ${JSON.stringify(SERVER_INFO)}`);
+debug(`🔍 [DEBUG] Available tools: ${TOOLS.length} tools loaded`);
 
 // Initialize MCP server
-console.error('🔍 [DEBUG] Creating MCP server instance...');
+debug('🔍 [DEBUG] Creating MCP server instance...');
 const server = new Server(SERVER_INFO, { capabilities: CAPABILITIES });
-console.error('🔍 [DEBUG] MCP server instance created successfully');
+debug('🔍 [DEBUG] MCP server instance created successfully');
 
 // Register initialize handler (CRITICAL - missing handler can cause crash)
-console.error('🔍 [DEBUG] Registering initialize handler...');
+debug('🔍 [DEBUG] Registering initialize handler...');
 server.setRequestHandler(InitializeRequestSchema, async (request) => {
-  console.error(`🔍 [DEBUG] Initialize request received: ${JSON.stringify(request)}`);
+  debug(`🔍 [DEBUG] Initialize request received: ${JSON.stringify(request)}`);
   
   // Use the client's protocol version to ensure compatibility
   const clientProtocolVersion = request.params.protocolVersion;
-  console.error(`🔍 [DEBUG] Client protocol version: ${clientProtocolVersion}`);
+  debug(`🔍 [DEBUG] Client protocol version: ${clientProtocolVersion}`);
   
   const response = {
     protocolVersion: clientProtocolVersion, // Match client version for compatibility
     capabilities: CAPABILITIES,
     serverInfo: SERVER_INFO,
   };
-  console.error(`🔍 [DEBUG] Sending initialize response: ${JSON.stringify(response)}`);
-  
-  // Add a small delay to see if there are any immediate errors after response
-  setTimeout(() => {
-    console.error(`🔍 [DEBUG] 1 second after initialize response - server still alive`);
-  }, 1000);
-  
-  setTimeout(() => {
-    console.error(`🔍 [DEBUG] 5 seconds after initialize response - server still alive`);
-  }, 5000);
+  debug(`🔍 [DEBUG] Sending initialize response: ${JSON.stringify(response)}`);
   
   return response;
 });
 
 // Register tool handlers
-console.error('🔍 [DEBUG] Registering tools handler...');
+debug('🔍 [DEBUG] Registering tools handler...');
 server.setRequestHandler(ListToolsRequestSchema, async () => {
-  console.error('🔍 [DEBUG] Tools list requested');
+  debug('🔍 [DEBUG] Tools list requested');
   return { tools: TOOLS };
 });
 
 // Register resource handlers (placeholder)
-console.error('🔍 [DEBUG] Registering resources handler...');
+debug('🔍 [DEBUG] Registering resources handler...');
 server.setRequestHandler(ListResourcesRequestSchema, async () => {
-  console.error('🔍 [DEBUG] Resources list requested');
+  debug('🔍 [DEBUG] Resources list requested');
   return { resources: [] };
 });
 
 // Register prompt handlers (placeholder)
-console.error('🔍 [DEBUG] Registering prompts handler...');
+debug('🔍 [DEBUG] Registering prompts handler...');
 server.setRequestHandler(ListPromptsRequestSchema, async () => {
-  console.error('🔍 [DEBUG] Prompts list requested');
+  debug('🔍 [DEBUG] Prompts list requested');
   return { prompts: [] };
 });
 
 // Main tool call handler
-console.error('🔍 [DEBUG] Registering tool call handler...');
+debug('🔍 [DEBUG] Registering tool call handler...');
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
-  console.error(`🔍 [DEBUG] Tool call received: ${name} with args: ${JSON.stringify(args)}`);
+  debug(`🔍 [DEBUG] Tool call received: ${name} with args: ${JSON.stringify(args)}`);
 
   try {
     switch (name) {
@@ -202,16 +196,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case TOOL_NAMES.AUTO_PAGINATE:
         return await handleAutoPaginate(args || {});
 
-      case TOOL_NAMES.HANDLE_INFINITE_SCROLL:
+      case TOOL_NAMES.INFINITE_SCROLL:
         return await handleInfiniteScrollHandler(args || {});
 
       case TOOL_NAMES.EXTRACT_BREADCRUMBS:
         return await handleExtractBreadcrumbs();
 
-      case TOOL_NAMES.EXTRACT_PAGINATION_INFO:
+      // Note: EXTRACT_PAGINATION_INFO and PARSE_SITEMAP not in TOOL_NAMES, skip for now
+      case 'extract_pagination_info':
         return await handleExtractPaginationInfo();
 
-      case TOOL_NAMES.PARSE_SITEMAP:
+      case 'parse_sitemap':
         return await handleParseSitemap(args as any);
 
       // Data Processing
@@ -250,93 +245,95 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
 // Main function to start the server
 async function main(): Promise<void> {
-  console.error('🔍 [DEBUG] Main function starting...');
+  debug('🔍 [DEBUG] Main function starting...');
   
   // Setup process cleanup handlers
-  console.error('🔍 [DEBUG] Setting up process cleanup handlers...');
+  debug('🔍 [DEBUG] Setting up process cleanup handlers...');
   setupProcessCleanup(async () => {
-    console.error('🔍 [DEBUG] Process cleanup triggered');
+    debug('🔍 [DEBUG] Process cleanup triggered');
     await closeBrowser();
     await forceKillAllChromeProcesses();
   });
 
   // Create and start the server transport
-  console.error('🔍 [DEBUG] Creating StdioServerTransport...');
+  debug('🔍 [DEBUG] Creating StdioServerTransport...');
   const transport = new StdioServerTransport();
-  console.error('🔍 [DEBUG] StdioServerTransport created successfully');
+  debug('🔍 [DEBUG] StdioServerTransport created successfully');
   
   await withErrorHandling(async () => {
-    console.error('🔍 [DEBUG] Attempting to connect server to transport...');
+    debug('🔍 [DEBUG] Attempting to connect server to transport...');
     await server.connect(transport);
-    console.error('🔍 [DEBUG] Server connected to transport successfully');
+    debug('🔍 [DEBUG] Server connected to transport successfully');
     
     console.error('🚀 Brave Real Browser MCP Server started successfully');
-    console.error('📋 Available tools:', TOOLS.map(t => t.name).join(', '));
-    console.error('🔧 Workflow validation: Active');
-    console.error('💡 Content priority mode: Enabled (use get_content for better reliability)');
+    debug('📋 Available tools:', TOOLS.map(t => t.name).join(', '));
+    debug('🔧 Workflow validation: Active');
+    debug('💡 Content priority mode: Enabled (use get_content for better reliability)');
     
-    console.error('🔍 [DEBUG] Server is now ready and waiting for requests...');
+    debug('🔍 [DEBUG] Server is now ready and waiting for requests...');
     
     // Keep the process alive by maintaining the connection
-    console.error('🔍 [DEBUG] Maintaining process alive - server will wait for requests');
+    debug('🔍 [DEBUG] Maintaining process alive - server will wait for requests');
     
-    // Add a heartbeat to confirm the process is still running
-    const heartbeat = setInterval(() => {
-      console.error(`🔍 [DEBUG] Heartbeat - Server alive at ${new Date().toISOString()}`);
-    }, 30000); // Every 30 seconds
-    
-    // Cleanup heartbeat on process exit
-    process.on('exit', () => {
-      console.error('🔍 [DEBUG] Process exiting - clearing heartbeat');
-      clearInterval(heartbeat);
-    });
+    // Add a heartbeat to confirm the process is still running (only in debug mode)
+    if (DEBUG) {
+      const heartbeat = setInterval(() => {
+        debug(`🔍 [DEBUG] Heartbeat - Server alive at ${new Date().toISOString()}`);
+      }, 30000); // Every 30 seconds
+      
+      // Cleanup heartbeat on process exit
+      process.on('exit', () => {
+        debug('🔍 [DEBUG] Process exiting - clearing heartbeat');
+        clearInterval(heartbeat);
+      });
+    }
     
   }, 'Failed to start MCP server');
   
-  console.error('🔍 [DEBUG] Main function completed - server should be running');
+  debug('🔍 [DEBUG] Main function completed - server should be running');
 }
 
 // Enhanced error handling with debug info
-console.error('🔍 [DEBUG] Setting up error handlers...');
+debug('🔍 [DEBUG] Setting up error handlers...');
 
 process.on('uncaughtException', (error) => {
-  console.error(`🔍 [DEBUG] Uncaught exception at ${new Date().toISOString()}`);
+  debug(`🔍 [DEBUG] Uncaught exception at ${new Date().toISOString()}`);
   console.error('❌ Uncaught exception:', error);
-  console.error(`🔍 [DEBUG] Stack trace:`, error.stack);
+  debug(`🔍 [DEBUG] Stack trace:`, error.stack);
   process.exit(1);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error(`🔍 [DEBUG] Unhandled rejection at ${new Date().toISOString()}`);
+  debug(`🔍 [DEBUG] Unhandled rejection at ${new Date().toISOString()}`);
   console.error('❌ Unhandled rejection:', reason);
-  console.error(`🔍 [DEBUG] Promise:`, promise);
+  debug(`🔍 [DEBUG] Promise:`, promise);
   process.exit(1);
 });
 
 // Process lifecycle debugging
 process.on('exit', (code) => {
-  console.error(`🔍 [DEBUG] Process exiting with code: ${code} at ${new Date().toISOString()}`);
+  debug(`🔍 [DEBUG] Process exiting with code: ${code} at ${new Date().toISOString()}`);
 });
 
 process.on('beforeExit', (code) => {
-  console.error(`🔍 [DEBUG] Before exit event with code: ${code} at ${new Date().toISOString()}`);
+  debug(`🔍 [DEBUG] Before exit event with code: ${code} at ${new Date().toISOString()}`);
 });
 
 process.on('SIGTERM', () => {
-  console.error(`🔍 [DEBUG] SIGTERM received at ${new Date().toISOString()}`);
+  debug(`🔍 [DEBUG] SIGTERM received at ${new Date().toISOString()}`);
 });
 
 process.on('SIGINT', () => {
-  console.error(`🔍 [DEBUG] SIGINT received at ${new Date().toISOString()}`);
+  debug(`🔍 [DEBUG] SIGINT received at ${new Date().toISOString()}`);
 });
 
-console.error('🔍 [DEBUG] All error handlers registered');
+debug('🔍 [DEBUG] All error handlers registered');
 
 // Start the server
-console.error('🔍 [DEBUG] Checking if module is main...');
-console.error(`🔍 [DEBUG] import.meta.url: ${import.meta.url}`);
-console.error(`🔍 [DEBUG] process.argv[1]: ${process.argv[1]}`);
-console.error(`🔍 [DEBUG] process.argv[0]: ${process.argv[0]}`);
+debug('🔍 [DEBUG] Checking if module is main...');
+debug(`🔍 [DEBUG] import.meta.url: ${import.meta.url}`);
+debug(`🔍 [DEBUG] process.argv[1]: ${process.argv[1]}`);
+debug(`🔍 [DEBUG] process.argv[0]: ${process.argv[0]}`);
 
 // Enhanced main module detection for npx compatibility
 const isMain = import.meta.url === `file://${process.argv[1]}` || 
@@ -344,23 +341,23 @@ const isMain = import.meta.url === `file://${process.argv[1]}` ||
                process.argv[1].endsWith('.bin/brave-real-browser-mcp-server') ||
                process.argv.some(arg => arg.includes('brave-real-browser-mcp-server'));
 
-console.error(`🔍 [DEBUG] Enhanced main detection result: ${isMain}`);
+debug(`🔍 [DEBUG] Enhanced main detection result: ${isMain}`);
 
 if (isMain) {
-  console.error('🔍 [DEBUG] Module is main - starting server...');
+  debug('🔍 [DEBUG] Module is main - starting server...');
   main().catch((error) => {
-    console.error(`🔍 [DEBUG] Main function failed at ${new Date().toISOString()}`);
+    debug(`🔍 [DEBUG] Main function failed at ${new Date().toISOString()}`);
     console.error('❌ Failed to start server:', error);
-    console.error(`🔍 [DEBUG] Error stack:`, error.stack);
+    debug(`🔍 [DEBUG] Error stack:`, error.stack);
     process.exit(1);
   });
 } else {
-  console.error('🔍 [DEBUG] Module is not main - not starting server');
-  console.error('🔍 [DEBUG] FORCE STARTING - This is likely an npx execution');
+  debug('🔍 [DEBUG] Module is not main - not starting server');
+  debug('🔍 [DEBUG] FORCE STARTING - This is likely an npx execution');
   main().catch((error) => {
-    console.error(`🔍 [DEBUG] Forced main function failed at ${new Date().toISOString()}`);
+    debug(`🔍 [DEBUG] Forced main function failed at ${new Date().toISOString()}`);
     console.error('❌ Failed to start server:', error);
-    console.error(`🔍 [DEBUG] Error stack:`, error.stack);
+    debug(`🔍 [DEBUG] Error stack:`, error.stack);
     process.exit(1);
   });
 }

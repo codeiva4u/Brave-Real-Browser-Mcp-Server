@@ -5,7 +5,7 @@ import * as path from 'path';
 
 export async function takeFullPageScreenshot(page: Page, outputPath: string): Promise<boolean> {
   try {
-    await page.screenshot({ path: outputPath, fullPage: true });
+    await page.screenshot({ path: outputPath as `${string}.png` | `${string}.jpeg` | `${string}.webp`, fullPage: true });
     return true;
   } catch {
     return false;
@@ -16,7 +16,7 @@ export async function takeElementScreenshot(page: Page, selector: string, output
   try {
     const element = await page.$(selector);
     if (!element) return false;
-    await element.screenshot({ path: outputPath });
+    await element.screenshot({ path: outputPath as `${string}.png` | `${string}.jpeg` | `${string}.webp` });
     return true;
   } catch {
     return false;
@@ -44,7 +44,7 @@ export async function compareScreenshots(path1: string, path2: string): Promise<
 
 export async function captureViewport(page: Page, outputPath: string): Promise<boolean> {
   try {
-    await page.screenshot({ path: outputPath, fullPage: false });
+    await page.screenshot({ path: outputPath as `${string}.png` | `${string}.jpeg` | `${string}.webp`, fullPage: false });
     return true;
   } catch {
     return false;
