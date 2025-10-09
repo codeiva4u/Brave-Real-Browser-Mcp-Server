@@ -35,6 +35,59 @@ export const DEFAULT_CONTENT_PRIORITY_CONFIG: ContentPriorityConfig = {
 };
 
 
+// Tool names enum for easy reference
+export const TOOL_NAMES = {
+  BROWSER_INIT: 'browser_init',
+  NAVIGATE: 'navigate',
+  GET_CONTENT: 'get_content',
+  CLICK: 'click',
+  TYPE: 'type',
+  WAIT: 'wait',
+  BROWSER_CLOSE: 'browser_close',
+  SOLVE_CAPTCHA: 'solve_captcha',
+  RANDOM_SCROLL: 'random_scroll',
+  FIND_SELECTOR: 'find_selector',
+  SAVE_CONTENT_AS_MARKDOWN: 'save_content_as_markdown',
+  EXTRACT_TABLES: 'extract_tables',
+  EXTRACT_LISTS: 'extract_lists',
+  EXTRACT_JSON: 'extract_json',
+  EXTRACT_META_TAGS: 'extract_meta_tags',
+  EXTRACT_SCHEMA_ORG: 'extract_schema_org',
+  BATCH_EXTRACT_ELEMENTS: 'batch_extract_elements',
+  EXTRACT_PRODUCTS: 'extract_products',
+  EXTRACT_ARTICLES: 'extract_articles',
+  EXTRACT_IMAGES: 'extract_images',
+  EXTRACT_LINKS: 'extract_links',
+  EXTRACT_MEDIA: 'extract_media',
+  EXTRACT_DOWNLOADABLE_FILES: 'extract_downloadable_files',
+  EXTRACT_SOCIAL_MEDIA: 'extract_social_media',
+  AUTO_PAGINATE: 'auto_paginate',
+  INFINITE_SCROLL: 'infinite_scroll_handler',
+  EXTRACT_BREADCRUMBS: 'extract_breadcrumbs',
+  EXTRACT_CONTACT_INFO: 'extract_contact_info',
+  HARVEST_ATTRIBUTES: 'harvest_attributes',
+  // New tools
+  CLEAN_TEXT: 'clean_text',
+  PARSE_PRICE: 'parse_price',
+  NORMALIZE_DATE: 'normalize_date',
+  WAIT_AJAX: 'wait_for_ajax',
+  EXTRACT_SHADOW_DOM: 'extract_shadow_dom',
+  EXTRACT_IFRAME: 'extract_from_iframe',
+  DETECT_MODAL: 'detect_modal',
+  CLOSE_MODAL: 'close_modal',
+  LOGIN: 'login',
+  SAVE_SESSION: 'save_session',
+  LOAD_SESSION: 'load_session',
+  KEYWORD_SEARCH: 'keyword_search',
+  REGEX_SEARCH: 'regex_search',
+  XPATH_QUERY: 'xpath_query',
+  TAKE_SCREENSHOT: 'take_screenshot',
+  GENERATE_PDF: 'generate_pdf',
+  CLASSIFY_CONTENT: 'classify_content',
+  ANALYZE_SENTIMENT: 'analyze_sentiment',
+  GENERATE_SUMMARY: 'generate_summary',
+} as const;
+
 // Complete tool definitions array
 export const TOOLS = [
   {
