@@ -621,6 +621,362 @@ export const TOOLS = [
       required: ['selector'],
     },
   },
+  {
+    name: 'clean_text',
+    description: 'Clean and normalize text content (remove extra whitespace, special characters)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        text: {
+          type: 'string',
+          description: 'Text to clean',
+        },
+        options: {
+          type: 'object',
+          description: 'Cleaning options',
+          properties: {
+            removeWhitespace: { type: 'boolean', default: true },
+            removeSpecialChars: { type: 'boolean', default: false },
+            toLowerCase: { type: 'boolean', default: false },
+          },
+        },
+      },
+      required: ['text'],
+    },
+  },
+  {
+    name: 'parse_price',
+    description: 'Parse and normalize price strings from various formats',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        priceText: {
+          type: 'string',
+          description: 'Price text to parse (e.g., "$19.99", "₹1,234.56")',
+        },
+        currency: {
+          type: 'string',
+          description: 'Expected currency code (optional)',
+        },
+      },
+      required: ['priceText'],
+    },
+  },
+  {
+    name: 'normalize_date',
+    description: 'Parse and normalize date strings to ISO format',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        dateText: {
+          type: 'string',
+          description: 'Date text to parse',
+        },
+        format: {
+          type: 'string',
+          description: 'Expected date format (optional)',
+        },
+      },
+      required: ['dateText'],
+    },
+  },
+  {
+    name: 'wait_for_ajax',
+    description: 'Wait for all AJAX/XHR requests to complete',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        timeout: {
+          type: 'number',
+          description: 'Maximum wait time in milliseconds',
+          default: 30000,
+        },
+        idleTime: {
+          type: 'number',
+          description: 'Time to wait with no active requests (ms)',
+          default: 500,
+        },
+      },
+    },
+  },
+  {
+    name: 'extract_shadow_dom',
+    description: 'Extract content from Shadow DOM elements',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        hostSelector: {
+          type: 'string',
+          description: 'CSS selector for the shadow host element',
+        },
+        shadowSelector: {
+          type: 'string',
+          description: 'CSS selector within the shadow root',
+        },
+      },
+      required: ['hostSelector'],
+    },
+  },
+  {
+    name: 'extract_from_iframe',
+    description: 'Extract content from iframe elements',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        iframeSelector: {
+          type: 'string',
+          description: 'CSS selector for the iframe',
+        },
+        contentSelector: {
+          type: 'string',
+          description: 'CSS selector for content within iframe',
+        },
+      },
+      required: ['iframeSelector'],
+    },
+  },
+  {
+    name: 'detect_modal',
+    description: 'Detect if a modal/popup is present on the page',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        selectors: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'CSS selectors to check for modal elements',
+        },
+      },
+    },
+  },
+  {
+    name: 'close_modal',
+    description: 'Attempt to close modal/popup dialogs',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        closeButtonSelector: {
+          type: 'string',
+          description: 'CSS selector for the close button (optional)',
+        },
+      },
+    },
+  },
+  {
+    name: 'login',
+    description: 'Perform login with username and password',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        usernameSelector: {
+          type: 'string',
+          description: 'CSS selector for username field',
+        },
+        passwordSelector: {
+          type: 'string',
+          description: 'CSS selector for password field',
+        },
+        submitSelector: {
+          type: 'string',
+          description: 'CSS selector for submit button',
+        },
+        username: {
+          type: 'string',
+          description: 'Username to login with',
+        },
+        password: {
+          type: 'string',
+          description: 'Password to login with',
+        },
+      },
+      required: ['usernameSelector', 'passwordSelector', 'submitSelector', 'username', 'password'],
+    },
+  },
+  {
+    name: 'save_session',
+    description: 'Save browser session (cookies, storage) to file',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: {
+          type: 'string',
+          description: 'Path where session should be saved',
+        },
+      },
+      required: ['filePath'],
+    },
+  },
+  {
+    name: 'load_session',
+    description: 'Load browser session (cookies, storage) from file',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: {
+          type: 'string',
+          description: 'Path to load session from',
+        },
+      },
+      required: ['filePath'],
+    },
+  },
+  {
+    name: 'keyword_search',
+    description: 'Search for keywords in page content and highlight matches',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        keywords: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Keywords to search for',
+        },
+        caseSensitive: {
+          type: 'boolean',
+          description: 'Case sensitive search',
+          default: false,
+        },
+      },
+      required: ['keywords'],
+    },
+  },
+  {
+    name: 'regex_search',
+    description: 'Search page content using regular expressions',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        pattern: {
+          type: 'string',
+          description: 'Regular expression pattern',
+        },
+        flags: {
+          type: 'string',
+          description: 'Regex flags (e.g., "gi" for global, case-insensitive)',
+          default: 'g',
+        },
+      },
+      required: ['pattern'],
+    },
+  },
+  {
+    name: 'xpath_query',
+    description: 'Execute XPath queries on the page',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        xpath: {
+          type: 'string',
+          description: 'XPath expression',
+        },
+      },
+      required: ['xpath'],
+    },
+  },
+  {
+    name: 'take_screenshot',
+    description: 'Take a screenshot of the current page or specific element',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: {
+          type: 'string',
+          description: 'File path to save screenshot',
+        },
+        selector: {
+          type: 'string',
+          description: 'CSS selector for specific element (optional)',
+        },
+        fullPage: {
+          type: 'boolean',
+          description: 'Capture full page screenshot',
+          default: false,
+        },
+      },
+      required: ['path'],
+    },
+  },
+  {
+    name: 'generate_pdf',
+    description: 'Generate a PDF of the current page',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: {
+          type: 'string',
+          description: 'File path to save PDF',
+        },
+        options: {
+          type: 'object',
+          description: 'PDF generation options',
+          properties: {
+            format: { type: 'string', default: 'A4' },
+            printBackground: { type: 'boolean', default: true },
+            margin: {
+              type: 'object',
+              properties: {
+                top: { type: 'string', default: '10mm' },
+                bottom: { type: 'string', default: '10mm' },
+                left: { type: 'string', default: '10mm' },
+                right: { type: 'string', default: '10mm' },
+              },
+            },
+          },
+        },
+      },
+      required: ['path'],
+    },
+  },
+  {
+    name: 'classify_content',
+    description: 'Classify page content into predefined categories using AI',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        categories: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'List of categories to classify into',
+        },
+        selector: {
+          type: 'string',
+          description: 'CSS selector for specific content (optional)',
+        },
+      },
+      required: ['categories'],
+    },
+  },
+  {
+    name: 'analyze_sentiment',
+    description: 'Analyze sentiment of page content (positive/negative/neutral)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        selector: {
+          type: 'string',
+          description: 'CSS selector for specific content (optional)',
+        },
+      },
+    },
+  },
+  {
+    name: 'generate_summary',
+    description: 'Generate AI-powered summary of page content',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        maxLength: {
+          type: 'number',
+          description: 'Maximum summary length in characters',
+          default: 500,
+        },
+        selector: {
+          type: 'string',
+          description: 'CSS selector for specific content (optional)',
+        },
+      },
+    },
+  },
 ];
 
 
