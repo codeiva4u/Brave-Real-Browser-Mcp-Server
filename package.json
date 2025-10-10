@@ -92,5 +92,12 @@
     "darwin",
     "linux",
     "win32"
-  ]
+  ],
+  "overrides": {
+    "puppeteer-screen-recorder": {
+      "puppeteer": "^23.0.0"
+    },
+    "tar-fs": "^3.0.0",
+    "ws": "^8.18.0"
+  }
 }
