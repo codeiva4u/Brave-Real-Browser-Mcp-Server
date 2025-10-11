@@ -11,7 +11,12 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { handleNavigate, handleWait } from './navigation-handlers.js';
 import { NavigateArgs, WaitArgs } from '../tool-definitions.js';
-import { TEST_URLS } from '../../test/helpers/test-constants.js';
+
+// Test constants
+const TEST_URLS = {
+  BASIC: 'https://example.com',
+  FORM: 'https://httpbin.org/forms/post'
+};
 
 // Mock all external dependencies
 vi.mock('../browser-manager', () => ({
