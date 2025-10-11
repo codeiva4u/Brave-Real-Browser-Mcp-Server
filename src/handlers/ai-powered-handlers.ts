@@ -76,17 +76,9 @@ export async function handleSmartSelectorGenerator(args: any): Promise<any> {
       };
     }, description, context || '');
     
-    return {
-      success: true,
-      data: result,
-      description,
-      context
-    };
+    const resultText = `? Smart Selector Generated\n\nBest Match: ${JSON.stringify(result.bestMatch, null, 2)}\nAlternatives: ${JSON.stringify(result.alternatives, null, 2)}\nTotal Candidates: ${result.totalCandidates}`; return { content: [{ type: 'text', text: resultText }] };
   } catch (error: any) {
-    return {
-      success: false,
-      error: error.message
-    };
+    return { content: [{ type: 'text', text: `? Error: ${error.message}` }], isError: true };
   }
 }
 
@@ -152,10 +144,7 @@ export async function handleContentClassification(args: any): Promise<any> {
       confidence: scores[0].score / (scores.reduce((sum, s) => sum + s.score, 0) || 1)
     };
   } catch (error: any) {
-    return {
-      success: false,
-      error: error.message
-    };
+    return { content: [{ type: 'text', text: `? Error: ${error.message}` }], isError: true };
   }
 }
 
@@ -228,10 +217,7 @@ export async function handleSentimentAnalysis(args: any): Promise<any> {
       }
     };
   } catch (error: any) {
-    return {
-      success: false,
-      error: error.message
-    };
+    return { content: [{ type: 'text', text: `? Error: ${error.message}` }], isError: true };
   }
 }
 
@@ -320,10 +306,7 @@ export async function handleSummaryGenerator(args: any): Promise<any> {
       }))
     };
   } catch (error: any) {
-    return {
-      success: false,
-      error: error.message
-    };
+    return { content: [{ type: 'text', text: `? Error: ${error.message}` }], isError: true };
   }
 }
 
@@ -405,9 +388,7 @@ export async function handleTranslationSupport(args: any): Promise<any> {
       translationNote: 'Use external translation API (Google Translate, DeepL) for actual translation'
     };
   } catch (error: any) {
-    return {
-      success: false,
-      error: error.message
-    };
+    return { content: [{ type: 'text', text: `? Error: ${error.message}` }], isError: true };
   }
 }
+

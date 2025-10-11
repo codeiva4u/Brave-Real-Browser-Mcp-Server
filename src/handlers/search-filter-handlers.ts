@@ -232,15 +232,25 @@ export async function handleXPathSupport(args: any): Promise<any> {
       };
     }, xpath, returnType);
     
+    const resultText = `✅ XPath Query Results\n\nXPath: ${xpath}\nElements Found: ${results.count}\n\nElements:\n${JSON.stringify(results.elements, null, 2)}`;
+    
     return {
-      success: true,
-      xpath,
-      ...results
+      content: [
+        {
+          type: 'text',
+          text: resultText,
+        },
+      ],
     };
   } catch (error: any) {
     return {
-      success: false,
-      error: error.message
+      content: [
+        {
+          type: 'text',
+          text: `❌ XPath query failed: ${error.message}`,
+        },
+      ],
+      isError: true,
     };
   }
 }
@@ -308,16 +318,25 @@ export async function handleAdvancedCSSSelectors(args: any): Promise<any> {
       };
     }, selector, operation, returnType);
     
+    const resultText = `✅ Advanced CSS Selector Results\n\nSelector: ${selector}\nOperation: ${operation}\nElements Found: ${results.count}\n\nElements (first 10):\n${JSON.stringify(results.elements.slice(0, 10), null, 2)}`;
+    
     return {
-      success: true,
-      selector,
-      operation,
-      ...results
+      content: [
+        {
+          type: 'text',
+          text: resultText,
+        },
+      ],
     };
   } catch (error: any) {
     return {
-      success: false,
-      error: error.message
+      content: [
+        {
+          type: 'text',
+          text: `❌ CSS selector query failed: ${error.message}`,
+        },
+      ],
+      isError: true,
     };
   }
 }
@@ -446,15 +465,25 @@ export async function handleVisualElementFinder(args: any): Promise<any> {
       };
     }, criteria);
     
+    const resultText = `✅ Visual Element Finder Results\n\nCriteria: ${JSON.stringify(criteria, null, 2)}\nTotal Matches: ${results.totalMatches}\n\nTop Matches:\n${JSON.stringify(results.topMatches, null, 2)}`;
+    
     return {
-      success: true,
-      criteria,
-      ...results
+      content: [
+        {
+          type: 'text',
+          text: resultText,
+        },
+      ],
     };
   } catch (error: any) {
     return {
-      success: false,
-      error: error.message
+      content: [
+        {
+          type: 'text',
+          text: `❌ Visual element finder failed: ${error.message}`,
+        },
+      ],
+      isError: true,
     };
   }
 }
