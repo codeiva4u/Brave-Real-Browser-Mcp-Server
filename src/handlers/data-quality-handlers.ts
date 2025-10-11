@@ -49,21 +49,36 @@ export async function handleDataDeduplication(args: any): Promise<any> {
       }
     });
     
+    const dedupRate = ((duplicates.length / data.length) * 100).toFixed(2);
+    let summary = `Data Deduplication Results:\n\nStatistics:\n- Original Items: ${data.length}\n- Unique Items: ${unique.length}\n- Duplicates Found: ${duplicates.length}\n- Deduplication Rate: ${dedupRate}%`;
+    
+    if (uniqueKeys) {
+      summary += `\n- Unique Keys Used: ${uniqueKeys.join(', ')}`;
+    }
+    
+    summary += `\n- Fuzzy Matching: ${fuzzyMatch ? 'Enabled' : 'Disabled'}`;
+    
+    if (duplicates.length > 0) {
+      summary += `\n\nSample Duplicates (Top 5):\n${duplicates.slice(0, 5).map((d: any, i: number) => `${i + 1}. Index ${d.index}: ${JSON.stringify(d.item).substring(0, 100)}...`).join('\n')}`;
+    }
+    
     return {
-      success: true,
-      statistics: {
-        original: data.length,
-        unique: unique.length,
-        duplicates: duplicates.length,
-        deduplicationRate: ((duplicates.length / data.length) * 100).toFixed(2) + '%'
-      },
-      uniqueData: unique,
-      duplicateItems: duplicates.slice(0, 10) // Show first 10 duplicates
+      content: [
+        {
+          type: "text",
+          text: summary
+        }
+      ]
     };
   } catch (error: any) {
     return {
-      success: false,
-      error: error.message
+      content: [
+        {
+          type: "text",
+          text: `Data Deduplication Error: ${error.message}`
+        }
+      ],
+      isError: true
     };
   }
 }
@@ -138,23 +153,35 @@ export async function handleMissingDataHandler(args: any): Promise<any> {
       }
     });
     
+    const itemsWithMissing = Object.values(missingReport).length > 0 ? 
+      [...new Set(Object.values(missingReport).flatMap((r: any) => r.indices))].length : 0;
+    const missingRate = ((totalMissing / (data.length * (requiredFields?.length || 1))) * 100).toFixed(2);
+    
+    let summary = `Missing Data Analysis:\n\nStatistics:\n- Total Items: ${data.length}\n- Items with Missing Data: ${itemsWithMissing}\n- Total Missing Fields: ${totalMissing}\n- Missing Rate: ${missingRate}%\n- Strategy: ${strategy}`;
+    
+    if (Object.keys(missingReport).length > 0) {
+      summary += `\n\nMissing Fields Report:\n${Object.entries(missingReport).map(([field, info]: [string, any]) => `- ${field}: ${info.count} occurrences (indices: ${info.indices.slice(0, 5).join(', ')}${info.indices.length > 5 ? '...' : ''})`).join('\n')}`;
+    }
+    
+    summary += `\n\nProcessed Items: ${results.length}`;
+    
     return {
-      success: true,
-      statistics: {
-        totalItems: data.length,
-        itemsWithMissing: Object.values(missingReport).length > 0 ? 
-          [...new Set(Object.values(missingReport).flatMap((r: any) => r.indices))].length : 0,
-        totalMissingFields: totalMissing,
-        missingRate: ((totalMissing / (data.length * (requiredFields?.length || 1))) * 100).toFixed(2) + '%'
-      },
-      missingReport,
-      processedData: results,
-      strategy
+      content: [
+        {
+          type: "text",
+          text: summary
+        }
+      ]
     };
   } catch (error: any) {
     return {
-      success: false,
-      error: error.message
+      content: [
+        {
+          type: "text",
+          text: `Missing Data Handler Error: ${error.message}`
+        }
+      ],
+      isError: true
     };
   }
 }
@@ -199,22 +226,37 @@ export async function handleDataTypeValidator(args: any): Promise<any> {
       }
     }
     
+    const total = Array.isArray(data) ? data.length : 1;
+    const validationRate = ((validItems.length / total) * 100).toFixed(2);
+    
+    let summary = `Data Type Validation Results:\n\nStatistics:\n- Total Items: ${total}\n- Valid Items: ${validItems.length}\n- Invalid Items: ${invalidItems.length}\n- Validation Rate: ${validationRate}%`;
+    
+    if (invalidItems.length > 0) {
+      summary += `\n\nInvalid Items (Top 5):\n${invalidItems.slice(0, 5).map((inv: any, i: number) => {
+        const errorMsgs = inv.errors?.map((e: any) => `${e.instancePath || 'root'}: ${e.message}`).join(', ') || 'Unknown error';
+        return `${i + 1}. Index ${inv.index || 'N/A'}:\n   Errors: ${errorMsgs}`;
+      }).join('\n')}`;
+    }
+    
+    summary += `\n\nSchema: ${JSON.stringify(schema, null, 2).substring(0, 200)}${JSON.stringify(schema).length > 200 ? '...' : ''}`;
+    
     return {
-      success: true,
-      validation: {
-        total: Array.isArray(data) ? data.length : 1,
-        valid: validItems.length,
-        invalid: invalidItems.length,
-        validationRate: ((validItems.length / (Array.isArray(data) ? data.length : 1)) * 100).toFixed(2) + '%'
-      },
-      validData: validItems,
-      invalidData: invalidItems.slice(0, 10), // Show first 10 invalid items
-      schema
+      content: [
+        {
+          type: "text",
+          text: summary
+        }
+      ]
     };
   } catch (error: any) {
     return {
-      success: false,
-      error: error.message
+      content: [
+        {
+          type: "text",
+          text: `Data Type Validator Error: ${error.message}`
+        }
+      ],
+      isError: true
     };
   }
 }
@@ -310,21 +352,35 @@ export async function handleOutlierDetection(args: any): Promise<any> {
       });
     }
     
+    const outlierPercentage = ((outliers.length / data.length) * 100).toFixed(2);
+    
+    let summary = `Outlier Detection Results:\n\nMethod: ${method}\nThreshold: ${threshold}${field ? `\nField Analyzed: ${field}` : ''}\n\nStatistics:\n- Count: ${stats.count}\n- Min: ${stats.min}\n- Max: ${stats.max}\n- Mean: ${stats.mean}\n- Median: ${stats.median}\n- Std Dev: ${stats.stdDev}\n- Q1: ${stats.q1}\n- Q3: ${stats.q3}\n- IQR: ${stats.iqr}`;
+    
+    summary += `\n\nOutliers:\n- Count: ${outliers.length}\n- Percentage: ${outlierPercentage}%`;
+    
+    if (outliers.length > 0) {
+      summary += `\n\nOutlier Samples (Top 10):\n${outliers.slice(0, 10).map((o: any, i: number) => {
+        return `${i + 1}. Index ${o.index}: Value=${o.value}, Reason: ${o.reason}${o.zscore ? `, Z-score=${o.zscore}` : ''}${o.bounds ? `, Bounds=[${o.bounds.lower}, ${o.bounds.upper}]` : ''}`;
+      }).join('\n')}`;
+    }
+    
     return {
-      success: true,
-      method,
-      threshold,
-      statistics: stats,
-      outliers: {
-        count: outliers.length,
-        percentage: ((outliers.length / data.length) * 100).toFixed(2) + '%',
-        items: outliers.slice(0, 20) // Show first 20 outliers
-      }
+      content: [
+        {
+          type: "text",
+          text: summary
+        }
+      ]
     };
   } catch (error: any) {
     return {
-      success: false,
-      error: error.message
+      content: [
+        {
+          type: "text",
+          text: `Outlier Detection Error: ${error.message}`
+        }
+      ],
+      isError: true
     };
   }
 }
@@ -438,21 +494,33 @@ export async function handleConsistencyChecker(args: any): Promise<any> {
       });
     });
     
+    const consistencyRate = (((data.length - violations.length) / data.length) * 100).toFixed(2);
+    
+    let summary = `Consistency Check Results:\n\nSummary:\n- Total Items: ${data.length}\n- Rules Checked: ${rules.length}\n- Total Violations: ${violations.length}\n- Consistency Rate: ${consistencyRate}%`;
+    
+    summary += `\n\nRule Results:\n${Object.entries(ruleResults).map(([name, result]: [string, any]) => `- ${name}: ${result.passed} passed, ${result.failed} failed`).join('\n')}`;
+    
+    if (violations.length > 0) {
+      summary += `\n\nViolations (Top 10):\n${violations.slice(0, 10).map((v: any, i: number) => `${i + 1}. Index ${v.index} - Rule: ${v.rule}\n   Reason: ${v.reason}`).join('\n')}`;
+    }
+    
     return {
-      success: true,
-      summary: {
-        totalItems: data.length,
-        totalViolations: violations.length,
-        rulesChecked: rules.length,
-        consistencyRate: (((data.length - violations.length) / data.length) * 100).toFixed(2) + '%'
-      },
-      ruleResults,
-      violations: violations.slice(0, 20) // Show first 20 violations
+      content: [
+        {
+          type: "text",
+          text: summary
+        }
+      ]
     };
   } catch (error: any) {
     return {
-      success: false,
-      error: error.message
+      content: [
+        {
+          type: "text",
+          text: `Consistency Checker Error: ${error.message}`
+        }
+      ],
+      isError: true
     };
   }
 }
