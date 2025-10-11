@@ -11,6 +11,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { handleNavigate, handleWait } from './navigation-handlers.js';
 import { NavigateArgs, WaitArgs } from '../tool-definitions.js';
+import { TEST_URLS } from '../../test/helpers/test-constants.js';
 
 // Mock all external dependencies
 vi.mock('../browser-manager', () => ({
@@ -83,7 +84,7 @@ describe('Navigation Handlers', () => {
     describe('Successful Navigation', () => {
       it('should navigate to URL successfully', async () => {
         // Arrange: Basic navigation args
-        const args: NavigateArgs = { url: 'https://example.com' };
+        const args: NavigateArgs = { url: TEST_URLS.BASIC };
 
         mockPageInstance.goto.mockResolvedValue(undefined);
 
@@ -92,7 +93,7 @@ describe('Navigation Handlers', () => {
 
         // Assert: Should navigate successfully
         expect(mockPageInstance.goto).toHaveBeenCalledWith(
-          'https://example.com',
+          TEST_URLS.BASIC,
           { waitUntil: 'domcontentloaded', timeout: 60000 }
         );
         expect(mockWorkflowValidation.validateWorkflow).toHaveBeenCalledWith('navigate', args);
@@ -100,14 +101,14 @@ describe('Navigation Handlers', () => {
         
         expect(result).toHaveProperty('content');
         expect(result.content[0].type).toBe('text');
-        expect(result.content[0].text).toContain('Successfully navigated to https://example.com');
+        expect(result.content[0].text).toContain(`Successfully navigated to ${TEST_URLS.BASIC}`);
         expect(result.content[0].text).toContain('Workflow Status: Page loaded');
         expect(result.content[0].text).toContain('Next step: Use get_content');
       });
 
       it('should navigate with custom waitUntil option', async () => {
         // Arrange: Navigation with custom wait condition
-        const args: NavigateArgs = { url: 'https://example.com', waitUntil: 'load' };
+        const args: NavigateArgs = { url: TEST_URLS.BASIC, waitUntil: 'load' };
 
         mockPageInstance.goto.mockResolvedValue(undefined);
 
@@ -116,15 +117,15 @@ describe('Navigation Handlers', () => {
 
         // Assert: Should use custom waitUntil
         expect(mockPageInstance.goto).toHaveBeenCalledWith(
-          'https://example.com',
+          TEST_URLS.BASIC,
           { waitUntil: 'load', timeout: 60000 }
         );
-        expect(result.content[0].text).toContain('Successfully navigated to https://example.com');
+        expect(result.content[0].text).toContain(`Successfully navigated to ${TEST_URLS.BASIC}`);
       });
 
       it('should include comprehensive workflow guidance', async () => {
         // Arrange: Successful navigation
-        const args: NavigateArgs = { url: 'https://test.com' };
+        const args: NavigateArgs = { url: TEST_URLS.BASIC };
 
         mockPageInstance.goto.mockResolvedValue(undefined);
 
@@ -142,7 +143,7 @@ describe('Navigation Handlers', () => {
     describe('Navigation Retry Logic', () => {
       it('should retry navigation on failure and succeed', async () => {
         // Arrange: Navigation fails first time, succeeds second time
-        const args: NavigateArgs = { url: 'https://retry.com' };
+        const args: NavigateArgs = { url: TEST_URLS.BASIC };
 
         mockPageInstance.goto
           .mockRejectedValueOnce(new Error('Network error'))
@@ -153,12 +154,12 @@ describe('Navigation Handlers', () => {
 
         // Assert: Should retry and succeed
         expect(mockPageInstance.goto).toHaveBeenCalledTimes(2);
-        expect(result.content[0].text).toContain('Successfully navigated to https://retry.com');
+        expect(result.content[0].text).toContain(`Successfully navigated to ${TEST_URLS.BASIC}`);
       });
 
       it('should retry navigation multiple times before giving up', async () => {
         // Arrange: Navigation fails all attempts
-        const args: NavigateArgs = { url: 'https://fail.com' };
+        const args: NavigateArgs = { url: TEST_URLS.BASIC };
         const networkError = new Error('Persistent network error');
 
         mockPageInstance.goto.mockRejectedValue(networkError);
@@ -177,7 +178,7 @@ describe('Navigation Handlers', () => {
 
       it('should use exponential backoff between retries', async () => {
         // Arrange: Navigation fails with retries
-        const args: NavigateArgs = { url: 'https://backoff.com' };
+        const args: NavigateArgs = { url: TEST_URLS.BASIC };
 
         mockPageInstance.goto.mockRejectedValue(new Error('Timeout'));
 
@@ -197,7 +198,7 @@ describe('Navigation Handlers', () => {
     describe('Navigation Error Handling', () => {
       it('should throw error when browser not initialized', async () => {
         // Arrange: No page instance
-        const args: NavigateArgs = { url: 'https://example.com' };
+        const args: NavigateArgs = { url: TEST_URLS.BASIC };
 
         mockBrowserManager.getPageInstance.mockReturnValue(null);
 
@@ -209,7 +210,7 @@ describe('Navigation Handlers', () => {
 
       it('should handle workflow validation failure', async () => {
         // Arrange: Invalid workflow state
-        const args: NavigateArgs = { url: 'https://example.com' };
+        const args: NavigateArgs = { url: TEST_URLS.BASIC };
 
         mockWorkflowValidation.validateWorkflow.mockReturnValue({
           isValid: false,
@@ -225,7 +226,7 @@ describe('Navigation Handlers', () => {
 
       it('should handle timeout errors from withTimeout wrapper', async () => {
         // Arrange: Navigation that times out
-        const args: NavigateArgs = { url: 'https://timeout.com' };
+        const args: NavigateArgs = { url: TEST_URLS.BASIC };
 
         mockSystemUtils.withTimeout.mockImplementation(async (operation: () => Promise<any>, timeout: number, context: string) => {
           throw new Error(`Operation timed out after ${timeout}ms in context: ${context}`);
@@ -434,7 +435,7 @@ describe('Navigation Handlers', () => {
   describe('Workflow Validation Integration', () => {
     it('should validate workflow before navigation operations', async () => {
       // Arrange: Valid navigation request
-      const args: NavigateArgs = { url: 'https://example.com' };
+      const args: NavigateArgs = { url: TEST_URLS.BASIC };
       mockPageInstance.goto.mockResolvedValue(undefined);
 
       // Act: Execute navigation
@@ -458,7 +459,7 @@ describe('Navigation Handlers', () => {
 
     it('should record successful executions', async () => {
       // Arrange: Successful operation
-      const args: NavigateArgs = { url: 'https://success.com' };
+      const args: NavigateArgs = { url: TEST_URLS.BASIC };
       mockPageInstance.goto.mockResolvedValue(undefined);
 
       // Act: Execute successful operation
@@ -492,7 +493,7 @@ describe('Navigation Handlers', () => {
   describe('System Integration', () => {
     it('should use error handling wrapper for navigation', async () => {
       // Arrange: Navigation operation
-      const args: NavigateArgs = { url: 'https://example.com' };
+      const args: NavigateArgs = { url: TEST_URLS.BASIC };
       mockPageInstance.goto.mockResolvedValue(undefined);
 
       // Act: Execute navigation
@@ -522,7 +523,7 @@ describe('Navigation Handlers', () => {
 
     it('should use timeout wrapper for navigation', async () => {
       // Arrange: Navigation operation
-      const args: NavigateArgs = { url: 'https://example.com' };
+      const args: NavigateArgs = { url: TEST_URLS.BASIC };
       mockPageInstance.goto.mockResolvedValue(undefined);
 
       // Act: Execute navigation
