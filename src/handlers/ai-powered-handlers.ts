@@ -160,16 +160,19 @@ export async function handleSentimentAnalysis(args: any): Promise<any> {
   try {
     let contentToAnalyze = text;
     
-    if (!contentToAnalyze && url) {
+    // If no text provided, get from page
+    if (!contentToAnalyze) {
       const page = getPageInstance();
       if (!page) {
         throw new Error('Browser not initialized. Call browser_init first.');
       }
       
-      if (page.url() !== url) {
+      // Navigate if URL provided and different from current
+      if (url && page.url() !== url) {
         await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
       }
       
+      // Extract content from selector or entire page
       if (selector) {
         contentToAnalyze = await page.evaluate((sel: string) => {
           const element = document.querySelector(sel);
