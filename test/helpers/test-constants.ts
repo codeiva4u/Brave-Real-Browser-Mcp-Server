@@ -23,6 +23,12 @@ export const TEST_URLS = {
   /** Cloudflare demo page - for testing CAPTCHA handling */
   CLOUDFLARE_DEMO: 'https://nopecha.com/demo/cloudflare',
   
+  /** NopeCHA demo page - for testing multiple CAPTCHA types (Arkose, AWS WAF, hCaptcha, reCAPTCHA, etc.) */
+  NOPECHA_DEMO: 'https://nopecha.com/demo',
+  
+  /** eCourts India - for testing government website with CAPTCHA and complex forms */
+  ECOURTS_CASE_STATUS: 'https://services.ecourts.gov.in/ecourtindia_v6/?p=casestatus/index&app_token=22e7493ca224682349cf0986dd144491a950819d30918b8e319ab0d39618f847',
+  
   /** Another test URL option */
   TEST_PAGE: 'https://httpbin.org/html',
 } as const;
