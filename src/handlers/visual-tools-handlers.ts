@@ -137,21 +137,25 @@ export async function handleElementScreenshot(args: any): Promise<any> {
       fileSize = stats.size;
     }
     
+    const resultText = `✅ Element screenshot captured successfully\n\nPath: ${outputPath}\nSelector: ${selector}\nFormat: ${format}\nPadding: ${padding}px\nElement: ${elementInfo?.tagName || 'unknown'}\nFile Size: ${(fileSize / 1024).toFixed(2)} KB\nTimestamp: ${new Date().toISOString()}`;
+    
     return {
-      success: true,
-      path: outputPath,
-      selector,
-      format,
-      padding,
-      element: elementInfo,
-      fileSize,
-      fileSizeKB: (fileSize / 1024).toFixed(2),
-      timestamp: new Date().toISOString()
+      content: [
+        {
+          type: 'text',
+          text: resultText,
+        },
+      ],
     };
   } catch (error: any) {
     return {
-      success: false,
-      error: error.message
+      content: [
+        {
+          type: 'text',
+          text: `❌ Element screenshot failed: ${error.message}`,
+        },
+      ],
+      isError: true,
     };
   }
 }
@@ -195,20 +199,25 @@ export async function handlePDFGeneration(args: any): Promise<any> {
       fileSize = stats.size;
     }
     
+    const resultText = `✅ PDF generated successfully\n\nPath: ${outputPath}\nFormat: ${format}\nLandscape: ${landscape}\nFile Size: ${(fileSize / 1024).toFixed(2)} KB (${(fileSize / (1024 * 1024)).toFixed(2)} MB)\nTimestamp: ${new Date().toISOString()}`;
+    
     return {
-      success: true,
-      path: outputPath,
-      format,
-      landscape,
-      fileSize,
-      fileSizeKB: (fileSize / 1024).toFixed(2),
-      fileSizeMB: (fileSize / (1024 * 1024)).toFixed(2),
-      timestamp: new Date().toISOString()
+      content: [
+        {
+          type: 'text',
+          text: resultText,
+        },
+      ],
     };
   } catch (error: any) {
     return {
-      success: false,
-      error: error.message
+      content: [
+        {
+          type: 'text',
+          text: `❌ PDF generation failed: ${error.message}`,
+        },
+      ],
+      isError: true,
     };
   }
 }
