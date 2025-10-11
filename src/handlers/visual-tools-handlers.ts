@@ -262,18 +262,22 @@ export async function handleVideoRecording(args: any): Promise<any> {
     }
     
     return {
-      success: true,
-      duration,
-      fps,
-      frameCount: frames.length,
-      frames: frames.slice(0, 5), // Show first 5 frames
-      outputPath,
-      note: 'For actual video file, use ffmpeg or puppeteer-screen-recorder library to combine frames'
+      content: [
+        {
+          type: "text",
+          text: `Video Recording Complete:\n- Duration: ${duration} seconds\n- FPS: ${fps}\n- Frames Captured: ${frames.length}\n- Output Path: ${outputPath}\n- Sample Frames:\n${frames.slice(0, 5).map((f: string, i: number) => `  ${i + 1}. ${f}`).join('\n')}\n\nNote: For actual video file, use ffmpeg or puppeteer-screen-recorder library to combine frames`
+        }
+      ]
     };
   } catch (error: any) {
     return {
-      success: false,
-      error: error.message
+      content: [
+        {
+          type: "text",
+          text: `Video Recording Error: ${error.message}`
+        }
+      ],
+      isError: true
     };
   }
 }
@@ -299,10 +303,13 @@ export async function handleVisualComparison(args: any): Promise<any> {
     // Check if dimensions match
     if (img1.width !== img2.width || img1.height !== img2.height) {
       return {
-        success: false,
-        error: 'Image dimensions do not match',
-        image1: { width: img1.width, height: img1.height },
-        image2: { width: img2.width, height: img2.height }
+        content: [
+          {
+            type: "text",
+            text: `Image dimensions do not match:\n- Image 1: ${img1.width}x${img1.height}\n- Image 2: ${img2.width}x${img2.height}`
+          }
+        ],
+        isError: true
       };
     }
     
@@ -328,27 +335,25 @@ export async function handleVisualComparison(args: any): Promise<any> {
     
     const totalPixels = img1.width * img1.height;
     const diffPercentage = (numDiffPixels / totalPixels) * 100;
+    const similarity = ((1 - (numDiffPixels / totalPixels)) * 100).toFixed(2);
     
     return {
-      success: true,
-      identical: numDiffPixels === 0,
-      differences: {
-        pixels: numDiffPixels,
-        percentage: diffPercentage.toFixed(2) + '%',
-        totalPixels
-      },
-      dimensions: {
-        width: img1.width,
-        height: img1.height
-      },
-      threshold,
-      diffImagePath: diffOutputPath,
-      similarity: ((1 - (numDiffPixels / totalPixels)) * 100).toFixed(2) + '%'
+      content: [
+        {
+          type: "text",
+          text: `Visual Comparison Results:\n- Identical: ${numDiffPixels === 0 ? 'Yes' : 'No'}\n- Similarity: ${similarity}%\n- Different Pixels: ${numDiffPixels} (${diffPercentage.toFixed(2)}%)\n- Total Pixels: ${totalPixels}\n- Image Dimensions: ${img1.width}x${img1.height}\n- Threshold: ${threshold}${diffOutputPath ? `\n- Diff Image Saved: ${diffOutputPath}` : ''}`
+        }
+      ]
     };
   } catch (error: any) {
     return {
-      success: false,
-      error: error.message
+      content: [
+        {
+          type: "text",
+          text: `Visual Comparison Error: ${error.message}`
+        }
+      ],
+      isError: true
     };
   }
 }

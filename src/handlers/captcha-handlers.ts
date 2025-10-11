@@ -51,17 +51,22 @@ export async function handleOCREngine(args: any): Promise<any> {
     }));
     
     return {
-      success: true,
-      text,
-      confidence,
-      words,
-      lines: result.data.lines.length,
-      language
+      content: [
+        {
+          type: "text",
+          text: `OCR Results:\n- Extracted Text: ${text}\n- Confidence: ${confidence.toFixed(2)}%\n- Words Found: ${words.length}\n- Lines: ${result.data.lines.length}\n- Language: ${language}\n\nWords Detail:\n${words.map((w: any) => `  "${w.text}" (confidence: ${w.confidence.toFixed(2)}%)`).join('\n')}`
+        }
+      ]
     };
   } catch (error: any) {
     return {
-      success: false,
-      error: error.message
+      content: [
+        {
+          type: "text",
+          text: `OCR Engine Error: ${error.message}`
+        }
+      ],
+      isError: true
     };
   }
 }
@@ -114,16 +119,22 @@ export async function handleAudioCaptchaSolver(args: any): Promise<any> {
     }
     
     return {
-      success: true,
-      audioUrl: audioSource,
-      downloaded,
-      downloadPath: downloaded ? downloadPath : null,
-      note: 'Audio captcha solving requires external speech-to-text API (Google Speech, AWS Transcribe, etc.)'
+      content: [
+        {
+          type: "text",
+          text: `Audio Captcha Analysis:\n- Audio URL: ${audioSource}\n- Downloaded: ${downloaded ? 'Yes' : 'No'}${downloaded ? `\n- Download Path: ${downloadPath}` : ''}\n\nNote: Audio captcha solving requires external speech-to-text API (Google Speech, AWS Transcribe, etc.)`
+        }
+      ]
     };
   } catch (error: any) {
     return {
-      success: false,
-      error: error.message
+      content: [
+        {
+          type: "text",
+          text: `Audio Captcha Solver Error: ${error.message}`
+        }
+      ],
+      isError: true
     };
   }
 }
@@ -231,15 +242,43 @@ export async function handlePuzzleCaptchaHandler(args: any): Promise<any> {
       }
     }
     
+    let summary = `Puzzle Captcha Analysis:\n- Puzzle Found: ${result.puzzleFound ? 'Yes' : 'No'}\n- Slider Found: ${result.sliderFound ? 'Yes' : 'No'}`;
+    
+    if (result.puzzle) {
+      summary += `\n\nPuzzle Details:\n- Dimensions: ${result.puzzle.width}x${result.puzzle.height}\n- Position: (${result.puzzle.left}, ${result.puzzle.top})\n- Visible: ${result.puzzle.visible ? 'Yes' : 'No'}`;
+    }
+    
+    if (result.puzzlePiece) {
+      summary += `\n\nPuzzle Piece:\n- Dimensions: ${result.puzzlePiece.width}x${result.puzzlePiece.height}\n- Position: (${result.puzzlePiece.left}, ${result.puzzlePiece.top})`;
+    }
+    
+    if (result.slider) {
+      summary += `\n\nSlider Details:\n- Dimensions: ${result.slider.width}x${result.slider.height}\n- Position: (${result.slider.left}, ${result.slider.top})\n- Visible: ${result.slider.visible ? 'Yes' : 'No'}\n- Tag: ${result.slider.tagName}`;
+    }
+    
+    if (result.attemptedSolve) {
+      summary += `\n\nSolve Attempt:\n- Method: ${result.method}\n- Status: ${result.solveError ? 'Failed' : 'Completed'}${result.solveError ? `\n- Error: ${result.solveError}` : ''}`;
+    }
+    
+    summary += `\n\nNote: Advanced puzzle solving requires computer vision libraries (OpenCV, TensorFlow)`;
+    
     return {
-      success: true,
-      ...result,
-      note: 'Advanced puzzle solving requires computer vision libraries (OpenCV, TensorFlow)'
+      content: [
+        {
+          type: "text",
+          text: summary
+        }
+      ]
     };
   } catch (error: any) {
     return {
-      success: false,
-      error: error.message
+      content: [
+        {
+          type: "text",
+          text: `Puzzle Captcha Handler Error: ${error.message}`
+        }
+      ],
+      isError: true
     };
   }
 }
