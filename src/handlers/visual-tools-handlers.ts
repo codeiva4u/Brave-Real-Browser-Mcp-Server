@@ -43,19 +43,25 @@ export async function handleFullPageScreenshot(args: any): Promise<any> {
       fileSize = stats.size;
     }
     
+    const resultText = `✅ Screenshot captured successfully\n\nPath: ${outputPath}\nFormat: ${format}\nFull Page: ${fullPage}\nFile Size: ${(fileSize / 1024).toFixed(2)} KB\nTimestamp: ${new Date().toISOString()}`;
+    
     return {
-      success: true,
-      path: outputPath,
-      format,
-      fullPage,
-      fileSize,
-      fileSizeKB: (fileSize / 1024).toFixed(2),
-      timestamp: new Date().toISOString()
+      content: [
+        {
+          type: 'text',
+          text: resultText,
+        },
+      ],
     };
   } catch (error: any) {
     return {
-      success: false,
-      error: error.message
+      content: [
+        {
+          type: 'text',
+          text: `❌ Screenshot failed: ${error.message}`,
+        },
+      ],
+      isError: true,
     };
   }
 }

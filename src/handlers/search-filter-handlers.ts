@@ -75,15 +75,25 @@ export async function handleKeywordSearch(args: any): Promise<any> {
       };
     }, keywords, caseSensitive, wholeWord, context);
     
+    const resultText = `✅ Keyword Search Results\n\nTotal Matches: ${results.totalMatches}\n\nKeywords searched: ${Array.isArray(keywords) ? keywords.join(', ') : keywords}\n\nMatches by keyword:\n${JSON.stringify(results.matchesByKeyword, null, 2)}\n\nFirst 100 matches:\n${JSON.stringify(results.allMatches, null, 2)}`;
+    
     return {
-      success: true,
-      keywords,
-      ...results
+      content: [
+        {
+          type: 'text',
+          text: resultText,
+        },
+      ],
     };
   } catch (error: any) {
     return {
-      success: false,
-      error: error.message
+      content: [
+        {
+          type: 'text',
+          text: `❌ Keyword search failed: ${error.message}`,
+        },
+      ],
+      isError: true,
     };
   }
 }
@@ -137,14 +147,25 @@ export async function handleRegexPatternMatcher(args: any): Promise<any> {
       };
     }, pattern, flags, selector || '');
     
+    const resultText = `✅ Regex Pattern Matcher Results\n\nPattern: ${results.pattern}\nFlags: ${results.flags}\nTotal Matches: ${results.totalMatches}\n\nMatches (first 100):\n${JSON.stringify(results.matches, null, 2)}`;
+    
     return {
-      success: true,
-      ...results
+      content: [
+        {
+          type: 'text',
+          text: resultText,
+        },
+      ],
     };
   } catch (error: any) {
     return {
-      success: false,
-      error: error.message
+      content: [
+        {
+          type: 'text',
+          text: `❌ Regex pattern matcher failed: ${error.message}`,
+        },
+      ],
+      isError: true,
     };
   }
 }
