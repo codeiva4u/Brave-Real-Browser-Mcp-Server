@@ -104,26 +104,33 @@ export async function handleRESTAPIEndpointFinder(args: any): Promise<any> {
       return apis;
     });
     
+    let summary = `REST API Discovery Results:\n\nSummary:\n- Total APIs Found: ${apiEndpoints.length + discoveredAPIs.length}\n- Network APIs: ${apiEndpoints.length}\n- Discovered in Content: ${discoveredAPIs.length}`;
+    
+    if (apiEndpoints.length > 0) {
+      summary += `\n\nNetwork API Endpoints (Top 10):\n${apiEndpoints.slice(0, 10).map((ep: any, i: number) => `${i + 1}. ${ep.method} ${ep.url}\n   Type: ${ep.resourceType}${ep.hasBody ? ' (with body)' : ''}`).join('\n')}`;
+    }
+    
+    if (discoveredAPIs.length > 0) {
+      summary += `\n\nDiscovered APIs (Top 10):\n${discoveredAPIs.slice(0, 10).map((api: any, i: number) => `${i + 1}. ${api.url}\n   Source: ${api.source}`).join('\n')}`;
+    }
+    
     return {
-      success: true,
-      networkRequests: {
-        count: apiEndpoints.length,
-        endpoints: apiEndpoints
-      },
-      discoveredInContent: {
-        count: discoveredAPIs.length,
-        endpoints: discoveredAPIs.slice(0, 20) // Limit to 20
-      },
-      summary: {
-        totalFound: apiEndpoints.length + discoveredAPIs.length,
-        uniqueNetworkAPIs: apiEndpoints.length,
-        discoveredAPIs: discoveredAPIs.length
-      }
+      content: [
+        {
+          type: "text",
+          text: summary
+        }
+      ]
     };
   } catch (error: any) {
     return {
-      success: false,
-      error: error.message
+      content: [
+        {
+          type: "text",
+          text: `REST API Endpoint Finder Error: ${error.message}`
+        }
+      ],
+      isError: true
     };
   }
 }
@@ -159,45 +166,44 @@ export async function handleWebhookSupport(args: any): Promise<any> {
         });
         
         return {
-          success: true,
-          webhookUrl,
-          method,
-          testMode: true,
-          response: {
-            status: response.status,
-            statusText: response.statusText,
-            headers: response.headers,
-            data: response.data
-          }
+          content: [
+            {
+              type: "text",
+              text: `Webhook Test Successful:\n- URL: ${webhookUrl}\n- Method: ${method}\n- Status: ${response.status} ${response.statusText}\n- Response Headers: ${JSON.stringify(response.headers, null, 2)}\n- Response Data: ${JSON.stringify(response.data, null, 2)}`
+            }
+          ]
         };
       } catch (webhookError: any) {
         return {
-          success: false,
-          webhookUrl,
-          testMode: true,
-          error: webhookError.message,
-          details: {
-            status: webhookError.response?.status,
-            statusText: webhookError.response?.statusText,
-            data: webhookError.response?.data
-          }
+          content: [
+            {
+              type: "text",
+              text: `Webhook Test Failed:\n- URL: ${webhookUrl}\n- Error: ${webhookError.message}${webhookError.response ? `\n- Status: ${webhookError.response.status} ${webhookError.response.statusText}\n- Response: ${JSON.stringify(webhookError.response.data, null, 2)}` : ''}`
+            }
+          ],
+          isError: true
         };
       }
     } else {
       // Production mode - set up webhook listener
       return {
-        success: true,
-        webhookUrl,
-        method,
-        testMode: false,
-        status: 'configured',
-        note: 'Webhook configured. Send data using separate call or integrate with scraping workflow'
+        content: [
+          {
+            type: "text",
+            text: `Webhook Configured:\n- URL: ${webhookUrl}\n- Method: ${method}\n- Test Mode: No\n- Status: Configured\n\nNote: Webhook configured. Send data using separate call or integrate with scraping workflow`
+          }
+        ]
       };
     }
   } catch (error: any) {
     return {
-      success: false,
-      error: error.message
+      content: [
+        {
+          type: "text",
+          text: `Webhook Support Error: ${error.message}`
+        }
+      ],
+      isError: true
     };
   }
 }
@@ -322,24 +328,47 @@ export async function handleAllWebsiteAPIFinder(args: any): Promise<any> {
     
     // Deduplicate APIs
     const uniqueAPIs = [...new Set(apiDiscovery.apis.map((api: any) => api.url))];
+    const restFound = apiDiscovery.rest.filter((r: any) => r.found).length;
+    
+    let summary = `Comprehensive API Discovery:\n\nSummary:\n- Total Unique APIs: ${uniqueAPIs.length}\n- GraphQL Detected: ${apiDiscovery.graphql.length > 0 ? 'Yes' : 'No'}\n- REST Endpoints: ${restFound}\n- WebSockets: ${apiDiscovery.websockets.length}\n- Documentation Links: ${apiDiscovery.documentationLinks?.length || 0}`;
+    
+    if (apiDiscovery.graphql.length > 0) {
+      summary += `\n\nGraphQL:\n- Indicators Found: ${apiDiscovery.graphql[0].indicators}\n- Possible Endpoints: ${apiDiscovery.graphql[0].possibleEndpoints.join(', ')}`;
+    }
+    
+    if (uniqueAPIs.length > 0) {
+      summary += `\n\nUnique APIs (Top 10):\n${uniqueAPIs.slice(0, 10).map((api: string, i: number) => `${i + 1}. ${api}`).join('\n')}`;
+    }
+    
+    if (apiDiscovery.websockets.length > 0) {
+      summary += `\n\nWebSockets:\n${apiDiscovery.websockets.map((ws: any, i: number) => `${i + 1}. ${ws.url} (${ws.protocol})`).join('\n')}`;
+    }
+    
+    if (apiDiscovery.documentationLinks?.length > 0) {
+      summary += `\n\nDocumentation Links:\n${apiDiscovery.documentationLinks.slice(0, 5).map((link: any, i: number) => `${i + 1}. ${link.text}: ${link.href}`).join('\n')}`;
+    }
+    
+    if (apiDiscovery.swagger?.length > 0) {
+      summary += `\n\nSwagger/OpenAPI:\n${apiDiscovery.swagger.map((s: any, i: number) => `${i + 1}. ${s.href}`).join('\n')}`;
+    }
     
     return {
-      success: true,
-      summary: {
-        totalAPIsFound: uniqueAPIs.length,
-        graphqlDetected: apiDiscovery.graphql.length > 0,
-        restEndpointsFound: apiDiscovery.rest.filter((r: any) => r.found).length,
-        websocketsFound: apiDiscovery.websockets.length,
-        documentationLinks: apiDiscovery.documentationLinks?.length || 0
-      },
-      details: apiDiscovery,
-      uniqueAPIs: uniqueAPIs.slice(0, 20),
-      recommendations: []
+      content: [
+        {
+          type: "text",
+          text: summary
+        }
+      ]
     };
   } catch (error: any) {
     return {
-      success: false,
-      error: error.message
+      content: [
+        {
+          type: "text",
+          text: `All Website API Finder Error: ${error.message}`
+        }
+      ],
+      isError: true
     };
   }
 }
