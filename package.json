@@ -1,6 +1,6 @@
 {
   "name": "brave-real-browser-mcp-server",
-  "version": "2.9.2",
+  "version": "2.9.3",
   "description": "MCP server for brave-real-browser",
   "type": "module",
   "main": "dist/index.js",
