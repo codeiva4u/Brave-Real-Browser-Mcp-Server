@@ -137,11 +137,14 @@ export async function handleContentClassification(args: any): Promise<any> {
     
     scores.sort((a, b) => b.score - a.score);
     
+    const confidence = scores[0].score / (scores.reduce((sum, s) => sum + s.score, 0) || 1);
+    const resultText = `✅ Content Classification\n\nPrimary Category: ${scores[0].category} (Score: ${scores[0].score})\nConfidence: ${(confidence * 100).toFixed(2)}%\n\nAll Categories:\n${JSON.stringify(scores.slice(0, 5), null, 2)}`;
+    
     return {
-      success: true,
-      primaryCategory: scores[0],
-      allScores: scores,
-      confidence: scores[0].score / (scores.reduce((sum, s) => sum + s.score, 0) || 1)
+      content: [{
+        type: 'text',
+        text: resultText
+      }]
     };
   } catch (error: any) {
     return { content: [{ type: 'text', text: `? Error: ${error.message}` }], isError: true };
@@ -198,23 +201,20 @@ export async function handleSentimentAnalysis(args: any): Promise<any> {
       };
     });
     
+    const stats = {
+      totalSentences: sentences.length,
+      positiveSentences: sentenceSentiments.filter(s => s.sentiment === 'positive').length,
+      negativeSentences: sentenceSentiments.filter(s => s.sentiment === 'negative').length,
+      neutralSentences: sentenceSentiments.filter(s => s.sentiment === 'neutral').length
+    };
+    
+    const resultText = `✅ Sentiment Analysis\n\nOverall Sentiment: ${result.score > 0 ? 'Positive' : result.score < 0 ? 'Negative' : 'Neutral'}\nScore: ${result.score}\nComparative: ${result.comparative.toFixed(4)}\n\nStatistics:\n- Total Sentences: ${stats.totalSentences}\n- Positive: ${stats.positiveSentences}\n- Negative: ${stats.negativeSentences}\n- Neutral: ${stats.neutralSentences}\n\nPositive Words: ${result.positive.join(', ')}\nNegative Words: ${result.negative.join(', ')}`;
+    
     return {
-      success: true,
-      overall: {
-        score: result.score,
-        comparative: result.comparative,
-        sentiment: result.score > 0 ? 'positive' : result.score < 0 ? 'negative' : 'neutral',
-        tokens: result.tokens.length,
-        positive: result.positive,
-        negative: result.negative
-      },
-      sentences: sentenceSentiments,
-      statistics: {
-        totalSentences: sentences.length,
-        positiveSentences: sentenceSentiments.filter(s => s.sentiment === 'positive').length,
-        negativeSentences: sentenceSentiments.filter(s => s.sentiment === 'negative').length,
-        neutralSentences: sentenceSentiments.filter(s => s.sentiment === 'neutral').length
-      }
+      content: [{
+        type: 'text',
+        text: resultText
+      }]
     };
   } catch (error: any) {
     return { content: [{ type: 'text', text: `? Error: ${error.message}` }], isError: true };
@@ -290,20 +290,14 @@ export async function handleSummaryGenerator(args: any): Promise<any> {
     
     const summary = topSentences.map(s => s.sentence).join(' ');
     
+    const compressionRatio = (summary.length / content.length * 100).toFixed(2);
+    const resultText = `✅ Summary Generated\n\nSummary:\n${summary}\n\nStatistics:\n- Original Length: ${content.length} characters\n- Summary Length: ${summary.length} characters\n- Compression Ratio: ${compressionRatio}%\n- Original Sentences: ${sentences.length}\n- Summary Sentences: ${topSentences.length}`;
+    
     return {
-      success: true,
-      summary,
-      originalLength: content.length,
-      summaryLength: summary.length,
-      compressionRatio: (summary.length / content.length * 100).toFixed(2) + '%',
-      sentenceCount: {
-        original: sentences.length,
-        summary: topSentences.length
-      },
-      topScoredSentences: topSentences.map(s => ({
-        sentence: s.sentence,
-        score: s.score.toFixed(2)
-      }))
+      content: [{
+        type: 'text',
+        text: resultText
+      }]
     };
   } catch (error: any) {
     return { content: [{ type: 'text', text: `? Error: ${error.message}` }], isError: true };
@@ -374,18 +368,14 @@ export async function handleTranslationSupport(args: any): Promise<any> {
       .slice(0, 10)
       .map(term => term.term);
     
+    const needsTranslation = detectedLang !== targetLanguage && detectedLang !== 'und';
+    const resultText = `✅ Translation Support\n\nDetected Language: ${languageName} (${detectedLang})\nTarget Language: ${targetLanguage}\nNeeds Translation: ${needsTranslation ? 'Yes' : 'No'}\n\nContent Length: ${contentToTranslate.length} characters\nContent Preview: ${contentToTranslate.substring(0, 200)}...\n\nKey Phrases: ${keyPhrases.join(', ')}\n\nNote: Use external translation API (Google Translate, DeepL) for actual translation`;
+    
     return {
-      success: true,
-      detectedLanguage: {
-        code: detectedLang,
-        name: languageName
-      },
-      targetLanguage,
-      needsTranslation: detectedLang !== targetLanguage && detectedLang !== 'und',
-      contentPreview: contentToTranslate.substring(0, 200),
-      contentLength: contentToTranslate.length,
-      keyPhrases,
-      translationNote: 'Use external translation API (Google Translate, DeepL) for actual translation'
+      content: [{
+        type: 'text',
+        text: resultText
+      }]
     };
   } catch (error: any) {
     return { content: [{ type: 'text', text: `? Error: ${error.message}` }], isError: true };
