@@ -24,86 +24,67 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
 
   beforeAll(async () => {
     console.log('🚀 Starting E2E Visual Browser Tests');
-    console.log('📺 You should see browser windows opening during these tests');
+    console.log('📺 You should see ONE browser window that will be used for ALL tests');
+    console.log('⚡ Browser will stay open between tests for better performance');
     
     // Reset browser initialization depth at the start
     resetBrowserInitDepth();
     
-    // Clean up any existing browsers
+    // Clean up any existing browsers before starting
     try {
       await handleBrowserClose();
     } catch (error) {
       // Ignore close errors - browser might not exist
     }
+    
+    // Initialize ONE browser for ALL tests
+    console.log('\n🌐 Opening browser for all E2E tests...');
+    await handleBrowserInit({
+      headless: false,
+      disableXvfb: true,
+      customConfig: {
+        args: ['--window-size=1200,800']
+      }
+    });
+    console.log('✅ Browser ready - will be reused for all tests\n');
   }, E2E_TIMEOUT);
 
   beforeEach(async () => {
-    // Reset depth counter before each test to prevent accumulation
-    resetBrowserInitDepth();
-    
-    // Ensure clean state before each test
-    try {
-      await handleBrowserClose();
-    } catch (error) {
-      // Ignore close errors - browser might not be open
-    }
+    // NO browser close - just navigate to a clean page if needed
+    console.log('\n🔄 Preparing for next test...');
   });
 
   afterEach(async () => {
-    // Clean up after each test
-    try {
-      await handleBrowserClose();
-    } catch (error) {
-      // Ignore close errors - browser might already be closed
-    }
-    
-    // Reset depth counter after each test
-    resetBrowserInitDepth();
+    // NO browser close - keep it open for next test
+    console.log('✅ Test completed - browser stays open for next test');
   });
 
   afterAll(async () => {
-    console.log('🏁 Completed E2E Visual Browser Tests');
+    console.log('\n🏁 All E2E tests completed');
+    console.log('🔒 Closing browser now...');
     
-    // Final cleanup
+    // Only close browser once at the very end
     try {
       await handleBrowserClose();
+      console.log('✅ Browser closed successfully');
     } catch (error) {
-      // Ignore close errors
+      console.log('⚠️  Browser close error (may already be closed)');
     }
     
     // Final reset
     resetBrowserInitDepth();
+    console.log('✅ All cleanup completed');
   });
 
   describe('Complete Workflow Demonstration', () => {
     it('should demonstrate full browser automation workflow visually', async () => {
-      console.log('\n🎬 DEMO: Complete Browser Automation Workflow');
-      console.log('👀 Watch your screen - browser window will open and perform automation');
+      console.log('\n🎬 TEST 1: Complete Browser Automation Workflow');
+      console.log('👀 Using existing browser window for this test');
       
       try {
-        // Step 1: Initialize browser (visible)
-        console.log('\n1️⃣ Initializing visible browser...');
-        const initResult = await handleBrowserInit({
-          headless: false, // VISIBLE browser
-          disableXvfb: true, // Ensure no virtual display
-          customConfig: {
-            args: [
-              '--disable-setuid-sandbox',
-              '--disable-web-security',
-              '--disable-features=VizDisplayCompositor',
-              '--window-size=1200,800'
-            ]
-          }
-        });
-        
-        expect(initResult.content[0].text).toContain('Browser initialized successfully');
-        console.log('✅ Browser window opened successfully');
-        
-        // Small delay to see browser window
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
-        // Step 2: Navigate to a real website
-        console.log('\n2️⃣ Navigating to example.com...');
+        // Browser already initialized in beforeAll - just navigate
+        // Step 1: Navigate to a real website
+        console.log('\n1️⃣ Navigating to example.com...');
         const navResult = await handleNavigate({
           url: 'https://example.com',
           waitUntil: 'domcontentloaded'
@@ -113,10 +94,10 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
         console.log('✅ Page loaded successfully');
         
         // Delay to see navigation
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        await new Promise(resolve => setTimeout(resolve, 2000));
 
-        // Step 3: Get page content
-        console.log('\n3️⃣ Analyzing page content...');
+        // Step 2: Get page content
+        console.log('\n2️⃣ Analyzing page content...');
         const contentResult = await handleGetContent({
           type: 'text'
         });
@@ -124,8 +105,8 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
         expect(contentResult.content[0].text).toContain('Example Domain');
         console.log('✅ Content analyzed - found "Example Domain"');
         
-        // Step 4: Find an element
-        console.log('\n4️⃣ Finding "Learn more" link...');
+        // Step 3: Find an element
+        console.log('\n3️⃣ Finding "Learn more" link...');
         const findResult = await handleFindSelector({
           text: 'Learn more',
           elementType: 'a'
@@ -134,8 +115,8 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
         expect(findResult.content[0].text).toContain('Found element');
         console.log('✅ Element located successfully');
         
-        console.log('\n🎉 WORKFLOW COMPLETE! Browser will close...');
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        console.log('\n🎉 TEST 1 COMPLETE! Browser stays open for next test...');
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
       } catch (error) {
         console.error('❌ E2E test failed:', error);
@@ -146,39 +127,27 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
 
   describe('Interactive Form Automation', () => {
     it('should demonstrate form interaction with visible browser', async () => {
-      console.log('\n🎬 DEMO: Form Automation');
-      console.log('👀 Watch browser interact with a search form');
+      console.log('\n🎬 TEST 2: Form Automation');
+      console.log('👀 Using same browser window - navigating to form...');
       
       try {
-        // Initialize browser
-        console.log('\n1️⃣ Opening browser for form demo...');
-        await handleBrowserInit({
-          headless: false,
-          disableXvfb: true,
-          customConfig: {
-            args: ['--window-size=1200,800']
-          }
-        });
-        
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        // Navigate to a simple test site
-        console.log('\n2️⃣ Navigating to httpbin form...');
+        // Browser already open - just navigate to form
+        console.log('\n1️⃣ Navigating to httpbin form...');
         await handleNavigate({
           url: 'https://httpbin.org/forms/post',
           waitUntil: 'domcontentloaded'
         });
         
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await new Promise(resolve => setTimeout(resolve, 1000));
 
         // Get content to analyze the page
-        console.log('\n3️⃣ Analyzing form page...');
+        console.log('\n2️⃣ Analyzing form page...');
         const contentResult = await handleGetContent({ type: 'text' });
         expect(contentResult.content[0].text).toContain('Customer name');
         console.log('✅ Form page loaded successfully');
         
         // Fill complete form in serial order (all fields)
-        console.log('\n4️⃣ Filling out complete form in order...');
+        console.log('\n3️⃣ Filling out complete form in order...');
         try {
           // Field 1: Customer name
           console.log('   1. Filling customer name...');
@@ -272,7 +241,7 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
           console.log('\n✅ All form fields completed!');
           
           // Submit the form
-          console.log('\n5️⃣ Submitting form...');
+          console.log('\n4️⃣ Submitting form...');
           try {
             await handleClick({
               selector: 'button',
@@ -301,7 +270,7 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
           throw error;
         }
 
-        console.log('\n🎉 FORM AUTOMATION COMPLETE!');
+        console.log('\n🎉 TEST 2 COMPLETE! Browser stays open for next test...');
         
       } catch (error) {
         console.error('❌ Form automation test failed:', error);
@@ -312,23 +281,11 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
 
   describe('Content Strategy Demonstration', () => {
     it('should show content analysis and token management', async () => {
-      console.log('\n🎬 DEMO: Content Analysis & Token Management');
-      console.log('👀 Watch browser analyze content from different websites');
+      console.log('\n🎬 TEST 3: Content Analysis & Token Management');
+      console.log('👀 Using same browser window for content analysis...');
       
       try {
-        // Initialize browser
-        console.log('\n1️⃣ Opening browser for content analysis...');
-        await handleBrowserInit({
-          headless: false,
-          disableXvfb: true,
-          contentPriority: {
-            prioritizeContent: true,
-            autoSuggestGetContent: true
-          }
-        });
-        
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
+        // Browser already open - just test content analysis
         // Test different content types
         const testSites = [
           { url: 'https://httpbin.org/html', description: 'Simple HTML page' },
@@ -359,10 +316,10 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
           expect(htmlResult.content[0].text.length).toBeGreaterThan(0);
           expect(textResult.content[0].text.length).toBeGreaterThan(0);
           
-          await new Promise(resolve => setTimeout(resolve, 1500));
+          await new Promise(resolve => setTimeout(resolve, 1000));
         }
 
-        console.log('\n🎉 CONTENT ANALYSIS COMPLETE!');
+        console.log('\n🎉 TEST 3 COMPLETE! All E2E tests done - browser will close now...');
 
       } catch (error) {
         console.error('❌ Content analysis test failed:', error);

@@ -26,7 +26,9 @@ vi.mock('../workflow-validation', () => ({
   validateWorkflow: vi.fn(),
   recordExecution: vi.fn(),
   workflowValidator: {
-    getValidationSummary: vi.fn()
+    getValidationSummary: vi.fn(),
+    reset: vi.fn(),
+    recordToolExecution: vi.fn()
   }
 }));
 
@@ -70,6 +72,11 @@ describe('Interaction Handlers', () => {
     mockWorkflowValidation = workflowValidation;
     mockSelfHealingLocators = selfHealingLocators;
     mockStealthActions = stealthActions;
+    
+    // Reset workflow validator to prevent state pollution between tests
+    if (mockWorkflowValidation.workflowValidator?.reset) {
+      mockWorkflowValidation.workflowValidator.reset();
+    }
 
     // Mock element with common methods
     mockElement = {
