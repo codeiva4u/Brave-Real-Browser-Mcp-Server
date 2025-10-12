@@ -14,8 +14,7 @@ console.log('🔄 Auto-updating Brave Real Browser dependencies...');
 const BRAVE_PACKAGES = [
   'brave-real-browser',
   'brave-real-launcher', 
-  'brave-real-puppeteer-core',
-  'brave-real-playwright-core'
+  'brave-real-puppeteer-core'
 ];
 
 const OTHER_CRITICAL_PACKAGES = [
@@ -153,8 +152,7 @@ async function validateInstallation() {
     console.log('📋 Available packages:');
     console.log('   - brave-real-browser: Core browser automation');
     console.log('   - brave-real-launcher: Browser launching utilities');
-    console.log('   - brave-real-puppeteer-core: Optimized Puppeteer with stealth');
-    console.log('   - brave-real-playwright-core: Optimized Playwright (optional)');
+    console.log('   - brave-real-puppeteer-core: Optimized Puppeteer with stealth (latest)');
   } else {
     console.error('❌ Some packages failed validation. Please run npm install manually.');
     process.exit(1);
