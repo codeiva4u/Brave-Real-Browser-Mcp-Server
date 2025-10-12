@@ -146,18 +146,29 @@ export async function withTimeout<T>(
   context: string = 'unknown'
 ): Promise<T> {
   return new Promise<T>((resolve, reject) => {
+    let isResolved = false;
+    
     const timer = setTimeout(() => {
-      reject(new Error(`Operation timed out after ${timeoutMs}ms in context: ${context}`));
+      if (!isResolved) {
+        isResolved = true;
+        reject(new Error(`Operation timed out after ${timeoutMs}ms in context: ${context}`));
+      }
     }, timeoutMs);
 
     operation()
       .then((result) => {
-        clearTimeout(timer);
-        resolve(result);
+        if (!isResolved) {
+          isResolved = true;
+          clearTimeout(timer);
+          resolve(result);
+        }
       })
       .catch((error) => {
-        clearTimeout(timer);
-        reject(error);
+        if (!isResolved) {
+          isResolved = true;
+          clearTimeout(timer);
+          reject(error);
+        }
       });
   });
 }
@@ -165,18 +176,22 @@ export async function withTimeout<T>(
 // Port availability and connection utilities for enhanced resilience
 export async function isPortAvailable(port: number, host: string = '127.0.0.1'): Promise<boolean> {
   return new Promise((resolve) => {
-    const server = net.createServer();
-    
-    server.listen(port, host, () => {
-      server.once('close', () => {
-        resolve(true);
+    try {
+      const server = net.createServer();
+      
+      server.listen(port, host, () => {
+        server.once('close', () => {
+          resolve(true);
+        });
+        server.close();
       });
-      server.close();
-    });
-    
-    server.on('error', () => {
+      
+      server.on('error', () => {
+        resolve(false);
+      });
+    } catch (error) {
       resolve(false);
-    });
+    }
   });
 }
 
@@ -302,61 +317,9 @@ function getWindowsBraveFromRegistry(): string | null {
   return null;
 }
 
-// Windows Registry Chrome detection
-function getWindowsChromeFromRegistry(): string | null {
-  if (process.platform !== 'win32') return null;
-  
-  try {
-    const { execSync } = require('child_process');
-    
-    const registryQueries = [
-      'reg query "HKEY_CURRENT_USER\\Software\\Google\\Chrome\\BLBeacon" /v version 2>nul',
-      'reg query "HKEY_LOCAL_MACHINE\\Software\\Google\\Chrome\\BLBeacon" /v version 2>nul',
-      'reg query "HKEY_LOCAL_MACHINE\\Software\\WOW6432Node\\Google\\Chrome\\BLBeacon" /v version 2>nul',
-    ];
-    
-    for (const query of registryQueries) {
-      try {
-        const result = execSync(query, { encoding: 'utf8', timeout: 5000 });
-        if (result) {
-          const standardPaths = [
-            'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-            'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe'
-          ];
-          
-          for (const standardPath of standardPaths) {
-            if (fs.existsSync(standardPath)) {
-              console.error(`✓ Found Chrome via Registry detection: ${standardPath}`);
-              return standardPath;
-            }
-          }
-        }
-      } catch (error) {
-        // Continue to next registry query
-      }
-    }
-    
-    try {
-      const installDirQuery = 'reg query "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\App Paths\\chrome.exe" /ve 2>nul';
-      const result = execSync(installDirQuery, { encoding: 'utf8', timeout: 5000 });
-      const match = result.match(/REG_SZ\s+(.+\.exe)/);
-      if (match && match[1] && fs.existsSync(match[1])) {
-        console.error(`✓ Found Chrome via App Paths registry: ${match[1]}`);
-        return match[1];
-      }
-    } catch (error) {
-      // Registry detection failed, will fall back to file system search
-    }
-    
-  } catch (error) {
-    console.error('Windows Registry Chrome detection failed:', error instanceof Error ? error.message : String(error));
-  }
-  
-  return null;
-}
 
 // Brave Browser path detection (cross-platform support)
-// Purely Brave-focused - no Chrome fallback needed since system works perfectly without Chrome
+// Pure Brave-only detection - This project is designed specifically for Brave Browser
 export function detectBravePath(): string | null {
   const platform = process.platform;
 
@@ -387,22 +350,15 @@ export function detectBravePath(): string | null {
     // Config file not found or invalid, continue with other methods
   }
 
-  // PRIORITY 1: Check environment variables first (BRAVE_PATH has priority)
+  // PRIORITY 1: Check environment variables first (BRAVE_PATH only)
   const envBravePath = process.env.BRAVE_PATH;
   if (envBravePath && fs.existsSync(envBravePath)) {
     console.error(`✓ Found Brave via BRAVE_PATH environment variable: ${envBravePath}`);
     return envBravePath;
   }
-  
-  const envChromePath = process.env.CHROME_PATH || process.env.PUPPETEER_EXECUTABLE_PATH;
-  if (envChromePath && fs.existsSync(envChromePath)) {
-    console.error(`✓ Found Chrome via environment variable: ${envChromePath}`);
-    return envChromePath;
-  }
 
-  // PRIORITY 2: Try Brave paths FIRST (this is Brave-Real-Browser project!)
+  // PRIORITY 2: Brave paths detection (Brave-only project!)
   let bravePaths: string[] = [];
-  let chromePaths: string[] = [];
 
   switch (platform) {
     case 'win32':
@@ -415,25 +371,8 @@ export function detectBravePath(): string | null {
         path.join(process.env.PROGRAMFILES || '', 'BraveSoftware\\Brave-Browser\\Application\\brave.exe'),
         path.join(process.env['PROGRAMFILES(X86)'] || '', 'BraveSoftware\\Brave-Browser\\Application\\brave.exe'),
       ];
-      
-      // Chrome paths (fallback)
-      chromePaths = [
-        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-        'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-        path.join(process.env.LOCALAPPDATA || '', 'Google\\Chrome\\Application\\chrome.exe'),
-        path.join(process.env.USERPROFILE || '', 'AppData\\Local\\Google\\Chrome\\Application\\chrome.exe'),
-        path.join(process.env.PROGRAMFILES || '', 'Google\\Chrome\\Application\\chrome.exe'),
-        path.join(process.env['PROGRAMFILES(X86)'] || '', 'Google\\Chrome\\Application\\chrome.exe'),
-        path.join(process.env.LOCALAPPDATA || '', 'Google\\Chrome SxS\\Application\\chrome.exe'),
-        'C:\\Program Files\\Google\\Chrome SxS\\Application\\chrome.exe',
-        'C:\\Users\\Public\\Desktop\\Google Chrome.exe',
-        path.join(process.env.APPDATA || '', 'Google\\Chrome\\Application\\chrome.exe'),
-        'C:\\Chrome\\chrome.exe',
-        'C:\\google\\chrome\\chrome.exe',
-        'C:\\PortableApps\\GoogleChromePortable\\App\\Chrome-bin\\chrome.exe',
-      ];
 
-      // Try Brave registry first
+      // Try Brave registry detection
       try {
         const braveRegistryPath = getWindowsBraveFromRegistry();
         if (braveRegistryPath) {
@@ -441,16 +380,6 @@ export function detectBravePath(): string | null {
         }
       } catch (error) {
         console.error('Brave registry detection failed, continuing with file system search...');
-      }
-      
-      // Try Chrome registry as fallback
-      try {
-        const chromeRegistryPath = getWindowsChromeFromRegistry();
-        if (chromeRegistryPath) {
-          chromePaths.unshift(chromeRegistryPath);
-        }
-      } catch (error) {
-        console.error('Chrome registry detection failed, continuing with file system search...');
       }
       break;
       
@@ -461,13 +390,6 @@ export function detectBravePath(): string | null {
         '/Applications/Brave Browser Nightly.app/Contents/MacOS/Brave Browser Nightly',
         '/Applications/Brave Browser Beta.app/Contents/MacOS/Brave Browser Beta',
         '/Applications/Brave Browser Dev.app/Contents/MacOS/Brave Browser Dev',
-      ];
-      
-      // Chrome paths (fallback)
-      chromePaths = [
-        '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-        '/Applications/Chromium.app/Contents/MacOS/Chromium',
-        '/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary'
       ];
       break;
       
@@ -481,17 +403,6 @@ export function detectBravePath(): string | null {
         '/opt/brave.com/brave/brave-browser',
         '/opt/brave/brave-browser',
         '/usr/local/bin/brave-browser',
-      ];
-      
-      // Chrome paths (fallback)
-      chromePaths = [
-        '/usr/bin/google-chrome',
-        '/usr/bin/google-chrome-stable',
-        '/usr/bin/chromium-browser',
-        '/usr/bin/chromium',
-        '/snap/bin/chromium',
-        '/usr/bin/chrome',
-        '/opt/google/chrome/chrome'
       ];
       break;
       
@@ -547,25 +458,19 @@ export function detectBravePath(): string | null {
     console.error(`      - Set BRAVE_PATH environment variable if needed`);
     console.error(`\n   2. Environment Variables:`);
     console.error(`      - Set BRAVE_PATH for Brave: set BRAVE_PATH="C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe"`);
-    console.error(`      - Or set CHROME_PATH for Chrome: set CHROME_PATH="C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"`);
-    console.error(`      - For Cursor IDE: Add env vars to MCP configuration`);
-    console.error(`\n   3. Alternative: Install Chrome:`);
-    console.error(`      - Download Chrome: https://www.google.com/chrome/`);
-    console.error(`      - Chrome works as fallback when Brave is not available`);
-    console.error(`\n   4. Permissions & Security:`);
+    console.error(`      - For Cursor IDE: Add BRAVE_PATH env var to MCP configuration`);
+    console.error(`\n   3. Permissions & Security:`);
     console.error(`      - Run IDE/terminal as Administrator`);
-    console.error(`      - Add browser to Windows Defender exclusions`);
-    console.error(`\n   5. Custom Configuration:`);
-    console.error(`      - Use customConfig.chromePath parameter in browser_init`);
-    console.error(`      - Works with both Brave and Chrome`);
+    console.error(`      - Add Brave browser to Windows Defender exclusions`);
+    console.error(`\n   4. Custom Configuration:`);
+    console.error(`      - Use customConfig.chromePath parameter in browser_init (with Brave path)`);
+    console.error(`      - This project is optimized specifically for Brave Browser`);
   } else {
-    console.error(`❌ Neither Brave nor Chrome found at any expected paths for platform: ${platform}`);
+    console.error(`❌ Brave Browser not found at any expected paths for platform: ${platform}`);
     console.error(`\n   🦁 Brave paths checked:`);
     bravePaths.forEach(p => console.error(`   - ${p}`));
-    console.error(`\n   🌐 Chrome paths checked:`);
-    chromePaths.forEach(p => console.error(`   - ${p}`));
-    console.error(`\n   💡 Install Brave Browser (recommended): https://brave.com/download/`);
-    console.error(`   💡 Or install Chrome as fallback: https://www.google.com/chrome/`);
+    console.error(`\n   💡 Install Brave Browser: https://brave.com/download/`);
+    console.error(`   💡 This project is specifically designed for Brave Browser`);
   }
   
   return null;
@@ -934,7 +839,7 @@ export async function initializeBrowser(options?: any) {
             
             throw connectionError;
           }
-        }, platform === 'win32' ? 180000 : 150000, `browser-connection-${strategyName.toLowerCase().replace(/\s+/g, '-')}`);
+        }, platform === 'win32' ? 30000 : 25000, `browser-connection-${strategyName.toLowerCase().replace(/\s+/g, '-')}`);
         
         const { browser, page } = result;
 
@@ -1089,31 +994,25 @@ export async function closeBrowser() {
   }
 }
 
-// Force kill all Brave and Chrome browser processes system-wide
+// Force kill all Brave browser processes system-wide
 export async function forceKillBraveProcesses() {
   try {
     const { spawn } = await import('child_process');
     
     if (process.platform !== 'win32') {
-      // Kill Brave processes (priority)
+      // Kill Brave processes on Unix-like systems
       spawn('pkill', ['-f', 'Brave Browser'], { stdio: 'ignore' });
       spawn('pkill', ['-f', 'brave'], { stdio: 'ignore' });
-      // Kill Chrome processes (fallback)
-      spawn('pkill', ['-f', 'Google Chrome'], { stdio: 'ignore' });
-      spawn('pkill', ['-f', 'chrome'], { stdio: 'ignore' });
     } else {
-      // Windows: Kill Brave processes (priority)
+      // Windows: Kill Brave processes
       spawn('taskkill', ['/F', '/IM', 'brave.exe'], { stdio: 'ignore' });
-      // Windows: Kill Chrome processes (fallback)
-      spawn('taskkill', ['/F', '/IM', 'chrome.exe'], { stdio: 'ignore' });
-      spawn('taskkill', ['/F', '/IM', 'GoogleChrome.exe'], { stdio: 'ignore' });
     }
   } catch (error) {
-    console.error('Error force-killing browser processes:', error);
+    console.error('Error force-killing Brave browser processes:', error);
   }
 }
 
-// Alias for backward compatibility
+// Aliases for backward compatibility (now all point to Brave-only function)
 export const forceKillChromeProcesses = forceKillBraveProcesses;
 export const forceKillAllChromeProcesses = forceKillBraveProcesses;
 

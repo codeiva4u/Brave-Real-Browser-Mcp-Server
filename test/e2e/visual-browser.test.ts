@@ -14,13 +14,13 @@ import { handleGetContent, handleFindSelector } from '../../src/handlers/content
 import { handleClick, handleType } from '../../src/handlers/interaction-handlers';
 import { resetBrowserInitDepth } from '../../src/browser-manager';
 
-// Skip E2E visual tests in CI environment (they require display and are for demo purposes)
-const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
-const describeOrSkip = isCI ? describe.skip : describe;
+// Enable E2E visual tests - they provide comprehensive integration validation
+// These tests use a real browser for end-to-end testing
+const describeOrSkip = describe;
 
 describeOrSkip.sequential('E2E Visual Browser Tests', () => {
   // Increase timeout for E2E tests since they use real browser
-  const E2E_TIMEOUT = 30000;
+  const E2E_TIMEOUT = 60000; // 60 seconds for stable real browser operations
 
   beforeAll(async () => {
     console.log('🚀 Starting E2E Visual Browser Tests');
@@ -43,7 +43,13 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
       headless: false,
       disableXvfb: true,
       customConfig: {
-        args: ['--window-size=1200,800']
+        chromePath: 'C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe',
+        chromeFlags: [
+          '--window-size=1200,800',
+          '--no-first-run',
+          '--disable-default-apps',
+          '--start-maximized'
+        ]
       }
     });
     console.log('✅ Browser ready - will be reused for all tests\n');

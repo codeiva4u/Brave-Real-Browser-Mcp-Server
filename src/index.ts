@@ -23,7 +23,7 @@ import { TOOLS, SERVER_INFO, CAPABILITIES, TOOL_NAMES, NavigateArgs, ClickArgs, 
 console.error('🔍 [DEBUG] Loading system utils...');
 import { withErrorHandling } from './system-utils.js';
 console.error('🔍 [DEBUG] Loading browser manager...');
-import { closeBrowser, forceKillAllChromeProcesses } from './browser-manager.js';
+import { closeBrowser, forceKillBraveProcesses } from './browser-manager.js';
 console.error('🔍 [DEBUG] Loading core infrastructure...');
 import { setupProcessCleanup, MCP_SERVER_CONFIG } from './core-infrastructure.js';
 
@@ -416,7 +416,7 @@ async function main(): Promise<void> {
   setupProcessCleanup(async () => {
     console.error('🔍 [DEBUG] Process cleanup triggered');
     await closeBrowser();
-    await forceKillAllChromeProcesses();
+    await forceKillBraveProcesses();
   });
 
   // Create and start the server transport

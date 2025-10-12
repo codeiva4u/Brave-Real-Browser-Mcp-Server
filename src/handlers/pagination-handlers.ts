@@ -2,7 +2,7 @@
 // Auto pagination, infinite scroll, multi-page scraping, sitemap parser
 // @ts-nocheck
 
-import { getCurrentPage } from '../browser-manager.js';
+import { getPageInstance } from '../browser-manager.js';
 import { validateWorkflow } from '../workflow-validation.js';
 import { withErrorHandling } from '../system-utils.js';
 import * as xml2js from 'xml2js';
@@ -32,7 +32,10 @@ export async function handleAutoPagination(args: AutoPaginationArgs) {
       requirePage: true,
     });
 
-    const page = getCurrentPage();
+    const page = getPageInstance();
+    if (!page) {
+      throw new Error('Browser not initialized. Call browser_init first.');
+    }
     const nextButtonSelector = args.nextButtonSelector || 'a[rel="next"], button:contains("Next"), .next, .pagination-next';
     const maxPages = args.maxPages || 10;
     const dataSelector = args.dataSelector;
@@ -75,14 +78,14 @@ export async function handleAutoPagination(args: AutoPaginationArgs) {
 
       // Click next button
       await nextButton.click();
-      await page.waitForTimeout(waitBetweenPages);
+      await new Promise(resolve => setTimeout(resolve, waitBetweenPages));
       
       // Wait for navigation or content load
       try {
         await page.waitForNavigation({ timeout: 5000, waitUntil: 'domcontentloaded' });
       } catch (e) {
         // No navigation occurred, content loaded dynamically
-        await page.waitForTimeout(1000);
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
 
       currentPage++;
@@ -116,7 +119,10 @@ export async function handleInfiniteScroll(args: InfiniteScrollArgs) {
       requirePage: true,
     });
 
-    const page = getCurrentPage();
+    const page = getPageInstance();
+    if (!page) {
+      throw new Error('Browser not initialized. Call browser_init first.');
+    }
     const maxScrolls = args.maxScrolls || 10;
     const scrollDelay = args.scrollDelay || 1000;
     const dataSelector = args.dataSelector;
@@ -159,7 +165,7 @@ export async function handleInfiniteScroll(args: InfiniteScrollArgs) {
       });
 
       // Wait for new content to load
-      await page.waitForTimeout(scrollDelay);
+      await new Promise(resolve => setTimeout(resolve, scrollDelay));
 
       scrollCount++;
     }
@@ -192,7 +198,10 @@ export async function handleMultiPageScraper(args: MultiPageScraperArgs) {
       requirePage: true,
     });
 
-    const page = getCurrentPage();
+    const page = getPageInstance();
+    if (!page) {
+      throw new Error('Browser not initialized. Call browser_init first.');
+    }
     const urls = args.urls;
     const dataSelector = args.dataSelector;
     const waitBetweenPages = args.waitBetweenPages || 1000;
@@ -204,7 +213,7 @@ export async function handleMultiPageScraper(args: MultiPageScraperArgs) {
       
       try {
         await page.goto(url, { waitUntil: 'domcontentloaded' });
-        await page.waitForTimeout(waitBetweenPages);
+        await new Promise(resolve => setTimeout(resolve, waitBetweenPages));
 
         const pageData = await page.evaluate((selector) => {
           const elements = document.querySelectorAll(selector);
@@ -257,7 +266,10 @@ export async function handleSitemapParser(args: SitemapParserArgs) {
       requirePage: true,
     });
 
-    const page = getCurrentPage();
+    const page = getPageInstance();
+    if (!page) {
+      throw new Error('Browser not initialized. Call browser_init first.');
+    }
     const currentUrl = page.url();
     const baseUrl = new URL(currentUrl).origin;
     const sitemapUrl = args.sitemapUrl || `${baseUrl}/sitemap.xml`;
@@ -340,7 +352,10 @@ export async function handleBreadcrumbNavigator(args: BreadcrumbNavigatorArgs) {
       requirePage: true,
     });
 
-    const page = getCurrentPage();
+    const page = getPageInstance();
+    if (!page) {
+      throw new Error('Browser not initialized. Call browser_init first.');
+    }
     const breadcrumbSelector = args.breadcrumbSelector || '.breadcrumb, nav[aria-label="breadcrumb"], .breadcrumbs';
     const followLinks = args.followLinks || false;
 

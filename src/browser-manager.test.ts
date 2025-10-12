@@ -5,7 +5,7 @@
  * - AAA Pattern (Arrange-Act-Assert)
  * - Behavior-focused testing with proper mocking
  * - Error categorization and circuit breaker testing
- * - Chrome detection and network utilities testing
+ * - Brave detection and network utilities testing
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -158,8 +158,10 @@ describe('Browser Manager', () => {
 
   describe('Timeout Wrapper', () => {
     it('should resolve when operation completes within timeout', async () => {
-      // Arrange: Create operation that resolves quickly
-      const operation = vi.fn().mockResolvedValue('success');
+      // Arrange: Create operation that resolves immediately
+      const operation = vi.fn().mockImplementation(() => 
+        Promise.resolve('success')
+      );
       
       // Act: Execute with timeout
       const result = await withTimeout(operation, 1000, 'test-context');
@@ -181,8 +183,10 @@ describe('Browser Manager', () => {
     });
 
     it('should reject when operation throws error', async () => {
-      // Arrange: Create operation that throws
-      const operation = vi.fn().mockRejectedValue(new Error('operation failed'));
+      // Arrange: Create operation that throws immediately
+      const operation = vi.fn().mockImplementation(() => 
+        Promise.reject(new Error('operation failed'))
+      );
       
       // Act & Assert: Should propagate operation error
       await expect(withTimeout(operation, 1000, 'test-context'))
@@ -192,8 +196,10 @@ describe('Browser Manager', () => {
     });
 
     it('should clear timeout when operation completes', async () => {
-      // Arrange: Create operation that resolves
-      const operation = vi.fn().mockResolvedValue('success');
+      // Arrange: Create operation that resolves immediately
+      const operation = vi.fn().mockImplementation(() => 
+        Promise.resolve('success')
+      );
       const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout');
       
       // Act: Execute with timeout
@@ -201,6 +207,7 @@ describe('Browser Manager', () => {
       
       // Assert: Should clear timeout
       expect(clearTimeoutSpy).toHaveBeenCalled();
+      clearTimeoutSpy.mockRestore();
     });
   });
 

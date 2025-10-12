@@ -35,7 +35,9 @@ export function waitForServerStartup(serverProcess: ChildProcess, timeoutMs: num
 
     const stderrHandler = (data: Buffer) => {
       const output = data.toString();
-      if (output.includes('Brave Real Browser MCP Server started successfully')) {
+      // Look for the actual startup message with emoji prefix
+      if (output.includes('🚀 Brave Real Browser MCP Server started successfully') || 
+          output.includes('Brave Real Browser MCP Server started successfully')) {
         if (!resolved) {
           resolved = true;
           clearTimeout(timeout);
@@ -75,7 +77,7 @@ export function waitForServerStartup(serverProcess: ChildProcess, timeoutMs: num
       serverProcess.removeListener('exit', exitHandler);
     };
     
-    timeout.unref(); // Don't keep process alive just for timeout
+    // timeout.unref(); // Don't keep process alive just for timeout - Skip for compatibility
   });
 }
 

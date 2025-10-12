@@ -39,7 +39,7 @@ export const DEFAULT_CONTENT_PRIORITY_CONFIG: ContentPriorityConfig = {
 export const TOOLS = [
   {
     name: 'browser_init',
-    description: 'Initialize a new browser instance with anti-detection features and automatic Chrome path detection',
+    description: 'Initialize a new browser instance with anti-detection features and automatic Brave Browser path detection',
     inputSchema: {
       type: 'object',
       properties: {
@@ -55,7 +55,7 @@ export const TOOLS = [
         },
         ignoreAllFlags: {
           type: 'boolean',
-          description: 'Ignore all Chrome flags (recommended: true for clean startup without --no-sandbox)',
+          description: 'Ignore all browser flags (recommended: true for clean startup without --no-sandbox)',
           default: true,
         },
         proxy: {
@@ -76,11 +76,11 @@ export const TOOLS = [
         },
         customConfig: {
           type: 'object',
-          description: 'Custom configuration for Chrome launcher. Use chromePath to specify custom Chrome executable path',
+          description: 'Custom configuration for Brave launcher. Use chromePath to specify custom Brave executable path',
           properties: {
             chromePath: {
               type: 'string',
-              description: 'Custom path to Chrome executable (auto-detected if not specified)',
+              description: 'Custom path to Brave executable (auto-detected if not specified)',
             },
           },
           additionalProperties: true,
@@ -1077,7 +1077,7 @@ export interface BrowserInitArgs {
   plugins?: string[];
   connectOption?: any;
   customConfig?: {
-    chromePath?: string;
+    chromePath?: string; // Note: Still named chromePath for compatibility with underlying browser engine
     [key: string]: any;
   };
   contentPriority?: ContentPriorityConfig;

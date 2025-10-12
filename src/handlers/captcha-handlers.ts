@@ -228,7 +228,7 @@ export async function handlePuzzleCaptchaHandler(args: any): Promise<any> {
                 box.y + box.height / 2,
                 { steps: 5 }
               );
-              await page.waitForTimeout(50 + Math.random() * 50); // Random delay for human-like behavior
+              await new Promise(resolve => setTimeout(resolve, 50 + Math.random() * 50)); // Random delay for human-like behavior
             }
             
             await page.mouse.up();

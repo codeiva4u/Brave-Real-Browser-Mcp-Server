@@ -55,7 +55,7 @@ export async function handleRESTAPIEndpointFinder(args: any): Promise<any> {
       }
       
       // Wait for additional requests
-      await page.waitForTimeout(scanDuration);
+      await new Promise(resolve => setTimeout(resolve, scanDuration));
       
       page.off('request', requestHandler);
     }

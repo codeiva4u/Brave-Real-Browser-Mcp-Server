@@ -257,7 +257,7 @@ export async function handleVideoRecording(args: any): Promise<any> {
         const framePath = path.join(framesDir, `frame_${i.toString().padStart(4, '0')}.png`);
         await page.screenshot({ path: framePath });
         frames.push(framePath);
-        await page.waitForTimeout(frameDelay);
+        await new Promise(resolve => setTimeout(resolve, frameDelay));
       }
     }
     
