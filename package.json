@@ -5,7 +5,8 @@
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "postinstall": "node scripts/update-to-latest.cjs || echo 'Auto-update skipped'",
+    "install-brave": "node scripts/install-brave.cjs",
+    "postinstall": "node scripts/setup-brave.cjs && node scripts/update-to-latest.cjs || echo 'Auto-update skipped'",
     "clean": "rimraf dist",
     "clean:cache": "npm cache clean --force",
     "fix-cache-permissions": "echo 'Run: sudo chown -R $(whoami):$(id -gn) ~/.npm' && echo 'This fixes npm cache permission issues'",

@@ -14,7 +14,7 @@ export default defineConfig({
     // Exclude patterns
     exclude: ['node_modules', 'dist', 'tests/mcp-testing'],
     
-    // Setup files
+    // Setup files (run before each test file)
     setupFiles: ['./test/setup.ts'],
     
     // Test timeout (important for browser operations) - configurable via environment
@@ -60,19 +60,24 @@ export default defineConfig({
     // Allow only for CI environments
     allowOnly: !process.env.CI,
     
-    // Concurrent execution settings
+    // CRITICAL: Run tests sequentially to maintain single browser instance
+    // This prevents browser from opening/closing multiple times
     sequence: {
-      concurrent: true
+      concurrent: false,  // Sequential execution
+      shuffle: false      // Maintain test order
     },
     
-    // Pool settings - use main thread for integration tests to allow process.chdir()
+    // Pool settings - use single fork to share browser instance
     pool: 'forks',
     poolOptions: {
       forks: {
-        singleFork: false,
-        maxForks: 4,
+        singleFork: true,  // Use single fork for all tests
+        maxForks: 1,
         minForks: 1
       }
-    }
+    },
+    
+    // Isolate tests to false - share context between test files
+    isolate: false
   }
 });

@@ -98,7 +98,7 @@ export class WorkflowValidator {
 
     // Define tool prerequisites - STRICT: find_selector requires successful content analysis
     const toolPrerequisites: Record<string, WorkflowState[]> = {
-      'browser_init': [WorkflowState.INITIAL, WorkflowState.BROWSER_READY, WorkflowState.PAGE_LOADED, WorkflowState.CONTENT_ANALYZED, WorkflowState.SELECTOR_AVAILABLE],
+      'browser_init': [WorkflowState.INITIAL], // CRITICAL: Only allow init from INITIAL state to prevent multiple calls
       'browser_close': [WorkflowState.BROWSER_READY, WorkflowState.PAGE_LOADED, WorkflowState.CONTENT_ANALYZED, WorkflowState.SELECTOR_AVAILABLE],
       'navigate': [WorkflowState.BROWSER_READY, WorkflowState.PAGE_LOADED, WorkflowState.CONTENT_ANALYZED, WorkflowState.SELECTOR_AVAILABLE],
       'get_content': [WorkflowState.PAGE_LOADED, WorkflowState.CONTENT_ANALYZED, WorkflowState.SELECTOR_AVAILABLE],
@@ -125,6 +125,28 @@ export class WorkflowValidator {
       let suggestedAction = '';
 
       switch (toolName) {
+        case 'browser_init':
+          if (this.context.currentState !== WorkflowState.INITIAL) {
+            errorMessage = `❌ Cannot initialize browser - browser is already running in '${this.context.currentState}' state.\n\n` +
+              `🚨 Multiple browser_init calls are strictly prohibited to prevent:\n` +
+              `   • Resource conflicts and memory leaks\n` +
+              `   • Port binding conflicts\n` +
+              `   • Zombie browser processes\n` +
+              `   • Inconsistent automation state`;
+            suggestedAction = 
+              `📋 Current browser state: ${this.context.currentState}\n` +
+              `🔄 To restart the browser:\n` +
+              `   1️⃣  First: Call 'browser_close' to properly shut down the current browser\n` +
+              `   2️⃣  Wait: Ensure clean shutdown completes\n` +
+              `   3️⃣  Then: Call 'browser_init' to start a fresh browser session\n\n` +
+              `💡 To continue with current browser:\n` +
+              `   • Navigate to pages: Use 'navigate' tool\n` +
+              `   • Analyze content: Use 'get_content' tool\n` +
+              `   • Interact with elements: Use 'click', 'type', 'find_selector' tools\n\n` +
+              `⚠️  Never call browser_init while browser is active!`;
+          }
+          break;
+
         case 'find_selector':
           if (this.context.currentState === WorkflowState.INITIAL) {
             errorMessage = `Cannot search for selectors before browser initialization and page navigation.`;

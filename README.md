@@ -113,9 +113,10 @@ assistants to control a real browser, extract content, and more.
 ## Features
 
 - **🔄 Auto-Update System**: Automatically updates all dependencies to latest versions on every `npm install`
+- **🦁 Brave Browser Priority**: Automatically detects and uses Brave Browser first, Chrome as fallback
 - **Stealth by default**: All browser instances use anti-detection features
-- **Enhanced Windows support**: Comprehensive Chrome detection and ECONNREFUSED error fixes (v1.3.0)
-- **Smart Chrome detection**: Registry-based detection + 15+ installation paths (Windows)
+- **Enhanced cross-platform support**: Comprehensive browser detection (Brave + Chrome) on Windows/Mac/Linux
+- **Smart browser detection**: Registry-based + file system detection for both Brave and Chrome
 - **Connection resilience**: Automatic localhost/127.0.0.1 fallback with port management
 - **Multiple retry strategies**: 5 different connection approaches with progressive fallback
 - **Advanced configuration**: Full support for all brave-real-browser options
@@ -133,25 +134,54 @@ assistants to control a real browser, extract content, and more.
 
 - Node.js >= 18.0.0
 - npm or yarn
-- Google Chrome or Chromium browser installed
+- **Brave Browser (RECOMMENDED)** or Google Chrome/Chromium browser installed
 - Basic understanding of TypeScript/JavaScript (for development)
 
-### Platform-Specific Requirements
+### Browser Requirements
+
+#### 🦁 Brave Browser (Recommended)
+
+This project **automatically detects and prioritizes Brave Browser** as it's specifically designed for the brave-real-browser package. Brave is detected first, then Chrome as fallback.
+
+**Why Brave?**
+- 🎯 Perfect compatibility with brave-real-browser
+- 🔒 Better privacy and security by default
+- 🚀 Faster performance
+- ✅ Automatic detection after installation
+
+**Install Brave:**
+- **All Platforms**: Download from [brave.com/download](https://brave.com/download/)
+- Brave is automatically detected in all standard installation locations
+- Use `BRAVE_PATH` environment variable for custom installations
+
+#### 🌐 Chrome/Chromium (Fallback)
+
+Chrome/Chromium works as a fallback if Brave is not installed.
 
 **Windows:**
-- Google Chrome installation (automatic detection in v1.3.0+ includes):
-  - Standard installations: `C:\Program Files\Google\Chrome\Application\chrome.exe`
-  - 32-bit installations: `C:\Program Files (x86)\Google\Chrome\Application\chrome.exe`
-  - User installations: `%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe`
-  - Chrome Canary: `%LOCALAPPDATA%\Google\Chrome SxS\Application\chrome.exe`
-  - Portable installations and Registry-detected paths
-  - Manual path specification: Use `CHROME_PATH` environment variable
+- Automatic detection includes (in order of priority):
+  1. **Brave Browser** paths (Registry + standard locations)
+  2. Chrome paths (Registry + 15+ standard locations)
+  - Standard: `C:\Program Files\Google\Chrome\Application\chrome.exe`
+  - 32-bit: `C:\Program Files (x86)\Google\Chrome\Application\chrome.exe`
+  - User: `%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe`
+  - Chrome Canary, Portable installations
+- Manual path: Use `BRAVE_PATH` or `CHROME_PATH` environment variable
 
 **macOS:**
-- Google Chrome or Chromium must be installed in `/Applications/`
+- **Brave Browser** (priority):
+  - `/Applications/Brave Browser.app/Contents/MacOS/Brave Browser`
+  - Beta/Nightly/Dev versions also detected
+- Chrome/Chromium (fallback):
+  - `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`
+  - Chromium and Chrome Canary also supported
 
 **Linux:**
-- Install Chrome/Chromium: `sudo apt-get install -y google-chrome-stable` or `sudo apt-get install -y chromium-browser`
+- **Brave Browser** (priority):
+  - Install: `sudo apt install brave-browser` or from [brave.com](https://brave.com/)
+  - Detected paths: `/usr/bin/brave-browser`, `/snap/bin/brave`, etc.
+- Chrome/Chromium (fallback):
+  - Install: `sudo apt-get install -y google-chrome-stable` or `chromium-browser`
 - Install xvfb for headless operation: `sudo apt-get install -y xvfb`
 
 ## Installation for Developers
