@@ -68,7 +68,7 @@ If you're just using this MCP server (not developing it), you don't need to run 
       "command": "npx",
       "args": ["brave-real-browser-mcp-server@latest"],
       "env": {
-        "CHROME_PATH": "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe"
+        "BRAVE_PATH": "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe"
       }
     }
   }
@@ -127,10 +127,17 @@ assistants to control a real browser, extract content, and more.
 ## Features
 
 - **🔄 Auto-Update System**: Automatically updates all dependencies to latest versions on every `npm install`
-- **🦁 Brave Browser Priority**: Automatically detects and uses Brave Browser first, Chrome as fallback
-- **Stealth by default**: All browser instances use anti-detection features
-- **Enhanced cross-platform support**: Comprehensive browser detection (Brave + Chrome) on Windows/Mac/Linux
-- **Smart browser detection**: Registry-based + file system detection for both Brave and Chrome
+- **🦁 Brave Browser Exclusive**: Specially designed for Brave Browser with exclusive optimizations
+  - Advanced Brave path detection (Registry + File System + Environment Variables)
+  - Brave-specific launch arguments and configurations
+  - Full compatibility with Brave Browser's privacy features
+  - Automatic detection across all Brave versions (Stable, Beta, Dev, Nightly)
+- **Stealth by default**: All browser instances use anti-detection features powered by `brave-real-browser`
+- **Enhanced cross-platform support**: Comprehensive Brave browser detection on Windows/Mac/Linux
+  - **Windows**: Registry-based detection + 15+ installation paths
+  - **macOS**: Application bundle detection for all Brave variants
+  - **Linux**: Package manager and manual installation detection
+- **Smart browser detection**: Multi-layer detection system with automatic fallbacks
 - **Connection resilience**: Automatic localhost/127.0.0.1 fallback with port management
 - **Multiple retry strategies**: 5 different connection approaches with progressive fallback
 - **Advanced configuration**: Full support for all brave-real-browser options
@@ -148,54 +155,56 @@ assistants to control a real browser, extract content, and more.
 
 - Node.js >= 18.0.0
 - npm or yarn
-- **Brave Browser (RECOMMENDED)** or Google Chrome/Chromium browser installed
+- **Brave Browser (REQUIRED)** - This project exclusively uses Brave Browser
 - Basic understanding of TypeScript/JavaScript (for development)
 
 ### Browser Requirements
 
-#### 🦁 Brave Browser (Recommended)
+#### 🦁 Brave Browser (Required)
 
-This project **automatically detects and prioritizes Brave Browser** as it's specifically designed for the brave-real-browser package. Brave is detected first, then Chrome as fallback.
+This project **exclusively uses Brave Browser** and is specifically optimized for the `brave-real-browser` package with advanced integration features.
 
-**Why Brave?**
-- 🎯 Perfect compatibility with brave-real-browser
-- 🔒 Better privacy and security by default
-- 🚀 Faster performance
-- ✅ Automatic detection after installation
+**Why Brave Browser Exclusively?**
+- **🎯 Perfect Compatibility**: Designed specifically for `brave-real-browser` package
+- **🔒 Enhanced Privacy**: Built-in ad-blocking and tracking protection
+- **🚀 Superior Performance**: Faster page loads and reduced memory usage
+- **🛡️ Anti-Detection**: Better stealth capabilities compared to regular browsers
+- **✅ Advanced Auto-Detection**: Multi-layer detection system across all platforms
+- **🎯 Reliability**: Simplified codebase focused on single browser for better stability
+- **🦁 Native Integration**: Custom launch arguments and configurations optimized for Brave
 
 **Install Brave:**
 - **All Platforms**: Download from [brave.com/download](https://brave.com/download/)
 - Brave is automatically detected in all standard installation locations
 - Use `BRAVE_PATH` environment variable for custom installations
 
-#### 🌐 Chrome/Chromium (Fallback)
-
-Chrome/Chromium works as a fallback if Brave is not installed.
-
-**Windows:**
-- Automatic detection includes (in order of priority):
-  1. **Brave Browser** paths (Registry + standard locations)
-  2. Chrome paths (Registry + 15+ standard locations)
-  - Standard: `C:\Program Files\Google\Chrome\Application\chrome.exe`
-  - 32-bit: `C:\Program Files (x86)\Google\Chrome\Application\chrome.exe`
-  - User: `%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe`
-  - Chrome Canary, Portable installations
-- Manual path: Use `BRAVE_PATH` or `CHROME_PATH` environment variable
+**Windows (Advanced Detection):**
+- **Registry-Based Detection**: Queries Windows Registry for all Brave installations
+- **File System Scanning**: Searches 15+ common installation paths
+- **Standard Paths Detected**:
+  - System-wide: `C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe`
+  - 32-bit: `C:\Program Files (x86)\BraveSoftware\Brave-Browser\Application\brave.exe`
+  - User-specific: `%LOCALAPPDATA%\BraveSoftware\Brave-Browser\Application\brave.exe`
+  - Portable installations in common directories
+- **All Brave Variants Supported**:
+  - Brave Browser (Stable)
+  - Brave Browser Beta
+  - Brave Browser Dev
+  - Brave Browser Nightly
+- **Environment Variable Support**: `BRAVE_PATH` for custom locations
+- **Automatic Fallback**: Progressive detection with multiple strategies
 
 **macOS:**
-- **Brave Browser** (priority):
+- **Brave Browser** paths:
   - `/Applications/Brave Browser.app/Contents/MacOS/Brave Browser`
-  - Beta/Nightly/Dev versions also detected
-- Chrome/Chromium (fallback):
-  - `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`
-  - Chromium and Chrome Canary also supported
+  - `/Applications/Brave Browser Beta.app/Contents/MacOS/Brave Browser Beta`
+  - `/Applications/Brave Browser Nightly.app/Contents/MacOS/Brave Browser Nightly`
+  - `/Applications/Brave Browser Dev.app/Contents/MacOS/Brave Browser Dev`
 
 **Linux:**
-- **Brave Browser** (priority):
+- **Brave Browser** installation:
   - Install: `sudo apt install brave-browser` or from [brave.com](https://brave.com/)
-  - Detected paths: `/usr/bin/brave-browser`, `/snap/bin/brave`, etc.
-- Chrome/Chromium (fallback):
-  - Install: `sudo apt-get install -y google-chrome-stable` or `chromium-browser`
+  - Detected paths: `/usr/bin/brave-browser`, `/snap/bin/brave`, `/usr/bin/brave`, `/opt/brave.com/brave/brave-browser`
 - Install xvfb for headless operation: `sudo apt-get install -y xvfb`
 
 ## Installation for Developers
@@ -275,11 +284,11 @@ This command:
 
 #### Method 2: Add with Environment Variables
 
-If you need to configure proxy settings or custom Chrome paths:
+If you need to configure proxy settings or custom Brave paths:
 
 ```bash
 claude mcp add brave-real-browser \
-  -e CHROME_PATH="/path/to/chrome" \
+  -e BRAVE_PATH="/path/to/brave" \
   -e PROXY_URL="http://proxy:8080" \
   -- npx brave-real-browser-mcp-server@latest
 ```
@@ -306,7 +315,7 @@ claude mcp add-json brave-real-browser '{
   "command": "npx",
   "args": ["brave-real-browser-mcp-server@latest"],
   "env": {
-    "CHROME_PATH": "/path/to/chrome",
+    "BRAVE_PATH": "/path/to/brave",
     "PROXY_URL": "http://proxy:8080"
   }
 }'
@@ -343,7 +352,7 @@ After adding the server:
 
 - **Automatic Updates**: Using `@latest` ensures you get bug fixes and improvements
 - **No Installation**: npx handles downloading and running automatically  
-- **Environment Variables**: Easy configuration of proxies, Chrome paths, etc.
+- **Environment Variables**: Easy configuration of proxies, Brave paths, etc.
 - **Scope Control**: Choose where the server is available (local/project/user)
 - **Team Sharing**: Project scope allows sharing configurations with teammates
 - **Status Monitoring**: Built-in `/mcp` command for server health checks
@@ -381,7 +390,7 @@ Cursor IDE uses the same npx approach - no installation needed! Here are the set
 
 > **Important:** Just like Claude Desktop, Cursor will use `npx` to automatically download and run the server. You don't need to install anything with npm!
 
-**Windows-Specific Configuration (if experiencing Chrome path issues):**
+**Windows-Specific Configuration (if experiencing Brave path issues):**
 ```json
 {
   "mcpServers": {
@@ -389,7 +398,7 @@ Cursor IDE uses the same npx approach - no installation needed! Here are the set
       "command": "npx",
       "args": ["brave-real-browser-mcp-server@latest"],
       "env": {
-        "CHROME_PATH": "C:/Program Files/Google/Chrome/Application/chrome.exe"
+        "BRAVE_PATH": "C:/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe"
       }
     }
   }
@@ -398,7 +407,7 @@ Cursor IDE uses the same npx approach - no installation needed! Here are the set
 
 > **Note**: Browser options like headless mode should be configured when initializing the browser through the `browser_init` tool, not via environment variables.
 
-**Advanced Configuration with Custom Chrome Path:**
+**Advanced Configuration with Custom Brave Path:**
 ```json
 {
   "mcpServers": {
@@ -406,7 +415,7 @@ Cursor IDE uses the same npx approach - no installation needed! Here are the set
       "command": "npx",
       "args": ["brave-real-browser-mcp-server@latest"],
       "env": {
-        "CHROME_PATH": "C:/Program Files/Google/Chrome/Application/chrome.exe"
+        "BRAVE_PATH": "C:/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe"
       }
     }
   }
@@ -415,34 +424,34 @@ Cursor IDE uses the same npx approach - no installation needed! Here are the set
 
 > **Note**: Proxy settings and browser options should be configured when asking Claude to initialize the browser using the `browser_init` tool.
 
-#### Platform-Specific Chrome Paths for Cursor IDE
+#### Platform-Specific Brave Paths for Cursor IDE
 
-If Chrome auto-detection fails, you can specify the Chrome path using the `CHROME_PATH` environment variable:
+If Brave auto-detection fails, you can specify the Brave path using the `BRAVE_PATH` environment variable:
 
 **Windows:**
 ```json
 "env": {
-  "CHROME_PATH": "C:/Program Files/Google/Chrome/Application/chrome.exe"
+  "BRAVE_PATH": "C:/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe"
 }
 ```
 Alternative Windows paths:
-- `"C:/Program Files (x86)/Google/Chrome/Application/chrome.exe"`
-- `"%LOCALAPPDATA%/Google/Chrome/Application/chrome.exe"`
+- `"C:/Program Files (x86)/BraveSoftware/Brave-Browser/Application/brave.exe"`
+- `"%LOCALAPPDATA%/BraveSoftware/Brave-Browser/Application/brave.exe"`
 
 **macOS:**
 ```json
 "env": {
-  "CHROME_PATH": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+  "BRAVE_PATH": "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"
 }
 ```
 
 **Linux:**
 ```json
 "env": {
-  "CHROME_PATH": "/usr/bin/google-chrome"
+  "BRAVE_PATH": "/usr/bin/brave-browser"
 }
 ```
-Alternative Linux paths: `/usr/bin/chromium-browser`, `/snap/bin/chromium`
+Alternative Linux paths: `/snap/bin/brave`, `/usr/bin/brave`, `/opt/brave.com/brave/brave-browser`
 
 
 #### Testing Cursor IDE Setup
@@ -467,9 +476,9 @@ If successful, you should see:
    - Ensure Node.js 18+ is installed
 
 2. **"Browser failed to launch" on Windows**
-   - Add explicit Chrome path in `executablePath`
+   - Add explicit Brave path in `BRAVE_PATH` environment variable
    - Try running Cursor IDE as Administrator
-   - Check Windows Defender isn't blocking Chrome
+   - Check Windows Defender isn't blocking Brave Browser
 
 3. **"Permission denied"**
    - Use `sudo npm install -g brave-real-browser-mcp-server` on Linux/Mac
@@ -650,7 +659,7 @@ This MCP server provides **62 professional-grade tools** organized into 11 major
 The server includes intelligent element discovery capabilities through the `find_selector` tool:
 
 - **Text-based element finding**: Automatically locates elements containing specific text
-- **Smart CSS selector generation**: Creates unique, robust CSS selectors similar to Chrome DevTools
+- **Smart CSS selector generation**: Creates unique, robust CSS selectors similar to Brave DevTools
 - **Element type filtering**: Optionally restrict search to specific HTML elements (e.g., buttons, links)
 - **Exact or partial text matching**: Choose between precise text matching or substring searches
 - **Universal compatibility**: Works across any website without hardcoded selectors
@@ -688,27 +697,27 @@ brave-real-browser implementation.
 
 ## Configuration
 
-### Automatic Chrome Path Detection (Enhanced in v1.3.0)
+### Automatic Brave Path Detection (Enhanced in v2.9.5)
 
-The server automatically detects Chrome installation paths across different operating systems with significantly improved Windows support:
+The server automatically detects Brave Browser installation paths across different operating systems with advanced multi-layer detection:
 
-- **Windows (v1.3.0+)**: 
-  - Registry-based detection for installed Chrome versions
+- **Windows (v2.9.5+)**: 
+  - Registry-based detection for all installed Brave versions
   - Searches 15+ common installation directories including Program Files, user-specific locations, and portable installations
-  - Support for Chrome Canary fallback
-  - Environment variable detection (`CHROME_PATH`, `PUPPETEER_EXECUTABLE_PATH`)
-  - Detailed troubleshooting guidance when Chrome is not found
+  - Support for all Brave variants (Stable, Beta, Dev, Nightly)
+  - Environment variable detection (`BRAVE_PATH`, `CHROME_PATH` for fallback)
+  - Detailed troubleshooting guidance when Brave is not found
   
-- **macOS**: Looks for Chrome in `/Applications/Google Chrome.app/` and Chrome Canary locations
+- **macOS**: Detects Brave in all Application bundle locations for all variants
 
-- **Linux**: Checks multiple locations including `/usr/bin/google-chrome`, `/usr/bin/chromium-browser`, and snap installations
+- **Linux**: Checks multiple locations including package manager installations and manual installs
 
-**Windows Registry Detection** (NEW in v1.3.0):
-The server now queries Windows Registry to find Chrome installations, making detection more reliable across different installation types.
+**Advanced Brave Detection** (Enhanced in v2.9.5):
+The server now uses sophisticated multi-layer detection combining Windows Registry queries, file system scanning, and environment variables for maximum compatibility.
 
-If Chrome is not found automatically, you can specify a custom path using:
-1. Environment variable: `set CHROME_PATH="C:\Your\Chrome\Path\chrome.exe"`
-2. Browser init option: `customConfig.chromePath` when initializing the browser
+If Brave is not found automatically, you can specify a custom path using:
+1. Environment variable: `set BRAVE_PATH="C:\Your\Brave\Path\brave.exe"`
+2. Browser init option: `customConfig.chromePath` when initializing the browser (legacy Chrome path support)
 
 ### Configuring Custom Options (like headless mode)
 Custom options like headless mode are **not configured in the MCP config file**. Instead, they're passed when initializing the browser using the `browser_init` tool:
@@ -735,7 +744,7 @@ When initializing with `browser_init`, you can configure:
 
 - `headless`: true/false (Set to true for headless operation)
 - `disableXvfb`: true/false (Disable X Virtual Framebuffer)
-- `ignoreAllFlags`: true/false (Ignore all Chrome flags)
+- `ignoreAllFlags`: true/false (Ignore all Brave browser flags)
 - `proxy`: "https://proxy:8080" (Proxy server URL)
 - `plugins`: ["plugin1", "plugin2"] (Array of plugins to load)
 - `connectOption`: Additional connection options like:
@@ -764,11 +773,11 @@ When initializing the browser with `browser_init`, you can configure:
 
 ### Advanced Configuration Examples
 
-#### Specifying Custom Chrome Path
+#### Specifying Custom Brave Path
 ```json
 {
   "customConfig": {
-    "chromePath": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+    "chromePath": "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe"
   }
 }
 ```
@@ -811,14 +820,14 @@ For advanced users, you can modify the server behavior by editing the source cod
 
 Version 1.3.0 includes comprehensive fixes for the `connect ECONNREFUSED 127.0.0.1:60725` error commonly experienced on Windows systems:
 
-**Enhanced Chrome Path Detection:**
-- Added Windows Registry-based Chrome detection
+**Enhanced Brave Path Detection:**
+- Added Windows Registry-based Brave detection for all variants
 - Expanded search to 15+ Windows installation locations including portable installations
-- Added support for Chrome Canary fallback
-- Environment variable support (`CHROME_PATH`, `PUPPETEER_EXECUTABLE_PATH`)
+- Added support for all Brave versions (Stable, Beta, Dev, Nightly)
+- Environment variable support (`BRAVE_PATH`, `CHROME_PATH` for legacy fallback)
 
 **Windows-Specific Launch Optimizations:**
-- 20+ Windows-specific Chrome flags for better compatibility
+- 20+ Windows-specific Brave browser flags for better compatibility
 - Multiple fallback strategies (5 different connection approaches)
 - Progressive retry logic with exponential backoff
 - Enhanced timeout handling (120s for Windows vs 90s for other platforms)
@@ -833,12 +842,12 @@ Version 1.3.0 includes comprehensive fixes for the `connect ECONNREFUSED 127.0.0
 
 1. **Environment Variables (Recommended):**
    ```bash
-   set CHROME_PATH="C:\Program Files\Google\Chrome\Application\chrome.exe"
+   set BRAVE_PATH="C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe"
    ```
 
-2. **Manual Chrome Path Configuration:**
+2. **Manual Brave Path Configuration:**
    ```text
-   Ask Claude: "Initialize browser with custom Chrome path at C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+   Ask Claude: "Initialize browser with custom Brave path at C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe"
    ```
 
 3. **Network Troubleshooting:**
@@ -852,10 +861,10 @@ Version 1.3.0 includes comprehensive fixes for the `connect ECONNREFUSED 127.0.0
    # Ensure: 127.0.0.1 localhost
    ```
 
-4. **Chrome Process Management:**
+4. **Brave Process Management:**
    ```bash
-   # Kill existing Chrome processes
-   taskkill /f /im chrome.exe
+   # Kill existing Brave processes
+   taskkill /f /im brave.exe
    ```
 
 ### Common Issues
@@ -914,20 +923,20 @@ Version 1.3.0 includes comprehensive fixes for the `connect ECONNREFUSED 127.0.0
    - Check your PATH includes npm global binaries: `npm config get prefix`
 
 3. **Browser won't start**
-   - Check if Chrome/Chromium is installed in standard locations
+   - Check if Brave Browser is installed in standard locations
    - **Windows specific troubleshooting**:
      
-     **Step 1: Verify Chrome Installation Paths**
+     **Step 1: Verify Brave Installation Paths**
      Check these locations in order:
-     - `C:\Program Files\Google\Chrome\Application\chrome.exe`
-     - `C:\Program Files (x86)\Google\Chrome\Application\chrome.exe`
-     - `%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe`
-     - `%PROGRAMFILES%\Google\Chrome\Application\chrome.exe`
+     - `C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe`
+     - `C:\Program Files (x86)\BraveSoftware\Brave-Browser\Application\brave.exe`
+     - `%LOCALAPPDATA%\BraveSoftware\Brave-Browser\Application\brave.exe`
+     - `%PROGRAMFILES%\BraveSoftware\Brave-Browser\Application\brave.exe`
      
      **Step 2: Manual Path Configuration**
-     If Chrome is in a different location, specify it manually:
+     If Brave is in a different location, specify it manually:
      ```
-     Ask Claude: "Initialize browser with custom Chrome path at C:\Your\Chrome\Path\chrome.exe"
+     Ask Claude: "Initialize browser with custom Brave path at C:\Your\Brave\Path\brave.exe"
      ```
      
      **Step 3: Windows Launch Arguments**
@@ -938,15 +947,15 @@ Version 1.3.0 includes comprehensive fixes for the `connect ECONNREFUSED 127.0.0
      
      **Step 4: Windows-Specific Solutions**
      - **Run as Administrator**: Try running your IDE/terminal as Administrator
-     - **Windows Defender**: Add Chrome and Node.js to Windows Defender exclusions
-     - **Antivirus Software**: Temporarily disable antivirus to test if it's blocking Chrome
+     - **Windows Defender**: Add Brave Browser and Node.js to Windows Defender exclusions
+     - **Antivirus Software**: Temporarily disable antivirus to test if it's blocking Brave
      - **User Account Control**: Lower UAC settings temporarily for testing
-     - **Chrome Processes**: Kill any existing Chrome processes in Task Manager
+     - **Brave Processes**: Kill any existing Brave processes in Task Manager
      
-     **Step 5: Alternative Chrome Installation**
-     If Chrome detection still fails:
-     - Download Chrome directly from [google.com/chrome](https://www.google.com/chrome/)
-     - Install to default location (`C:\Program Files\Google\Chrome\`)
+     **Step 5: Alternative Brave Installation**
+     If Brave detection still fails:
+     - Download Brave directly from [brave.com/download](https://brave.com/download/)
+     - Install to default location (`C:\Program Files\BraveSoftware\Brave-Browser\`)
      - Restart your IDE after installation
      
      **Step 6: PowerShell vs Command Prompt**
@@ -959,10 +968,10 @@ Version 1.3.0 includes comprehensive fixes for the `connect ECONNREFUSED 127.0.0
      - Clear npm cache: `npm cache clean --force`
      - Reinstall global packages: `npm install -g brave-real-browser-mcp-server@latest`
      
-   - **Linux**: Install dependencies: `sudo apt-get install -y google-chrome-stable`
-   - **macOS**: Ensure Chrome is in `/Applications/`
+   - **Linux**: Install Brave: `sudo apt install brave-browser` or from [brave.com](https://brave.com/)
+   - **macOS**: Ensure Brave is in `/Applications/Brave Browser.app/`
    - Try with `headless: true` first
-   - Check console output for Chrome path detection messages
+   - Check console output for Brave path detection messages
 
 4. **Claude doesn't see the MCP server**
    - Verify `claude_desktop_config.json` is in the correct location
@@ -988,7 +997,7 @@ Version 1.3.0 includes comprehensive fixes for the `connect ECONNREFUSED 127.0.0
      - Check if server status shows "connected" or error messages
    
    - **Environment Variables**:
-     - If using custom environment variables (Chrome path, proxy), verify they're correctly set
+     - If using custom environment variables (Brave path, proxy), verify they're correctly set
      - Test without environment variables first: `claude mcp add brave-real-browser -- npx brave-real-browser-mcp-server@latest`
    
    - **Node.js and npx Issues**:
@@ -1111,11 +1120,11 @@ A: Supports reCAPTCHA, hCaptcha, and Cloudflare Turnstile through brave-real-bro
 **Q: Is this detectable by websites?**
 A: brave-real-browser includes anti-detection features, but no solution is 100% undetectable.
 
-**Q: Can I use custom Chrome extensions?**
-A: Yes, through the `plugins` option in browser_init.
+**Q: Can I use custom Brave extensions?**
+A: Yes, through the `plugins` option in browser_init. Brave extensions and Chrome extensions are compatible.
 
 **Q: Does it work on all operating systems?**
-A: Yes, tested on Windows, macOS, and Linux. The server automatically detects Chrome installations on all platforms.
+A: Yes, tested on Windows, macOS, and Linux. The server automatically detects Brave Browser installations on all platforms with advanced multi-layer detection.
 
 **Q: What's the difference between Claude Desktop, Claude Code CLI, and Cursor IDE configurations?**
 A: Here's a comparison:
@@ -1136,30 +1145,30 @@ A: Here's a comparison:
 - **Claude Code CLI**: `claude mcp add brave-real-browser -- npx brave-real-browser-mcp-server@latest`
 - **Cursor IDE**: One-click install or manual JSON config
 
-**Q: What if Chrome is installed in a non-standard location?**
-A: Version 1.3.0 dramatically improves Chrome detection. The server now searches 15+ locations including portable installations and uses Windows Registry detection. If Chrome is still not found automatically, you can:
-1. Set environment variable: `set CHROME_PATH="C:\Your\Chrome\Path\chrome.exe"`
-2. Use the `customConfig.chromePath` option: `{"customConfig": {"chromePath": "C:\\Custom\\Chrome\\chrome.exe"}}`
+**Q: What if Brave is installed in a non-standard location?**
+A: Version 2.9.5 dramatically improves Brave detection with multi-layer scanning. The server now searches 15+ locations including portable installations and uses Windows Registry detection for all Brave variants. If Brave is still not found automatically, you can:
+1. Set environment variable: `set BRAVE_PATH="C:\Your\Brave\Path\brave.exe"`
+2. Use the `customConfig.chromePath` option: `{"customConfig": {"chromePath": "C:\\Custom\\Brave\\brave.exe"}}`
 
-**Q: Why am I getting "Chrome not found" or ECONNREFUSED errors on Windows?**
-A: Version 1.3.0 includes comprehensive fixes for Windows Chrome detection and connection issues. The server now automatically searches these locations and more:
-- `C:\Program Files\Google\Chrome\Application\chrome.exe`
-- `C:\Program Files (x86)\Google\Chrome\Application\chrome.exe` 
-- `%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe`
-- `%USERPROFILE%\AppData\Local\Google\Chrome\Application\chrome.exe`
-- Chrome Canary installations
-- Portable Chrome installations
+**Q: Why am I getting "Brave not found" or ECONNREFUSED errors on Windows?**
+A: Version 2.9.5 includes comprehensive fixes for Windows Brave detection and connection issues. The server now automatically searches these locations and more:
+- `C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe`
+- `C:\Program Files (x86)\BraveSoftware\Brave-Browser\Application\brave.exe` 
+- `%LOCALAPPDATA%\BraveSoftware\Brave-Browser\Application\brave.exe`
+- `%USERPROFILE%\AppData\Local\BraveSoftware\Brave-Browser\Application\brave.exe`
+- All Brave variants (Stable, Beta, Dev, Nightly) installations
+- Portable Brave installations
 - Registry-detected installations
 
-The server also implements multiple connection strategies with automatic fallback between localhost and 127.0.0.1, plus enhanced Windows-specific Chrome flags for better compatibility.
+The server also implements multiple connection strategies with automatic fallback between localhost and 127.0.0.1, plus enhanced Windows-specific Brave flags for better compatibility.
 
-**Q: I'm still getting ECONNREFUSED errors after upgrading to v1.3.0. What should I do?**
+**Q: I'm still getting ECONNREFUSED errors after upgrading to v2.9.5. What should I do?**
 A: Try these steps in order:
-1. Set the `CHROME_PATH` environment variable to your Chrome location
-2. Kill all existing Chrome processes: `taskkill /f /im chrome.exe`
+1. Set the `BRAVE_PATH` environment variable to your Brave location
+2. Kill all existing Brave processes: `taskkill /f /im brave.exe`
 3. Check your Windows hosts file contains: `127.0.0.1 localhost`
 4. Try running your IDE as Administrator
-5. Add Chrome to Windows Defender exclusions
+5. Add Brave Browser to Windows Defender exclusions
 6. If using a VPN/proxy, try disabling it temporarily
 
 ### Debug Mode
@@ -1258,7 +1267,7 @@ npm run test:debug    # Environment diagnostics and troubleshooting
 
 Debug tools provide:
 - Environment validation (Node.js version, platform, memory)
-- Chrome installation detection with specific paths
+- Brave Browser installation detection with specific paths
 - Quick server health check with startup timing
 - Network connectivity validation
 - Build status verification
@@ -1300,9 +1309,22 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Acknowledgments
 
-This MCP server is based on the excellent [brave-real-browser](https://github.com/ZFC-Digital/brave-real-browser) library by ZFC-Digital.
+### 🦁 **Powered by brave-real-browser**
+
+This MCP server is built upon the excellent **[brave-real-browser](https://github.com/ZFC-Digital/brave-real-browser)** library by **ZFC-Digital**, which provides the core automation capabilities.
+
+**Why brave-real-browser is Amazing:**
+- **🛡️ Advanced Anti-Detection**: Sophisticated techniques to bypass bot detection
+- **🦁 Brave Browser Optimized**: Specifically designed for Brave Browser
+- **🔒 Privacy-First**: Built with privacy and security in mind
+- **🎨 Stealth Capabilities**: Natural human-like interactions
+- **⚡ High Performance**: Optimized for speed and reliability
+- **🔧 Professional Grade**: Enterprise-level automation features
 
 **Thank you** to the brave-real-browser team for creating such a powerful and detection-resistant browser automation solution!
 
-- GitHub: [https://github.com/ZFC-Digital/brave-real-browser](https://github.com/ZFC-Digital/brave-real-browser)
-- npm: [https://www.npmjs.com/package/brave-real-browser](https://www.npmjs.com/package/brave-real-browser)
+**Resources:**
+- **GitHub**: [https://github.com/ZFC-Digital/brave-real-browser](https://github.com/ZFC-Digital/brave-real-browser)
+- **npm Package**: [https://www.npmjs.com/package/brave-real-browser](https://www.npmjs.com/package/brave-real-browser)
+- **Documentation**: Comprehensive guides and examples
+- **Community**: Active development and support
