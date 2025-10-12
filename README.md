@@ -61,6 +61,20 @@ If you're just using this MCP server (not developing it), you don't need to run 
 }
 ```
 
+```json
+{
+  "mcpServers": {
+    "brave-real-browser": {
+      "command": "npx",
+      "args": ["brave-real-browser-mcp-server@latest"],
+      "env": {
+        "CHROME_PATH": "C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe"
+      }
+    }
+  }
+}
+```
+
 **For Mac:**
 1. Open Finder and press `Cmd+Shift+G`
 2. Go to: `~/Library/Application Support/Claude/`
