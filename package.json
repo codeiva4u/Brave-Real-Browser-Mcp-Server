@@ -6,7 +6,8 @@
   "main": "dist/index.js",
   "scripts": {
     "install-brave": "node scripts/install-brave.cjs",
-    "postinstall": "node scripts/setup-brave.cjs && node scripts/update-to-latest.cjs || echo 'Auto-update skipped'",
+    "update-brave-deps": "node scripts/update-brave-dependencies.cjs",
+    "postinstall": "node scripts/setup-brave.cjs && node scripts/update-brave-dependencies.cjs || echo 'Auto-setup skipped'",
     "clean": "rimraf dist",
     "clean:cache": "npm cache clean --force",
     "fix-cache-permissions": "echo 'Run: sudo chown -R $(whoami):$(id -gn) ~/.npm' && echo 'This fixes npm cache permission issues'",
@@ -37,6 +38,8 @@
     "ajv": "^8.12.0",
     "axios": "^1.6.5",
     "brave-real-browser": "^1.5.102",
+    "brave-real-launcher": "^1.2.16",
+    "brave-real-puppeteer-core": "^24.23.0-patch.1",
     "cheerio": "^1.0.0-rc.12",
     "chrono-node": "^2.7.0",
     "compromise": "^14.13.0",
@@ -45,11 +48,12 @@
     "natural": "^6.12.0",
     "pixelmatch": "^5.3.0",
     "pngjs": "^7.0.0",
-    "puppeteer-screen-recorder": "^3.0.5",
+    "puppeteer-screen-recorder": "^3.0.6",
     "sentiment": "^5.0.2",
-    "tesseract.js": "^5.0.5",
+    "tesseract.js": "^6.0.1",
     "turndown": "^7.2.1",
-    "xml2js": "^0.6.2"
+    "xml2js": "^0.6.2",
+    "brave-real-playwright-core": "^1.55.1-patch.1"
   },
   "devDependencies": {
     "@types/cheerio": "^0.22.35",
