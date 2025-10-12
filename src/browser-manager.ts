@@ -5,19 +5,31 @@ import * as net from 'net';
 
 // Import Brave launcher for professional Brave detection
 let braveLauncher: any = null;
-try {
-  braveLauncher = require('brave-real-launcher');
-} catch (error) {
-  console.error('⚠️  brave-real-launcher not available, using fallback detection');
-}
 
 // Import brave-real-puppeteer-core for enhanced stealth features
 let braveRealPuppeteerCore: any = null;
-try {
-  braveRealPuppeteerCore = require('brave-real-puppeteer-core');
-  console.error('✅ brave-real-puppeteer-core loaded - enhanced stealth features available');
-} catch (error) {
-  console.error('⚠️  brave-real-puppeteer-core not available, using standard puppeteer');
+
+// Async function to load brave packages
+async function loadBravePackages(): Promise<void> {
+  // Load brave-real-launcher (CommonJS module)
+  try {
+    const { createRequire } = await import('module');
+    const require = createRequire(import.meta.url);
+    braveLauncher = require('brave-real-launcher');
+    console.log('✅ brave-real-launcher loaded - professional Brave detection enabled');
+  } catch (error) {
+    console.warn('⚠️  brave-real-launcher not available, using fallback detection:', (error as Error).message);
+  }
+
+  // Load brave-real-puppeteer-core (CommonJS module)
+  try {
+    const { createRequire } = await import('module');
+    const require = createRequire(import.meta.url);
+    braveRealPuppeteerCore = require('brave-real-puppeteer-core');
+    console.log('✅ brave-real-puppeteer-core loaded - enhanced stealth features available');
+  } catch (error) {
+    console.warn('⚠️  brave-real-puppeteer-core not available, using standard puppeteer:', (error as Error).message);
+  }
 }
 
 // Content prioritization configuration
@@ -702,6 +714,8 @@ export async function initializeBrowser(options?: any) {
   });
   
   try {
+    // Load brave packages first
+    await loadBravePackages();
 
     const detectedBravePath = detectBravePath();
     const customConfig = options?.customConfig ?? {};
