@@ -68,7 +68,7 @@ If you're just using this MCP server (not developing it), you don't need to run 
       "command": "npx",
       "args": ["brave-real-browser-mcp-server@latest"],
       "env": {
-        "BRAVE_PATH": "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe"
+        "BRAVE_PATH": "C:/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe"
       }
     }
   }
