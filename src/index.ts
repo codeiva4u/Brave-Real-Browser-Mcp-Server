@@ -123,6 +123,14 @@ import {
   handleComprehensiveVideoExtraction,
   handleURLRedirectTrace
 } from './handlers/video-extraction-handlers.js';
+// Import specialized tools handlers
+import {
+  handleLinksFinders,
+  handleVideoPlaySourcesFinder,
+  handleVideoPlayerHostarsSourcesFinder,
+  handleAjaxFinders,
+  handleUserAgentFinders
+} from './handlers/specialized-tools-handlers.js';
 
 console.error('🔍 [DEBUG] All modules loaded successfully');
 console.error(`🔍 [DEBUG] Server info: ${JSON.stringify(SERVER_INFO)}`);
@@ -403,6 +411,26 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       case TOOL_NAMES.URL_REDIRECT_TRACE:
         return await handleURLRedirectTrace(args as any);
+
+      // Specialized Video and Links Extraction Tools
+      case TOOL_NAMES.LINKS_FINDERS:
+        return await handleLinksFinders(args as any);
+
+      case TOOL_NAMES.VIDEO_PLAY_SOURCES_FINDER:
+        return await handleVideoPlaySourcesFinder(args as any);
+
+      case TOOL_NAMES.VIDEO_PLAYER_HOSTARS_SOURCES_FINDER:
+        return await handleVideoPlayerHostarsSourcesFinder(args as any);
+
+      case TOOL_NAMES.AJAX_FINDERS:
+        return await handleAjaxFinders(args as any);
+
+      case TOOL_NAMES.USER_AGENT_FINDERS:
+        return await handleUserAgentFinders(args as any);
+
+      // Regex Pattern Finders (alias for existing regex_pattern_matcher)
+      case TOOL_NAMES.REGEX_PATTERN_FINDERS:
+        return await handleRegexPatternMatcher(args as any);
 
       default:
         throw new Error(`Unknown tool: ${name}`);

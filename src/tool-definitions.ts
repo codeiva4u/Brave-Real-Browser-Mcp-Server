@@ -1120,6 +1120,435 @@ export const TOOLS = [
       required: ['url'],
     },
   },
+  // Specialized Video and Links Extraction Tools
+  {
+    name: 'links_finders',
+    description: 'Find and extract all types of links from page (HTTP, HTTPS, FTP, email, phone, etc.)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        includeExternal: {
+          type: 'boolean',
+          description: 'Include external links',
+          default: true
+        },
+        includeInternal: {
+          type: 'boolean',
+          description: 'Include internal links',
+          default: true
+        },
+        includeMediaLinks: {
+          type: 'boolean',
+          description: 'Include media file links',
+          default: true
+        },
+        includeEmailPhone: {
+          type: 'boolean',
+          description: 'Include email and phone links',
+          default: false
+        },
+        filterDomains: {
+          type: 'array',
+          description: 'Filter links by specific domains',
+          items: { type: 'string' }
+        }
+      }
+    }
+  },
+  {
+    name: 'video_play_sources_finder',
+    description: 'Find direct video play sources and streaming URLs',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        includeHLS: {
+          type: 'boolean',
+          description: 'Include HLS (.m3u8) sources',
+          default: true
+        },
+        includeDASH: {
+          type: 'boolean',
+          description: 'Include DASH (.mpd) sources',
+          default: true
+        },
+        includeDirectMP4: {
+          type: 'boolean',
+          description: 'Include direct MP4 sources',
+          default: true
+        },
+        includeBlob: {
+          type: 'boolean',
+          description: 'Include blob URLs',
+          default: true
+        },
+        recordingDuration: {
+          type: 'number',
+          description: 'Network recording duration (ms)',
+          default: 15000
+        }
+      }
+    }
+  },
+  {
+    name: 'video_player_hostars_sources_finder',
+    description: 'Find video sources from popular hosting platforms (YouTube, Vimeo, Dailymotion, etc.)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        platforms: {
+          type: 'array',
+          description: 'Specific platforms to search',
+          items: {
+            type: 'string',
+            enum: ['youtube', 'vimeo', 'dailymotion', 'twitch', 'facebook', 'instagram', 'tiktok', 'all']
+          },
+          default: ['all']
+        },
+        extractEmbedCodes: {
+          type: 'boolean',
+          description: 'Extract embed codes',
+          default: true
+        },
+        extractAPIKeys: {
+          type: 'boolean',
+          description: 'Extract API keys from network requests',
+          default: false
+        }
+      }
+    }
+  },
+  {
+    name: 'video_sources_links_finders',
+    description: 'Comprehensive video source links extraction from all possible locations',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        searchInJS: {
+          type: 'boolean',
+          description: 'Search in JavaScript code',
+          default: true
+        },
+        searchInJSON: {
+          type: 'boolean',
+          description: 'Search in JSON responses',
+          default: true
+        },
+        searchInCSS: {
+          type: 'boolean',
+          description: 'Search in CSS files',
+          default: false
+        },
+        searchInComments: {
+          type: 'boolean',
+          description: 'Search in HTML comments',
+          default: true
+        },
+        deepScan: {
+          type: 'boolean',
+          description: 'Enable deep scanning mode',
+          default: true
+        }
+      }
+    }
+  },
+  {
+    name: 'video_download_page',
+    description: 'Find and navigate to video download pages',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        searchKeywords: {
+          type: 'array',
+          description: 'Keywords to identify download pages',
+          items: { type: 'string' },
+          default: ['download', 'save', 'get', 'grab']
+        },
+        followRedirects: {
+          type: 'boolean',
+          description: 'Follow redirects to find actual download pages',
+          default: true
+        },
+        maxDepth: {
+          type: 'number',
+          description: 'Maximum navigation depth',
+          default: 3
+        }
+      }
+    }
+  },
+  {
+    name: 'video_sources_extracts',
+    description: 'Extract and process video sources with metadata',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        includeMetadata: {
+          type: 'boolean',
+          description: 'Include video metadata (duration, resolution, codec)',
+          default: true
+        },
+        validateSources: {
+          type: 'boolean',
+          description: 'Validate source URLs accessibility',
+          default: false
+        },
+        extractThumbnails: {
+          type: 'boolean',
+          description: 'Extract thumbnail URLs',
+          default: true
+        },
+        extractSubtitles: {
+          type: 'boolean',
+          description: 'Extract subtitle tracks',
+          default: true
+        }
+      }
+    }
+  },
+  {
+    name: 'video_download_button',
+    description: 'Find and interact with video download buttons',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        buttonSelectors: {
+          type: 'array',
+          description: 'Custom button selectors to search',
+          items: { type: 'string' }
+        },
+        clickButton: {
+          type: 'boolean',
+          description: 'Automatically click found download buttons',
+          default: false
+        },
+        waitAfterClick: {
+          type: 'number',
+          description: 'Wait time after clicking (ms)',
+          default: 3000
+        }
+      }
+    }
+  },
+  {
+    name: 'video_play_push_sources',
+    description: 'Find video sources from push/streaming services',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        includeWebSocket: {
+          type: 'boolean',
+          description: 'Include WebSocket streaming sources',
+          default: true
+        },
+        includeWebRTC: {
+          type: 'boolean',
+          description: 'Include WebRTC sources',
+          default: true
+        },
+        includePush: {
+          type: 'boolean',
+          description: 'Include server push sources',
+          default: true
+        },
+        monitoringDuration: {
+          type: 'number',
+          description: 'Duration to monitor for push sources (ms)',
+          default: 20000
+        }
+      }
+    }
+  },
+  {
+    name: 'original_video_hosters_finder',
+    description: 'Find original video hosting sources bypassing CDNs',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        bypassCDN: {
+          type: 'boolean',
+          description: 'Attempt to bypass CDN and find original sources',
+          default: true
+        },
+        traceOrigin: {
+          type: 'boolean',
+          description: 'Trace back to original hosting domain',
+          default: true
+        },
+        includeBackupSources: {
+          type: 'boolean',
+          description: 'Include backup/mirror sources',
+          default: true
+        },
+        deepNetworkAnalysis: {
+          type: 'boolean',
+          description: 'Perform deep network analysis',
+          default: true
+        }
+      }
+    }
+  },
+  {
+    name: 'ajax_finders',
+    description: 'Find and monitor AJAX requests and endpoints',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        interceptXHR: {
+          type: 'boolean',
+          description: 'Intercept XMLHttpRequest calls',
+          default: true
+        },
+        interceptFetch: {
+          type: 'boolean',
+          description: 'Intercept Fetch API calls',
+          default: true
+        },
+        recordResponses: {
+          type: 'boolean',
+          description: 'Record AJAX response data',
+          default: true
+        },
+        filterByContentType: {
+          type: 'array',
+          description: 'Filter by response content types',
+          items: { type: 'string' },
+          default: ['application/json', 'text/html', 'application/xml']
+        },
+        monitoringDuration: {
+          type: 'number',
+          description: 'Duration to monitor AJAX calls (ms)',
+          default: 10000
+        }
+      }
+    }
+  },
+  {
+    name: 'ajax_extracts',
+    description: 'Extract and process data from AJAX responses',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        parseJSON: {
+          type: 'boolean',
+          description: 'Parse JSON responses',
+          default: true
+        },
+        parseXML: {
+          type: 'boolean',
+          description: 'Parse XML responses',
+          default: true
+        },
+        extractVideoSources: {
+          type: 'boolean',
+          description: 'Extract video sources from AJAX responses',
+          default: true
+        },
+        extractAPIEndpoints: {
+          type: 'boolean',
+          description: 'Extract API endpoints from responses',
+          default: true
+        },
+        saveRawData: {
+          type: 'boolean',
+          description: 'Save raw response data',
+          default: false
+        }
+      }
+    }
+  },
+  {
+    name: 'user_agent_finders',
+    description: 'Find and analyze User-Agent strings and browser fingerprinting',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        detectFingerprinting: {
+          type: 'boolean',
+          description: 'Detect browser fingerprinting attempts',
+          default: true
+        },
+        analyzeHeaders: {
+          type: 'boolean',
+          description: 'Analyze all browser headers',
+          default: true
+        },
+        findCustomUA: {
+          type: 'boolean',
+          description: 'Find custom User-Agent requirements',
+          default: true
+        },
+        trackingDetection: {
+          type: 'boolean',
+          description: 'Detect tracking mechanisms',
+          default: true
+        }
+      }
+    }
+  },
+  {
+    name: 'user_agent_extracts',
+    description: 'Extract and generate User-Agent strings for bypassing restrictions',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        generateMobile: {
+          type: 'boolean',
+          description: 'Generate mobile User-Agent strings',
+          default: true
+        },
+        generateDesktop: {
+          type: 'boolean',
+          description: 'Generate desktop User-Agent strings',
+          default: true
+        },
+        generateBot: {
+          type: 'boolean',
+          description: 'Generate bot/crawler User-Agent strings',
+          default: false
+        },
+        targetPlatforms: {
+          type: 'array',
+          description: 'Target specific platforms',
+          items: {
+            type: 'string',
+            enum: ['windows', 'mac', 'linux', 'android', 'ios']
+          },
+          default: ['windows', 'mac', 'android']
+        }
+      }
+    }
+  },
+  {
+    name: 'regex_pattern_finders',
+    description: 'Advanced regex pattern finding and matching (alias for regex_pattern_matcher)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        patterns: {
+          type: 'array',
+          description: 'Array of regex patterns to search',
+          items: { type: 'string' }
+        },
+        flags: {
+          type: 'string',
+          description: 'Regex flags (g, i, m, s, u, y)',
+          default: 'gi'
+        },
+        extractGroups: {
+          type: 'boolean',
+          description: 'Extract capture groups from matches',
+          default: true
+        },
+        searchScope: {
+          type: 'string',
+          enum: ['html', 'text', 'scripts', 'network', 'all'],
+          description: 'Scope of search',
+          default: 'all'
+        }
+      },
+      required: ['patterns']
+    }
+  },
 ];
 
 // Tool name constants for type safety
@@ -1204,6 +1633,21 @@ export const TOOL_NAMES = {
   VIDEO_SELECTOR_GENERATION: 'video_selector_generation',
   COMPREHENSIVE_VIDEO_EXTRACTION: 'comprehensive_video_extraction',
   URL_REDIRECT_TRACE: 'url_redirect_trace',
+  // Specialized Video and Links Extraction Tools
+  LINKS_FINDERS: 'links_finders',
+  VIDEO_PLAY_SOURCES_FINDER: 'video_play_sources_finder',
+  VIDEO_PLAYER_HOSTARS_SOURCES_FINDER: 'video_player_hostars_sources_finder',
+  VIDEO_SOURCES_LINKS_FINDERS: 'video_sources_links_finders',
+  VIDEO_DOWNLOAD_PAGE: 'video_download_page',
+  VIDEO_SOURCES_EXTRACTS: 'video_sources_extracts',
+  VIDEO_DOWNLOAD_BUTTON: 'video_download_button',
+  VIDEO_PLAY_PUSH_SOURCES: 'video_play_push_sources',
+  ORIGINAL_VIDEO_HOSTERS_FINDER: 'original_video_hosters_finder',
+  AJAX_FINDERS: 'ajax_finders',
+  AJAX_EXTRACTS: 'ajax_extracts',
+  USER_AGENT_FINDERS: 'user_agent_finders',
+  USER_AGENT_EXTRACTS: 'user_agent_extracts',
+  REGEX_PATTERN_FINDERS: 'regex_pattern_finders',
 } as const;
 
 // Type definitions for tool inputs

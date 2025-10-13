@@ -59,7 +59,7 @@ export async function handleBrowserClose() {
 }
 
 // Workflow validation wrapper
-async function withWorkflowValidation<T>(
+export async function withWorkflowValidation<T>(
   toolName: string,
   args: any,
   operation: () => Promise<T>
