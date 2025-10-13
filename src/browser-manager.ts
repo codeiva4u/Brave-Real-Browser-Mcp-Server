@@ -1041,3 +1041,12 @@ export function updateContentPriorityConfig(config: Partial<ContentPriorityConfi
   contentPriorityConfig = { ...contentPriorityConfig, ...config };
 }
 
+// Additional convenience exports for video extraction modules
+export function getBrowser() {
+  return browserInstance;
+}
+
+export function getPage() {
+  return pageInstance;
+}
+

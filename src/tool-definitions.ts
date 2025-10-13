@@ -595,6 +595,138 @@ export const TOOLS = [
       required: ['text'],
     },
   },
+  // Video Extraction Tools
+  {
+    name: 'html_elements_extraction',
+    description: 'Extract video sources from HTML elements (video tags, iframes, embeds, meta tags, data attributes)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        extractVideoTags: {
+          type: 'boolean',
+          description: 'Extract sources from <video> and <source> tags',
+          default: true
+        },
+        extractIframes: {
+          type: 'boolean',
+          description: 'Extract sources from <iframe> elements',
+          default: true
+        },
+        extractEmbeds: {
+          type: 'boolean',
+          description: 'Extract sources from <embed> and <object> elements',
+          default: true
+        },
+        extractMetaTags: {
+          type: 'boolean',
+          description: 'Extract sources from Open Graph and Twitter Card meta tags',
+          default: true
+        },
+        extractDataAttributes: {
+          type: 'boolean',
+          description: 'Extract sources from data-* attributes',
+          default: true
+        }
+      }
+    }
+  },
+  {
+    name: 'network_video_extraction',
+    description: 'Extract video sources from network requests and responses',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        interceptRequests: {
+          type: 'boolean',
+          description: 'Intercept and analyze network requests',
+          default: false
+        },
+        captureResponses: {
+          type: 'boolean',
+          description: 'Capture and analyze network responses',
+          default: true
+        },
+        filterResourceTypes: {
+          type: 'array',
+          description: 'Filter by resource types (xhr, fetch, media, etc.)',
+          items: { type: 'string' }
+        },
+        maxRecords: {
+          type: 'number',
+          description: 'Maximum number of network requests to record',
+          default: 1000
+        },
+        recordingDuration: {
+          type: 'number',
+          description: 'Duration to record network traffic (ms)',
+          default: 10000
+        }
+      }
+    }
+  },
+  {
+    name: 'video_selector_generation',
+    description: 'Generate CSS selectors for video-related elements on the page',
+    inputSchema: {
+      type: 'object',
+      properties: {}
+    }
+  },
+  {
+    name: 'comprehensive_video_extraction',
+    description: 'Extract video sources using all available strategies (DOM + Network)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        enableDOMAnalysis: {
+          type: 'boolean',
+          description: 'Enable DOM-based video extraction',
+          default: true
+        },
+        enableNetworkRecording: {
+          type: 'boolean',
+          description: 'Enable network-based video extraction',
+          default: true
+        },
+        recordingDuration: {
+          type: 'number',
+          description: 'Duration to record network traffic (ms)',
+          default: 10000
+        },
+        maxSources: {
+          type: 'number',
+          description: 'Maximum number of video sources to return',
+          default: 50
+        },
+        filterFormats: {
+          type: 'array',
+          description: 'Filter results by video format',
+          items: {
+            type: 'string',
+            enum: ['mp4', 'webm', 'avi', 'mkv', 'hls', 'dash', 'ts', 'flv', 'blob']
+          }
+        }
+      }
+    }
+  },
+  {
+    name: 'url_redirect_trace',
+    description: 'Trace URL redirects and get final destinations',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        targetUrl: {
+          type: 'string',
+          description: 'Specific URL to trace redirects for'
+        },
+        recordingDuration: {
+          type: 'number',
+          description: 'Duration to record network traffic (ms)',
+          default: 5000
+        }
+      }
+    }
+  },
   // Data Validation Tools
   {
     name: 'schema_validator',
@@ -1066,6 +1198,12 @@ export const TOOL_NAMES = {
   REST_API_ENDPOINT_FINDER: 'rest_api_endpoint_finder',
   WEBHOOK_SUPPORT: 'webhook_support',
   ALL_WEBSITE_API_FINDER: 'all_website_api_finder',
+  // Video Extraction Tools
+  HTML_ELEMENTS_EXTRACTION: 'html_elements_extraction',
+  NETWORK_VIDEO_EXTRACTION: 'network_video_extraction',
+  VIDEO_SELECTOR_GENERATION: 'video_selector_generation',
+  COMPREHENSIVE_VIDEO_EXTRACTION: 'comprehensive_video_extraction',
+  URL_REDIRECT_TRACE: 'url_redirect_trace',
 } as const;
 
 // Type definitions for tool inputs

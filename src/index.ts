@@ -115,6 +115,14 @@ import {
   handleWebhookSupport,
   handleAllWebsiteAPIFinder
 } from './handlers/api-integration-handlers.js';
+// Import video extraction handlers
+import {
+  handleHtmlElementsExtraction,
+  handleNetworkVideoExtraction,
+  handleVideoSelectorGeneration,
+  handleComprehensiveVideoExtraction,
+  handleURLRedirectTrace
+} from './handlers/video-extraction-handlers.js';
 
 console.error('🔍 [DEBUG] All modules loaded successfully');
 console.error(`🔍 [DEBUG] Server info: ${JSON.stringify(SERVER_INFO)}`);
@@ -379,6 +387,22 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       case TOOL_NAMES.ALL_WEBSITE_API_FINDER:
         return await handleAllWebsiteAPIFinder(args as any);
+
+      // Video Extraction Tools
+      case TOOL_NAMES.HTML_ELEMENTS_EXTRACTION:
+        return await handleHtmlElementsExtraction(args as any);
+
+      case TOOL_NAMES.NETWORK_VIDEO_EXTRACTION:
+        return await handleNetworkVideoExtraction(args as any);
+
+      case TOOL_NAMES.VIDEO_SELECTOR_GENERATION:
+        return await handleVideoSelectorGeneration(args as any);
+
+      case TOOL_NAMES.COMPREHENSIVE_VIDEO_EXTRACTION:
+        return await handleComprehensiveVideoExtraction(args as any);
+
+      case TOOL_NAMES.URL_REDIRECT_TRACE:
+        return await handleURLRedirectTrace(args as any);
 
       default:
         throw new Error(`Unknown tool: ${name}`);
