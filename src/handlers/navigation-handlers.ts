@@ -14,7 +14,7 @@ export async function handleNavigate(args: NavigateArgs) {
 
       const { url, waitUntil = 'domcontentloaded' } = args;
       
-      console.error(`🔄 Navigating to: ${url}`);
+      console.log(`🔄 Navigating to: ${url}`);
       
       // Navigate with retry logic
       let lastError: Error | null = null;
@@ -30,7 +30,7 @@ export async function handleNavigate(args: NavigateArgs) {
             });
           }, 60000, 'page-navigation');
           
-          console.error(`✅ Navigation successful to: ${url}`);
+          console.log(`✅ Navigation successful to: ${url}`);
           success = true;
           break;
         } catch (error) {

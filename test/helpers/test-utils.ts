@@ -33,16 +33,20 @@ export function waitForServerStartup(serverProcess: ChildProcess, timeoutMs: num
       }
     }, timeoutMs);
 
-    const stderrHandler = (data: Buffer) => {
+    const outputHandler = (data: Buffer) => {
       const output = data.toString();
-      // Look for the actual startup message with emoji prefix
+      // Look for the actual startup message - this is logged after server.connect() succeeds
       if (output.includes('🚀 Brave Real Browser MCP Server started successfully') || 
-          output.includes('Brave Real Browser MCP Server started successfully')) {
+          output.includes('Brave Real Browser MCP Server started successfully') ||
+          output.includes('📋 Available tools:') ||
+          output.includes('🔧 Workflow validation: Active')) {
         if (!resolved) {
           resolved = true;
           clearTimeout(timeout);
-          serverProcess.stderr?.removeListener('data', stderrHandler);
+          serverProcess.stderr?.removeListener('data', outputHandler);
+          serverProcess.stdout?.removeListener('data', outputHandler);
           console.error('[TEST] Server startup detected successfully');
+          console.error(`[TEST] Startup detected with message: ${output.substring(0, 200)}...`);
           resolve();
         }
       }
@@ -66,13 +70,16 @@ export function waitForServerStartup(serverProcess: ChildProcess, timeoutMs: num
       }
     };
 
-    serverProcess.stderr?.on('data', stderrHandler);
+    // Listen on both stderr and stdout for startup message
+    serverProcess.stderr?.on('data', outputHandler);
+    serverProcess.stdout?.on('data', outputHandler);
     serverProcess.on('error', errorHandler);
     serverProcess.on('exit', exitHandler);
     
     // Cleanup listeners if resolved
     const cleanup = () => {
-      serverProcess.stderr?.removeListener('data', stderrHandler);
+      serverProcess.stderr?.removeListener('data', outputHandler);
+      serverProcess.stdout?.removeListener('data', outputHandler);
       serverProcess.removeListener('error', errorHandler);
       serverProcess.removeListener('exit', exitHandler);
     };

@@ -142,8 +142,7 @@ export async function handleHtmlElementsExtraction(args: {
         };
         
         return {
-          content: result,
-          isError: false
+          content: result
         };
         
       } catch (error) {
@@ -214,8 +213,7 @@ export async function handleNetworkVideoExtraction(args: {
         };
         
         return {
-          content: result,
-          isError: false
+          content: result
         };
         
       } catch (error) {
@@ -234,8 +232,7 @@ export async function handleVideoSelectorGeneration(args: {}): Promise<{ content
         const selectors = await videoSelectors.generateVideoSelectors();
         
         return {
-          content: selectors,
-          isError: false
+          content: selectors
         };
         
       } catch (error) {
@@ -353,8 +350,7 @@ export async function handleComprehensiveVideoExtraction(args: {
         };
         
         return {
-          content: result,
-          isError: false
+          content: result
         };
         
       } catch (error) {
@@ -407,8 +403,7 @@ export async function handleURLRedirectTrace(args: {
           content: {
             redirectChains,
             finalUrls
-          },
-          isError: false
+          }
         };
         
       } catch (error) {

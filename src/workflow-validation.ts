@@ -98,6 +98,7 @@ export class WorkflowValidator {
 
     // Define tool prerequisites - STRICT: find_selector requires successful content analysis
     const toolPrerequisites: Record<string, WorkflowState[]> = {
+      // Core browser tools
       'browser_init': [WorkflowState.INITIAL], // CRITICAL: Only allow init from INITIAL state to prevent multiple calls
       'browser_close': [WorkflowState.BROWSER_READY, WorkflowState.PAGE_LOADED, WorkflowState.CONTENT_ANALYZED, WorkflowState.SELECTOR_AVAILABLE],
       'navigate': [WorkflowState.BROWSER_READY, WorkflowState.PAGE_LOADED, WorkflowState.CONTENT_ANALYZED, WorkflowState.SELECTOR_AVAILABLE],
@@ -107,7 +108,41 @@ export class WorkflowValidator {
       'type': [WorkflowState.CONTENT_ANALYZED, WorkflowState.SELECTOR_AVAILABLE],
       'wait': [WorkflowState.PAGE_LOADED, WorkflowState.CONTENT_ANALYZED, WorkflowState.SELECTOR_AVAILABLE],
       'solve_captcha': [WorkflowState.PAGE_LOADED, WorkflowState.CONTENT_ANALYZED, WorkflowState.SELECTOR_AVAILABLE],
-      'random_scroll': [WorkflowState.PAGE_LOADED, WorkflowState.CONTENT_ANALYZED, WorkflowState.SELECTOR_AVAILABLE]
+      'random_scroll': [WorkflowState.PAGE_LOADED, WorkflowState.CONTENT_ANALYZED, WorkflowState.SELECTOR_AVAILABLE],
+      
+      // Video Extraction Tools - allow after page load for maximum compatibility
+      'html_elements_extraction': [WorkflowState.PAGE_LOADED, WorkflowState.CONTENT_ANALYZED, WorkflowState.SELECTOR_AVAILABLE],
+      'network_video_extraction': [WorkflowState.PAGE_LOADED, WorkflowState.CONTENT_ANALYZED, WorkflowState.SELECTOR_AVAILABLE],
+      'video_selector_generation': [WorkflowState.PAGE_LOADED, WorkflowState.CONTENT_ANALYZED, WorkflowState.SELECTOR_AVAILABLE],
+      'comprehensive_video_extraction': [WorkflowState.PAGE_LOADED, WorkflowState.CONTENT_ANALYZED, WorkflowState.SELECTOR_AVAILABLE],
+      'url_redirect_trace': [WorkflowState.BROWSER_READY, WorkflowState.PAGE_LOADED, WorkflowState.CONTENT_ANALYZED, WorkflowState.SELECTOR_AVAILABLE],
+      
+      // Specialized Video and Links Extraction Tools - allow after page load
+      'links_finders': [WorkflowState.PAGE_LOADED, WorkflowState.CONTENT_ANALYZED, WorkflowState.SELECTOR_AVAILABLE],
+      'video_play_sources_finder': [WorkflowState.PAGE_LOADED, WorkflowState.CONTENT_ANALYZED, WorkflowState.SELECTOR_AVAILABLE],
+      'video_player_hostars_sources_finder': [WorkflowState.PAGE_LOADED, WorkflowState.CONTENT_ANALYZED, WorkflowState.SELECTOR_AVAILABLE],
+      'ajax_finders': [WorkflowState.PAGE_LOADED, WorkflowState.CONTENT_ANALYZED, WorkflowState.SELECTOR_AVAILABLE],
+      'video_sources_extracts': [WorkflowState.PAGE_LOADED, WorkflowState.CONTENT_ANALYZED, WorkflowState.SELECTOR_AVAILABLE],
+      'video_sources_links_finders': [WorkflowState.PAGE_LOADED, WorkflowState.CONTENT_ANALYZED, WorkflowState.SELECTOR_AVAILABLE],
+      'original_video_hosters_finder': [WorkflowState.PAGE_LOADED, WorkflowState.CONTENT_ANALYZED, WorkflowState.SELECTOR_AVAILABLE],
+      'video_play_push_sources': [WorkflowState.PAGE_LOADED, WorkflowState.CONTENT_ANALYZED, WorkflowState.SELECTOR_AVAILABLE],
+      'ajax_extracts': [WorkflowState.PAGE_LOADED, WorkflowState.CONTENT_ANALYZED, WorkflowState.SELECTOR_AVAILABLE],
+      'user_agent_finders': [WorkflowState.PAGE_LOADED, WorkflowState.CONTENT_ANALYZED, WorkflowState.SELECTOR_AVAILABLE],
+      'user_agent_extracts': [WorkflowState.PAGE_LOADED, WorkflowState.CONTENT_ANALYZED, WorkflowState.SELECTOR_AVAILABLE],
+      
+      // Video Download Tools - allow after page load
+      'video_download_page': [WorkflowState.PAGE_LOADED, WorkflowState.CONTENT_ANALYZED, WorkflowState.SELECTOR_AVAILABLE],
+      'video_download_button': [WorkflowState.PAGE_LOADED, WorkflowState.CONTENT_ANALYZED, WorkflowState.SELECTOR_AVAILABLE],
+      
+      // File operations - allow after content analysis
+      'save_content_as_markdown': [WorkflowState.CONTENT_ANALYZED, WorkflowState.SELECTOR_AVAILABLE],
+      
+      // Data extraction tools - require content analysis
+      'scrape_table': [WorkflowState.CONTENT_ANALYZED, WorkflowState.SELECTOR_AVAILABLE],
+      'extract_list': [WorkflowState.CONTENT_ANALYZED, WorkflowState.SELECTOR_AVAILABLE],
+      'extract_json': [WorkflowState.CONTENT_ANALYZED, WorkflowState.SELECTOR_AVAILABLE],
+      'scrape_meta_tags': [WorkflowState.CONTENT_ANALYZED, WorkflowState.SELECTOR_AVAILABLE],
+      'extract_schema': [WorkflowState.CONTENT_ANALYZED, WorkflowState.SELECTOR_AVAILABLE]
     };
 
     const allowedStates = toolPrerequisites[toolName];

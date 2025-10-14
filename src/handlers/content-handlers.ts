@@ -47,7 +47,7 @@ export async function handleGetContent(args: GetContentArgs) {
       const maxTokens = 20000; // Safe default for MCP
 
       if (tokenCount > maxTokens) {
-        console.warn(`Content size (${tokenCount} tokens) exceeds limit (${maxTokens} tokens). Chunking content...`);
+        console.log(`Content size (${tokenCount} tokens) exceeds limit (${maxTokens} tokens). Chunking content...`);
         
         const chunks = [processedContent.substring(0, Math.floor(maxTokens * 0.8 * 3))];
         const firstChunk = chunks[0];

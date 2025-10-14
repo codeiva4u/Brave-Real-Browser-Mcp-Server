@@ -1,0 +1,139 @@
+{
+  "testUrl": "https://multimovies.sale/movies/war-2-2/",
+  "timestamp": "2025-10-14T15:22:57.199Z",
+  "summary": {
+    "total": 18,
+    "successful": 4,
+    "empty": 0,
+    "errors": 14,
+    "noResponse": 0
+  },
+  "results": [
+    {
+      "tool": "html_elements_extraction",
+      "status": "ERROR",
+      "hasData": false,
+      "dataSize": 0,
+      "preview": "Workflow validation failed for html_elements_extraction: Tool 'html_elements_extraction' cannot be executed in current state 'BROWSER_READY'."
+    },
+    {
+      "tool": "network_video_extraction",
+      "status": "ERROR",
+      "hasData": false,
+      "dataSize": 0,
+      "preview": "Workflow validation failed for network_video_extraction: Tool 'network_video_extraction' cannot be executed in current state 'BROWSER_READY'."
+    },
+    {
+      "tool": "video_selector_generation",
+      "status": "ERROR",
+      "hasData": false,
+      "dataSize": 0,
+      "preview": "Workflow validation failed for video_selector_generation: Tool 'video_selector_generation' cannot be executed in current state 'BROWSER_READY'."
+    },
+    {
+      "tool": "comprehensive_video_extraction",
+      "status": "SUCCESS",
+      "hasData": true,
+      "dataSize": 3817,
+      "preview": "{\n  \"sources\": [\n    {\n      \"url\": \"about:blank\",\n      \"format\": \"unknown\",\n      \"hoster\": \"\",\n      \"extractorUsed\": \"HtmlElementsFinder.findVideoTags_fallback\",\n      \"confidence\": 0.1,\n      \"headers\": {\n        \"note\": \"No video tags found - returning page URL as fallback\"\n      }\n    },\n    ..."
+    },
+    {
+      "tool": "url_redirect_trace",
+      "status": "SUCCESS",
+      "hasData": true,
+      "dataSize": 45,
+      "preview": "{\n  \"redirectChains\": {},\n  \"finalUrls\": {}\n}..."
+    },
+    {
+      "tool": "links_finders",
+      "status": "SUCCESS",
+      "hasData": true,
+      "dataSize": 56735,
+      "preview": "[\n  {\n    \"type\": \"text\",\n    \"text\": \"{\\n  \\\"success\\\": true,\\n  \\\"links\\\": [\\n    {\\n      \\\"type\\\": \\\"anchor\\\",\\n      \\\"url\\\": \\\"https://multimovies.sale/\\\",\\n      \\\"text\\\": \\\"\\\",\\n      \\\"isExternal\\\": false,\\n      \\\"title\\\": \\\"\\\"\\n    },\\n    {\\n      \\\"type\\\": \\\"anchor\\\",\\n      \\\"url\\\": \\\"..."
+    },
+    {
+      "tool": "video_play_sources_finder",
+      "status": "SUCCESS",
+      "hasData": true,
+      "dataSize": 1113,
+      "preview": "[\n  {\n    \"type\": \"text\",\n    \"text\": \"{\\n  \\\"success\\\": true,\\n  \\\"sources\\\": [\\n    {\\n      \\\"url\\\": \\\"https://multimovies.sale/video.mp4\\\",\\n      \\\"type\\\": \\\"MP4\\\",\\n      \\\"source\\\": \\\"pattern_fallback\\\",\\n      \\\"note\\\": \\\"Common MP4 pattern\\\"\\n    },\\n    {\\n      \\\"url\\\": \\\"https://multimov..."
+    },
+    {
+      "tool": "video_player_hostars_sources_finder",
+      "status": "ERROR",
+      "hasData": false,
+      "dataSize": 0,
+      "preview": "Tool 'video_player_hostars_sources_finder' cannot be executed in current state 'BROWSER_READY'.\n\n🔍 Workflow Validation Summary:\n- Current State: BROWSER_READY\n- Page URL: None\n- Content Analyzed: false\n- Content Analysis Attempted: false\n- Content Analysis Stale: true\n- Last Content Error: None\n- Recent Tool Calls: browser_init(OK), get_content(FAIL)\n- State Transitions: INITIAL→BROWSER_READY"
+    },
+    {
+      "tool": "ajax_finders",
+      "status": "ERROR",
+      "hasData": false,
+      "dataSize": 0,
+      "preview": "Tool 'ajax_finders' cannot be executed in current state 'BROWSER_READY'.\n\n🔍 Workflow Validation Summary:\n- Current State: BROWSER_READY\n- Page URL: None\n- Content Analyzed: false\n- Content Analysis Attempted: false\n- Content Analysis Stale: true\n- Last Content Error: None\n- Recent Tool Calls: browser_init(OK), get_content(FAIL)\n- State Transitions: INITIAL→BROWSER_READY"
+    },
+    {
+      "tool": "video_sources_extracts",
+      "status": "ERROR",
+      "hasData": false,
+      "dataSize": 0,
+      "preview": "Tool 'video_sources_extracts' cannot be executed in current state 'BROWSER_READY'.\n\n🔍 Workflow Validation Summary:\n- Current State: BROWSER_READY\n- Page URL: None\n- Content Analyzed: false\n- Content Analysis Attempted: false\n- Content Analysis Stale: true\n- Last Content Error: None\n- Recent Tool Calls: browser_init(OK), get_content(FAIL)\n- State Transitions: INITIAL→BROWSER_READY"
+    },
+    {
+      "tool": "video_sources_links_finders",
+      "status": "ERROR",
+      "hasData": false,
+      "dataSize": 0,
+      "preview": "Tool 'video_sources_links_finders' cannot be executed in current state 'BROWSER_READY'.\n\n🔍 Workflow Validation Summary:\n- Current State: BROWSER_READY\n- Page URL: None\n- Content Analyzed: false\n- Content Analysis Attempted: false\n- Content Analysis Stale: true\n- Last Content Error: None\n- Recent Tool Calls: browser_init(OK), get_content(FAIL)\n- State Transitions: INITIAL→BROWSER_READY"
+    },
+    {
+      "tool": "original_video_hosters_finder",
+      "status": "ERROR",
+      "hasData": false,
+      "dataSize": 0,
+      "preview": "Tool 'original_video_hosters_finder' cannot be executed in current state 'BROWSER_READY'.\n\n🔍 Workflow Validation Summary:\n- Current State: BROWSER_READY\n- Page URL: None\n- Content Analyzed: false\n- Content Analysis Attempted: false\n- Content Analysis Stale: true\n- Last Content Error: None\n- Recent Tool Calls: browser_init(OK), get_content(FAIL)\n- State Transitions: INITIAL→BROWSER_READY"
+    },
+    {
+      "tool": "video_play_push_sources",
+      "status": "ERROR",
+      "hasData": false,
+      "dataSize": 0,
+      "preview": "Tool 'video_play_push_sources' cannot be executed in current state 'BROWSER_READY'.\n\n🔍 Workflow Validation Summary:\n- Current State: BROWSER_READY\n- Page URL: None\n- Content Analyzed: false\n- Content Analysis Attempted: false\n- Content Analysis Stale: true\n- Last Content Error: None\n- Recent Tool Calls: browser_init(OK), get_content(FAIL)\n- State Transitions: INITIAL→BROWSER_READY"
+    },
+    {
+      "tool": "ajax_extracts",
+      "status": "ERROR",
+      "hasData": false,
+      "dataSize": 0,
+      "preview": "Tool 'ajax_extracts' cannot be executed in current state 'BROWSER_READY'.\n\n🔍 Workflow Validation Summary:\n- Current State: BROWSER_READY\n- Page URL: None\n- Content Analyzed: false\n- Content Analysis Attempted: false\n- Content Analysis Stale: true\n- Last Content Error: None\n- Recent Tool Calls: browser_init(OK), get_content(FAIL)\n- State Transitions: INITIAL→BROWSER_READY"
+    },
+    {
+      "tool": "user_agent_finders",
+      "status": "ERROR",
+      "hasData": false,
+      "dataSize": 0,
+      "preview": "Tool 'user_agent_finders' cannot be executed in current state 'BROWSER_READY'.\n\n🔍 Workflow Validation Summary:\n- Current State: BROWSER_READY\n- Page URL: None\n- Content Analyzed: false\n- Content Analysis Attempted: false\n- Content Analysis Stale: true\n- Last Content Error: None\n- Recent Tool Calls: browser_init(OK), get_content(FAIL)\n- State Transitions: INITIAL→BROWSER_READY"
+    },
+    {
+      "tool": "user_agent_extracts",
+      "status": "ERROR",
+      "hasData": false,
+      "dataSize": 0,
+      "preview": "Tool 'user_agent_extracts' cannot be executed in current state 'BROWSER_READY'.\n\n🔍 Workflow Validation Summary:\n- Current State: BROWSER_READY\n- Page URL: None\n- Content Analyzed: false\n- Content Analysis Attempted: false\n- Content Analysis Stale: true\n- Last Content Error: None\n- Recent Tool Calls: browser_init(OK), get_content(FAIL)\n- State Transitions: INITIAL→BROWSER_READY"
+    },
+    {
+      "tool": "video_download_page",
+      "status": "ERROR",
+      "hasData": false,
+      "dataSize": 0,
+      "preview": "Tool 'video_download_page' cannot be executed in current state 'BROWSER_READY'.\n\n🔍 Workflow Validation Summary:\n- Current State: BROWSER_READY\n- Page URL: None\n- Content Analyzed: false\n- Content Analysis Attempted: false\n- Content Analysis Stale: true\n- Last Content Error: None\n- Recent Tool Calls: browser_init(OK), get_content(FAIL)\n- State Transitions: INITIAL→BROWSER_READY"
+    },
+    {
+      "tool": "video_download_button",
+      "status": "ERROR",
+      "hasData": false,
+      "dataSize": 0,
+      "preview": "Tool 'video_download_button' cannot be executed in current state 'BROWSER_READY'.\n\n🔍 Workflow Validation Summary:\n- Current State: BROWSER_READY\n- Page URL: None\n- Content Analyzed: false\n- Content Analysis Attempted: false\n- Content Analysis Stale: true\n- Last Content Error: None\n- Recent Tool Calls: browser_init(OK), get_content(FAIL)\n- State Transitions: INITIAL→BROWSER_READY"
+    }
+  ]
+}

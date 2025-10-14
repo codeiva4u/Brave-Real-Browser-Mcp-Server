@@ -4,6 +4,20 @@
   "description": "MCP server for brave-real-browser",
   "type": "module",
   "main": "dist/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./tools": {
+      "import": "./dist/tool-definitions.js",
+      "types": "./dist/tool-definitions.d.ts"
+    },
+    "./handlers/*": {
+      "import": "./dist/handlers/*.js",
+      "types": "./dist/handlers/*.d.ts"
+    }
+  },
   "scripts": {
     "install-brave": "node scripts/install-brave.cjs",
     "update-brave-deps": "node scripts/update-brave-dependencies.cjs",

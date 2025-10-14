@@ -1438,14 +1438,14 @@ export const TOOLS = [
           description: 'Parse XML responses',
           default: true
         },
-        extractVideoSources: {
-          type: 'boolean',
-          description: 'Extract video sources from AJAX responses',
-          default: true
-        },
         extractAPIEndpoints: {
           type: 'boolean',
           description: 'Extract API endpoints from responses',
+          default: true
+        },
+        extractVideoSources: {
+          type: 'boolean',
+          description: 'Extract video sources from AJAX responses',
           default: true
         },
         saveRawData: {

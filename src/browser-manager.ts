@@ -287,7 +287,7 @@ function getWindowsBraveFromRegistry(): string | null {
           
           for (const bravePath of bravePaths) {
             if (fs.existsSync(bravePath)) {
-              console.error(`✓ Found Brave via Registry detection: ${bravePath}`);
+              console.log(`✅ Found Brave via Registry detection: ${bravePath}`);
               return bravePath;
             }
           }
@@ -303,7 +303,7 @@ function getWindowsBraveFromRegistry(): string | null {
       const result = execSync(installDirQuery, { encoding: 'utf8', timeout: 5000 });
       const match = result.match(/REG_SZ\s+(.+\.exe)/);
       if (match && match[1] && fs.existsSync(match[1])) {
-        console.error(`✓ Found Brave via App Paths registry: ${match[1]}`);
+        console.log(`✅ Found Brave via App Paths registry: ${match[1]}`);
         return match[1];
       }
     } catch (error) {
@@ -328,7 +328,7 @@ export function detectBravePath(): string | null {
     try {
       const bravePath = braveLauncher.getBravePath();
       if (bravePath && fs.existsSync(bravePath)) {
-        console.error(`✅ Found Brave via brave-real-launcher (professional detection): ${bravePath}`);
+        console.log(`✅ Found Brave via brave-real-launcher (professional detection): ${bravePath}`);
         return bravePath;
       }
     } catch (error) {
@@ -342,7 +342,7 @@ export function detectBravePath(): string | null {
     if (fs.existsSync(configPath)) {
       const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
       if (config.bravePath && fs.existsSync(config.bravePath)) {
-        console.error(`✓ Found Brave via .brave-config.json (auto-detected): ${config.bravePath}`);
+        console.log(`✅ Found Brave via .brave-config.json (auto-detected): ${config.bravePath}`);
         return config.bravePath;
       }
     }
@@ -353,7 +353,7 @@ export function detectBravePath(): string | null {
   // PRIORITY 1: Check environment variables first (BRAVE_PATH only)
   const envBravePath = process.env.BRAVE_PATH;
   if (envBravePath && fs.existsSync(envBravePath)) {
-    console.error(`✓ Found Brave via BRAVE_PATH environment variable: ${envBravePath}`);
+    console.log(`✅ Found Brave via BRAVE_PATH environment variable: ${envBravePath}`);
     return envBravePath;
   }
 
@@ -417,8 +417,8 @@ export function detectBravePath(): string | null {
     try {
       console.error(`   Checking: ${bravePath}`);
       if (fs.existsSync(bravePath)) {
-        console.error(`✅ Found Brave Browser at: ${bravePath}`);
-        console.error('   🎯 Perfect! Using Brave Browser (optimized for this project)');
+        console.log(`✅ Found Brave Browser at: ${bravePath}`);
+        console.log('   🎯 Perfect! Using Brave Browser (optimized for this project)');
         return bravePath;
       }
     } catch (error) {
@@ -696,15 +696,15 @@ export async function initializeBrowser(options?: any) {
       connectOptions.plugins = options.plugins;
     }
 
-    console.error('🔍 Testing network connectivity...');
+    console.log('🔍 Testing network connectivity...');
     const hostTest = await testHostConnectivity();
-    console.error(`   localhost available: ${hostTest.localhost}`);
-    console.error(`   127.0.0.1 available: ${hostTest.ipv4}`);
-    console.error(`   recommended host: ${hostTest.recommendedHost}`);
+    console.log(`   localhost available: ${hostTest.localhost}`);
+    console.log(`   127.0.0.1 available: ${hostTest.ipv4}`);
+    console.log(`   recommended host: ${hostTest.recommendedHost}`);
 
     const availablePort = await findAvailablePort();
     if (availablePort) {
-      console.error(`🔍 Found available debugging port: ${availablePort}`);
+      console.log(`🔍 Found available debugging port: ${availablePort}`);
     } else {
       console.error('⚠️  No available ports found in range 9222-9322, using system-assigned port');
     }
@@ -799,11 +799,11 @@ export async function initializeBrowser(options?: any) {
       const { strategyName, strategy } = connectionStrategies[strategyIndex];
       
       try {
-        console.error(`🔄 Attempting browser connection using ${strategyName}...`);
+        console.log(`🔄 Attempting browser connection using ${strategyName}...`);
         
         const result = await withTimeout(async () => {
           try {
-            console.error(`   Strategy config: ${JSON.stringify({
+            console.log(`   Strategy config: ${JSON.stringify({
               headless: strategy.headless,
               ignoreAllFlags: strategy.ignoreAllFlags,
               chromeFlags: strategy.customConfig?.chromeFlags || 'none',
@@ -811,7 +811,7 @@ export async function initializeBrowser(options?: any) {
             })}`);
             
             const connectResult = await connect(strategy);
-            console.error(`   ✅ Connection successful with ${strategyName}`);
+            console.log(`   ✅ Connection successful with ${strategyName}`);
             return connectResult;
           } catch (connectionError) {
             console.error(`   ❌ Connection failed: ${connectionError instanceof Error ? connectionError.message : String(connectionError)}`);
@@ -847,7 +847,7 @@ export async function initializeBrowser(options?: any) {
         pageInstance = page;
 
 
-        console.error(`✅ Browser initialized successfully using ${strategyName}`);
+        console.log(`✅ Browser initialized successfully using ${strategyName}`);
         updateCircuitBreakerOnSuccess();
         
         // Resolve the init promise to unblock waiting calls
@@ -989,7 +989,7 @@ export async function closeBrowser() {
       browserInitDepth = 0;
       browserInitializationInProgress = false; // Also reset initialization flag
       browserInitPromise = null; // Clear promise lock
-      console.error('🔄 Browser closed, browserInitDepth and initialization flag reset');
+      console.log('🔄 Browser closed, browserInitDepth and initialization flag reset');
     }
   }
 }
