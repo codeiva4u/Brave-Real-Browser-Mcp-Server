@@ -43,6 +43,46 @@ If you're just using this MCP server (not developing it), you don't need to run 
 - Download and install Node.js (version 18 or higher)
 - Verify installation by opening terminal/command prompt and typing: `node --version`
 
+## Installation for Developers
+
+> **Note for Claude Desktop Users:** You don't need to install anything! The npx command in your configuration automatically handles everything. Skip to the [Usage](#usage) section.
+
+This section is for developers who want to:
+- Contribute to the project
+- Run the server locally for development
+- Create custom modifications
+
+### Global Installation (For Command Line Usage)
+
+If you want to run the server directly from the command line without using npx:
+
+```bash
+npm install -g brave-real-browser-mcp-server@latest
+```
+
+After global installation, you can run:
+```bash
+brave-real-browser-mcp-server
+```
+
+### Development Setup (For Contributors)
+
+```bash
+# Clone the repository
+git clone https://github.com/withLinda/brave-real-browser-mcp-server.git
+cd brave-real-browser-mcp-server
+
+# Install dependencies
+npm install
+
+# Build the project
+npm run build
+
+# Run in development mode
+npm run dev
+```
+
+
 #### 2. Configure Claude Desktop
 
 **For Windows:**
@@ -68,7 +108,7 @@ If you're just using this MCP server (not developing it), you don't need to run 
       "command": "npx",
       "args": ["brave-real-browser-mcp-server@latest"],
       "env": {
-        "BRAVE_PATH": "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe"
+        "BRAVE_PATH": "C:/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe"
       }
     }
   }
@@ -207,44 +247,6 @@ This project **exclusively uses Brave Browser** and is specifically optimized fo
   - Detected paths: `/usr/bin/brave-browser`, `/snap/bin/brave`, `/usr/bin/brave`, `/opt/brave.com/brave/brave-browser`
 - Install xvfb for headless operation: `sudo apt-get install -y xvfb`
 
-## Installation for Developers
-
-> **Note for Claude Desktop Users:** You don't need to install anything! The npx command in your configuration automatically handles everything. Skip to the [Usage](#usage) section.
-
-This section is for developers who want to:
-- Contribute to the project
-- Run the server locally for development
-- Create custom modifications
-
-### Global Installation (For Command Line Usage)
-
-If you want to run the server directly from the command line without using npx:
-
-```bash
-npm install -g brave-real-browser-mcp-server@latest
-```
-
-After global installation, you can run:
-```bash
-brave-real-browser-mcp-server
-```
-
-### Development Setup (For Contributors)
-
-```bash
-# Clone the repository
-git clone https://github.com/withLinda/brave-real-browser-mcp-server.git
-cd brave-real-browser-mcp-server
-
-# Install dependencies
-npm install
-
-# Build the project
-npm run build
-
-# Run in development mode
-npm run dev
-```
 
 ## Usage
 
