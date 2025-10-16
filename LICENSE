@@ -1,0 +1,51 @@
+MIT License
+
+Copyright (c) 2024 ZFC-Digital (Original puppeteer-real-browser package)
+Copyright (c) 2024 withlinda13 (Original puppeteer-real-browser-mcp-server)
+Copyright (c) 2024 codeiva4u (Brave Browser adaptation and modifications)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+## Acknowledgments
+
+This project is built upon and adapted from the following excellent open-source projects:
+
+### 1. puppeteer-real-browser by ZFC-Digital
+- Repository: https://github.com/ZFC-Digital/puppeteer-real-browser
+- License: MIT
+- Description: A puppeteer library designed to bypass bot-detecting captchas such as Cloudflare
+- NPM: https://www.npmjs.com/package/puppeteer-real-browser
+
+### 2. puppeteer-real-browser-mcp-server by withlinda13
+- Repository: https://github.com/withLinda/puppeteer-real-browser-mcp-server
+- License: MIT
+- Description: MCP server wrapper for puppeteer-real-browser providing AI assistant integration
+
+### Modifications in this Fork:
+- Adapted for Brave Browser instead of Chrome
+- Updated to use brave-real-browser package
+- Enhanced with 60+ specialized tools
+- Comprehensive testing suite (219 unit tests)
+- Improved documentation and examples
+- Additional data extraction and processing capabilities
+- AI-powered content analysis features
+
+All modifications are also released under the MIT License.

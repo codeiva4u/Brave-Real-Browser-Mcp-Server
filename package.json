@@ -66,9 +66,16 @@
   "keywords": [
     "mcp",
     "puppeteer",
-    "browser-automation"
+    "browser-automation",
+    "brave-browser",
+    "web-scraping",
+    "automation"
   ],
   "author": "codeiva4u",
+  "contributors": [
+    "ZFC-Digital <https://github.com/ZFC-Digital> (Original puppeteer-real-browser)",
+    "withlinda13 <https://github.com/withLinda> (Original MCP server wrapper)"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",

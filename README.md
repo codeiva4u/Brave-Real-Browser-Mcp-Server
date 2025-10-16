@@ -1197,9 +1197,43 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Acknowledgments
 
-This MCP server is based on the excellent [brave-real-browser](https://github.com/ZFC-Digital/brave-real-browser) library by ZFC-Digital.
+This project is built upon and adapted from the following excellent open-source projects:
 
-**Thank you** to the brave-real-browser team for creating such a powerful and detection-resistant browser automation solution!
+### 1. puppeteer-real-browser by ZFC-Digital
 
-- GitHub: [https://github.com/ZFC-Digital/brave-real-browser](https://github.com/ZFC-Digital/brave-real-browser)
-- npm: [https://www.npmjs.com/package/brave-real-browser](https://www.npmjs.com/package/brave-real-browser)
+The foundation of this project is the powerful [puppeteer-real-browser](https://github.com/ZFC-Digital/puppeteer-real-browser) library by **ZFC-Digital**.
+
+**Thank you** to the ZFC-Digital team for creating such a powerful and detection-resistant browser automation solution!
+
+- **GitHub:** [https://github.com/ZFC-Digital/puppeteer-real-browser](https://github.com/ZFC-Digital/puppeteer-real-browser)
+- **npm (original):** [https://www.npmjs.com/package/puppeteer-real-browser](https://www.npmjs.com/package/puppeteer-real-browser)
+- **npm (Brave version):** [https://www.npmjs.com/package/brave-real-browser](https://www.npmjs.com/package/brave-real-browser)
+- **License:** MIT
+
+### 2. puppeteer-real-browser-mcp-server by withlinda13
+
+This project is also based on [puppeteer-real-browser-mcp-server](https://github.com/withLinda/puppeteer-real-browser-mcp-server) by **withlinda13**, which provides the MCP (Model Context Protocol) server wrapper for browser automation.
+
+**Thank you** to withlinda13 for the excellent MCP integration and server architecture!
+
+- **GitHub:** [https://github.com/withLinda/puppeteer-real-browser-mcp-server](https://github.com/withLinda/puppeteer-real-browser-mcp-server)
+- **License:** MIT
+
+### Our Contributions
+
+This fork (Brave Real Browser MCP Server) includes the following enhancements:
+
+- ✅ **Brave Browser Support:** Complete adaptation from Chrome to Brave Browser
+- ✅ **60+ Specialized Tools:** Expanded from 11 to 60+ tools for comprehensive automation
+- ✅ **Comprehensive Testing:** 219 unit tests ensuring reliability
+- ✅ **Data Extraction Tools:** Advanced scraping capabilities (tables, lists, images, links)
+- ✅ **AI-Powered Features:** Content classification, sentiment analysis, summarization
+- ✅ **Visual Tools:** Screenshots, PDF generation, video recording
+- ✅ **Data Processing:** Smart text cleaning, price parsing, date normalization
+- ✅ **Enhanced Documentation:** Detailed guides and examples
+
+### License
+
+This project maintains the MIT License from the original projects. See [LICENSE](LICENSE) file for complete details.
+
+**All credit goes to the original authors for their foundational work. This project simply adapts and extends their excellent work for Brave Browser with additional features.**
