@@ -1,0 +1,104 @@
+{
+  "name": "brave-real-browser-mcp-server",
+  "version": "2.9.3",
+  "description": "MCP server for brave-real-browser",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "postinstall": "node scripts/update-to-latest.cjs || echo 'Auto-update skipped'",
+    "clean": "rimraf dist",
+    "clean:cache": "npm cache clean --force",
+    "fix-cache-permissions": "echo 'Run: sudo chown -R $(whoami):$(id -gn) ~/.npm' && echo 'This fixes npm cache permission issues'",
+    "clean:modules": "rm -rf node_modules",
+    "clean:all": "npm run clean:modules && npm run clean:cache && npm run clean",
+    "fresh-install": "npm run clean:all && npm install",
+    "fresh-start": "npm run fresh-install && npm run build && npm start",
+    "fresh-dev": "npm run fresh-install && npm run build && npm run dev",
+    "prebuild": "npm run clean",
+    "build": "tsc",
+    "rebuild": "npm run clean && npm run build",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage",
+    "test:ci": "vitest run --coverage",
+    "test:unit": "vitest run src",
+    "test:integration": "vitest run test/integration",
+    "test:e2e": "vitest run --config vitest.e2e.config.ts",
+    "test:e2e:watch": "vitest --config vitest.e2e.config.ts",
+    "test:brave:cleanup": "pkill -f 'Brave Browser' || true"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.20.0",
+    "@types/turndown": "^5.0.5",
+    "ajv": "^8.12.0",
+    "axios": "^1.6.5",
+    "brave-real-browser": "^1.5.102",
+    "brave-real-launcher": "^1.2.17",
+    "brave-real-puppeteer-core": "^24.24.0",
+    "cheerio": "^1.0.0-rc.12",
+    "chrono-node": "^2.7.0",
+    "compromise": "^14.13.0",
+    "franc": "^6.2.0",
+    "libphonenumber-js": "^1.10.51",
+    "natural": "^6.12.0",
+    "pixelmatch": "^5.3.0",
+    "pngjs": "^7.0.0",
+    "puppeteer-screen-recorder": "^3.0.5",
+    "sentiment": "^5.0.2",
+    "tesseract.js": "^5.0.5",
+    "turndown": "^7.2.1",
+    "xml2js": "^0.6.2"
+  },
+  "devDependencies": {
+    "@types/cheerio": "^0.22.35",
+    "@types/node": "latest",
+    "@types/xml2js": "^0.4.14",
+    "@vitest/coverage-v8": "^3.2.4",
+    "@vitest/ui": "^3.2.4",
+    "rimraf": "^6.0.1",
+    "tsx": "latest",
+    "typescript": "^5.5.3",
+    "vitest": "^3.2.4"
+  },
+  "keywords": [
+    "mcp",
+    "puppeteer",
+    "browser-automation"
+  ],
+  "author": "withlinda13",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/withLinda/brave-real-browser-mcp-server.git"
+  },
+  "homepage": "https://github.com/withLinda/brave-real-browser-mcp-server",
+  "bugs": {
+    "url": "https://github.com/withLinda/brave-real-browser-mcp-server/issues"
+  },
+  "bin": {
+    "brave-real-browser-mcp-server": "dist/index.js"
+  },
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "preferGlobal": true,
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "overrides": {
+    "puppeteer": "npm:brave-real-puppeteer-core@latest",
+    "puppeteer-core": "npm:brave-real-puppeteer-core@latest",
+    "tar-fs": "^3.0.0",
+    "ws": "^8.18.0"
+  }
+}
