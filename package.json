@@ -68,15 +68,15 @@
     "puppeteer",
     "browser-automation"
   ],
-  "author": "withlinda13",
+  "author": "codeiva4u",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/withLinda/brave-real-browser-mcp-server.git"
+    "url": "git+https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server.git"
   },
-  "homepage": "https://github.com/withLinda/brave-real-browser-mcp-server",
+  "homepage": "https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server",
   "bugs": {
-    "url": "https://github.com/withLinda/brave-real-browser-mcp-server/issues"
+    "url": "https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server/issues"
   },
   "bin": {
     "brave-real-browser-mcp-server": "dist/index.js"
