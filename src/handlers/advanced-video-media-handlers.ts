@@ -19,16 +19,18 @@ export async function handleVideoLinkFinder(args: any) {
 
     const page = getCurrentPage();
     const includeEmbedded = args.includeEmbedded !== false;
-    
-    const videoLinks = await page.evaluate((includeEmbedded) => {
+    const captureDuration = typeof args.captureDuration === 'number' ? args.captureDuration : 7000;
+
+    // 1) Collect DOM-based links quickly
+    const domLinks = await page.evaluate((includeEmbedded) => {
       const results: any[] = [];
-      
+
       // Direct video links
       const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi', '.mkv', '.m3u8', '.mpd'];
       const allLinks = document.querySelectorAll('a[href]');
-      
+
       allLinks.forEach((link: any, idx) => {
-        const href = link.href.toLowerCase();
+        const href = (link.href || '').toLowerCase();
         videoExtensions.forEach(ext => {
           if (href.includes(ext)) {
             results.push({
@@ -41,7 +43,7 @@ export async function handleVideoLinkFinder(args: any) {
           }
         });
       });
-      
+
       // Video elements
       document.querySelectorAll('video').forEach((video: any, idx) => {
         const src = video.src || video.currentSrc;
@@ -54,26 +56,68 @@ export async function handleVideoLinkFinder(args: any) {
           });
         }
       });
-      
-      // Embedded videos
+
+      // Embedded videos (iframes)
       if (includeEmbedded) {
-        document.querySelectorAll('iframe[src*="video"], iframe[src*="player"]').forEach((iframe: any, idx) => {
-          results.push({
-            index: idx,
-            url: iframe.src,
-            type: 'embedded_video',
-            title: iframe.title || '',
-          });
+        document.querySelectorAll('iframe').forEach((iframe: any, idx) => {
+          if (iframe.src) {
+            results.push({
+              index: idx,
+              url: iframe.src,
+              type: 'embedded_video',
+              title: iframe.title || '',
+            });
+          }
         });
       }
-      
+
       return results;
     }, includeEmbedded);
+
+    // 2) Network sniff for streaming links (.m3u8/.mpd/.ts/.vtt)
+    const streamingLinks: any[] = [];
+    const respHandler = (response: any) => {
+      try {
+        const url = response.url();
+        const ct = (response.headers()['content-type'] || '').toLowerCase();
+        const isStream = /\.m3u8(\?|$)|\.mpd(\?|$)|\.ts(\?|$)|\.vtt(\?|$)/i.test(url) ||
+                         ct.includes('application/vnd.apple.mpegurl') || ct.includes('application/x-mpegurl');
+        if (isStream) {
+          streamingLinks.push({ url, contentType: ct, status: response.status() });
+        }
+      } catch {}
+    };
+    page.on('response', respHandler);
+
+    // Try to "play" iframe/player so network requests fire
+    try {
+      const clickPoint = await page.evaluate(() => {
+        const iframe = document.querySelector('iframe');
+        if (!iframe) return null as any;
+        const r = iframe.getBoundingClientRect();
+        return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+      });
+      if (clickPoint && typeof clickPoint.x === 'number') {
+        await page.mouse.click(clickPoint.x, clickPoint.y, { clickCount: 1 });
+      }
+    } catch {}
+
+    await sleep(captureDuration);
+    page.off('response', respHandler);
+
+    // Dedupe by URL
+    const uniqueStreams = Array.from(new Map(streamingLinks.map(i => [i.url, i])).values());
+    const resultSummary = {
+      domLinksCount: domLinks.length,
+      networkStreamsCount: uniqueStreams.length,
+      domLinks,
+      streamingLinks: uniqueStreams,
+    };
 
     return {
       content: [{
         type: 'text' as const,
-        text: `✅ Found ${videoLinks.length} video links\n\n${JSON.stringify(videoLinks, null, 2)}`,
+        text: `✅ Video links (DOM + Network)\n\n${JSON.stringify(resultSummary, null, 2)}`,
       }],
     };
   }, 'Failed to find video links');
@@ -460,15 +504,20 @@ export async function handleNetworkRecordingFinder(args: any) {
         }
         
         let shouldRecord = false;
-        
-        if (filterType === 'video' && (contentType.includes('video') || resourceType === 'media')) {
+
+        const urlLower = url.toLowerCase();
+        const isStreamAsset = /\.m3u8(\?|$)|\.mpd(\?|$)|\.ts(\?|$)|\.vtt(\?|$)|\.mp4(\?|$)|\.webm(\?|$)/i.test(urlLower) ||
+                              contentType.includes('application/vnd.apple.mpegurl') ||
+                              contentType.includes('application/x-mpegurl');
+
+        if (filterType === 'video' && (contentType.includes('video') || resourceType === 'media' || isStreamAsset)) {
           shouldRecord = true;
         } else if (filterType === 'audio' && contentType.includes('audio')) {
           shouldRecord = true;
-        } else if (filterType === 'media' && (contentType.includes('video') || contentType.includes('audio'))) {
+        } else if (filterType === 'media' && (contentType.includes('video') || contentType.includes('audio') || isStreamAsset)) {
           shouldRecord = true;
         }
-        
+
         if (shouldRecord) {
           matchedResponses++;
           if (verbose) {
@@ -680,7 +729,9 @@ export async function handleVideoLinksFinders(args: any) {
     });
 
     const page = getCurrentPage();
-    
+    const captureDuration = typeof args.captureDuration === 'number' ? args.captureDuration : 7000;
+
+    // DOM discovery first
     const videoLinks = await page.evaluate(() => {
       const results: any = {
         directLinks: [],
@@ -688,10 +739,10 @@ export async function handleVideoLinksFinders(args: any) {
         streamingLinks: [],
         playerLinks: [],
       };
-      
+
       // Direct video links
       document.querySelectorAll('a[href]').forEach((link: any) => {
-        const href = link.href.toLowerCase();
+        const href = (link.href || '').toLowerCase();
         if (href.includes('.mp4') || href.includes('.webm') || href.includes('.mov')) {
           results.directLinks.push({
             url: link.href,
@@ -699,33 +750,32 @@ export async function handleVideoLinksFinders(args: any) {
           });
         }
       });
-      
+
       // Embedded iframes
       document.querySelectorAll('iframe').forEach((iframe: any) => {
-        const src = iframe.src.toLowerCase();
-        if (src.includes('youtube') || src.includes('vimeo') || src.includes('video')) {
+        if (iframe.src) {
           results.embeddedLinks.push({
             url: iframe.src,
             title: iframe.title,
           });
         }
       });
-      
-      // Streaming manifests
+
+      // Streaming manifests present in inline scripts
       const scripts = Array.from(document.querySelectorAll('script'));
       scripts.forEach(script => {
         const content = script.textContent || '';
         const m3u8Match = content.match(/https?:\/\/[^\s"']+\.m3u8/g);
         const mpdMatch = content.match(/https?:\/\/[^\s"']+\.mpd/g);
-        
+
         if (m3u8Match) {
-          m3u8Match.forEach(url => results.streamingLinks.push({ url, type: 'HLS' }));
+          m3u8Match.forEach(url => results.streamingLinks.push({ url, type: 'HLS', source: 'inline' }));
         }
         if (mpdMatch) {
-          mpdMatch.forEach(url => results.streamingLinks.push({ url, type: 'DASH' }));
+          mpdMatch.forEach(url => results.streamingLinks.push({ url, type: 'DASH', source: 'inline' }));
         }
       });
-      
+
       // Video player links
       document.querySelectorAll('[class*="player"], [id*="player"]').forEach((player: any) => {
         const video = player.querySelector('video');
@@ -736,14 +786,51 @@ export async function handleVideoLinksFinders(args: any) {
           });
         }
       });
-      
+
       return results;
     });
+
+    // Network enrichment (m3u8/mpd/ts/vtt)
+    const networkStreams: any[] = [];
+    const respHandler = (response: any) => {
+      try {
+        const url = response.url();
+        const ct = (response.headers()['content-type'] || '').toLowerCase();
+        if (/\.m3u8(\?|$)|\.mpd(\?|$)|\.ts(\?|$)|\.vtt(\?|$)/i.test(url) ||
+            ct.includes('application/vnd.apple.mpegurl') || ct.includes('application/x-mpegurl')) {
+          const type = url.includes('.mpd') ? 'DASH' : url.includes('.m3u8') ? 'HLS' : 'segment';
+          networkStreams.push({ url, type, contentType: ct, status: response.status(), source: 'network' });
+        }
+      } catch {}
+    };
+    page.on('response', respHandler);
+
+    // Nudge the player by clicking the visible iframe center (if any)
+    try {
+      const clickPoint = await page.evaluate(() => {
+        const iframe = document.querySelector('iframe');
+        if (!iframe) return null as any;
+        const r = iframe.getBoundingClientRect();
+        return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+      });
+      if (clickPoint && typeof clickPoint.x === 'number') {
+        await page.mouse.click(clickPoint.x, clickPoint.y, { clickCount: 1 });
+      }
+    } catch {}
+
+    await sleep(captureDuration);
+    page.off('response', respHandler);
+
+    // Merge + dedupe
+    const merged = {
+      ...videoLinks,
+      streamingLinks: Array.from(new Map([...videoLinks.streamingLinks, ...networkStreams].map((i: any) => [i.url, i])).values()),
+    };
 
     return {
       content: [{
         type: 'text' as const,
-        text: `✅ Video Links Found\n\n${JSON.stringify(videoLinks, null, 2)}`,
+        text: `✅ Video Links Found\n\n${JSON.stringify(merged, null, 2)}`,
       }],
     };
   }, 'Failed to find video links');

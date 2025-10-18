@@ -385,9 +385,10 @@ export async function handleApiFinder(args: any) {
     });
 
     const page = getCurrentPage();
-    const deepScan = args.deepScan !== false;
-    
-    const apis = await page.evaluate(({ deepScan }) => {
+    const captureDuration = typeof args.duration === 'number' ? args.duration : 8000;
+
+    // From inline scripts
+    const scriptApis = await page.evaluate(() => {
       const results: any[] = [];
       const scripts = Array.from(document.querySelectorAll('script'));
       
@@ -404,35 +405,38 @@ export async function handleApiFinder(args: any) {
         apiPatterns.forEach(pattern => {
           const matches = content.match(pattern);
           if (matches) {
-            matches.forEach(match => results.push({
-              url: match,
-              source: 'script',
-            }));
+            matches.forEach(match => results.push({ url: match, source: 'script' }));
           }
         });
       });
       
-      // Deep scan: also check HTML content for API references
-      if (deepScan) {
-        const htmlContent = document.body.innerHTML;
-        apiPatterns.forEach(pattern => {
-          const matches = htmlContent.match(pattern);
-          if (matches) {
-            matches.forEach(match => results.push({
-              url: match,
-              source: 'html_content',
-            }));
-          }
-        });
-      }
-      
-      return [...new Set(results.map(r => r.url))].map(url => ({ url, source: 'script' }));
-    }, { deepScan });
+      return results;
+    });
+
+    // From network (XHR/fetch)
+    const networkApis: any[] = [];
+    const respHandler = async (response: any) => {
+      try {
+        const req = response.request();
+        const rt = req.resourceType();
+        const url = response.url();
+        const ct = (response.headers()['content-type'] || '').toLowerCase();
+        if ((rt === 'xhr' || rt === 'fetch') && (ct.includes('json') || /\/api\//.test(url))) {
+          networkApis.push({ url, status: response.status(), method: req.method(), source: 'network' });
+        }
+      } catch {}
+    };
+    page.on('response', respHandler);
+    await sleep(captureDuration);
+    page.off('response', respHandler);
+
+    const all = [...scriptApis, ...networkApis];
+    const dedup = Array.from(new Map(all.map(i => [i.url, i])).values());
 
     return {
       content: [{
         type: 'text' as const,
-        text: `✅ Found ${apis.length} API endpoints\n\n${JSON.stringify(apis, null, 2)}`,
+        text: `✅ Found ${dedup.length} API endpoints\n\n${JSON.stringify(dedup, null, 2)}`,
       }],
     };
   }, 'Failed to find APIs');
@@ -616,7 +620,9 @@ export async function handleVideoSourceExtractor(args: any) {
     });
 
     const page = getCurrentPage();
-    
+    const captureDuration = typeof args.captureDuration === 'number' ? args.captureDuration : 6000;
+
+    // DOM video elements
     const videos = await page.evaluate(() => {
       const videoElements = document.querySelectorAll('video');
       const results: any[] = [];
@@ -650,10 +656,43 @@ export async function handleVideoSourceExtractor(args: any) {
       return results;
     });
 
+    // Network capture for manifests and segments
+    const manifests: any[] = [];
+    const segments: any[] = [];
+    const respHandler = async (response: any) => {
+      try {
+        const url = response.url();
+        const ct = (response.headers()['content-type'] || '').toLowerCase();
+        if (/\.m3u8(\?|$)|\.mpd(\?|$)/i.test(url) || ct.includes('application/vnd.apple.mpegurl') || ct.includes('application/x-mpegurl')) {
+          const content = await response.text().catch(() => '');
+          manifests.push({ url, type: url.includes('.mpd') ? 'DASH' : 'HLS', status: response.status(), content: content.slice(0, 2000) });
+        } else if (/\.ts(\?|$)|\.m4s(\?|$)|\.mp4(\?|$)/i.test(url)) {
+          segments.push({ url, status: response.status(), size: response.headers()['content-length'] });
+        }
+      } catch {}
+    };
+    page.on('response', respHandler);
+
+    // Best-effort: click center of first iframe to trigger playback
+    try {
+      const pt = await page.evaluate(() => {
+        const ifr = document.querySelector('iframe');
+        if (!ifr) return null as any;
+        const r = ifr.getBoundingClientRect();
+        return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+      });
+      if (pt) await page.mouse.click(pt.x, pt.y);
+    } catch {}
+
+    await sleep(captureDuration);
+    page.off('response', respHandler);
+
+    const result = { videos, manifests, segments };
+
     return {
       content: [{
         type: 'text' as const,
-        text: `✅ Extracted ${videos.length} video sources\n\n${JSON.stringify(videos, null, 2)}`,
+        text: `✅ Extracted video sources\n\n${JSON.stringify(result, null, 2)}`,
       }],
     };
   }, 'Failed to extract video sources');
@@ -777,6 +816,7 @@ export async function handleOriginalVideoHosterFinder(args: any) {
     });
 
     const page = getCurrentPage();
+    const captureDuration = typeof args.captureDuration === 'number' ? args.captureDuration : 6000;
     
     const videoData = await page.evaluate(() => {
       const results: any = {
@@ -789,37 +829,59 @@ export async function handleOriginalVideoHosterFinder(args: any) {
       document.querySelectorAll('video').forEach((video: any) => {
         const src = video.src || video.currentSrc;
         if (src) {
-          results.directVideos.push({
-            src,
-            type: 'direct',
-            poster: video.poster,
-          });
+          results.directVideos.push({ src, type: 'direct', poster: video.poster });
         }
         
         video.querySelectorAll('source').forEach((source: any) => {
-          results.directVideos.push({
-            src: source.src,
-            type: source.type,
-            quality: source.dataset.quality || 'unknown',
-          });
+          if (source.src) {
+            results.directVideos.push({ src: source.src, type: source.type, quality: source.dataset.quality || 'unknown' });
+          }
         });
       });
       
       // Iframe videos
-      document.querySelectorAll('iframe[src*="video"], iframe[src*="player"]').forEach((iframe: any) => {
-        results.iframeVideos.push({
-          src: iframe.src,
-          type: 'iframe',
-        });
+      document.querySelectorAll('iframe').forEach((iframe: any) => {
+        if (iframe.src) {
+          results.iframeVideos.push({ src: iframe.src, type: 'iframe' });
+        }
       });
       
       return results;
     });
 
+    // Network-derived hosts (m3u8/mpd)
+    const hosts = new Set<string>();
+    const respHandler = (response: any) => {
+      try {
+        const url = response.url();
+        if (/\.m3u8(\?|$)|\.mpd(\?|$)/i.test(url)) {
+          try { hosts.add(new URL(url).hostname); } catch {}
+        }
+      } catch {}
+    };
+    page.on('response', respHandler);
+
+    // Kick the player once
+    try {
+      const pt = await page.evaluate(() => {
+        const ifr = document.querySelector('iframe');
+        if (!ifr) return null as any;
+        const r = ifr.getBoundingClientRect();
+        return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+      });
+      if (pt) await page.mouse.click(pt.x, pt.y);
+    } catch {}
+
+    await sleep(captureDuration);
+    page.off('response', respHandler);
+
+    const possibleSources = Array.from(hosts).map(h => ({ host: h }));
+    const enriched = { ...videoData, possibleSources };
+
     return {
       content: [{
         type: 'text' as const,
-        text: `✅ Video sources found\n\n${JSON.stringify(videoData, null, 2)}`,
+        text: `✅ Video sources found\n\n${JSON.stringify(enriched, null, 2)}`,
       }],
     };
   }, 'Failed to find original video hoster');
