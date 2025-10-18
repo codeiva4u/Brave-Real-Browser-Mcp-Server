@@ -956,7 +956,7 @@ export const TOOLS = [
       properties: {
         url: { type: 'string' },
         analyzeNetworkRequests: { type: 'boolean', default: true },
-        scanDuration: { type: 'number', default: 5000 },
+        scanDuration: { type: 'number', default: 10000 },
       },
     },
   },
@@ -1038,7 +1038,7 @@ export const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        duration: { type: 'number', default: 5000 },
+        duration: { type: 'number', default: 15000 },
         url: { type: 'string' },
       },
     },
@@ -1049,7 +1049,7 @@ export const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        duration: { type: 'number', default: 5000 },
+        duration: { type: 'number', default: 15000 },
       },
     },
   },
@@ -1059,8 +1059,8 @@ export const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        duration: { type: 'number', default: 10000 },
-        filterTypes: { type: 'array', items: { type: 'string' }, default: ['all'] },
+        duration: { type: 'number', default: 20000 },
+        filterTypes: { type: 'array', items: { type: 'string' }, default: ['video', 'xhr', 'fetch', 'media'] },
       },
     },
   },
@@ -1069,7 +1069,9 @@ export const TOOLS = [
     description: 'Discover API endpoints on page',
     inputSchema: {
       type: 'object',
-      properties: {},
+      properties: {
+        deepScan: { type: 'boolean', default: true },
+      },
     },
   },
   {

@@ -17,7 +17,7 @@ export async function handleAdvancedVideoExtraction(args: any) {
     });
 
     const page = getCurrentPage();
-    const waitTime = args.waitTime || 10000;
+    const waitTime = args.waitTime || 20000;
     
     // Collect all video-related data
     const videoData: any = {
@@ -206,7 +206,11 @@ export async function handleAdvancedVideoExtraction(args: any) {
         'button[data-download]',
         'a[href*=".mp4"]',
         'a[href*=".mkv"]',
-        'a[class*="download"]'
+        'a[class*="download"]',
+        'a[href*=".webm"]',
+        '.download-btn',
+        '.btn-download',
+        '[class*="download"]'
       ];
       
       downloadSelectors.forEach(selector => {

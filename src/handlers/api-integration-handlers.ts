@@ -7,7 +7,7 @@ import { sleep } from '../system-utils.js';
  * REST API Endpoint Finder - Discover REST API endpoints
  */
 export async function handleRESTAPIEndpointFinder(args: any): Promise<any> {
-  const { url, analyzeNetworkRequests = true, scanDuration = 5000 } = args;
+  const { url, analyzeNetworkRequests = true, scanDuration = 10000 } = args;
   
   try {
     const page = getPageInstance();    if (!page) {      throw new Error('Browser not initialized. Call browser_init first.');    }

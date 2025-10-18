@@ -221,7 +221,7 @@ export async function handleAjaxExtractor(args: any) {
     });
 
     const page = getCurrentPage();
-    const duration = args.duration || 5000;
+    const duration = args.duration || 15000;
     const url = args.url;
     
     const requests: any[] = [];
@@ -268,7 +268,7 @@ export async function handleFetchXHR(args: any) {
     });
 
     const page = getCurrentPage();
-    const duration = args.duration || 5000;
+    const duration = args.duration || 15000;
     
     const xhrData: any[] = [];
     const responseHandler = async (response: any) => {
@@ -317,8 +317,8 @@ export async function handleNetworkRecorder(args: any) {
     });
 
     const page = getCurrentPage();
-    const duration = args.duration || 10000;
-    const filterTypes = args.filterTypes || ['all'];
+    const duration = args.duration || 20000;
+    const filterTypes = args.filterTypes || ['video', 'xhr', 'fetch', 'media'];
     
     const networkActivity: any[] = [];
     
@@ -376,8 +376,9 @@ export async function handleApiFinder(args: any) {
     });
 
     const page = getCurrentPage();
+    const deepScan = args.deepScan !== false;
     
-    const apis = await page.evaluate(() => {
+    const apis = await page.evaluate(({ deepScan }) => {
       const results: any[] = [];
       const scripts = Array.from(document.querySelectorAll('script'));
       
@@ -385,6 +386,8 @@ export async function handleApiFinder(args: any) {
         /https?:\/\/[^"'\s]+\/api\/[^"'\s]*/gi,
         /https?:\/\/api\.[^"'\s]+/gi,
         /\/api\/v?\d*\/[^"'\s]*/gi,
+        /graphql/gi,
+        /rest\/v?\d*/gi,
       ];
       
       scripts.forEach(script => {
@@ -400,8 +403,22 @@ export async function handleApiFinder(args: any) {
         });
       });
       
+      // Deep scan: also check HTML content for API references
+      if (deepScan) {
+        const htmlContent = document.body.innerHTML;
+        apiPatterns.forEach(pattern => {
+          const matches = htmlContent.match(pattern);
+          if (matches) {
+            matches.forEach(match => results.push({
+              url: match,
+              source: 'html_content',
+            }));
+          }
+        });
+      }
+      
       return [...new Set(results.map(r => r.url))].map(url => ({ url, source: 'script' }));
-    });
+    }, { deepScan });
 
     return {
       content: [{

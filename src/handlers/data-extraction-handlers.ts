@@ -300,9 +300,8 @@ export async function handleExtractJSON(args: ExtractJSONArgs) {
 
         // Extract JSON from script tags
         if (source === 'script' || source === 'all') {
-          const scripts = document.querySelectorAll(
-            'script[type="application/json"], script[type="application/ld+json"]'
-          );
+          const defaultSelector = selector || 'script[type="application/json"], script[type="application/ld+json"], script';
+          const scripts = document.querySelectorAll(defaultSelector);
 
           scripts.forEach((script, index) => {
             try {
@@ -483,7 +482,7 @@ export async function handleExtractSchema(args: ExtractSchemaArgs) {
 
     const page = getCurrentPage();
     const format = args.format || 'all';
-    const schemaType = args.schemaType;
+    const schemaType = args.schemaType || ['WebPage', 'Organization', 'Product', 'BreadcrumbList'];
 
     const schemaData = await page.evaluate(
       ({ format, schemaType }) => {
@@ -500,7 +499,9 @@ export async function handleExtractSchema(args: ExtractSchemaArgs) {
               // Filter by schema type if specified
               if (schemaType) {
                 const type = data['@type'] || '';
-                if (!type.toLowerCase().includes(schemaType.toLowerCase())) {
+                const types = Array.isArray(schemaType) ? schemaType : [schemaType];
+                const typeMatch = types.some(t => type.toLowerCase().includes(t.toLowerCase()));
+                if (!typeMatch) {
                   return;
                 }
               }
@@ -523,8 +524,12 @@ export async function handleExtractSchema(args: ExtractSchemaArgs) {
           items.forEach((item) => {
             const itemType = item.getAttribute('itemtype') || '';
             
-            if (schemaType && !itemType.toLowerCase().includes(schemaType.toLowerCase())) {
-              return;
+            if (schemaType) {
+              const types = Array.isArray(schemaType) ? schemaType : [schemaType];
+              const typeMatch = types.some(t => itemType.toLowerCase().includes(t.toLowerCase()));
+              if (!typeMatch) {
+                return;
+              }
             }
 
             const properties: Record<string, any> = {};
