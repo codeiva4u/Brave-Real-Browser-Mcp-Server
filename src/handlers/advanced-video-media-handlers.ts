@@ -440,14 +440,23 @@ export async function handleNetworkRecordingFinder(args: any) {
     const page = getCurrentPage();
     const duration = args.duration || 10000;
     const filterType = args.filterType || 'video'; // video, audio, media
+    const navigateTo = args.navigateTo; // Optional URL to navigate to
+    const verbose = args.verbose !== false; // Default true for detailed logging
     
     const recordings: any[] = [];
+    let totalResponses = 0;
+    let matchedResponses = 0;
     
     const responseHandler = async (response: any) => {
       try {
+        totalResponses++;
         const url = response.url();
         const contentType = response.headers()['content-type'] || '';
         const resourceType = response.request().resourceType();
+        
+        if (verbose && totalResponses % 10 === 0) {
+          console.log(`[Network Recording] Processed ${totalResponses} responses, ${matchedResponses} matched`);
+        }
         
         let shouldRecord = false;
         
@@ -460,6 +469,10 @@ export async function handleNetworkRecordingFinder(args: any) {
         }
         
         if (shouldRecord) {
+          matchedResponses++;
+          if (verbose) {
+            console.log(`[Network Recording] ✅ Matched ${filterType}: ${url.substring(0, 100)}`);
+          }
           try {
             const buffer = await response.buffer();
             recordings.push({
@@ -483,15 +496,28 @@ export async function handleNetworkRecordingFinder(args: any) {
       }
     };
     
+    console.log(`[Network Recording] 🎬 Starting monitoring for ${filterType} (${duration}ms)${navigateTo ? ` + navigating to ${navigateTo}` : ''}`);
     page.on('response', responseHandler);
+    
+    // If navigateTo is provided, navigate first, then wait
+    if (navigateTo) {
+      try {
+        await page.goto(navigateTo, { waitUntil: 'networkidle2', timeout: 30000 });
+        console.log(`[Network Recording] ✅ Navigation complete, continuing monitoring...`);
+      } catch (e) {
+        console.log(`[Network Recording] ⚠️ Navigation error (continuing anyway): ${e}`);
+      }
+    }
+    
     await sleep(duration);
     page.off('response', responseHandler);
+    console.log(`[Network Recording] 🛑 Monitoring stopped. Total: ${totalResponses}, Matched: ${matchedResponses}, Recorded: ${recordings.length}`);
 
     if (recordings.length === 0) {
       return {
         content: [{
           type: 'text' as const,
-          text: `ℹ️ No ${filterType} recordings found during ${duration}ms monitoring period.\n\n💡 Note: Network monitoring starts AFTER this tool is called. To capture video/media requests:\n  1. Start monitoring before navigating to the page\n  2. Or trigger video playback after monitoring starts\n  3. Consider using 'advanced_video_extraction' for comprehensive detection`,
+          text: `ℹ️ No ${filterType} recordings found\n\n📊 Statistics:\n  • Total responses checked: ${totalResponses}\n  • Matched ${filterType} responses: ${matchedResponses}\n  • Duration: ${duration}ms\n  • Navigation: ${navigateTo || 'None'}\n\n💡 Suggestions:\n  ${navigateTo ? '• Try longer duration if page loads slowly\n  • Check if page actually has video/media content' : '• Use navigateTo parameter to capture requests during page load\n  • Example: {"navigateTo": "https://example.com", "duration": 15000}'}\n  • Consider 'advanced_video_extraction' for analyzing loaded content`,
         }],
       };
     }
@@ -499,7 +525,7 @@ export async function handleNetworkRecordingFinder(args: any) {
     return {
       content: [{
         type: 'text' as const,
-        text: `✅ Network Recordings Found: ${recordings.length}\n\n${JSON.stringify(recordings, null, 2)}`,
+        text: `✅ Network Recordings Found: ${recordings.length}\n\n📊 Statistics:\n  • Total responses: ${totalResponses}\n  • Matched: ${matchedResponses}\n  • Recorded: ${recordings.length}\n\n${JSON.stringify(recordings, null, 2)}`,
       }],
     };
   } catch (error) {
@@ -535,6 +561,8 @@ export async function handleNetworkRecordingExtractors(args: any) {
 
     const page = getCurrentPage();
     const duration = args.duration || 10000;
+    const navigateTo = args.navigateTo; // Optional URL to navigate to
+    const verbose = args.verbose !== false; // Default true
     
     const extractedData: any = {
       videos: [],
@@ -542,14 +570,17 @@ export async function handleNetworkRecordingExtractors(args: any) {
       manifests: [],
       apis: [],
     };
+    let totalResponses = 0;
     
     const responseHandler = async (response: any) => {
+      totalResponses++;
       const url = response.url();
       const contentType = response.headers()['content-type'] || '';
       
       try {
         // Video files
         if (contentType.includes('video') || url.includes('.mp4') || url.includes('.webm')) {
+          if (verbose) console.log(`[Extractor] 🎥 Video found: ${url.substring(0, 80)}`);
           extractedData.videos.push({
             url,
             contentType,
@@ -559,6 +590,7 @@ export async function handleNetworkRecordingExtractors(args: any) {
         
         // Audio files
         if (contentType.includes('audio') || url.includes('.mp3') || url.includes('.m4a')) {
+          if (verbose) console.log(`[Extractor] 🎵 Audio found: ${url.substring(0, 80)}`);
           extractedData.audio.push({
             url,
             contentType,
@@ -567,6 +599,7 @@ export async function handleNetworkRecordingExtractors(args: any) {
         
         // Manifest files (HLS, DASH)
         if (url.includes('.m3u8') || url.includes('.mpd')) {
+          if (verbose) console.log(`[Extractor] 📜 Manifest found: ${url.substring(0, 80)}`);
           const text = await response.text();
           extractedData.manifests.push({
             url,
@@ -577,6 +610,7 @@ export async function handleNetworkRecordingExtractors(args: any) {
         
         // API responses with video data
         if (contentType.includes('json') && (url.includes('video') || url.includes('media'))) {
+          if (verbose) console.log(`[Extractor] 📡 API found: ${url.substring(0, 80)}`);
           const json = await response.json();
           extractedData.apis.push({
             url,
@@ -588,18 +622,31 @@ export async function handleNetworkRecordingExtractors(args: any) {
       }
     };
     
+    console.log(`[Extractor] 🎬 Starting extraction (${duration}ms)${navigateTo ? ` + navigating to ${navigateTo}` : ''}`);
     page.on('response', responseHandler);
+    
+    // If navigateTo is provided, navigate first, then wait
+    if (navigateTo) {
+      try {
+        await page.goto(navigateTo, { waitUntil: 'networkidle2', timeout: 30000 });
+        console.log(`[Extractor] ✅ Navigation complete, continuing extraction...`);
+      } catch (e) {
+        console.log(`[Extractor] ⚠️ Navigation error (continuing): ${e}`);
+      }
+    }
+    
     await sleep(duration);
     page.off('response', responseHandler);
 
     const totalFound = extractedData.videos.length + extractedData.audio.length + 
                        extractedData.manifests.length + extractedData.apis.length;
+    console.log(`[Extractor] 🛑 Extraction complete. Total responses: ${totalResponses}, Extracted: ${totalFound}`);
 
     if (totalFound === 0) {
       return {
         content: [{
           type: 'text' as const,
-          text: `ℹ️ No media content extracted during ${duration}ms monitoring.\n\n💡 Suggestions:\n  • Network monitoring captures requests made AFTER the tool starts\n  • Try starting monitoring before page navigation\n  • Use 'advanced_video_extraction' for analyzing already-loaded content\n  • Consider longer duration if content loads slowly`,
+          text: `ℹ️ No media content extracted\n\n📊 Statistics:\n  • Total responses checked: ${totalResponses}\n  • Duration: ${duration}ms\n  • Navigation: ${navigateTo || 'None'}\n\n💡 Suggestions:\n  ${navigateTo ? '• Try longer duration (15000-20000ms)\n  • Verify page actually contains video/media' : '• Add navigateTo parameter: {"navigateTo": "https://example.com", "duration": 15000}'}\n  • Use 'advanced_video_extraction' for analyzing loaded content\n  • Check browser console logs for detailed monitoring`,
         }],
       };
     }
@@ -607,7 +654,7 @@ export async function handleNetworkRecordingExtractors(args: any) {
     return {
       content: [{
         type: 'text' as const,
-        text: `✅ Network Recording Extraction Complete\n\nVideos: ${extractedData.videos.length}\nAudio: ${extractedData.audio.length}\nManifests: ${extractedData.manifests.length}\nAPIs: ${extractedData.apis.length}\n\n${JSON.stringify(extractedData, null, 2)}`,
+        text: `✅ Network Recording Extraction Complete\n\n📊 Results:\n  • Videos: ${extractedData.videos.length}\n  • Audio: ${extractedData.audio.length}\n  • Manifests: ${extractedData.manifests.length}\n  • APIs: ${extractedData.apis.length}\n  • Total responses: ${totalResponses}\n\n${JSON.stringify(extractedData, null, 2)}`,
       }],
     };
   } catch (error) {
