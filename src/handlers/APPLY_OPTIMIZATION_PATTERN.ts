@@ -86,7 +86,7 @@ export async function handleUNIVERSAL_TOOL_TEMPLATE(args: any) {
     }
 
     // 2. Filter empty/invalid results
-    results = results.filter(r => r && Object.keys(r).length > 0);
+    results = results.filter((r: any) => r && Object.keys(r).length > 0);
 
     // 3. Cache results if enabled
     if (shouldCache && results.length > 0) {
@@ -140,7 +140,7 @@ export async function handleVideoExtractionTemplate(args: any) {
         let videos: any[] = [];
 
         // Use optimized selectors
-        videos = await page.evaluate((videoSelectors) => {
+        videos = await page.evaluate((videoSelectors: any) => {
           return Array.from(
             document.querySelectorAll(videoSelectors.join(','))
           ).map((el: any) => ({
@@ -277,7 +277,7 @@ export async function handleDataExtractionTemplate(args: any) {
         let results: any[] = [];
 
         // Primary extraction
-        results = await page.evaluate((sel, deep) => {
+        results = await page.evaluate((sel: any, deep: any) => {
           const data: any[] = [];
 
           // Standard extraction
