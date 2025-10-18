@@ -4,7 +4,7 @@
 
 import { getCurrentPage } from '../browser-manager.js';
 import { validateWorkflow } from '../workflow-validation.js';
-import { withErrorHandling } from '../system-utils.js';
+import { withErrorHandling, sleep } from '../system-utils.js';
 
 /**
  * Shadow DOM Extractor - Extract content from Shadow DOM
@@ -333,11 +333,21 @@ export async function handleFormAutoFill(args: any) {
  * AJAX Content Waiter - Wait for dynamic content to load
  */
 export async function handleAjaxContentWaiter(args: any) {
-  return await withErrorHandling(async () => {
-    validateWorkflow('ajax_content_waiter', {
+  try {
+    const validation = validateWorkflow('ajax_content_waiter', {
       requireBrowser: true,
       requirePage: true,
     });
+    
+    if (!validation.isValid) {
+      return {
+        content: [{
+          type: 'text' as const,
+          text: `⚠️ ${validation.errorMessage || 'Workflow validation failed'}`,
+        }],
+        isError: true,
+      };
+    }
 
     const page = getCurrentPage();
     const waitFor = args.waitFor || 'selector'; // selector, xhr, timeout
@@ -364,7 +374,7 @@ export async function handleAjaxContentWaiter(args: any) {
     }
     
     if (waitFor === 'xhr') {
-      const duration = value || 5000;
+      const duration = parseInt(value) || 5000;
       let xhrCount = 0;
       
       const requestHandler = (request: any) => {
@@ -374,8 +384,17 @@ export async function handleAjaxContentWaiter(args: any) {
       };
       
       page.on('request', requestHandler);
-      await page.waitForTimeout(duration);
+      await sleep(duration);
       page.off('request', requestHandler);
+      
+      if (xhrCount === 0) {
+        return {
+          content: [{
+            type: 'text' as const,
+            text: `ℹ️ Waited ${duration}ms - No XHR/Fetch requests detected.\n\n💡 Note: Monitoring captures NEW requests made during wait period. Page already loaded before monitoring started.`,
+          }],
+        };
+      }
       
       return {
         content: [{
@@ -386,8 +405,8 @@ export async function handleAjaxContentWaiter(args: any) {
     }
     
     if (waitFor === 'timeout') {
-      const duration = value || 3000;
-      await page.waitForTimeout(duration);
+      const duration = parseInt(value) || 3000;
+      await sleep(duration);
       return {
         content: [{
           type: 'text' as const,
@@ -396,8 +415,22 @@ export async function handleAjaxContentWaiter(args: any) {
       };
     }
 
-    throw new Error(`Unknown waitFor type: ${waitFor}`);
-  }, 'Failed AJAX content waiter');
+    return {
+      content: [{
+        type: 'text' as const,
+        text: `❌ Unknown waitFor type: ${waitFor}. Valid types: 'selector', 'xhr', 'timeout'`,
+      }],
+      isError: true,
+    };
+  } catch (error) {
+    return {
+      content: [{
+        type: 'text' as const,
+        text: `❌ AJAX content waiter failed: ${error instanceof Error ? error.message : String(error)}`,
+      }],
+      isError: true,
+    };
+  }
 }
 
 /**

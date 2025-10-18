@@ -4,7 +4,7 @@
 
 import { getCurrentPage } from '../browser-manager.js';
 import { validateWorkflow } from '../workflow-validation.js';
-import { withErrorHandling } from '../system-utils.js';
+import { withErrorHandling, sleep } from '../system-utils.js';
 
 /**
  * HTML Elements Extractor - Extract all HTML elements with complete details
@@ -245,7 +245,7 @@ export async function handleAjaxExtractor(args: any) {
       await page.goto(url, { waitUntil: 'networkidle2' });
     }
     
-    await page.waitForTimeout(duration);
+    await sleep(duration);
     page.off('request', requestHandler);
 
     return {
@@ -294,7 +294,7 @@ export async function handleFetchXHR(args: any) {
     };
     
     page.on('response', responseHandler);
-    await page.waitForTimeout(duration);
+    await sleep(duration);
     page.off('response', responseHandler);
 
     return {
@@ -351,7 +351,7 @@ export async function handleNetworkRecorder(args: any) {
     page.on('request', requestHandler);
     page.on('response', responseHandler);
     
-    await page.waitForTimeout(duration);
+    await sleep(duration);
     
     page.off('request', requestHandler);
     page.off('response', responseHandler);

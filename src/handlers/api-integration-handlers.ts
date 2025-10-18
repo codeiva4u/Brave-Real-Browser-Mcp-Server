@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { getBrowserInstance, getPageInstance } from '../browser-manager.js';
 import axios from 'axios';
+import { sleep } from '../system-utils.js';
 
 /**
  * REST API Endpoint Finder - Discover REST API endpoints
@@ -55,7 +56,7 @@ export async function handleRESTAPIEndpointFinder(args: any): Promise<any> {
       }
       
       // Wait for additional requests
-      await page.waitForTimeout(scanDuration);
+      await sleep(scanDuration);
       
       page.off('request', requestHandler);
     }

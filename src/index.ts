@@ -22,6 +22,7 @@ console.error('🔍 [DEBUG] Loading tool definitions...');
 import { TOOLS, SERVER_INFO, CAPABILITIES, TOOL_NAMES, NavigateArgs, ClickArgs, TypeArgs, WaitArgs, SolveCaptchaArgs, FindSelectorArgs, SaveContentAsMarkdownArgs } from './tool-definitions.js';
 console.error('🔍 [DEBUG] Loading system utils...');
 import { withErrorHandling } from './system-utils.js';
+import { validateMCPResponse } from './mcp-response-validator.js';
 console.error('🔍 [DEBUG] Loading browser manager...');
 import { closeBrowser, forceKillAllBraveProcesses } from './browser-manager.js';
 console.error('🔍 [DEBUG] Loading core infrastructure...');
@@ -171,6 +172,13 @@ import {
   handleVideoLinkFindersExtracts,
   handleVideoDownloadButtonFinders
 } from './handlers/advanced-video-media-handlers.js';
+// Import advanced extraction handlers (Ad-bypass & Obfuscation)
+import {
+  handleAdvancedVideoExtraction,
+  handleDeobfuscateJS,
+  handleMultiLayerRedirectTrace,
+  handleAdProtectionDetector
+} from './handlers/advanced-extraction-handlers.js';
 
 console.error('🔍 [DEBUG] All modules loaded successfully');
 console.error(`🔍 [DEBUG] Server info: ${JSON.stringify(SERVER_INFO)}`);
@@ -237,344 +245,471 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   console.error(`🔍 [DEBUG] Tool call received: ${name} with args: ${JSON.stringify(args)}`);
 
   try {
+    let result: any;
     switch (name) {
       case TOOL_NAMES.BROWSER_INIT:
-        return await handleBrowserInit(args || {});
+        result = await handleBrowserInit(args || {});
+        break;
 
       case TOOL_NAMES.NAVIGATE:
-        return await handleNavigate(args as unknown as NavigateArgs);
+        result = await handleNavigate(args as unknown as NavigateArgs);
+        break;
 
       case TOOL_NAMES.GET_CONTENT:
-        return await handleGetContent(args || {});
+        result = await handleGetContent(args || {});
+        break;
 
       case TOOL_NAMES.CLICK:
-        return await handleClick(args as unknown as ClickArgs);
+        result = await handleClick(args as unknown as ClickArgs);
+        break;
 
       case TOOL_NAMES.TYPE:
-        return await handleType(args as unknown as TypeArgs);
+        result = await handleType(args as unknown as TypeArgs);
+        break;
 
       case TOOL_NAMES.WAIT:
-        return await handleWait(args as unknown as WaitArgs);
+        result = await handleWait(args as unknown as WaitArgs);
+        break;
 
       case TOOL_NAMES.BROWSER_CLOSE:
-        return await handleBrowserClose();
+        result = await handleBrowserClose();
+        break;
 
       case TOOL_NAMES.SOLVE_CAPTCHA:
-        return await handleSolveCaptcha(args as unknown as SolveCaptchaArgs);
+        result = await handleSolveCaptcha(args as unknown as SolveCaptchaArgs);
+        break;
 
       case TOOL_NAMES.RANDOM_SCROLL:
-        return await handleRandomScroll();
+        result = await handleRandomScroll();
+        break;
 
       case TOOL_NAMES.FIND_SELECTOR:
-        return await handleFindSelector(args as unknown as FindSelectorArgs);
+        result = await handleFindSelector(args as unknown as FindSelectorArgs);
+        break;
 
       case TOOL_NAMES.SAVE_CONTENT_AS_MARKDOWN:
-        return await handleSaveContentAsMarkdown(args as unknown as SaveContentAsMarkdownArgs);
+        result = await handleSaveContentAsMarkdown(args as unknown as SaveContentAsMarkdownArgs);
+        break;
 
       // Smart Data Extractors
       case TOOL_NAMES.SCRAPE_TABLE:
-        return await handleScrapeTable(args || {});
+        result = await handleScrapeTable(args || {});
+        break;
 
       case TOOL_NAMES.EXTRACT_LIST:
-        return await handleExtractList(args || {});
+        result = await handleExtractList(args || {});
+        break;
 
       case TOOL_NAMES.EXTRACT_JSON:
-        return await handleExtractJSON(args || {});
+        result = await handleExtractJSON(args || {});
+        break;
 
       case TOOL_NAMES.SCRAPE_META_TAGS:
-        return await handleScrapeMetaTags(args || {});
+        result = await handleScrapeMetaTags(args || {});
+        break;
 
       case TOOL_NAMES.EXTRACT_SCHEMA:
-        return await handleExtractSchema(args || {});
+        result = await handleExtractSchema(args || {});
+        break;
 
       // Multi-Element Extractors
       case TOOL_NAMES.BATCH_ELEMENT_SCRAPER:
-        return await handleBatchElementScraper(args as any);
+        result = await handleBatchElementScraper(args as any);
+        break;
 
       case TOOL_NAMES.NESTED_DATA_EXTRACTION:
-        return await handleNestedDataExtraction(args as any);
+        result = await handleNestedDataExtraction(args as any);
+        break;
 
       case TOOL_NAMES.ATTRIBUTE_HARVESTER:
-        return await handleAttributeHarvester(args as any);
+        result = await handleAttributeHarvester(args as any);
+        break;
 
       // Content Type Specific
       case TOOL_NAMES.IMAGE_SCRAPER:
-        return await handleImageScraper(args || {});
+        result = await handleImageScraper(args || {});
+        break;
 
       case TOOL_NAMES.LINK_HARVESTER:
-        return await handleLinkHarvester(args || {});
+        result = await handleLinkHarvester(args || {});
+        break;
 
       case TOOL_NAMES.MEDIA_EXTRACTOR:
-        return await handleMediaExtractor(args || {});
+        result = await handleMediaExtractor(args || {});
+        break;
 
       case TOOL_NAMES.PDF_LINK_FINDER:
-        return await handlePDFLinkFinder(args || {});
+        result = await handlePDFLinkFinder(args || {});
+        break;
 
       // Pagination Tools
       case TOOL_NAMES.AUTO_PAGINATION:
-        return await handleAutoPagination(args || {});
+        result = await handleAutoPagination(args || {});
+        break;
 
       case TOOL_NAMES.INFINITE_SCROLL:
-        return await handleInfiniteScroll(args || {});
+        result = await handleInfiniteScroll(args || {});
+        break;
 
       case TOOL_NAMES.MULTI_PAGE_SCRAPER:
-        return await handleMultiPageScraper(args as any);
+        result = await handleMultiPageScraper(args as any);
+        break;
 
       case TOOL_NAMES.SITEMAP_PARSER:
-        return await handleSitemapParser(args || {});
+        result = await handleSitemapParser(args || {});
+        break;
 
       case TOOL_NAMES.BREADCRUMB_NAVIGATOR:
-        return await handleBreadcrumbNavigator(args || {});
+        result = await handleBreadcrumbNavigator(args || {});
+        break;
 
       // Data Processing Tools
       case TOOL_NAMES.SMART_TEXT_CLEANER:
-        return await handleSmartTextCleaner(args as any);
+        result = await handleSmartTextCleaner(args as any);
+        break;
 
       case TOOL_NAMES.HTML_TO_TEXT:
-        return await handleHTMLToText(args as any);
+        result = await handleHTMLToText(args as any);
+        break;
 
       case TOOL_NAMES.PRICE_PARSER:
-        return await handlePriceParser(args as any);
+        result = await handlePriceParser(args as any);
+        break;
 
       case TOOL_NAMES.DATE_NORMALIZER:
-        return await handleDateNormalizer(args as any);
+        result = await handleDateNormalizer(args as any);
+        break;
 
       case TOOL_NAMES.CONTACT_EXTRACTOR:
-        return await handleContactExtractor(args as any);
+        result = await handleContactExtractor(args as any);
+        break;
 
       // Data Validation Tools
       case TOOL_NAMES.SCHEMA_VALIDATOR:
-        return await handleSchemaValidator(args as any);
+        result = await handleSchemaValidator(args as any);
+        break;
 
       case TOOL_NAMES.REQUIRED_FIELDS_CHECKER:
-        return await handleRequiredFieldsChecker(args as any);
+        result = await handleRequiredFieldsChecker(args as any);
+        break;
 
       case TOOL_NAMES.DUPLICATE_REMOVER:
-        return await handleDuplicateRemover(args as any);
+        result = await handleDuplicateRemover(args as any);
+        break;
 
       // AI-Powered Features
       case TOOL_NAMES.SMART_SELECTOR_GENERATOR:
-        return await handleSmartSelectorGenerator(args as any);
+        result = await handleSmartSelectorGenerator(args as any);
+        break;
 
       case TOOL_NAMES.CONTENT_CLASSIFICATION:
-        return await handleContentClassification(args as any);
+        result = await handleContentClassification(args as any);
+        break;
 
       case TOOL_NAMES.SENTIMENT_ANALYSIS:
-        return await handleSentimentAnalysis(args as any);
+        result = await handleSentimentAnalysis(args as any);
+        break;
 
       case TOOL_NAMES.SUMMARY_GENERATOR:
-        return await handleSummaryGenerator(args as any);
+        result = await handleSummaryGenerator(args as any);
+        break;
 
       case TOOL_NAMES.TRANSLATION_SUPPORT:
-        return await handleTranslationSupport(args as any);
+        result = await handleTranslationSupport(args as any);
+        break;
 
       // Search & Filter Tools
       case TOOL_NAMES.KEYWORD_SEARCH:
-        return await handleKeywordSearch(args as any);
+        result = await handleKeywordSearch(args as any);
+        break;
 
       case TOOL_NAMES.REGEX_PATTERN_MATCHER:
-        return await handleRegexPatternMatcher(args as any);
+        result = await handleRegexPatternMatcher(args as any);
+        break;
 
       case TOOL_NAMES.XPATH_SUPPORT:
-        return await handleXPathSupport(args as any);
+        result = await handleXPathSupport(args as any);
+        break;
 
       case TOOL_NAMES.ADVANCED_CSS_SELECTORS:
-        return await handleAdvancedCSSSelectors(args as any);
+        result = await handleAdvancedCSSSelectors(args as any);
+        break;
 
       case TOOL_NAMES.VISUAL_ELEMENT_FINDER:
-        return await handleVisualElementFinder(args as any);
+        result = await handleVisualElementFinder(args as any);
+        break;
 
       // Data Quality & Validation
       case TOOL_NAMES.DATA_DEDUPLICATION:
-        return await handleDataDeduplication(args as any);
+        result = await handleDataDeduplication(args as any);
+        break;
 
       case TOOL_NAMES.MISSING_DATA_HANDLER:
-        return await handleMissingDataHandler(args as any);
+        result = await handleMissingDataHandler(args as any);
+        break;
 
       case TOOL_NAMES.DATA_TYPE_VALIDATOR:
-        return await handleDataTypeValidator(args as any);
+        result = await handleDataTypeValidator(args as any);
+        break;
 
       case TOOL_NAMES.OUTLIER_DETECTION:
-        return await handleOutlierDetection(args as any);
+        result = await handleOutlierDetection(args as any);
+        break;
 
       case TOOL_NAMES.CONSISTENCY_CHECKER:
-        return await handleConsistencyChecker(args as any);
+        result = await handleConsistencyChecker(args as any);
+        break;
 
       // Advanced Captcha Handling
       case TOOL_NAMES.OCR_ENGINE:
-        return await handleOCREngine(args as any);
+        result = await handleOCREngine(args as any);
+        break;
 
       case TOOL_NAMES.AUDIO_CAPTCHA_SOLVER:
-        return await handleAudioCaptchaSolver(args as any);
+        result = await handleAudioCaptchaSolver(args as any);
+        break;
 
       case TOOL_NAMES.PUZZLE_CAPTCHA_HANDLER:
-        return await handlePuzzleCaptchaHandler(args as any);
+        result = await handlePuzzleCaptchaHandler(args as any);
+        break;
 
       // Screenshot & Visual Tools
       case TOOL_NAMES.FULL_PAGE_SCREENSHOT:
-        return await handleFullPageScreenshot(args as any);
+        result = await handleFullPageScreenshot(args as any);
+        break;
 
       case TOOL_NAMES.ELEMENT_SCREENSHOT:
-        return await handleElementScreenshot(args as any);
+        result = await handleElementScreenshot(args as any);
+        break;
 
       case TOOL_NAMES.PDF_GENERATION:
-        return await handlePDFGeneration(args as any);
+        result = await handlePDFGeneration(args as any);
+        break;
 
       case TOOL_NAMES.VIDEO_RECORDING:
-        return await handleVideoRecording(args as any);
+        result = await handleVideoRecording(args as any);
+        break;
 
       case TOOL_NAMES.VISUAL_COMPARISON:
-        return await handleVisualComparison(args as any);
+        result = await handleVisualComparison(args as any);
+        break;
 
       // Website API Integration
       case TOOL_NAMES.REST_API_ENDPOINT_FINDER:
-        return await handleRESTAPIEndpointFinder(args as any);
+        result = await handleRESTAPIEndpointFinder(args as any);
+        break;
 
       case TOOL_NAMES.WEBHOOK_SUPPORT:
-        return await handleWebhookSupport(args as any);
+        result = await handleWebhookSupport(args as any);
+        break;
 
       case TOOL_NAMES.ALL_WEBSITE_API_FINDER:
-        return await handleAllWebsiteAPIFinder(args as any);
+        result = await handleAllWebsiteAPIFinder(args as any);
+        break;
 
       // Smart Data Extractors (Advanced)
       case 'html_elements_extractor':
-        return await handleHtmlElementsExtractor(args || {});
+        result = await handleHtmlElementsExtractor(args || {});
+        break;
 
       case 'tags_finder':
-        return await handleTagsFinder(args || {});
+        result = await handleTagsFinder(args || {});
+        break;
 
       case 'links_finder':
-        return await handleLinksFinder(args || {});
+        result = await handleLinksFinder(args || {});
+        break;
 
       case 'xpath_links':
-        return await handleXpathLinks(args || {});
+        result = await handleXpathLinks(args || {});
+        break;
 
       case 'ajax_extractor':
-        return await handleAjaxExtractor(args || {});
+        result = await handleAjaxExtractor(args || {});
+        break;
 
       case 'fetch_xhr':
-        return await handleFetchXHR(args || {});
+        result = await handleFetchXHR(args || {});
+        break;
 
       case 'network_recorder':
-        return await handleNetworkRecorder(args || {});
+        result = await handleNetworkRecorder(args || {});
+        break;
 
       case 'api_finder':
-        return await handleApiFinder(args || {});
+        result = await handleApiFinder(args || {});
+        break;
 
       case 'regex_pattern_finder':
-        return await handleRegexPatternFinder(args as any);
+        result = await handleRegexPatternFinder(args as any);
+        break;
 
       case 'iframe_extractor':
-        return await handleIframeExtractor(args || {});
+        result = await handleIframeExtractor(args || {});
+        break;
 
       case 'embed_page_extractor':
-        return await handleEmbedPageExtractor(args || {});
+        result = await handleEmbedPageExtractor(args || {});
+        break;
 
       case 'image_extractor_advanced':
-        return await handleImageExtractorAdvanced(args || {});
+        result = await handleImageExtractorAdvanced(args || {});
+        break;
 
       case 'video_source_extractor':
-        return await handleVideoSourceExtractor(args || {});
+        result = await handleVideoSourceExtractor(args || {});
+        break;
 
       case 'video_player_extractor':
-        return await handleVideoPlayerExtractor(args || {});
+        result = await handleVideoPlayerExtractor(args || {});
+        break;
 
       case 'video_player_hoster_finder':
-        return await handleVideoPlayerHosterFinder(args || {});
+        result = await handleVideoPlayerHosterFinder(args || {});
+        break;
 
       case 'original_video_hoster_finder':
-        return await handleOriginalVideoHosterFinder(args || {});
+        result = await handleOriginalVideoHosterFinder(args || {});
+        break;
 
       case 'url_redirect_tracer':
-        return await handleUrlRedirectTracer(args as any);
+        result = await handleUrlRedirectTracer(args as any);
+        break;
 
       case 'user_agent_extractor':
-        return await handleUserAgentExtractor(args || {});
+        result = await handleUserAgentExtractor(args || {});
+        break;
 
       // Dynamic Content & Session Handling
       case 'shadow_dom_extractor':
-        return await handleShadowDOMExtractor(args || {});
+        result = await handleShadowDOMExtractor(args || {});
+        break;
 
       case 'cookie_manager':
-        return await handleCookieManager(args as any);
+        result = await handleCookieManager(args as any);
+        break;
 
       case 'session_persistence':
-        return await handleSessionPersistence(args as any);
+        result = await handleSessionPersistence(args as any);
+        break;
 
       case 'form_auto_fill':
-        return await handleFormAutoFill(args as any);
+        result = await handleFormAutoFill(args as any);
+        break;
 
       case 'ajax_content_waiter':
-        return await handleAjaxContentWaiter(args as any);
+        result = await handleAjaxContentWaiter(args as any);
+        break;
 
       case 'modal_popup_handler':
-        return await handleModalPopupHandler(args as any);
+        result = await handleModalPopupHandler(args as any);
+        break;
 
       case 'login_session_manager':
-        return await handleLoginSessionManager(args as any);
+        result = await handleLoginSessionManager(args as any);
+        break;
 
       // Monitoring & Reporting
       case 'progress_tracker':
-        return await handleProgressTracker(args || {});
+        result = await handleProgressTracker(args || {});
+        break;
 
       case 'error_logger':
-        return await handleErrorLogger(args || {});
+        result = await handleErrorLogger(args || {});
+        break;
 
       case 'success_rate_reporter':
-        return await handleSuccessRateReporter(args || {});
+        result = await handleSuccessRateReporter(args || {});
+        break;
 
       case 'data_quality_metrics':
-        return await handleDataQualityMetrics(args || {});
+        result = await handleDataQualityMetrics(args || {});
+        break;
 
       case 'performance_monitor':
-        return await handlePerformanceMonitor(args || {});
+        result = await handlePerformanceMonitor(args || {});
+        break;
 
       case 'monitoring_summary':
-        return await handleGetMonitoringSummary(args || {});
+        result = await handleGetMonitoringSummary(args || {});
+        break;
 
       // Advanced Video & Media Download Tools
       case 'video_link_finder':
-        return await handleVideoLinkFinder(args || {});
+        result = await handleVideoLinkFinder(args || {});
+        break;
 
       case 'video_download_page':
-        return await handleVideoDownloadPage(args || {});
+        result = await handleVideoDownloadPage(args || {});
+        break;
 
       case 'video_download_button':
-        return await handleVideoDownloadButton(args as any);
+        result = await handleVideoDownloadButton(args as any);
+        break;
 
       case 'video_play_push_source':
-        return await handleVideoPlayPushSource(args || {});
+        result = await handleVideoPlayPushSource(args || {});
+        break;
 
       case 'video_play_button_click':
-        return await handleVideoPlayButtonClick(args || {});
+        result = await handleVideoPlayButtonClick(args || {});
+        break;
 
       case 'url_redirect_trace_endpoints':
-        return await handleUrlRedirectTraceEndpoints(args as any);
+        result = await handleUrlRedirectTraceEndpoints(args as any);
+        break;
 
       case 'network_recording_finder':
-        return await handleNetworkRecordingFinder(args || {});
+        result = await handleNetworkRecordingFinder(args || {});
+        break;
 
       case 'network_recording_extractors':
-        return await handleNetworkRecordingExtractors(args || {});
+        result = await handleNetworkRecordingExtractors(args || {});
+        break;
 
       case 'video_links_finders':
-        return await handleVideoLinksFinders(args || {});
+        result = await handleVideoLinksFinders(args || {});
+        break;
 
       case 'videos_selectors':
-        return await handleVideosSelectors(args || {});
+        result = await handleVideosSelectors(args || {});
+        break;
 
       case 'link_process_extracts':
-        return await handleLinkProcessExtracts(args || {});
+        result = await handleLinkProcessExtracts(args || {});
+        break;
 
       case 'video_link_finders_extracts':
-        return await handleVideoLinkFindersExtracts(args || {});
+        result = await handleVideoLinkFindersExtracts(args || {});
+        break;
 
       case 'video_download_button_finders':
-        return await handleVideoDownloadButtonFinders(args || {});
+        result = await handleVideoDownloadButtonFinders(args || {});
+        break;
+
+      // Advanced Extraction Tools (Ad-Bypass & Obfuscation)
+      case 'advanced_video_extraction':
+        result = await handleAdvancedVideoExtraction(args || {});
+        break;
+
+      case 'deobfuscate_js':
+        result = await handleDeobfuscateJS(args || {});
+        break;
+
+      case 'multi_layer_redirect_trace':
+        result = await handleMultiLayerRedirectTrace(args as any);
+        break;
+
+      case 'ad_protection_detector':
+        result = await handleAdProtectionDetector(args || {});
+        break;
 
       default:
         throw new Error(`Unknown tool: ${name}`);
     }
+
+    // Validate MCP response format universally
+    return validateMCPResponse(result, name) as any;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error(`Tool ${name} failed:`, errorMessage);

@@ -4,7 +4,7 @@
 
 import { getCurrentPage } from '../browser-manager.js';
 import { validateWorkflow } from '../workflow-validation.js';
-import { withErrorHandling } from '../system-utils.js';
+import { withErrorHandling, sleep } from '../system-utils.js';
 
 /**
  * Video Link Finder - Find all video links on page
@@ -210,7 +210,7 @@ export async function handleVideoDownloadButton(args: any) {
       
       try {
         await page.click(selector);
-        await page.waitForTimeout(2000);
+        await sleep(2000);
         
         return {
           content: [{
@@ -287,7 +287,7 @@ export async function handleVideoPlayPushSource(args: any) {
     }
     
     // Wait for sources to load
-    await page.waitForTimeout(3000);
+    await sleep(3000);
     page.off('response', responseHandler);
 
     return {
@@ -421,11 +421,21 @@ export async function handleUrlRedirectTraceEndpoints(args: any) {
  * Network Recording Finder - Find and analyze network recordings
  */
 export async function handleNetworkRecordingFinder(args: any) {
-  return await withErrorHandling(async () => {
-    validateWorkflow('network_recording_finder', {
+  try {
+    const validation = validateWorkflow('network_recording_finder', {
       requireBrowser: true,
       requirePage: true,
     });
+    
+    if (!validation.isValid) {
+      return {
+        content: [{
+          type: 'text' as const,
+          text: `⚠️ ${validation.errorMessage || 'Workflow validation failed'}`,
+        }],
+        isError: true,
+      };
+    }
 
     const page = getCurrentPage();
     const duration = args.duration || 10000;
@@ -434,44 +444,57 @@ export async function handleNetworkRecordingFinder(args: any) {
     const recordings: any[] = [];
     
     const responseHandler = async (response: any) => {
-      const url = response.url();
-      const contentType = response.headers()['content-type'] || '';
-      const resourceType = response.request().resourceType();
-      
-      let shouldRecord = false;
-      
-      if (filterType === 'video' && (contentType.includes('video') || resourceType === 'media')) {
-        shouldRecord = true;
-      } else if (filterType === 'audio' && contentType.includes('audio')) {
-        shouldRecord = true;
-      } else if (filterType === 'media' && (contentType.includes('video') || contentType.includes('audio'))) {
-        shouldRecord = true;
-      }
-      
-      if (shouldRecord) {
-        try {
-          const buffer = await response.buffer();
-          recordings.push({
-            url,
-            contentType,
-            size: buffer.length,
-            status: response.status(),
-            timestamp: new Date().toISOString(),
-          });
-        } catch (e) {
-          recordings.push({
-            url,
-            contentType,
-            status: response.status(),
-            error: 'Could not capture buffer',
-          });
+      try {
+        const url = response.url();
+        const contentType = response.headers()['content-type'] || '';
+        const resourceType = response.request().resourceType();
+        
+        let shouldRecord = false;
+        
+        if (filterType === 'video' && (contentType.includes('video') || resourceType === 'media')) {
+          shouldRecord = true;
+        } else if (filterType === 'audio' && contentType.includes('audio')) {
+          shouldRecord = true;
+        } else if (filterType === 'media' && (contentType.includes('video') || contentType.includes('audio'))) {
+          shouldRecord = true;
         }
+        
+        if (shouldRecord) {
+          try {
+            const buffer = await response.buffer();
+            recordings.push({
+              url,
+              contentType,
+              size: buffer.length,
+              status: response.status(),
+              timestamp: new Date().toISOString(),
+            });
+          } catch (e) {
+            recordings.push({
+              url,
+              contentType,
+              status: response.status(),
+              error: 'Could not capture buffer',
+            });
+          }
+        }
+      } catch (e) {
+        // Ignore individual response errors
       }
     };
     
     page.on('response', responseHandler);
-    await page.waitForTimeout(duration);
+    await sleep(duration);
     page.off('response', responseHandler);
+
+    if (recordings.length === 0) {
+      return {
+        content: [{
+          type: 'text' as const,
+          text: `ℹ️ No ${filterType} recordings found during ${duration}ms monitoring period.\n\n💡 Note: Network monitoring starts AFTER this tool is called. To capture video/media requests:\n  1. Start monitoring before navigating to the page\n  2. Or trigger video playback after monitoring starts\n  3. Consider using 'advanced_video_extraction' for comprehensive detection`,
+        }],
+      };
+    }
 
     return {
       content: [{
@@ -479,18 +502,36 @@ export async function handleNetworkRecordingFinder(args: any) {
         text: `✅ Network Recordings Found: ${recordings.length}\n\n${JSON.stringify(recordings, null, 2)}`,
       }],
     };
-  }, 'Failed to find network recordings');
+  } catch (error) {
+    return {
+      content: [{
+        type: 'text' as const,
+        text: `❌ Network recording finder failed: ${error instanceof Error ? error.message : String(error)}`,
+      }],
+      isError: true,
+    };
+  }
 }
 
 /**
  * Network Recording Extractors - Extract data from network recordings
  */
 export async function handleNetworkRecordingExtractors(args: any) {
-  return await withErrorHandling(async () => {
-    validateWorkflow('network_recording_extractors', {
+  try {
+    const validation = validateWorkflow('network_recording_extractors', {
       requireBrowser: true,
       requirePage: true,
     });
+    
+    if (!validation.isValid) {
+      return {
+        content: [{
+          type: 'text' as const,
+          text: `⚠️ ${validation.errorMessage || 'Workflow validation failed'}`,
+        }],
+        isError: true,
+      };
+    }
 
     const page = getCurrentPage();
     const duration = args.duration || 10000;
@@ -548,8 +589,20 @@ export async function handleNetworkRecordingExtractors(args: any) {
     };
     
     page.on('response', responseHandler);
-    await page.waitForTimeout(duration);
+    await sleep(duration);
     page.off('response', responseHandler);
+
+    const totalFound = extractedData.videos.length + extractedData.audio.length + 
+                       extractedData.manifests.length + extractedData.apis.length;
+
+    if (totalFound === 0) {
+      return {
+        content: [{
+          type: 'text' as const,
+          text: `ℹ️ No media content extracted during ${duration}ms monitoring.\n\n💡 Suggestions:\n  • Network monitoring captures requests made AFTER the tool starts\n  • Try starting monitoring before page navigation\n  • Use 'advanced_video_extraction' for analyzing already-loaded content\n  • Consider longer duration if content loads slowly`,
+        }],
+      };
+    }
 
     return {
       content: [{
@@ -557,7 +610,15 @@ export async function handleNetworkRecordingExtractors(args: any) {
         text: `✅ Network Recording Extraction Complete\n\nVideos: ${extractedData.videos.length}\nAudio: ${extractedData.audio.length}\nManifests: ${extractedData.manifests.length}\nAPIs: ${extractedData.apis.length}\n\n${JSON.stringify(extractedData, null, 2)}`,
       }],
     };
-  }, 'Failed to extract network recordings');
+  } catch (error) {
+    return {
+      content: [{
+        type: 'text' as const,
+        text: `❌ Network recording extraction failed: ${error instanceof Error ? error.message : String(error)}`,
+      }],
+      isError: true,
+    };
+  }
 }
 
 /**

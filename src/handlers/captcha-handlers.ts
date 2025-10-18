@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { getBrowserInstance, getPageInstance } from '../browser-manager.js';
 import Tesseract from 'tesseract.js';
+import { sleep } from '../system-utils.js';
 
 /**
  * OCR Engine - Extract text from captcha images using OCR
@@ -228,7 +229,7 @@ export async function handlePuzzleCaptchaHandler(args: any): Promise<any> {
                 box.y + box.height / 2,
                 { steps: 5 }
               );
-              await page.waitForTimeout(50 + Math.random() * 50); // Random delay for human-like behavior
+              await sleep(50 + Math.random() * 50); // Random delay for human-like behavior
             }
             
             await page.mouse.up();

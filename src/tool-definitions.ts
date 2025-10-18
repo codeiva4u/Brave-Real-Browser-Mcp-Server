@@ -1434,6 +1434,56 @@ export const TOOLS = [
       properties: {},
     },
   },
+  // Advanced Extraction Tools (Ad-Bypass & Obfuscation)
+  {
+    name: 'advanced_video_extraction',
+    description: 'Advanced video source extractor with ad-protection bypass and comprehensive network monitoring. Extracts direct video URLs, HLS/DASH streams, iframe sources, detects obfuscated content, and identifies video hosting platforms.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        waitTime: { 
+          type: 'number', 
+          default: 10000,
+          description: 'Time to wait (in ms) for dynamic content and video sources to load'
+        },
+      },
+    },
+  },
+  {
+    name: 'deobfuscate_js',
+    description: 'Deobfuscate JavaScript code and extract hidden URLs, domains, and base64-encoded content. Detects eval, atob, hex encoding, and identifier obfuscation.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
+  {
+    name: 'multi_layer_redirect_trace',
+    description: 'Follow multiple layers of redirects (URL redirects and iframe chains) to find final video source. Traces up to specified depth.',
+    inputSchema: {
+      type: 'object',
+      required: ['url'],
+      properties: {
+        url: { 
+          type: 'string',
+          description: 'Starting URL to trace redirects from'
+        },
+        maxDepth: { 
+          type: 'number', 
+          default: 5,
+          description: 'Maximum redirect depth to follow'
+        },
+      },
+    },
+  },
+  {
+    name: 'ad_protection_detector',
+    description: 'Detect ad-protection mechanisms including ad-block detection, anti-debugger code, popup layers, and hidden elements.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
 ];
 
 // Tool name constants for type safety

@@ -4,6 +4,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import pixelmatch from 'pixelmatch';
 import { PNG } from 'pngjs';
+import { sleep } from '../system-utils.js';
 
 /**
  * Full Page Screenshot - Capture entire page
@@ -257,7 +258,7 @@ export async function handleVideoRecording(args: any): Promise<any> {
         const framePath = path.join(framesDir, `frame_${i.toString().padStart(4, '0')}.png`);
         await page.screenshot({ path: framePath });
         frames.push(framePath);
-        await page.waitForTimeout(frameDelay);
+        await sleep(frameDelay);
       }
     }
     

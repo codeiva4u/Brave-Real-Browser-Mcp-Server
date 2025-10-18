@@ -4,7 +4,7 @@
 
 import { getCurrentPage } from '../browser-manager.js';
 import { validateWorkflow } from '../workflow-validation.js';
-import { withErrorHandling } from '../system-utils.js';
+import { withErrorHandling, sleep } from '../system-utils.js';
 import * as xml2js from 'xml2js';
 
 // Type definitions
@@ -75,14 +75,14 @@ export async function handleAutoPagination(args: AutoPaginationArgs) {
 
       // Click next button
       await nextButton.click();
-      await page.waitForTimeout(waitBetweenPages);
+      await sleep(waitBetweenPages);
       
       // Wait for navigation or content load
       try {
         await page.waitForNavigation({ timeout: 5000, waitUntil: 'domcontentloaded' });
       } catch (e) {
         // No navigation occurred, content loaded dynamically
-        await page.waitForTimeout(1000);
+        await sleep(1000);
       }
 
       currentPage++;
@@ -159,7 +159,7 @@ export async function handleInfiniteScroll(args: InfiniteScrollArgs) {
       });
 
       // Wait for new content to load
-      await page.waitForTimeout(scrollDelay);
+      await sleep(scrollDelay);
 
       scrollCount++;
     }
@@ -204,7 +204,7 @@ export async function handleMultiPageScraper(args: MultiPageScraperArgs) {
       
       try {
         await page.goto(url, { waitUntil: 'domcontentloaded' });
-        await page.waitForTimeout(waitBetweenPages);
+        await sleep(waitBetweenPages);
 
         const pageData = await page.evaluate((selector) => {
           const elements = document.querySelectorAll(selector);
