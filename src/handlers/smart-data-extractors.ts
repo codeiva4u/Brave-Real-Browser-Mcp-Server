@@ -1,10 +1,19 @@
-// Smart Data Extractors Module
+// Smart Data Extractors Module - OPTIMIZED
 // Advanced tools for HTML Elements, AJAX, XPath, Network Recording, Video sources extraction
 // @ts-nocheck
 
 import { getCurrentPage } from '../browser-manager.js';
 import { validateWorkflow } from '../workflow-validation.js';
 import { withErrorHandling, sleep } from '../system-utils.js';
+import {
+  TOOL_OPTIMIZATION_CONFIG,
+  globalCache,
+  deduplicateResults,
+  VIDEO_HOSTERS_DB,
+  SELECTOR_UTILS,
+  globalMetrics,
+  createErrorHandler,
+} from '../optimization-utils.js';
 
 /**
  * HTML Elements Extractor - Extract all HTML elements with complete details

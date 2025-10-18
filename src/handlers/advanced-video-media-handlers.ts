@@ -1,10 +1,11 @@
-// Advanced Video & Media Download Tools
+// Advanced Video & Media Download Tools - OPTIMIZED
 // Specialized tools for video link finding, download buttons, and media extraction
 // @ts-nocheck
 
 import { getCurrentPage } from '../browser-manager.js';
 import { validateWorkflow } from '../workflow-validation.js';
 import { withErrorHandling, sleep } from '../system-utils.js';
+import { TOOL_OPTIMIZATION_CONFIG, globalCache, deduplicateResults, VIDEO_HOSTERS_DB, SELECTOR_UTILS, globalMetrics, createErrorHandler } from '../optimization-utils.js';
 
 /**
  * Video Link Finder - Find all video links on page

@@ -1,11 +1,12 @@
 // Data Extraction Handlers
-// Smart extractors for tables, lists, JSON, and structured data
+// Data Extraction Handlers - OPTIMIZED
+// Tables, Lists, JSON, Meta Tags, Schemas
 // @ts-nocheck
 
 import { getCurrentPage } from '../browser-manager.js';
 import { validateWorkflow } from '../workflow-validation.js';
 import { withErrorHandling } from '../system-utils.js';
-
+import { TOOL_OPTIMIZATION_CONFIG, globalCache, deduplicateResults, globalMetrics, createErrorHandler } from '../optimization-utils.js';
 // Type definitions for extracted data
 export interface TableData {
   headers: string[];

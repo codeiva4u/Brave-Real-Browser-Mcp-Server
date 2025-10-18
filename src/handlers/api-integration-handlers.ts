@@ -2,6 +2,7 @@
 import { getBrowserInstance, getPageInstance } from '../browser-manager.js';
 import axios from 'axios';
 import { sleep } from '../system-utils.js';
+import { TOOL_OPTIMIZATION_CONFIG, globalCache, deduplicateResults, globalMetrics, createErrorHandler } from '../optimization-utils.js';
 
 /**
  * REST API Endpoint Finder - Discover REST API endpoints

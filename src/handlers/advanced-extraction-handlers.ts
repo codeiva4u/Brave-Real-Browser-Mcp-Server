@@ -1,10 +1,11 @@
-// Advanced Video Extraction Handlers
+// Advanced Video Extraction Handlers - OPTIMIZED
 // Ad-Protection Bypass, Obfuscation Detection, Hidden Video Source Extraction
 // @ts-nocheck
 
 import { getCurrentPage } from '../browser-manager.js';
 import { validateWorkflow } from '../workflow-validation.js';
 import { withErrorHandling, sleep } from '../system-utils.js';
+import { TOOL_OPTIMIZATION_CONFIG, globalCache, deduplicateResults, VIDEO_HOSTERS_DB, globalMetrics, createErrorHandler } from '../optimization-utils.js';
 
 /**
  * Advanced Video Source Extractor - Bypass ad-protection and extract all video sources

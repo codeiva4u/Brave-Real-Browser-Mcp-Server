@@ -1,10 +1,11 @@
-// Dynamic Content & Session Handling Module
+// Dynamic Content & Session Handling Module - OPTIMIZED
 // Shadow DOM, Cookie Manager, Session Persistence, Form Auto Fill
 // @ts-nocheck
 
 import { getCurrentPage } from '../browser-manager.js';
 import { validateWorkflow } from '../workflow-validation.js';
 import { withErrorHandling, sleep } from '../system-utils.js';
+import { TOOL_OPTIMIZATION_CONFIG, retryWithBackoff, globalMetrics, createErrorHandler } from '../optimization-utils.js';
 
 /**
  * Shadow DOM Extractor - Extract content from Shadow DOM
