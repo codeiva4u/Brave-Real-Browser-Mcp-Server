@@ -42,7 +42,7 @@
     "axios": "^1.6.5",
     "brave-real-browser": "^1.5.102",
     "brave-real-launcher": "^1.2.17",
-    "brave-real-puppeteer-core": "^24.24.0",
+    "brave-real-puppeteer-core": "^24.25.0",
     "cheerio": "^1.0.0-rc.12",
     "chrono-node": "^2.7.0",
     "compromise": "^14.13.0",
@@ -111,6 +111,6 @@
     "puppeteer": "npm:brave-real-puppeteer-core@latest",
     "puppeteer-core": "npm:brave-real-puppeteer-core@latest",
     "tar-fs": "^3.0.0",
-    "ws": "^8.18.0"
+    "ws": "^8.18.3"
   }
 }
