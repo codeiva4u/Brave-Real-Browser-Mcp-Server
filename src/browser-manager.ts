@@ -3,6 +3,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as net from 'net';
 import { execSync, spawn } from 'child_process';
+import { config as dotenvConfig } from 'dotenv';
+
+// Load environment variables from .env file
+dotenvConfig();
 
 // Content prioritization configuration
 export interface ContentPriorityConfig {
@@ -549,7 +553,7 @@ export async function initializeBrowser(options?: any) {
     }
 
     const connectOptions: any = {
-      headless: options?.headless ?? false,
+      headless: options?.headless ?? (process.env.HEADLESS === 'true'),
       customConfig: braveConfig,
       turnstile: true,
       disableXvfb: options?.disableXvfb ?? true,
@@ -606,7 +610,7 @@ export async function initializeBrowser(options?: any) {
       strategyName: 'User-Defined Configuration',
       strategy: {
         executablePath: detectedBravePath,
-        headless: options?.headless ?? false,
+        headless: options?.headless ?? (process.env.HEADLESS === 'true'),
         turnstile: true,
         args: [
           "--start-maximized"
