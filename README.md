@@ -14,19 +14,28 @@ Provides AI assistants with powerful, detection-resistant browser automation cap
 3. [Features](#features)
 4. [Prerequisites](#prerequisites)
 5. [Installation](#installation)
-6. [Usage](#usage)
-   - [With Claude Desktop](#with-claude-desktop)
+6. [Multi-Protocol Support](#-multi-protocol-support)
+7. [Usage](#usage)
+   - [Quick Configuration Reference](#-quick-configuration-reference)
+   - [With Claude Desktop](#with-claude-desktop-mcp-protocol)
    - [With Claude Code CLI](#with-claude-code-cli)
    - [With Cursor IDE](#with-cursor-ide)
-   - [With Other AI Assistants](#with-other-ai-assistants)
-7. [Available Tools](#available-tools)
-8. [Advanced Features](#advanced-features)
-9. [Configuration](#configuration)
-10. [Troubleshooting](#troubleshooting)
-11. [Development](#development)
-12. [Testing](#testing)
-13. [Contributing](#contributing)
-14. [License](#license)
+   - [With Warp AI Terminal](#with-warp-ai-terminal)
+   - [With Windsurf IDE](#with-windsurf-ide-codeium)
+   - [With Continue.dev](#with-continuedev-vscode-extension)
+   - [With Cody AI](#with-cody-ai-sourcegraph)
+   - [With Zed Editor](#with-zed-editor-lsp-mode)
+   - [With VSCode](#with-vscode-via-lsp)
+   - [HTTP/WebSocket Mode](#httpwebsocket-mode-for-any-language)
+   - [Complete MCP IDE Compatibility Matrix](#-complete-mcp-ide-compatibility-matrix)
+8. [Available Tools](#available-tools)
+9. [Advanced Features](#advanced-features)
+10. [Configuration](#configuration)
+11. [Troubleshooting](#troubleshooting)
+12. [Development](#development)
+13. [Testing](#testing)
+14. [Contributing](#contributing)
+15. [License](#license)
 
 ## Quick Start for Beginners
 
@@ -193,9 +202,65 @@ npm run build
 npm run dev
 ```
 
+## 🚀 Multi-Protocol Support
+
+This server now supports **three protocols** for maximum compatibility:
+
+| Protocol | Best For | Setup Difficulty |
+|----------|----------|-----------------|
+| **MCP** | Claude Desktop, Cursor, Warp AI | Easy |
+| **HTTP/WebSocket** | Any programming language | Easy |
+| **LSP** | Zed, VSCode, Neovim | Medium |
+
+### Quick Protocol Selection
+
+```bash
+# MCP mode (default) - For Claude Desktop, Cursor, Warp
+npx brave-real-browser-mcp-server
+
+# HTTP mode - For REST API / Any language
+npx brave-real-browser-mcp-server --mode http --port 3000
+
+# LSP mode - For Zed AI IDE, VSCode, Neovim
+npx brave-real-browser-mcp-server --mode lsp
+```
+
+📖 **Complete Guide:** See [MULTI_PROTOCOL_GUIDE.md](./MULTI_PROTOCOL_GUIDE.md) for detailed setup instructions.
+
+---
+
 ## Usage
 
-### With Claude Desktop
+### 📝 Quick Configuration Reference
+
+| Your IDE/Tool | Jump To Section |
+|---------------|----------------|
+| Claude Desktop | [Configuration](#with-claude-desktop-mcp-protocol) |
+| Claude Code CLI | [Configuration](#with-claude-code-cli) |
+| Cursor IDE | [Configuration](#with-cursor-ide) |
+| Warp Terminal | [Configuration](#with-warp-ai-terminal) |
+| Windsurf IDE | [Configuration](#with-windsurf-ide-codeium) |
+| Continue.dev | [Configuration](#with-continuedev-vscode-extension) |
+| Cody AI | [Configuration](#with-cody-ai-sourcegraph) |
+| Zed Editor | [Configuration](#with-zed-editor-lsp-mode) |
+| VSCode | [Configuration](#with-vscode-via-lsp) |
+| Python/Node.js/Any Language | [Configuration](#httpwebsocket-mode-for-any-language) |
+
+**All platforms use the same simple pattern:**
+```json
+{
+  "mcpServers": {
+    "brave-real-browser": {
+      "command": "npx",
+      "args": ["brave-real-browser-mcp-server@latest"]
+    }
+  }
+}
+```
+
+---
+
+### With Claude Desktop (MCP Protocol)
 
 The configuration below uses `npx` to automatically download and run the latest version. No installation required!
 
@@ -436,21 +501,206 @@ If successful, you should see:
    - Check file is in correct directory
    - Restart Cursor IDE after changes
 
-### With Other AI Assistants
+### With Warp AI Terminal
 
-Start the server:
+Warp Terminal has native MCP support built-in.
 
-```bash
-brave-real-browser-mcp-server
+**Configuration Location:**
+- macOS: `~/.warp/mcp_config.json`
+- Linux: `~/.warp/mcp_config.json`
+- Windows: `%USERPROFILE%\.warp\mcp_config.json`
+
+**Configuration:**
+```json
+{
+  "mcpServers": {
+    "brave-real-browser": {
+      "command": "npx",
+      "args": ["brave-real-browser-mcp-server@latest"]
+    }
+  }
+}
 ```
 
-Or if installed from source:
+**Testing:**
+1. Restart Warp Terminal
+2. Type: `/mcp` to see available servers
+3. Test: "Initialize browser and go to google.com"
 
+### With Windsurf IDE (Codeium)
+
+Windsurf IDE by Codeium supports MCP servers.
+
+**Configuration Location:**
+- Create `.windsurf/mcp.json` in your project
+- Or `~/.windsurf/mcp.json` for global configuration
+
+**Configuration:**
+```json
+{
+  "mcpServers": {
+    "brave-real-browser": {
+      "command": "npx",
+      "args": ["brave-real-browser-mcp-server@latest"],
+      "disabled": false
+    }
+  }
+}
+```
+
+### With Continue.dev (VSCode Extension)
+
+Continue.dev supports MCP through its VSCode/JetBrains extension.
+
+**Configuration Location:**
+- `~/.continue/config.json` (Global)
+- Or `.continue/config.json` in your project
+
+**Configuration:**
+```json
+{
+  "mcpServers": [
+    {
+      "name": "brave-real-browser",
+      "command": "npx",
+      "args": ["brave-real-browser-mcp-server@latest"]
+    }
+  ]
+}
+```
+
+### With Cody AI (Sourcegraph)
+
+Cody AI in VS Code supports MCP servers.
+
+**Configuration Location:**
+- VS Code Settings: `settings.json`
+
+**Configuration:**
+```json
+{
+  "cody.mcp.servers": {
+    "brave-real-browser": {
+      "command": "npx",
+      "args": ["brave-real-browser-mcp-server@latest"]
+    }
+  }
+}
+```
+
+### With Zed Editor (LSP Mode)
+
+Zed uses LSP protocol instead of MCP.
+
+**Configuration Location:**
+- macOS/Linux: `~/.config/zed/settings.json`
+- Windows: `%APPDATA%\Zed\settings.json`
+
+**Configuration:**
+```json
+{
+  "lsp": {
+    "brave-browser-automation": {
+      "command": "npx",
+      "args": ["brave-real-browser-mcp-server@latest", "--mode", "lsp"],
+      "settings": {}
+    }
+  }
+}
+```
+
+### With VSCode (via LSP)
+
+VSCode can use LSP mode for browser automation.
+
+**Create:** `.vscode/settings.json` in your project
+
+**Configuration:**
+```json
+{
+  "brave-browser-automation.serverPath": "npx",
+  "brave-browser-automation.serverArgs": [
+    "brave-real-browser-mcp-server@latest",
+    "--mode",
+    "lsp"
+  ]
+}
+```
+
+### HTTP/WebSocket Mode (For Any Language)
+
+Use REST API mode for maximum compatibility with any programming language.
+
+**Start Server:**
 ```bash
-npm start
+npx brave-real-browser-mcp-server --mode http --port 3000
+```
+
+**Example - Python:**
+```python
+import requests
+
+base_url = "http://localhost:3000"
+
+# Initialize browser
+requests.post(f"{base_url}/browser/init", json={"headless": False})
+
+# Navigate
+requests.post(f"{base_url}/browser/navigate", json={"url": "https://google.com"})
+
+# Get content
+response = requests.post(f"{base_url}/browser/get-content", json={"type": "text"})
+print(response.json())
+```
+
+**Example - Node.js:**
+```javascript
+const axios = require('axios');
+
+const baseUrl = 'http://localhost:3000';
+
+// Initialize and automate
+await axios.post(`${baseUrl}/browser/init`, {headless: false});
+await axios.post(`${baseUrl}/browser/navigate`, {url: 'https://google.com'});
+const content = await axios.post(`${baseUrl}/browser/get-content`, {type: 'text'});
+console.log(content.data);
+```
+
+### With Other MCP-Compatible Tools
+
+For any other MCP-compatible IDE or tool, use the standard MCP configuration:
+
+```json
+{
+  "mcpServers": {
+    "brave-real-browser": {
+      "command": "npx",
+      "args": ["brave-real-browser-mcp-server@latest"]
+    }
+  }
+}
 ```
 
 The server communicates via stdin/stdout using the MCP protocol.
+
+---
+
+## 📊 Complete MCP IDE Compatibility Matrix
+
+| IDE/Tool | Protocol | Config File | Status |
+|----------|----------|-------------|--------|
+| **Claude Desktop** | MCP | `claude_desktop_config.json` | ✅ Fully Tested |
+| **Claude Code CLI** | MCP | `.mcp.json` | ✅ Fully Tested |
+| **Cursor IDE** | MCP | `.cursor/mcp.json` | ✅ Fully Tested |
+| **Warp Terminal** | MCP | `mcp_config.json` | ✅ Supported |
+| **Windsurf IDE** | MCP | `.windsurf/mcp.json` | ✅ Supported |
+| **Continue.dev** | MCP | `.continue/config.json` | ✅ Supported |
+| **Cody AI** | MCP | `settings.json` | ✅ Supported |
+| **Zed Editor** | LSP | `settings.json` | ✅ LSP Mode |
+| **VSCode** | LSP | `.vscode/settings.json` | ✅ LSP Mode |
+| **Any HTTP Client** | HTTP/WebSocket | REST API | ✅ Fully Supported |
+
+**Total Supported Platforms:** 10+
 
 ### Example Interactions
 

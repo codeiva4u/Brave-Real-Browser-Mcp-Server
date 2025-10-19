@@ -734,52 +734,36 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 });
 
-// Main function to start the server
-async function main(): Promise<void> {
-  console.error('🔍 [DEBUG] Main function starting...');
-  
-  // Setup process cleanup handlers
-  console.error('🔍 [DEBUG] Setting up process cleanup handlers...');
-  setupProcessCleanup(async () => {
-    console.error('🔍 [DEBUG] Process cleanup triggered');
-    await closeBrowser();
-    await forceKillAllBraveProcesses();
-  });
+// Main function - now using multi-protocol launcher
+import { main as launcherMain } from './launcher.js';
 
-  // Create and start the server transport
-  console.error('🔍 [DEBUG] Creating StdioServerTransport...');
-  const transport = new StdioServerTransport();
-  console.error('🔍 [DEBUG] StdioServerTransport created successfully');
-  
-  await withErrorHandling(async () => {
-    console.error('🔍 [DEBUG] Attempting to connect server to transport...');
-    await server.connect(transport);
-    console.error('🔍 [DEBUG] Server connected to transport successfully');
+async function main(): Promise<void> {
+  // Check if user wants multi-protocol mode
+  const hasProtocolArg = process.argv.some(arg => 
+    arg === '--mode' || arg === '-m' || arg === '--http' || arg === '--lsp'
+  );
+
+  if (hasProtocolArg) {
+    // Use multi-protocol launcher
+    await launcherMain();
+  } else {
+    // Default: MCP mode (backward compatibility)
+    console.error('🔍 [DEBUG] Starting in MCP mode (default)...');
+    console.error('💡 Tip: Use --mode http or --mode lsp for other protocols');
     
-    console.error('🚀 Brave Real Browser MCP Server started successfully');
-    console.error('📋 Available tools:', TOOLS.map(t => t.name).join(', '));
-    console.error('🔧 Workflow validation: Active');
-    console.error('💡 Content priority mode: Enabled (use get_content for better reliability)');
-    
-    console.error('🔍 [DEBUG] Server is now ready and waiting for requests...');
-    
-    // Keep the process alive by maintaining the connection
-    console.error('🔍 [DEBUG] Maintaining process alive - server will wait for requests');
-    
-    // Add a heartbeat to confirm the process is still running
-    const heartbeat = setInterval(() => {
-      console.error(`🔍 [DEBUG] Heartbeat - Server alive at ${new Date().toISOString()}`);
-    }, 30000); // Every 30 seconds
-    
-    // Cleanup heartbeat on process exit
-    process.on('exit', () => {
-      console.error('🔍 [DEBUG] Process exiting - clearing heartbeat');
-      clearInterval(heartbeat);
+    setupProcessCleanup(async () => {
+      await closeBrowser();
+      await forceKillAllBraveProcesses();
     });
+
+    const transport = new StdioServerTransport();
     
-  }, 'Failed to start MCP server');
-  
-  console.error('🔍 [DEBUG] Main function completed - server should be running');
+    await withErrorHandling(async () => {
+      await server.connect(transport);
+      console.error('🚀 Brave Real Browser MCP Server started successfully');
+      console.error('📋 Available tools:', TOOLS.map(t => t.name).join(', '));
+    }, 'Failed to start MCP server');
+  }
 }
 
 // Enhanced error handling with debug info
