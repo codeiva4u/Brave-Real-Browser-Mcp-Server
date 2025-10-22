@@ -113,7 +113,7 @@ brave-real-browser-mcp-server@latest --mode lsp
 ```json
 {
   "mcpServers": {
-    "brave-browser": {
+    "brave-real-browser": {
       "command": "npx",
       "args": ["-y", "brave-real-browser-mcp-server@latest"]
     }
@@ -132,7 +132,7 @@ brave-real-browser-mcp-server@latest --mode lsp
 ```json
 {
   "mcpServers": {
-    "brave-browser": {
+    "brave-real-browser": {
       "command": "npx",
       "args": ["-y", "brave-real-browser-mcp-server@latest"],
       "env": {
@@ -154,7 +154,7 @@ brave-real-browser-mcp-server@latest --mode lsp
 ```json
 {
   "mcpServers": {
-    "brave-browser": {
+    "brave-real-browser": {
       "command": "npx",
       "args": ["-y", "brave-real-browser-mcp-server@latest"]
     }
@@ -173,7 +173,7 @@ brave-real-browser-mcp-server@latest --mode lsp
 ```json
 {
   "mcpServers": {
-    "brave-browser": {
+    "brave-real-browser": {
       "command": "npx",
       "args": ["-y", "brave-real-browser-mcp-server@latest"]
     }
@@ -192,7 +192,7 @@ brave-real-browser-mcp-server@latest --mode lsp
 ```json
 {
   "lsp": {
-    "brave-browser": {
+    "brave-real-browser": {
       "command": "brave-real-browser-mcp-server@latest",
       "args": ["--mode", "lsp"]
     }
@@ -224,7 +224,7 @@ brave-real-browser-mcp-server@latest --mode http --port 3000 --no-websocket
 // Qoder AI settings
 {
   "extensions": {
-    "brave-browser": {
+    "brave-real-browser": {
       "type": "http",
       "endpoint": "http://localhost:3000",
       "enabled": true
@@ -594,21 +594,21 @@ function BraveBrowserClient() {
 ```javascript
 // Initialize browser
 await use_mcp_tool({
-  server_name: "brave-browser",
+  server_name: "brave-real-browser",
   tool_name: "browser_init",
   arguments: {}
 });
 
 // Navigate to website
 await use_mcp_tool({
-  server_name: "brave-browser",
+  server_name: "brave-real-browser",
   tool_name: "navigate",
   arguments: { url: "https://example.com" }
 });
 
 // Get content
 await use_mcp_tool({
-  server_name: "brave-browser",
+  server_name: "brave-real-browser",
   tool_name: "get_content",
   arguments: { type: "text" }
 });
@@ -619,21 +619,21 @@ await use_mcp_tool({
 ```javascript
 // Navigate to page with CAPTCHA
 await use_mcp_tool({
-  server_name: "brave-browser",
+  server_name: "brave-real-browser",
   tool_name: "navigate",
   arguments: { url: "https://example.com/protected-page" }
 });
 
 // Solve CAPTCHA
 await use_mcp_tool({
-  server_name: "brave-browser",
+  server_name: "brave-real-browser",
   tool_name: "solve_captcha",
   arguments: { type: "recaptcha" }
 });
 
 // Extract table data
 await use_mcp_tool({
-  server_name: "brave-browser",
+  server_name: "brave-real-browser",
   tool_name: "scrape_table",
   arguments: { selector: "table.data" }
 });
@@ -698,7 +698,7 @@ export BRAVE_PATH="/usr/bin/brave-browser"
 **Solution 2:** Specify in browser_init
 ```javascript
 await use_mcp_tool({
-  server_name: "brave-browser",
+  server_name: "brave-real-browser",
   tool_name: "browser_init",
   arguments: {
     customConfig: {
@@ -806,7 +806,7 @@ brave-real-browser-mcp-server@latest --mode lsp
 ```json
 {
   "mcpServers": {
-    "brave-browser": {
+    "brave-real-browser": {
       "command": "npx",
       "args": ["-y", "brave-real-browser-mcp-server@latest"]
     }
@@ -824,7 +824,7 @@ brave-real-browser-mcp-server@latest --mode lsp
 ```json
 {
   "mcpServers": {
-    "brave-browser": {
+    "brave-real-browser": {
       "command": "npx",
       "args": ["-y", "brave-real-browser-mcp-server@latest"]
     }
@@ -886,21 +886,21 @@ brave-real-browser-mcp-server@latest --mode http --port 3000
 ```javascript
 // Browser initialize करें
 await use_mcp_tool({
-  server_name: "brave-browser",
+  server_name: "brave-real-browser",
   tool_name: "browser_init",
   arguments: {}
 });
 
 // Website पर जाएं
 await use_mcp_tool({
-  server_name: "brave-browser",
+  server_name: "brave-real-browser",
   tool_name: "navigate",
   arguments: { url: "https://example.com" }
 });
 
 // Content प्राप्त करें
 await use_mcp_tool({
-  server_name: "brave-browser",
+  server_name: "brave-real-browser",
   tool_name: "get_content",
   arguments: { type: "text" }
 });

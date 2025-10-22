@@ -165,7 +165,7 @@ brave-real-browser-mcp-server@latest --mode lsp
 ```json
 {
   "mcpServers": {
-    "brave-browser": {
+    "brave-real-browser": {
       "command": "npx",
       "args": ["-y", "brave-real-browser-mcp-server@latest"]
     }
@@ -177,7 +177,7 @@ brave-real-browser-mcp-server@latest --mode lsp
 ```json
 {
   "mcpServers": {
-    "brave-browser": {
+    "brave-real-browser": {
       "command": "npx",
       "args": ["-y", "brave-real-browser-mcp-server@latest"],
       "env": {
@@ -192,7 +192,7 @@ brave-real-browser-mcp-server@latest --mode lsp
 ```json
 {
   "mcpServers": {
-    "brave-browser": {
+    "brave-real-browser": {
       "command": "npx",
       "args": ["-y", "brave-real-browser-mcp-server@latest"]
     }

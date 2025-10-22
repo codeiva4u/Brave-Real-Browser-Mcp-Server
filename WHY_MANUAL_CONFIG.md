@@ -167,7 +167,7 @@ parentProcess.command          // → hidden by OS ❌
 # Cursor की config:
 {
   "mcpServers": {
-    "brave-browser": {
+    "brave-real-browser": {
       "command": "npx",
       "args": ["brave-real-browser-mcp-server"]
     }
@@ -335,7 +335,7 @@ return {
 // Simple 3-line config
 {
   "mcpServers": {
-    "brave-browser": {
+    "brave-real-browser": {
       "command": "npx",
       "args": ["-y", "brave-real-browser-mcp-server"]
     }
@@ -407,7 +407,7 @@ brave-real-browser-mcp-server --mode http --port 3000
 // Takes 2 minutes, 100% reliable
 {
   "mcpServers": {
-    "brave-browser": {
+    "brave-real-browser": {
       "command": "npx",
       "args": ["-y", "brave-real-browser-mcp-server@latest"]
     }

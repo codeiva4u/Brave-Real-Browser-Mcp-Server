@@ -707,7 +707,7 @@ asyncio.run(main())
 ```json
 {
   "extensions": {
-    "brave-browser-mcp": {
+    "brave-real-browser-mcp": {
       "type": "http",
       "enabled": true,
       "config": {
