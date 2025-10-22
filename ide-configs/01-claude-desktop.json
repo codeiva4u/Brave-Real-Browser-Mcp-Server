@@ -1,0 +1,83 @@
+{
+  "name": "Claude Desktop",
+  "description": "Anthropic's Claude Desktop application with MCP support",
+  "status": "✅ Fully Supported",
+  "protocol": "MCP (STDIO)",
+  "configFile": {
+    "windows": "%APPDATA%\\Claude\\claude_desktop_config.json",
+    "mac": "~/Library/Application Support/Claude/claude_desktop_config.json",
+    "linux": "~/.config/Claude/claude_desktop_config.json"
+  },
+  "configuration": {
+    "mcpServers": {
+      "brave-real-browser": {
+        "command": "npx",
+        "args": ["-y", "brave-real-browser-mcp-server@latest"]
+      }
+    }
+  },
+  "alternativeConfiguration": {
+    "withCustomBravePath": {
+      "mcpServers": {
+        "brave-real-browser": {
+          "command": "npx",
+          "args": ["-y", "brave-real-browser-mcp-server@latest"],
+          "env": {
+            "BRAVE_PATH": "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe"
+          }
+        }
+      }
+    },
+    "withLocalPath": {
+      "mcpServers": {
+        "brave-real-browser": {
+          "command": "node",
+          "args": ["C:\\Users\\Admin\\Desktop\\Brave-Real-Browser-Mcp-Server-main\\dist\\index.js"]
+        }
+      }
+    }
+  },
+  "setupSteps": [
+    "1. Close Claude Desktop completely (check System Tray)",
+    "2. Press Win+R and type: %APPDATA%\\Claude",
+    "3. Open or create 'claude_desktop_config.json'",
+    "4. Paste the configuration JSON",
+    "5. Save the file",
+    "6. Restart Claude Desktop",
+    "7. Check Settings → Developer → MCP Servers",
+    "8. You should see 'brave-real-browser' listed"
+  ],
+  "testCommands": [
+    "Initialize the browser and navigate to example.com",
+    "Get the page title from google.com",
+    "Take a screenshot of the current page",
+    "Extract all links from the page",
+    "Scrape the main content as markdown"
+  ],
+  "verification": {
+    "step1": "Open Claude Desktop",
+    "step2": "Go to Settings → Tools",
+    "step3": "Look for 'brave-real-browser' in the tools list",
+    "step4": "Tool count should show 110+ tools",
+    "step5": "Test with: 'Please list all available browser automation tools'"
+  },
+  "troubleshooting": {
+    "toolsNotShowing": [
+      "Kill Claude.exe in Task Manager",
+      "Check JSON syntax at jsonlint.com",
+      "Ensure no trailing commas in JSON",
+      "Check Developer logs for errors"
+    ],
+    "connectionError": [
+      "Ensure Node.js is installed (node --version)",
+      "Run: npm install -g brave-real-browser-mcp-server@latest",
+      "Check if npx is available (npx --version)"
+    ]
+  },
+  "notes": [
+    "Claude Desktop has the best MCP integration",
+    "Supports all 110+ tools natively",
+    "Auto-detection works perfectly",
+    "Recommended for beginners"
+  ]
+}

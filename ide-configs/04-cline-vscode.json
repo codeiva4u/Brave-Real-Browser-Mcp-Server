@@ -1,0 +1,245 @@
+{
+  "name": "Cline (VSCode Extension)",
+  "description": "Claude Dev extension for Visual Studio Code with MCP support",
+  "status": "✅ Fully Supported",
+  "protocol": "MCP (STDIO) via Cline Extension",
+  "configFile": {
+    "windows": "%APPDATA%\\Code\\User\\globalStorage\\saoudrizwan.claude-dev\\settings\\cline_mcp_settings.json",
+    "mac": "~/Library/Application Support/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json",
+    "linux": "~/.config/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json"
+  },
+  "prerequisites": [
+    "Install Visual Studio Code from https://code.visualstudio.com",
+    "Install Cline extension from VSCode marketplace",
+    "Search for 'Cline' or 'Claude Dev' by Saoud Rizwan",
+    "Extension ID: saoudrizwan.claude-dev"
+  ],
+  "configuration": {
+    "mcpServers": {
+      "brave-real-browser": {
+        "command": "npx",
+        "args": ["-y", "brave-real-browser-mcp-server@latest"]
+      }
+    }
+  },
+  "advancedConfiguration": {
+    "withAutoApprove": {
+      "mcpServers": {
+        "brave-real-browser": {
+          "command": "npx",
+          "args": ["-y", "brave-real-browser-mcp-server@latest"],
+          "disabled": false,
+          "autoApprove": [
+            "browser_init",
+            "navigate",
+            "get_content",
+            "click",
+            "type",
+            "wait",
+            "find_selector",
+            "browser_close"
+          ]
+        }
+      }
+    },
+    "withCustomBravePath": {
+      "mcpServers": {
+        "brave-real-browser": {
+          "command": "npx",
+          "args": ["-y", "brave-real-browser-mcp-server@latest"],
+          "env": {
+            "BRAVE_PATH": "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe",
+            "HEADLESS": "false"
+          }
+        }
+      }
+    },
+    "withLocalPath": {
+      "mcpServers": {
+        "brave-real-browser": {
+          "command": "node",
+          "args": ["C:\\Users\\Admin\\Desktop\\Brave-Real-Browser-Mcp-Server-main\\dist\\index.js"]
+        }
+      }
+    }
+  },
+  "setupSteps": [
+    "1. Open Visual Studio Code",
+    "2. Press Ctrl+Shift+X to open Extensions",
+    "3. Search for 'Cline' or 'Claude Dev'",
+    "4. Install the extension by Saoud Rizwan",
+    "5. Reload VSCode if prompted",
+    "6. Close VSCode completely",
+    "7. Navigate to config folder: %APPDATA%\\Code\\User\\globalStorage\\saoudrizwan.claude-dev\\settings",
+    "8. Create or edit 'cline_mcp_settings.json'",
+    "9. Paste the configuration JSON",
+    "10. Save the file",
+    "11. Restart VSCode",
+    "12. Open Cline panel (Ctrl+Shift+P → 'Cline: Open')",
+    "13. Verify MCP server connection in Cline settings"
+  ],
+  "testCommands": [
+    "Open Cline and ask: 'Initialize the browser'",
+    "Ask: 'Navigate to example.com'",
+    "Ask: 'Get the page title and first paragraph'",
+    "Ask: 'Take a screenshot of the page'",
+    "Ask: 'Extract all links from the page'",
+    "Ask: 'Scrape any tables on the page'",
+    "Ask: 'Close the browser'"
+  ],
+  "verification": {
+    "step1": "Open VSCode",
+    "step2": "Press Ctrl+Shift+P and type 'Cline: Open'",
+    "step3": "Click the settings gear icon in Cline panel",
+    "step4": "Navigate to 'MCP Settings' tab",
+    "step5": "Check if 'brave-real-browser' appears in the list",
+    "step6": "Status should show 'Connected' or green indicator",
+    "step7": "Tool count should display 110+",
+    "step8": "Test with: 'List all available browser automation tools'"
+  },
+  "troubleshooting": {
+    "extensionNotFound": [
+      "Open Extensions marketplace (Ctrl+Shift+X)",
+      "Search exactly: 'Cline'",
+      "Look for extension by 'Saoud Rizwan'",
+      "Ensure you're searching in VSCode, not VSCodium",
+      "Check internet connection"
+    ],
+    "configFileNotFound": [
+      "Extension must be installed first",
+      "Open Cline panel at least once to create directories",
+      "Manually create directory if needed",
+      "Full path: %APPDATA%\\Code\\User\\globalStorage\\saoudrizwan.claude-dev\\settings",
+      "Create cline_mcp_settings.json in that folder"
+    ],
+    "serverNotConnecting": [
+      "Verify Node.js is installed: node --version",
+      "Check npx is available: npx --version",
+      "Test command manually in terminal",
+      "Check VSCode Output panel → Cline for logs",
+      "Restart VSCode completely",
+      "Try running: npm install -g brave-real-browser-mcp-server@latest"
+    ],
+    "toolsNotWorking": [
+      "Check if MCP server is enabled in Cline settings",
+      "Toggle disabled flag to false",
+      "Restart the MCP connection",
+      "Check for JSON syntax errors",
+      "View Cline logs in Output panel",
+      "Try re-installing the extension"
+    ],
+    "permissionErrors": [
+      "Run VSCode as administrator",
+      "Check file/folder permissions",
+      "Disable antivirus temporarily",
+      "Clear npm cache: npm cache clean --force"
+    ],
+    "jsonSyntaxError": [
+      "Validate JSON at jsonlint.com",
+      "Remove trailing commas",
+      "Ensure all quotes are properly escaped",
+      "Check all brackets are closed",
+      "Use double quotes, not single quotes"
+    ]
+  },
+  "features": {
+    "autoApprove": {
+      "description": "Automatically approve specific tools without confirmation",
+      "recommended": [
+        "browser_init",
+        "navigate",
+        "get_content",
+        "wait",
+        "browser_close"
+      ],
+      "caution": "Don't auto-approve destructive operations",
+      "benefit": "Speeds up automation workflows"
+    },
+    "disabled": {
+      "description": "Enable/disable MCP server",
+      "values": ["true", "false"],
+      "default": "false",
+      "note": "Set to true to temporarily disable without removing config"
+    },
+    "env": {
+      "description": "Environment variables for the MCP server",
+      "common": {
+        "BRAVE_PATH": "Custom Brave browser location",
+        "HEADLESS": "Run browser in headless mode (true/false)",
+        "TIMEOUT": "Default timeout in milliseconds"
+      }
+    }
+  },
+  "performanceTips": [
+    "Use autoApprove for frequently used safe tools",
+    "Keep Cline panel open during automation",
+    "Monitor Output panel (View → Output → Cline) for debugging",
+    "Use headless mode for faster execution",
+    "Close browser when done to free resources",
+    "Limit concurrent browser operations"
+  ],
+  "bestPractices": [
+    "Always test configuration after changes",
+    "Keep backup of working configuration",
+    "Use environment variables for sensitive data",
+    "Monitor logs for errors",
+    "Update MCP server regularly",
+    "Use specific tool names in prompts",
+    "Close resources properly after use"
+  ],
+  "integrationTips": {
+    "withWorkspace": "Place config in workspace .vscode folder for project-specific settings",
+    "withGit": "Add cline_mcp_settings.json to .gitignore if it contains sensitive paths",
+    "withTeam": "Share configuration template without absolute paths",
+    "withCI": "Can automate browser testing in CI/CD pipelines"
+  },
+  "notes": [
+    "Cline extension required - not available in base VSCode",
+    "Works with all 110+ browser automation tools",
+    "Excellent integration with VSCode workspace",
+    "Great for developers already using VSCode",
+    "Active development and community support",
+    "Compatible with VSCode Insiders",
+    "Works on all platforms (Windows, Mac, Linux)"
+  ],
+  "advantages": [
+    "✅ Native VSCode integration",
+    "✅ Familiar VSCode interface",
+    "✅ AutoApprove feature available",
+    "✅ Excellent debugging capabilities",
+    "✅ Works with all VSCode features",
+    "✅ Large community support",
+    "✅ Regular updates"
+  ],
+  "limitations": [
+    "⚠️ Requires Cline extension installation",
+    "⚠️ Configuration path is deep/hidden",
+    "⚠️ Need to restart VSCode after config changes"
+  ],
+  "commonIssues": {
+    "issue1": {
+      "problem": "Extension installed but Cline doesn't show",
+      "solution": "Reload VSCode window (Ctrl+Shift+P → 'Developer: Reload Window')"
+    },
+    "issue2": {
+      "problem": "MCP settings tab empty",
+      "solution": "Install MCP server first, then restart extension"
+    },
+    "issue3": {
+      "problem": "Tools work but slow",
+      "solution": "Use autoApprove for common tools to skip confirmation dialogs"
+    }
+  },
+  "links": {
+    "vscode": "https://code.visualstudio.com",
+    "clineExtension": "https://marketplace.visualstudio.com/items?itemName=saoudrizwan.claude-dev",
+    "github": "https://github.com/cline/cline",
+    "documentation": "https://github.com/cline/cline/blob/main/README.md"
+  },
+  "compatibility": {
+    "vscodeVersions": "1.80.0+",
+    "platforms": ["Windows", "macOS", "Linux"],
+    "nodeVersions": "18.0.0+",
+    "tested": true
+  }
+}

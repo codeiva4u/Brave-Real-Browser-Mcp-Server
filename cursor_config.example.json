@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "brave-real-browser": {
+      "command": "npx",
+      "args": ["-y", "brave-real-browser-mcp-server@latest"],
+      "disabled": false,
+      "env": {
+        "BRAVE_PATH": "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe"
+      },
+      "autoApprove": [
+        "browser_init",
+        "navigate",
+        "get_content",
+        "click",
+        "type",
+        "wait"
+      ]
+    }
+  }
+}
