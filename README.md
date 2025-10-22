@@ -1,68 +1,32 @@
-# 🌐 Brave Real Browser MCP Server - Universal AI IDE Support
+# 🌐 Brave Real Browser MCP Server
+## Universal AI IDE Support with Advanced Browser Automation
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-2.11.8-blue.svg)
+![Version](https://img.shields.io/badge/version-2.12.1-blue.svg)
 ![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-green.svg)
-![License](https://img.shields.io/badge/license-MIT-orange.svg)
-![AI IDEs](https://img.shields.io/badge/AI_IDEs-15+-purple.svg)
-![Protocols](https://img.shields.io/badge/protocols-4-red.svg)
+![Tools](https://img.shields.io/badge/tools-111-purple.svg)
+![IDEs](https://img.shields.io/badge/AI_IDEs-15+-orange.svg)
+![License](https://img.shields.io/badge/license-MIT-red.svg)
 
-**सभी AI IDEs के लिए Universal MCP Server | Browser Automation | Web Scraping | CAPTCHA Solving**
+**सभी AI IDEs के लिए Universal MCP Server | 111+ Tools | Browser Automation | Web Scraping | CAPTCHA Solving**
 
-[English](#english) | [हिन्दी](#hindi)
+[Installation](#-installation) | [Quick Start](#-quick-start) | [Tools](#-available-tools-111) | [HTTP/WebSocket](#-httpwebsocket-setup) | [Configuration](#-ide-configurations)
 
 </div>
 
 ---
 
-## 🎯 What Makes This Universal?
+## 🎯 What is This?
 
-**यह प्रोजेक्ट सभी AI IDEs में स्वचालित रूप से काम करता है!**
+**Brave Real Browser MCP Server** एक powerful automation tool है जो:
 
-✅ **Auto-Detection** - आपका IDE automatically detect होता है  
-✅ **Multi-Protocol** - MCP, LSP, HTTP, WebSocket सभी supported  
-✅ **Zero Configuration** - कोई manual setup की जरूरत नहीं  
-✅ **15+ AI IDEs** - सभी popular AI tools supported  
-✅ **Real Brave Browser** - असली Brave browser के साथ काम करता है  
-✅ **Anti-Detection** - Cloudflare, reCAPTCHA bypass करता है  
-
----
-
-<a name="english"></a>
-# 📖 English Documentation
-
-## 🤖 Supported AI IDEs (Universal Compatibility)
-
-This server **automatically detects and adapts** to your AI IDE!
-
-### ✅ Fully Supported & Auto-Detected
-
-| IDE | Protocol | Auto-Config | Status |
-|-----|----------|-------------|--------|
-| **Claude Desktop** | MCP/STDIO | ✅ | 🟢 Working |
-| **Cursor AI** | MCP/STDIO | ✅ | 🟢 Working |
-| **Windsurf** | MCP/STDIO | ✅ | 🟢 Working |
-| **Cline** (VSCode) | MCP/STDIO | ✅ | 🟢 Working |
-| **Warp Terminal** | MCP/STDIO | ✅ | 🟢 Working |
-| **Roo Coder** | MCP/STDIO | ✅ | 🟢 Working |
-| **Zed Editor** | LSP/MCP | ✅ | 🟢 Working |
-| **VSCode** | LSP/HTTP | ✅ | 🟢 Working |
-| **Qoder AI** | HTTP/WS | ✅ | 🟢 Working |
-| **Continue.dev** | MCP/HTTP | ✅ | 🟢 Working |
-| **GitHub Copilot** | HTTP/LSP | ✅ | 🟢 Working |
-| **Amazon CodeWhisperer** | HTTP/LSP | ✅ | 🟢 Working |
-| **Tabnine** | HTTP/WS | ✅ | 🟢 Working |
-| **Cody** (Sourcegraph) | HTTP/LSP | ✅ | 🟢 Working |
-| **Aider** | STDIO/HTTP | ✅ | 🟢 Working |
-| **Pieces for Developers** | HTTP/WS | ✅ | 🟢 Working |
-
-### 📡 Supported Protocols
-
-- **MCP** (Model Context Protocol) - Claude Desktop, Cursor, Windsurf, Cline, Warp, Roo Coder
-- **LSP** (Language Server Protocol) - Zed, VSCode, Neovim, Emacs, Sublime Text
-- **HTTP/REST** - Universal API for all IDEs
-- **WebSocket** - Real-time communication for modern IDEs
+- ✅ **15+ AI IDEs में काम करता है** (Claude, Cursor, Windsurf, Cline, Zed, VSCode, Qoder AI, etc.)
+- ✅ **111+ Automation Tools** - Browser control, scraping, CAPTCHA solving, video extraction
+- ✅ **3 Protocol Modes** - MCP (STDIO), LSP, HTTP/WebSocket
+- ✅ **Auto-Detection** - Automatically detects your IDE
+- ✅ **Real Brave Browser** - Anti-detection features, bypass Cloudflare
+- ✅ **Universal API** - Works with any programming language (JS, Python, PHP, Go, etc.)
 
 ---
 
@@ -74,356 +38,493 @@ This server **automatically detects and adapts** to your AI IDE!
 # Install globally
 npm install -g brave-real-browser-mcp-server@latest
 
-# Or use with npx (no installation needed)
+# Or use with npx (no installation)
 npx brave-real-browser-mcp-server@latest
 ```
 
-### Usage
+### For MCP IDEs (Claude, Cursor, Windsurf)
 
-```bash
-# Auto mode (automatically detects your IDE) - DEFAULT
-brave-real-browser-mcp-server@latest
+**Add to your IDE config file:**
 
-# Or explicitly specify protocol
-brave-real-browser-mcp-server@latest --mode auto
-
-# MCP mode (for Claude, Cursor, Windsurf, etc.)
-brave-real-browser-mcp-server@latest --mode mcp
-
-# HTTP mode (universal - works with ALL IDEs)
-brave-real-browser-mcp-server@latest --mode http --port 3000
-
-# LSP mode (for Zed, VSCode, etc.)
-brave-real-browser-mcp-server@latest --mode lsp
+```json
+{
+  "mcpServers": {
+    "brave-real-browser": {
+      "command": "npx",
+      "args": ["-y", "brave-real-browser-mcp-server@latest"]
+    }
+  }
+}
 ```
+
+**Config file locations:**
+- **Claude Desktop:** `%APPDATA%\Claude\claude_desktop_config.json` (Windows) or `~/Library/Application Support/Claude/claude_desktop_config.json` (Mac)
+- **Cursor:** `%APPDATA%\Cursor\User\globalStorage\saoudrizwan.claude-dev\settings\cline_mcp_settings.json`
+- **Windsurf:** `%APPDATA%\Windsurf\mcp.json`
+
+### For Other IDEs (Qoder AI, Custom Tools)
+
+Use HTTP/WebSocket mode - [See HTTP/WebSocket Setup](#-httpwebsocket-setup)
 
 ---
 
-## ⚙️ Configuration for Specific IDEs
+## 🛠️ Available Tools (111)
 
-### 1. Claude Desktop
+### 🌐 Browser Management (2 tools)
 
-**File:** `claude_desktop_config.json`
+| Tool | Description |
+|------|-------------|
+| `browser_init` | Initialize browser with anti-detection features |
+| `browser_close` | Close browser instance |
 
-**Location:**
-- **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
-- **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
-- **Linux:** `~/.config/Claude/claude_desktop_config.json`
+### 🧭 Navigation (2 tools)
 
-```json
-{
-  "mcpServers": {
-    "brave-real-browser": {
-      "command": "npx",
-      "args": ["-y", "brave-real-browser-mcp-server@latest"]
-    }
-  }
-}
-```
+| Tool | Description |
+|------|-------------|
+| `navigate` | Navigate to URL with wait conditions |
+| `wait` | Wait for selector, navigation, or timeout |
 
-### 2. Cursor AI
+### 🖱️ Interactions (4 tools)
 
-**File:** `cline_mcp_settings.json`
+| Tool | Description |
+|------|-------------|
+| `click` | Click on elements |
+| `type` | Type text into inputs |
+| `random_scroll` | Human-like scrolling |
+| `solve_captcha` | Solve CAPTCHA (reCAPTCHA, hCaptcha, Turnstile, etc.) |
 
-**Location:**
-- **Windows:** `%APPDATA%\Cursor\User\globalStorage\saoudrizwan.claude-dev\settings\cline_mcp_settings.json`
-- **macOS:** `~/Library/Application Support/Cursor/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json`
+### 📄 Content Extraction (10 tools)
 
-```json
-{
-  "mcpServers": {
-    "brave-real-browser": {
-      "command": "npx",
-      "args": ["-y", "brave-real-browser-mcp-server@latest"],
-      "env": {
-        "BRAVE_PATH": "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe"
-      }
-    }
-  }
-}
-```
+| Tool | Description |
+|------|-------------|
+| `get_content` | Extract page content (HTML/Text/Markdown) |
+| `find_selector` | Find CSS selectors for elements |
+| `scrape_table` | Extract table data with headers |
+| `extract_list` | Extract list items |
+| `extract_json` | Extract JSON data from page |
+| `scrape_meta_tags` | Extract meta tags and SEO info |
+| `extract_schema` | Extract schema.org structured data |
+| `save_content_as_markdown` | Save page as markdown file |
+| `html_to_text` | Convert HTML to clean text |
+| `smart_text_cleaner` | Clean and normalize text |
 
-### 3. Windsurf
+### 🔍 Multi-Element Extraction (8 tools)
 
-**File:** `mcp.json`
+| Tool | Description |
+|------|-------------|
+| `batch_element_scraper` | Scrape multiple elements at once |
+| `nested_data_extraction` | Extract nested data structures |
+| `attribute_harvester` | Extract element attributes |
+| `image_scraper` | Extract all images with metadata |
+| `link_harvester` | Extract all links from page |
+| `media_extractor` | Extract media files (audio/video) |
+| `pdf_link_finder` | Find PDF download links |
+| `html_elements_extractor` | Extract specific HTML elements |
 
-**Location:**
-- **Windows:** `%APPDATA%\Windsurf\mcp.json`
-- **macOS:** `~/.windsurf/mcp.json`
+### 🎯 Advanced Extraction (10 tools)
 
-```json
-{
-  "mcpServers": {
-    "brave-real-browser": {
-      "command": "npx",
-      "args": ["-y", "brave-real-browser-mcp-server@latest"]
-    }
-  }
-}
-```
+| Tool | Description |
+|------|-------------|
+| `tags_finder` | Find elements by tag name |
+| `links_finder` | Advanced link extraction |
+| `xpath_links` | Extract links using XPath |
+| `ajax_extractor` | Extract AJAX/dynamic content |
+| `fetch_xhr` | Capture XHR/Fetch requests |
+| `network_recorder` | Record all network traffic |
+| `api_finder` | Discover API endpoints |
+| `regex_pattern_finder` | Find patterns using regex |
+| `iframe_extractor` | Extract iframe content |
+| `embed_page_extractor` | Extract embedded pages |
 
-### 4. Cline (VSCode Extension)
+### 🎬 Video & Media Tools (19 tools)
 
-**File:** `cline_mcp_settings.json`
+| Tool | Description |
+|------|-------------|
+| `video_link_finder` | Find video URLs |
+| `video_download_page` | Navigate to video download page |
+| `video_download_button` | Find video download buttons |
+| `video_play_push_source` | Get video play sources |
+| `video_play_button_click` | Click video play button |
+| `url_redirect_trace_endpoints` | Trace URL redirects |
+| `network_recording_finder` | Find network recordings |
+| `network_recording_extractors` | Extract network data |
+| `video_links_finders` | Multiple video link finders |
+| `videos_selectors` | Video element selectors |
+| `link_process_extracts` | Process and extract links |
+| `video_link_finders_extracts` | Advanced video link extraction |
+| `video_download_button_finders` | Find all download buttons |
+| `advanced_video_extraction` | Advanced video extraction with ad-bypass |
+| `image_extractor_advanced` | Advanced image extraction |
+| `video_source_extractor` | Extract video source URLs |
+| `video_player_extractor` | Extract video player info |
+| `video_player_hoster_finder` | Find video hosting platform |
+| `original_video_hoster_finder` | Find original video source |
 
-**Location:**
-- **Windows:** `%APPDATA%\Code\User\globalStorage\saoudrizwan.claude-dev\settings\cline_mcp_settings.json`
-- **macOS:** `~/Library/Application Support/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json`
+### 🔐 CAPTCHA & Security (4 tools)
 
-```json
-{
-  "mcpServers": {
-    "brave-real-browser": {
-      "command": "npx",
-      "args": ["-y", "brave-real-browser-mcp-server@latest"]
-    }
-  }
-}
-```
+| Tool | Description |
+|------|-------------|
+| `solve_captcha` | Multi-CAPTCHA solver (reCAPTCHA, hCaptcha, Turnstile, Arkose, etc.) |
+| `ocr_engine` | OCR for text-based CAPTCHAs |
+| `audio_captcha_solver` | Solve audio CAPTCHAs |
+| `puzzle_captcha_handler` | Handle puzzle CAPTCHAs |
 
-### 5. Zed Editor
+### 🔧 Data Processing (9 tools)
 
-**File:** `settings.json`
+| Tool | Description |
+|------|-------------|
+| `price_parser` | Extract and parse prices |
+| `date_normalizer` | Normalize dates to standard format |
+| `contact_extractor` | Extract contact information |
+| `schema_validator` | Validate data against schema |
+| `required_fields_checker` | Check for required fields |
+| `duplicate_remover` | Remove duplicate entries |
+| `data_deduplication` | Advanced deduplication |
+| `missing_data_handler` | Handle missing data |
+| `data_type_validator` | Validate data types |
 
-**Location:**
-- **Windows:** `%APPDATA%\Zed\settings.json`
-- **macOS:** `~/.config/zed/settings.json`
+### 📊 Data Quality (3 tools)
 
-```json
-{
-  "lsp": {
-    "brave-real-browser": {
-      "command": "brave-real-browser-mcp-server@latest",
-      "args": ["--mode", "lsp"]
-    }
-  }
-}
-```
+| Tool | Description |
+|------|-------------|
+| `outlier_detection` | Detect data outliers |
+| `consistency_checker` | Check data consistency |
+| `data_quality_metrics` | Generate quality metrics |
 
-### 6. HTTP Protocol (Universal - Works with ALL IDEs)
+### 🤖 AI-Powered Tools (5 tools)
 
-HTTP mode provides a REST API that works with any IDE or tool that can make HTTP requests.
+| Tool | Description |
+|------|-------------|
+| `smart_selector_generator` | Auto-generate CSS selectors |
+| `content_classification` | Classify content type |
+| `sentiment_analysis` | Analyze text sentiment |
+| `summary_generator` | Generate content summaries |
+| `translation_support` | Translate content |
+
+### 🔎 Search & Filter (5 tools)
+
+| Tool | Description |
+|------|-------------|
+| `keyword_search` | Search for keywords in page |
+| `regex_pattern_matcher` | Match regex patterns |
+| `xpath_support` | XPath query support |
+| `advanced_css_selectors` | Advanced CSS selector queries |
+| `visual_element_finder` | Find elements visually |
+
+### 📑 Pagination & Navigation (5 tools)
+
+| Tool | Description |
+|------|-------------|
+| `auto_pagination` | Auto-paginate through pages |
+| `infinite_scroll` | Handle infinite scroll |
+| `multi_page_scraper` | Scrape multiple pages |
+| `sitemap_parser` | Parse and navigate sitemaps |
+| `breadcrumb_navigator` | Navigate using breadcrumbs |
+
+### 🔒 Session Management (7 tools)
+
+| Tool | Description |
+|------|-------------|
+| `cookie_manager` | Manage cookies |
+| `session_persistence` | Persist sessions |
+| `form_auto_fill` | Auto-fill forms |
+| `ajax_content_waiter` | Wait for AJAX content |
+| `modal_popup_handler` | Handle modal popups |
+| `login_session_manager` | Manage login sessions |
+| `shadow_dom_extractor` | Extract Shadow DOM content |
+
+### 📸 Visual Tools (5 tools)
+
+| Tool | Description |
+|------|-------------|
+| `full_page_screenshot` | Full page screenshot |
+| `element_screenshot` | Screenshot specific element |
+| `pdf_generation` | Generate PDF from page |
+| `video_recording` | Record page as video |
+| `visual_comparison` | Compare screenshots |
+
+### 📈 Monitoring & Reporting (6 tools)
+
+| Tool | Description |
+|------|-------------|
+| `progress_tracker` | Track automation progress |
+| `error_logger` | Log errors |
+| `success_rate_reporter` | Report success rates |
+| `data_quality_metrics` | Data quality metrics |
+| `performance_monitor` | Monitor performance |
+| `monitoring_summary` | Get monitoring summary |
+
+### 🌐 API Integration (3 tools)
+
+| Tool | Description |
+|------|-------------|
+| `rest_api_endpoint_finder` | Find REST API endpoints |
+| `webhook_support` | Webhook integration |
+| `all_website_api_finder` | Find all APIs on website |
+
+### 🛡️ Advanced Extraction & Obfuscation (5 tools)
+
+| Tool | Description |
+|------|-------------|
+| `deobfuscate_js` | Deobfuscate JavaScript |
+| `multi_layer_redirect_trace` | Trace multi-layer redirects |
+| `ad_protection_detector` | Detect ad protection |
+| `url_redirect_tracer` | Trace URL redirects |
+| `user_agent_extractor` | Extract user agent info |
+
+---
+
+## 🌐 HTTP/WebSocket Setup
+
+### HTTP Protocol - 5 Steps
+
+HTTP mode works with **ANY IDE or programming language**. No special configuration needed!
 
 #### Step 1: Start HTTP Server
 
 ```bash
-# Start with default settings
-brave-real-browser-mcp-server@latest --mode http --port 3000
+# Start server on port 3000
+npx brave-real-browser-mcp-server@latest --mode http --port 3000
 
-# With custom host and port
-brave-real-browser-mcp-server@latest --mode http --host 0.0.0.0 --port 8080
+# Custom host and port
+npx brave-real-browser-mcp-server@latest --mode http --host 0.0.0.0 --port 8080
 
-# Without WebSocket support (HTTP only)
-brave-real-browser-mcp-server@latest --mode http --port 3000 --no-websocket
+# HTTP only (without WebSocket)
+npx brave-real-browser-mcp-server@latest --mode http --port 3000 --no-websocket
 ```
 
-#### Step 2: Configure Your IDE/Tool
+**Server will start and show:**
+```
+🟢 [HTTP] Starting HTTP/WebSocket server...
+✅ [HTTP] Server ready at http://localhost:3000
+💡 [HTTP] Universal mode - works with ALL AI IDEs
+```
+
+#### Step 2: Test Server
+
+```bash
+# Health check
+curl http://localhost:3000/health
+
+# List all available tools
+curl http://localhost:3000/tools
+```
+
+#### Step 3: Use with JavaScript/Node.js
+
+```javascript
+const axios = require('axios');
+
+const client = axios.create({
+  baseURL: 'http://localhost:3000'
+});
+
+async function main() {
+  // Initialize browser
+  await client.post('/tools/browser_init', {
+    headless: false
+  });
+
+  // Navigate to website
+  await client.post('/tools/navigate', {
+    url: 'https://example.com'
+  });
+
+  // Get page content
+  const response = await client.post('/tools/get_content', {
+    type: 'text'
+  });
+  
+  console.log(response.data);
+
+  // Close browser
+  await client.post('/tools/browser_close', {});
+}
+
+main();
+```
+
+#### Step 4: Use with Python
+
+```python
+import requests
+
+BASE_URL = "http://localhost:3000"
+
+# Initialize browser
+requests.post(f"{BASE_URL}/tools/browser_init", json={})
+
+# Navigate
+requests.post(f"{BASE_URL}/tools/navigate", json={
+    "url": "https://example.com"
+})
+
+# Get content
+response = requests.post(f"{BASE_URL}/tools/get_content", json={
+    "type": "text"
+})
+
+print(response.json())
+
+# Close browser
+requests.post(f"{BASE_URL}/tools/browser_close", json={})
+```
+
+#### Step 5: Configure in Your IDE
 
 **For Qoder AI:**
-```javascript
-// Qoder AI settings
+```json
 {
   "extensions": {
     "brave-real-browser": {
       "type": "http",
-      "endpoint": "http://localhost:3000",
-      "enabled": true
+      "enabled": true,
+      "endpoint": "http://localhost:3000"
     }
   }
 }
 ```
 
-**For Custom Scripts/Tools:**
-```javascript
-// JavaScript/Node.js
-const axios = require('axios');
+**For any custom tool:** Just make HTTP POST requests to `http://localhost:3000/tools/{tool_name}`
 
-const client = axios.create({
-  baseURL: 'http://localhost:3000',
-  headers: {
-    'Content-Type': 'application/json',
-    'User-Agent': 'MyIDE/1.0'
-  }
-});
+---
 
-// Initialize browser
-await client.post('/tools/browser_init', {});
+### WebSocket Protocol - 5 Steps
 
-// Navigate to URL
-await client.post('/tools/navigate', {
-  url: 'https://example.com'
-});
+WebSocket provides **real-time, bidirectional communication** for modern applications.
 
-// Get content
-const response = await client.post('/tools/get_content', {
-  type: 'text'
-});
-console.log(response.data);
-```
-
-**For Python Scripts:**
-```python
-import requests
-
-# Base configuration
-base_url = "http://localhost:3000"
-
-# Initialize browser
-requests.post(f"{base_url}/tools/browser_init", json={})
-
-# Navigate
-requests.post(f"{base_url}/tools/navigate", json={
-    "url": "https://example.com"
-})
-
-# Get content
-response = requests.post(f"{base_url}/tools/get_content", json={
-    "type": "text"
-})
-print(response.json())
-```
-
-**For cURL/Command Line:**
-```bash
-# Initialize browser
-curl -X POST http://localhost:3000/tools/browser_init \
-  -H "Content-Type: application/json" \
-  -d '{}'
-
-# Navigate to URL
-curl -X POST http://localhost:3000/tools/navigate \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://example.com"}'
-
-# Get page content
-curl -X POST http://localhost:3000/tools/get_content \
-  -H "Content-Type: application/json" \
-  -d '{"type": "text"}'
-```
-
-#### Available HTTP Endpoints:
-
-```
-GET  /health              - Health check
-GET  /tools               - List all available tools
-POST /tools/:toolName     - Execute specific tool
-POST /browser/init        - Initialize browser
-POST /browser/navigate    - Navigate to URL
-POST /browser/get_content - Get page content
-POST /browser/click       - Click element
-POST /browser/type        - Type text
-POST /browser/close       - Close browser
-```
-
-### 7. WebSocket Protocol (Real-time Communication)
-
-WebSocket provides bidirectional, real-time communication for modern web-based IDEs.
-
-#### Step 1: Start Server with WebSocket
+#### Step 1: Start WebSocket Server
 
 ```bash
-# Start with WebSocket enabled (default)
-brave-real-browser-mcp-server@latest --mode http --port 3000
+# WebSocket is automatically enabled with HTTP mode
+npx brave-real-browser-mcp-server@latest --mode http --port 3000
 
 # WebSocket will be available at: ws://localhost:3000
 ```
 
-#### Step 2: Connect via WebSocket
+#### Step 2: Connect from Browser
 
-**For JavaScript/Browser:**
-```javascript
-// Connect to WebSocket
-const ws = new WebSocket('ws://localhost:3000');
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Client</title>
+</head>
+<body>
+    <h1>Brave Browser WebSocket Client</h1>
+    <button onclick="initBrowser()">Initialize Browser</button>
+    <button onclick="navigate()">Navigate</button>
+    <button onclick="getContent()">Get Content</button>
+    <div id="output"></div>
 
-ws.onopen = () => {
-  console.log('Connected to Brave Browser MCP Server');
-  
-  // Send command
-  ws.send(JSON.stringify({
-    action: 'browser_init',
-    params: {}
-  }));
-};
+    <script>
+        const ws = new WebSocket('ws://localhost:3000');
+        let messageId = 0;
+        const callbacks = new Map();
 
-ws.onmessage = (event) => {
-  const response = JSON.parse(event.data);
-  console.log('Response:', response);
-};
+        ws.onopen = () => {
+            console.log('Connected!');
+        };
 
-ws.onerror = (error) => {
-  console.error('WebSocket error:', error);
-};
+        ws.onmessage = (event) => {
+            const response = JSON.parse(event.data);
+            if (response.id && callbacks.has(response.id)) {
+                callbacks.get(response.id)(response);
+                callbacks.delete(response.id);
+            }
+        };
 
-ws.onclose = () => {
-  console.log('Disconnected');
-};
+        function send(action, params = {}) {
+            return new Promise((resolve) => {
+                const id = ++messageId;
+                callbacks.set(id, resolve);
+                ws.send(JSON.stringify({ action, params, id }));
+            });
+        }
+
+        async function initBrowser() {
+            await send('browser_init', { headless: false });
+            console.log('Browser initialized!');
+        }
+
+        async function navigate() {
+            await send('navigate', { url: 'https://example.com' });
+            console.log('Navigated!');
+        }
+
+        async function getContent() {
+            const result = await send('get_content', { type: 'text' });
+            document.getElementById('output').textContent = result.content;
+        }
+    </script>
+</body>
+</html>
 ```
 
-**For Node.js:**
+#### Step 3: Connect from Node.js
+
 ```javascript
 const WebSocket = require('ws');
 
 const ws = new WebSocket('ws://localhost:3000');
+let messageId = 0;
+const callbacks = new Map();
 
 ws.on('open', () => {
-  console.log('Connected!');
-  
-  // Initialize browser
-  ws.send(JSON.stringify({
-    action: 'browser_init',
-    params: {}
-  }));
-  
-  // Navigate
-  setTimeout(() => {
-    ws.send(JSON.stringify({
-      action: 'navigate',
-      params: { url: 'https://example.com' }
-    }));
-  }, 1000);
+    console.log('Connected!');
+    
+    // Send browser_init
+    send('browser_init', {}).then(() => {
+        console.log('Browser initialized!');
+    });
 });
 
 ws.on('message', (data) => {
-  const response = JSON.parse(data.toString());
-  console.log('Received:', response);
+    const response = JSON.parse(data.toString());
+    if (response.id && callbacks.has(response.id)) {
+        callbacks.get(response.id)(response.result);
+        callbacks.delete(response.id);
+    }
 });
+
+function send(action, params = {}) {
+    return new Promise((resolve) => {
+        const id = ++messageId;
+        callbacks.set(id, resolve);
+        ws.send(JSON.stringify({ action, params, id }));
+    });
+}
 ```
 
-**For Python (with websockets library):**
+#### Step 4: Connect from Python
+
 ```python
 import asyncio
 import websockets
 import json
 
-async def connect():
+async def main():
     uri = "ws://localhost:3000"
     async with websockets.connect(uri) as websocket:
         # Initialize browser
         await websocket.send(json.dumps({
             "action": "browser_init",
-            "params": {}
-        }))
-        
-        response = await websocket.recv()
-        print(f"Response: {response}")
-        
-        # Navigate
-        await websocket.send(json.dumps({
-            "action": "navigate",
-            "params": {"url": "https://example.com"}
+            "params": {},
+            "id": 1
         }))
         
         response = await websocket.recv()
         print(f"Response: {response}")
 
-asyncio.run(connect())
+asyncio.run(main())
 ```
 
-**For React/Web Apps:**
+#### Step 5: Configure in React/Next.js
+
 ```javascript
 import { useEffect, useState } from 'react';
 
-function BraveBrowserClient() {
+export default function BrowserClient() {
   const [ws, setWs] = useState(null);
   const [status, setStatus] = useState('Disconnected');
 
@@ -440,10 +541,6 @@ function BraveBrowserClient() {
       console.log('Received:', data);
     };
     
-    websocket.onclose = () => {
-      setStatus('Disconnected');
-    };
-    
     return () => websocket.close();
   }, []);
 
@@ -451,7 +548,8 @@ function BraveBrowserClient() {
     if (ws) {
       ws.send(JSON.stringify({
         action: 'browser_init',
-        params: {}
+        params: {},
+        id: Date.now()
       }));
     }
   };
@@ -465,148 +563,146 @@ function BraveBrowserClient() {
 }
 ```
 
-#### WebSocket Message Format:
-
-**Request:**
-```json
-{
-  "action": "tool_name",
-  "params": {
-    "param1": "value1",
-    "param2": "value2"
-  },
-  "id": "unique-request-id"
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "result": {
-    "content": "...",
-    "status": "completed"
-  },
-  "id": "unique-request-id"
-}
-```
-
-#### Advantages of HTTP/WebSocket:
-
-✅ **Universal Compatibility** - Works with ANY IDE or tool  
-✅ **No Configuration Needed** - Just connect to endpoint  
-✅ **Language Agnostic** - Use any programming language  
-✅ **Web-based IDEs** - Perfect for browser-based tools  
-✅ **Real-time Updates** - WebSocket provides instant feedback  
-✅ **Easy Integration** - Standard HTTP/WebSocket protocols  
-✅ **Multiple Clients** - Multiple tools can connect simultaneously  
-
 ---
 
-## 🛠️ Features & Tools
+## 🎨 IDE Configurations
 
-### 🌐 Browser Management
-- `browser_init` - Initialize Brave browser with anti-detection
-- `browser_close` - Close browser instance
-- `navigate` - Navigate to URL
-- `wait` - Wait for elements/timeout
+### Claude Desktop
 
-### 🖱️ Interaction Tools
-- `click` - Click on elements
-- `type` - Type text into inputs
-- `solve_captcha` - Solve CAPTCHA (reCAPTCHA, hCaptcha, Turnstile, etc.)
-- `random_scroll` - Human-like scrolling
+**File:** `claude_desktop_config.json`
 
-### 📄 Content Extraction
-- `get_content` - Extract page content (HTML/Text/Markdown)
-- `find_selector` - Find CSS selectors
-- `scrape_table` - Extract table data
-- `extract_list` - Extract lists
-- `extract_json` - Extract JSON data
-- `scrape_meta_tags` - Extract meta information
-- `extract_schema` - Extract schema.org data
+**Location:**
+- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+- Mac: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- Linux: `~/.config/Claude/claude_desktop_config.json`
 
-### 🔍 Advanced Extraction
-- `batch_element_scraper` - Scrape multiple elements
-- `nested_data_extraction` - Extract nested data structures
-- `attribute_harvester` - Extract element attributes
-- `image_scraper` - Extract all images
-- `link_harvester` - Extract all links
-- `media_extractor` - Extract media files
-- `video_link_finder` - Find video URLs
+```json
+{
+  "mcpServers": {
+    "brave-real-browser": {
+      "command": "npx",
+      "args": ["-y", "brave-real-browser-mcp-server@latest"]
+    }
+  }
+}
+```
 
-### 🤖 AI-Powered Tools
-- `smart_selector_generator` - Auto-generate selectors
-- `content_classification` - Classify content type
-- `sentiment_analysis` - Analyze sentiment
-- `summary_generator` - Generate summaries
-- `translation_support` - Translate content
+### Cursor AI
 
-### 📊 Data Processing
-- `smart_text_cleaner` - Clean extracted text
-- `html_to_text` - Convert HTML to text
-- `price_parser` - Extract & parse prices
-- `date_normalizer` - Normalize dates
-- `contact_extractor` - Extract contact info
-- `data_deduplication` - Remove duplicates
-- `data_type_validator` - Validate data types
+**File:** `cline_mcp_settings.json`
 
-### 🔐 CAPTCHA & Security
-- `solve_captcha` - Multi-CAPTCHA solver
-- `ocr_engine` - OCR for text CAPTCHAs
-- `audio_captcha_solver` - Audio CAPTCHA solver
-- `puzzle_captcha_handler` - Puzzle CAPTCHA handler
+**Location:**
+- Windows: `%APPDATA%\Cursor\User\globalStorage\saoudrizwan.claude-dev\settings\cline_mcp_settings.json`
+- Mac: `~/Library/Application Support/Cursor/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json`
 
-### 📸 Visual Tools
-- `full_page_screenshot` - Full page screenshot
-- `element_screenshot` - Element screenshot
-- `pdf_generation` - Generate PDF
-- `video_recording` - Record page video
-- `visual_comparison` - Compare screenshots
+```json
+{
+  "mcpServers": {
+    "brave-real-browser": {
+      "command": "npx",
+      "args": ["-y", "brave-real-browser-mcp-server@latest"],
+      "env": {
+        "BRAVE_PATH": "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe"
+      }
+    }
+  }
+}
+```
 
-### 🔄 Pagination & Navigation
-- `auto_pagination` - Auto-paginate through pages
-- `infinite_scroll` - Handle infinite scroll
-- `multi_page_scraper` - Scrape multiple pages
-- `sitemap_parser` - Parse sitemaps
-- `breadcrumb_navigator` - Navigate breadcrumbs
+### Windsurf
 
-### 🌐 Session Management
-- `cookie_manager` - Manage cookies
-- `session_persistence` - Persist sessions
-- `form_auto_fill` - Auto-fill forms
-- `login_session_manager` - Manage login sessions
-- `modal_popup_handler` - Handle popups
+**File:** `mcp.json`
 
-### 📈 Monitoring & Reporting
-- `progress_tracker` - Track progress
-- `error_logger` - Log errors
-- `success_rate_reporter` - Report success rates
-- `performance_monitor` - Monitor performance
-- `monitoring_summary` - Get monitoring summary
+**Location:**
+- Windows: `%APPDATA%\Windsurf\mcp.json`
+- Mac: `~/.windsurf/mcp.json`
+
+```json
+{
+  "mcpServers": {
+    "brave-real-browser": {
+      "command": "npx",
+      "args": ["-y", "brave-real-browser-mcp-server@latest"]
+    }
+  }
+}
+```
+
+### Cline (VSCode Extension)
+
+**File:** `cline_mcp_settings.json`
+
+**Location:**
+- Windows: `%APPDATA%\Code\User\globalStorage\saoudrizwan.claude-dev\settings\cline_mcp_settings.json`
+- Mac: `~/Library/Application Support/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json`
+
+```json
+{
+  "mcpServers": {
+    "brave-real-browser": {
+      "command": "npx",
+      "args": ["-y", "brave-real-browser-mcp-server@latest"]
+    }
+  }
+}
+```
+
+### Zed Editor
+
+**File:** `settings.json`
+
+**Location:**
+- Windows: `%APPDATA%\Zed\settings.json`
+- Mac: `~/.config/zed/settings.json`
+
+```json
+{
+  "lsp": {
+    "brave-real-browser": {
+      "command": "brave-real-browser-mcp-server@latest",
+      "args": ["--mode", "lsp"]
+    }
+  }
+}
+```
+
+### Qoder AI / HTTP-based IDEs
+
+Start server in HTTP mode and configure:
+
+```json
+{
+  "extensions": {
+    "brave-real-browser": {
+      "type": "http",
+      "enabled": true,
+      "endpoint": "http://localhost:3000",
+      "timeout": 30000
+    }
+  }
+}
+```
 
 ---
 
 ## 💡 Usage Examples
 
-### Example 1: Simple Web Scraping
+### Example 1: Simple Web Scraping (MCP Mode)
 
 ```javascript
-// Initialize browser
+// Using MCP tool in Claude/Cursor
 await use_mcp_tool({
   server_name: "brave-real-browser",
   tool_name: "browser_init",
   arguments: {}
 });
 
-// Navigate to website
 await use_mcp_tool({
   server_name: "brave-real-browser",
   tool_name: "navigate",
   arguments: { url: "https://example.com" }
 });
 
-// Get content
 await use_mcp_tool({
   server_name: "brave-real-browser",
   tool_name: "get_content",
@@ -614,14 +710,14 @@ await use_mcp_tool({
 });
 ```
 
-### Example 2: Solve CAPTCHA & Extract Data
+### Example 2: CAPTCHA Solving
 
 ```javascript
-// Navigate to page with CAPTCHA
+// Navigate to CAPTCHA page
 await use_mcp_tool({
   server_name: "brave-real-browser",
   tool_name: "navigate",
-  arguments: { url: "https://example.com/protected-page" }
+  arguments: { url: "https://site-with-captcha.com" }
 });
 
 // Solve CAPTCHA
@@ -631,39 +727,84 @@ await use_mcp_tool({
   arguments: { type: "recaptcha" }
 });
 
-// Extract table data
+// Continue automation
 await use_mcp_tool({
   server_name: "brave-real-browser",
-  tool_name: "scrape_table",
-  arguments: { selector: "table.data" }
+  tool_name: "click",
+  arguments: { selector: "button.submit" }
 });
 ```
 
-### Example 3: HTTP API Usage
-
-```bash
-# Start HTTP server
-brave-real-browser-mcp-server@latest --mode http --port 3000
-```
+### Example 3: Video Extraction
 
 ```javascript
-// Use REST API
-const response = await fetch('http://localhost:3000/tools/navigate', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ url: 'https://example.com' })
+// Navigate to video page
+await use_mcp_tool({
+  server_name: "brave-real-browser",
+  tool_name: "navigate",
+  arguments: { url: "https://video-site.com/video/123" }
 });
 
-const result = await response.json();
+// Find video links
+await use_mcp_tool({
+  server_name: "brave-real-browser",
+  tool_name: "video_link_finder",
+  arguments: {}
+});
+
+// Advanced video extraction with ad bypass
+await use_mcp_tool({
+  server_name: "brave-real-browser",
+  tool_name: "advanced_video_extraction",
+  arguments: {}
+});
+```
+
+### Example 4: Multi-Page Scraping
+
+```javascript
+// Initialize browser
+await use_mcp_tool({
+  server_name: "brave-real-browser",
+  tool_name: "browser_init",
+  arguments: {}
+});
+
+// Auto-paginate through all pages
+await use_mcp_tool({
+  server_name: "brave-real-browser",
+  tool_name: "multi_page_scraper",
+  arguments: {
+    startUrl: "https://example.com/page/1",
+    maxPages: 10
+  }
+});
 ```
 
 ---
 
-## 📋 Requirements
+## 📋 API Endpoints (HTTP Mode)
 
-- **Node.js** >= 18.0.0
-- **Brave Browser** (auto-detected or specify path)
-- **Operating System:** Windows, macOS, or Linux
+When running in HTTP mode, these endpoints are available:
+
+```
+GET  /health                    - Health check
+GET  /tools                     - List all tools
+POST /tools/:toolName           - Execute any tool
+POST /browser/init              - Initialize browser
+POST /browser/navigate          - Navigate to URL
+POST /browser/get_content       - Get page content
+POST /browser/click             - Click element
+POST /browser/type              - Type text
+POST /browser/close             - Close browser
+```
+
+**Example:**
+```bash
+curl -X POST http://localhost:3000/tools/navigate \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com"}'
+```
 
 ---
 
@@ -678,6 +819,9 @@ HEADLESS=true
 
 # Optional: Disable content priority
 DISABLE_CONTENT_PRIORITY=true
+
+# Optional: HTTP port
+HTTP_PORT=3000
 ```
 
 ---
@@ -686,284 +830,82 @@ DISABLE_CONTENT_PRIORITY=true
 
 ### Brave Browser Not Found
 
-**Solution 1:** Set environment variable
+**Solution:**
 ```bash
 # Windows
 set BRAVE_PATH="C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe"
 
-# Linux/macOS
+# Linux/Mac
 export BRAVE_PATH="/usr/bin/brave-browser"
 ```
 
-**Solution 2:** Specify in browser_init
-```javascript
-await use_mcp_tool({
-  server_name: "brave-real-browser",
-  tool_name: "browser_init",
-  arguments: {
-    customConfig: {
-      chromePath: "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe"
-    }
-  }
-});
-```
-
-### Server Not Starting
+### Server Won't Start
 
 1. Check Node.js version: `node --version` (should be >= 18)
 2. Clear npm cache: `npm cache clean --force`
 3. Reinstall: `npm install -g brave-real-browser-mcp-server@latest`
-4. Check logs in stderr
+
+### Port Already in Use
+
+```bash
+# Use different port
+npx brave-real-browser-mcp-server@latest --mode http --port 8080
 ```
 
 ### CAPTCHA Not Solving
 
-1. Wait for CAPTCHA to fully load
-2. Use longer timeout: `{ "timeout": 30000 }`
+1. Ensure CAPTCHA is fully loaded
+2. Try longer timeout: `{ "timeout": 30000 }`
 3. Try different CAPTCHA types: `recaptcha`, `hcaptcha`, `turnstile`
+
+---
+
+## 📊 Supported Protocols
+
+| Protocol | Used By | Auto-Config | Status |
+|----------|---------|-------------|--------|
+| **MCP (STDIO)** | Claude Desktop, Cursor, Windsurf, Cline, Warp | ✅ | 🟢 Working |
+| **LSP** | Zed Editor, VSCode, Neovim | ✅ | 🟢 Working |
+| **HTTP/REST** | Any IDE/Tool | ✅ | 🟢 Working |
+| **WebSocket** | Modern Web Apps, Real-time Tools | ✅ | 🟢 Working |
+
+---
+
+## 📋 Requirements
+
+- **Node.js** >= 18.0.0
+- **Brave Browser** (auto-detected or specify path)
+- **Operating System:** Windows, macOS, Linux
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+Contributions are welcome! Please submit a Pull Request.
 
 ---
 
 ## 📄 License
 
-This project is licensed under the MIT License.
+MIT License - See LICENSE file for details.
 
 ---
 
 ## 🔗 Links
 
-- **GitHub:** https://github.com/withLinda/brave-real-browser-mcp-server
+- **GitHub:** https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server
 - **NPM:** https://www.npmjs.com/package/brave-real-browser-mcp-server
-- **Issues:** https://github.com/withLinda/brave-real-browser-mcp-server/issues
-
----
-
-<a name="hindi"></a>
-# 📖 हिन्दी दस्तावेज़
-
-## 🤖 समर्थित AI IDEs (सार्वभौमिक संगतता)
-
-यह server **स्वचालित रूप से आपके AI IDE को detect करता है और adapt हो जाता है!**
-
-### ✅ पूर्णतः समर्थित और स्वतः-पता लगाना
-
-सभी 15+ AI IDEs स्वचालित रूप से समर्थित हैं। कोई manual configuration की जरूरत नहीं!
-
----
-
-## 🚀 त्वरित शुरुआत
-
-### इंस्टॉलेशन
-
-```bash
-# Global इंस्टॉल करें
-npm install -g brave-real-browser-mcp-server@latest
-
-# या npx से चलाएं (बिना installation के)
-npx brave-real-browser-mcp-server@latest
-```
-
-### उपयोग
-
-```bash
-# Auto mode (आपका IDE automatically detect होगा) - डिफ़ॉल्ट
-brave-real-browser-mcp-server@latest
-
-# MCP mode (Claude, Cursor, Windsurf आदि के लिए)
-brave-real-browser-mcp-server@latest --mode mcp
-
-# HTTP mode (सभी IDEs के साथ काम करता है)
-brave-real-browser-mcp-server@latest --mode http --port 3000
-
-# LSP mode (Zed, VSCode आदि के लिए)
-brave-real-browser-mcp-server@latest --mode lsp
-```
-
----
-
-## ⚙️ विशिष्ट IDEs के लिए कॉन्फ़िगरेशन
-
-### 1. Claude Desktop
-
-**फ़ाइल:** `claude_desktop_config.json`
-
-**स्थान:**
-- **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
-- **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
-
-```json
-{
-  "mcpServers": {
-    "brave-real-browser": {
-      "command": "npx",
-      "args": ["-y", "brave-real-browser-mcp-server@latest"]
-    }
-  }
-}
-```
-
-### 2. Cursor AI
-
-**फ़ाइल:** `cline_mcp_settings.json`
-
-**स्थान:**
-- **Windows:** `%APPDATA%\Cursor\User\globalStorage\saoudrizwan.claude-dev\settings\cline_mcp_settings.json`
-
-```json
-{
-  "mcpServers": {
-    "brave-real-browser": {
-      "command": "npx",
-      "args": ["-y", "brave-real-browser-mcp-server@latest"]
-    }
-  }
-}
-```
-
-### 3. HTTP-आधारित IDEs (Qoder AI आदि)
-
-Server को HTTP mode में start करें:
-
-```bash
-brave-real-browser-mcp-server@latest --mode http --port 3000
-```
-
-फिर REST API endpoint का उपयोग करें: `http://localhost:3000`
-
----
-
-## 🛠️ सुविधाएँ और उपकरण
-
-### 🌐 ब्राउज़र प्रबंधन
-- `browser_init` - Anti-detection के साथ Brave browser शुरू करें
-- `browser_close` - Browser बंद करें
-- `navigate` - URL पर जाएं
-- `wait` - Elements/timeout के लिए प्रतीक्षा करें
-
-### 🖱️ इंटरैक्शन टूल्स
-- `click` - Elements पर क्लिक करें
-- `type` - Inputs में text टाइप करें
-- `solve_captcha` - CAPTCHA हल करें (reCAPTCHA, hCaptcha, आदि)
-- `random_scroll` - मानव-जैसे scrolling
-
-### 📄 कंटेंट निष्कर्षण
-- `get_content` - Page content निकालें (HTML/Text/Markdown)
-- `scrape_table` - Table data निकालें
-- `extract_list` - Lists निकालें
-- `extract_json` - JSON data निकालें
-- `image_scraper` - सभी images निकालें
-- `link_harvester` - सभी links निकालें
-
-### 🤖 AI-Powered टूल्स
-- `smart_selector_generator` - Selectors auto-generate करें
-- `content_classification` - Content type classify करें
-- `sentiment_analysis` - Sentiment का विश्लेषण करें
-- `summary_generator` - Summaries बनाएं
-
-### 🔐 CAPTCHA और सुरक्षा
-- `solve_captcha` - Multi-CAPTCHA solver
-- `ocr_engine` - Text CAPTCHAs के लिए OCR
-- `audio_captcha_solver` - Audio CAPTCHA solver
-
----
-
-## 💡 उपयोग उदाहरण
-
-### उदाहरण 1: साधारण Web Scraping
-
-```javascript
-// Browser initialize करें
-await use_mcp_tool({
-  server_name: "brave-real-browser",
-  tool_name: "browser_init",
-  arguments: {}
-});
-
-// Website पर जाएं
-await use_mcp_tool({
-  server_name: "brave-real-browser",
-  tool_name: "navigate",
-  arguments: { url: "https://example.com" }
-});
-
-// Content प्राप्त करें
-await use_mcp_tool({
-  server_name: "brave-real-browser",
-  tool_name: "get_content",
-  arguments: { type: "text" }
-});
-```
-
----
-
-## 📋 आवश्यकताएं
-
-- **Node.js** >= 18.0.0
-- **Brave Browser** (auto-detected या path specify करें)
-- **Operating System:** Windows, macOS, या Linux
-
----
-
-## 🐛 समस्या निवारण
-
-### Brave Browser नहीं मिला
-
-**समाधान:** Environment variable सेट करें
-```bash
-# Windows
-set BRAVE_PATH="C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe"
-
-# Linux/macOS
-export BRAVE_PATH="/usr/bin/brave-browser"
-```
-
-### Server शुरू नहीं हो रहा
-
-1. Node.js version check करें: `node --version` (>= 18 होना चाहिए)
-2. NPM cache clear करें: `npm cache clean --force`
-3. फिर से install करें: `npm install -g brave-real-browser-mcp-server`
-
----
-
-## 🤝 योगदान
-
-Contributions स्वागत है! कृपया Pull Request submit करें।
-
----
-
-## 📄 लाइसेंस
-
-यह प्रोजेक्ट MIT License के तहत लाइसेंस प्राप्त है।
-
----
-
-## 🌟 मुख्य विशेषताएं
-
-✅ **15+ AI IDEs समर्थित** - Claude, Cursor, Windsurf, Cline, Zed, VSCode, Qoder AI, और अधिक  
-✅ **Auto-Detection** - आपका IDE automatically detect होता है  
-✅ **4 Protocols** - MCP, LSP, HTTP, WebSocket  
-✅ **100+ Tools** - Browser automation, scraping, CAPTCHA solving  
-✅ **Anti-Detection** - Cloudflare, reCAPTCHA bypass  
-✅ **Cross-Platform** - Windows, macOS, Linux  
+- **Issues:** https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server/issues
 
 ---
 
 <div align="center">
 
+**🌟 111 Tools | 15+ AI IDEs | 3 Protocols | Universal Support 🌟**
+
 **Made with ❤️ for the AI Development Community**
 
-[⭐ Star on GitHub](https://github.com/withLinda/brave-real-browser-mcp-server) | [🐛 Report Bug](https://github.com/withLinda/brave-real-browser-mcp-server/issues) | [💡 Request Feature](https://github.com/withLinda/brave-real-browser-mcp-server/issues)
+[⭐ Star on GitHub](https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server) | [🐛 Report Bug](https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server/issues) | [💡 Request Feature](https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server/issues)
 
 </div>
+| **MCP (STDIO)** | Claude Desktop,
