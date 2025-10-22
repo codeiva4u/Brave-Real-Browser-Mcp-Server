@@ -200,15 +200,306 @@ brave-real-browser-mcp-server@latest --mode lsp
 }
 ```
 
-### 6. Qoder AI & Other HTTP-based IDEs
+### 6. HTTP Protocol (Universal - Works with ALL IDEs)
 
-Start the server in HTTP mode:
+HTTP mode provides a REST API that works with any IDE or tool that can make HTTP requests.
+
+#### Step 1: Start HTTP Server
 
 ```bash
+# Start with default settings
 brave-real-browser-mcp-server@latest --mode http --port 3000
+
+# With custom host and port
+brave-real-browser-mcp-server@latest --mode http --host 0.0.0.0 --port 8080
+
+# Without WebSocket support (HTTP only)
+brave-real-browser-mcp-server@latest --mode http --port 3000 --no-websocket
 ```
 
-Then use the REST API endpoint: `http://localhost:3000`
+#### Step 2: Configure Your IDE/Tool
+
+**For Qoder AI:**
+```javascript
+// Qoder AI settings
+{
+  "extensions": {
+    "brave-browser": {
+      "type": "http",
+      "endpoint": "http://localhost:3000",
+      "enabled": true
+    }
+  }
+}
+```
+
+**For Custom Scripts/Tools:**
+```javascript
+// JavaScript/Node.js
+const axios = require('axios');
+
+const client = axios.create({
+  baseURL: 'http://localhost:3000',
+  headers: {
+    'Content-Type': 'application/json',
+    'User-Agent': 'MyIDE/1.0'
+  }
+});
+
+// Initialize browser
+await client.post('/tools/browser_init', {});
+
+// Navigate to URL
+await client.post('/tools/navigate', {
+  url: 'https://example.com'
+});
+
+// Get content
+const response = await client.post('/tools/get_content', {
+  type: 'text'
+});
+console.log(response.data);
+```
+
+**For Python Scripts:**
+```python
+import requests
+
+# Base configuration
+base_url = "http://localhost:3000"
+
+# Initialize browser
+requests.post(f"{base_url}/tools/browser_init", json={})
+
+# Navigate
+requests.post(f"{base_url}/tools/navigate", json={
+    "url": "https://example.com"
+})
+
+# Get content
+response = requests.post(f"{base_url}/tools/get_content", json={
+    "type": "text"
+})
+print(response.json())
+```
+
+**For cURL/Command Line:**
+```bash
+# Initialize browser
+curl -X POST http://localhost:3000/tools/browser_init \
+  -H "Content-Type: application/json" \
+  -d '{}'
+
+# Navigate to URL
+curl -X POST http://localhost:3000/tools/navigate \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com"}'
+
+# Get page content
+curl -X POST http://localhost:3000/tools/get_content \
+  -H "Content-Type: application/json" \
+  -d '{"type": "text"}'
+```
+
+#### Available HTTP Endpoints:
+
+```
+GET  /health              - Health check
+GET  /tools               - List all available tools
+POST /tools/:toolName     - Execute specific tool
+POST /browser/init        - Initialize browser
+POST /browser/navigate    - Navigate to URL
+POST /browser/get_content - Get page content
+POST /browser/click       - Click element
+POST /browser/type        - Type text
+POST /browser/close       - Close browser
+```
+
+### 7. WebSocket Protocol (Real-time Communication)
+
+WebSocket provides bidirectional, real-time communication for modern web-based IDEs.
+
+#### Step 1: Start Server with WebSocket
+
+```bash
+# Start with WebSocket enabled (default)
+brave-real-browser-mcp-server@latest --mode http --port 3000
+
+# WebSocket will be available at: ws://localhost:3000
+```
+
+#### Step 2: Connect via WebSocket
+
+**For JavaScript/Browser:**
+```javascript
+// Connect to WebSocket
+const ws = new WebSocket('ws://localhost:3000');
+
+ws.onopen = () => {
+  console.log('Connected to Brave Browser MCP Server');
+  
+  // Send command
+  ws.send(JSON.stringify({
+    action: 'browser_init',
+    params: {}
+  }));
+};
+
+ws.onmessage = (event) => {
+  const response = JSON.parse(event.data);
+  console.log('Response:', response);
+};
+
+ws.onerror = (error) => {
+  console.error('WebSocket error:', error);
+};
+
+ws.onclose = () => {
+  console.log('Disconnected');
+};
+```
+
+**For Node.js:**
+```javascript
+const WebSocket = require('ws');
+
+const ws = new WebSocket('ws://localhost:3000');
+
+ws.on('open', () => {
+  console.log('Connected!');
+  
+  // Initialize browser
+  ws.send(JSON.stringify({
+    action: 'browser_init',
+    params: {}
+  }));
+  
+  // Navigate
+  setTimeout(() => {
+    ws.send(JSON.stringify({
+      action: 'navigate',
+      params: { url: 'https://example.com' }
+    }));
+  }, 1000);
+});
+
+ws.on('message', (data) => {
+  const response = JSON.parse(data.toString());
+  console.log('Received:', response);
+});
+```
+
+**For Python (with websockets library):**
+```python
+import asyncio
+import websockets
+import json
+
+async def connect():
+    uri = "ws://localhost:3000"
+    async with websockets.connect(uri) as websocket:
+        # Initialize browser
+        await websocket.send(json.dumps({
+            "action": "browser_init",
+            "params": {}
+        }))
+        
+        response = await websocket.recv()
+        print(f"Response: {response}")
+        
+        # Navigate
+        await websocket.send(json.dumps({
+            "action": "navigate",
+            "params": {"url": "https://example.com"}
+        }))
+        
+        response = await websocket.recv()
+        print(f"Response: {response}")
+
+asyncio.run(connect())
+```
+
+**For React/Web Apps:**
+```javascript
+import { useEffect, useState } from 'react';
+
+function BraveBrowserClient() {
+  const [ws, setWs] = useState(null);
+  const [status, setStatus] = useState('Disconnected');
+
+  useEffect(() => {
+    const websocket = new WebSocket('ws://localhost:3000');
+    
+    websocket.onopen = () => {
+      setStatus('Connected');
+      setWs(websocket);
+    };
+    
+    websocket.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      console.log('Received:', data);
+    };
+    
+    websocket.onclose = () => {
+      setStatus('Disconnected');
+    };
+    
+    return () => websocket.close();
+  }, []);
+
+  const initBrowser = () => {
+    if (ws) {
+      ws.send(JSON.stringify({
+        action: 'browser_init',
+        params: {}
+      }));
+    }
+  };
+
+  return (
+    <div>
+      <p>Status: {status}</p>
+      <button onClick={initBrowser}>Initialize Browser</button>
+    </div>
+  );
+}
+```
+
+#### WebSocket Message Format:
+
+**Request:**
+```json
+{
+  "action": "tool_name",
+  "params": {
+    "param1": "value1",
+    "param2": "value2"
+  },
+  "id": "unique-request-id"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "result": {
+    "content": "...",
+    "status": "completed"
+  },
+  "id": "unique-request-id"
+}
+```
+
+#### Advantages of HTTP/WebSocket:
+
+✅ **Universal Compatibility** - Works with ANY IDE or tool  
+✅ **No Configuration Needed** - Just connect to endpoint  
+✅ **Language Agnostic** - Use any programming language  
+✅ **Web-based IDEs** - Perfect for browser-based tools  
+✅ **Real-time Updates** - WebSocket provides instant feedback  
+✅ **Easy Integration** - Standard HTTP/WebSocket protocols  
+✅ **Multiple Clients** - Multiple tools can connect simultaneously  
 
 ---
 
