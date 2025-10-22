@@ -409,7 +409,7 @@ brave-real-browser-mcp-server --mode http --port 3000
   "mcpServers": {
     "brave-browser": {
       "command": "npx",
-      "args": ["-y", "brave-real-browser-mcp-server"]
+      "args": ["-y", "brave-real-browser-mcp-server@latest"]
     }
   }
 }
@@ -418,7 +418,7 @@ brave-real-browser-mcp-server --mode http --port 3000
 #### **Option 2: HTTP Mode (Universal)**
 ```bash
 # Start server manually
-brave-real-browser-mcp-server --mode http --port 3000
+brave-real-browser-mcp-server@latest --mode http --port 3000
 
 # Works with ALL IDEs
 # No config needed
@@ -428,7 +428,7 @@ brave-real-browser-mcp-server --mode http --port 3000
 #### **Option 3: Auto Mode with Fallback**
 ```bash
 # Try auto-detection, fallback to HTTP
-brave-real-browser-mcp-server --mode auto
+brave-real-browser-mcp-server@latest --mode auto
 
 # Success rate:
 # - 60-95% auto-detected ✅

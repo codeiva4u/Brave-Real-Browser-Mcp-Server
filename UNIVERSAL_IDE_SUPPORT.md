@@ -140,23 +140,23 @@ return {
 
 ```bash
 # Just run the server - it will auto-detect your IDE
-brave-real-browser-mcp-server
+brave-real-browser-mcp-server@latest
 
 # Or explicitly use auto mode
-brave-real-browser-mcp-server --mode auto
+brave-real-browser-mcp-server@latest --mode auto
 ```
 
 ### Manual Mode Selection
 
 ```bash
 # Force MCP protocol
-brave-real-browser-mcp-server --mode mcp
+brave-real-browser-mcp-server@latest --mode mcp
 
 # Force HTTP protocol
-brave-real-browser-mcp-server --mode http --port 3000
+brave-real-browser-mcp-server@latest --mode http --port 3000
 
 # Force LSP protocol
-brave-real-browser-mcp-server --mode lsp
+brave-real-browser-mcp-server@latest --mode lsp
 ```
 
 ### IDE-Specific Configuration Files
@@ -167,7 +167,7 @@ brave-real-browser-mcp-server --mode lsp
   "mcpServers": {
     "brave-browser": {
       "command": "npx",
-      "args": ["-y", "brave-real-browser-mcp-server"]
+      "args": ["-y", "brave-real-browser-mcp-server@latest"]
     }
   }
 }
@@ -179,7 +179,7 @@ brave-real-browser-mcp-server --mode lsp
   "mcpServers": {
     "brave-browser": {
       "command": "npx",
-      "args": ["-y", "brave-real-browser-mcp-server"],
+      "args": ["-y", "brave-real-browser-mcp-server@latest"],
       "env": {
         "BRAVE_PATH": "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe"
       }
@@ -194,7 +194,7 @@ brave-real-browser-mcp-server --mode lsp
   "mcpServers": {
     "brave-browser": {
       "command": "npx",
-      "args": ["-y", "brave-real-browser-mcp-server"]
+      "args": ["-y", "brave-real-browser-mcp-server@latest"]
     }
   }
 }
@@ -203,7 +203,7 @@ brave-real-browser-mcp-server --mode lsp
 #### Qoder AI / HTTP-based IDEs
 ```bash
 # Start HTTP server
-brave-real-browser-mcp-server --mode http --port 3000
+brave-real-browser-mcp-server@latest --mode http --port 3000
 
 # Use REST API endpoint
 curl -X POST http://localhost:3000/tools/navigate \
@@ -307,7 +307,7 @@ Server Ready → Tools Available
 
 ```bash
 # User wants to force HTTP mode
-brave-real-browser-mcp-server --mode http --port 3000
+brave-real-browser-mcp-server@latest --mode http --port 3000
 
 📡 Mode: HTTP
 🟢 [HTTP] Starting HTTP/WebSocket server...
@@ -322,14 +322,14 @@ brave-real-browser-mcp-server --mode http --port 3000
 
 ```bash
 # Set environment variable for debug logs
-DEBUG=* brave-real-browser-mcp-server --mode auto
+DEBUG=* brave-real-browser-mcp-server@latest --mode auto
 ```
 
 ### Check Detection Results
 
 ```bash
 # Use --list-ides to see all supported IDEs
-brave-real-browser-mcp-server --list-ides
+brave-real-browser-mcp-server@latest --list-ides
 
 # Output:
 ═══════════════════════════════════════════════════════════
@@ -356,25 +356,25 @@ brave-real-browser-mcp-server --list-ides
 
 **Solution 1:** Use manual mode
 ```bash
-brave-real-browser-mcp-server --mode mcp
+brave-real-browser-mcp-server@latest --mode mcp
 ```
 
 **Solution 2:** Set environment variable
 ```bash
 export CURSOR_IDE=true
-brave-real-browser-mcp-server
+brave-real-browser-mcp-server@latest
 ```
 
 **Solution 3:** Use HTTP fallback
 ```bash
-brave-real-browser-mcp-server --mode http --port 3000
+brave-real-browser-mcp-server@latest --mode http --port 3000
 ```
 
 ### Issue: Wrong Protocol Selected
 
 **Solution:** Disable auto-detection and specify protocol
 ```bash
-brave-real-browser-mcp-server --no-auto-detect --mode lsp
+brave-real-browser-mcp-server@latest --no-auto-detect --mode lsp
 ```
 
 ### Issue: Server Won't Start
@@ -383,7 +383,7 @@ brave-real-browser-mcp-server --no-auto-detect --mode lsp
 ```bash
 node --version  # Should be >= 18.0.0
 npm cache clean --force
-npm install -g brave-real-browser-mcp-server
+npm install -g brave-real-browser-mcp-server@latest
 ```
 
 ---

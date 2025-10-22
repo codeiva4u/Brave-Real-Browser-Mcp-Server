@@ -72,29 +72,29 @@ This server **automatically detects and adapts** to your AI IDE!
 
 ```bash
 # Install globally
-npm install -g brave-real-browser-mcp-server
+npm install -g brave-real-browser-mcp-server@latest
 
 # Or use with npx (no installation needed)
-npx brave-real-browser-mcp-server
+npx brave-real-browser-mcp-server@latest
 ```
 
 ### Usage
 
 ```bash
 # Auto mode (automatically detects your IDE) - DEFAULT
-brave-real-browser-mcp-server
+brave-real-browser-mcp-server@latest
 
 # Or explicitly specify protocol
-brave-real-browser-mcp-server --mode auto
+brave-real-browser-mcp-server@latest --mode auto
 
 # MCP mode (for Claude, Cursor, Windsurf, etc.)
-brave-real-browser-mcp-server --mode mcp
+brave-real-browser-mcp-server@latest --mode mcp
 
 # HTTP mode (universal - works with ALL IDEs)
-brave-real-browser-mcp-server --mode http --port 3000
+brave-real-browser-mcp-server@latest --mode http --port 3000
 
 # LSP mode (for Zed, VSCode, etc.)
-brave-real-browser-mcp-server --mode lsp
+brave-real-browser-mcp-server@latest --mode lsp
 ```
 
 ---
@@ -115,7 +115,7 @@ brave-real-browser-mcp-server --mode lsp
   "mcpServers": {
     "brave-browser": {
       "command": "npx",
-      "args": ["-y", "brave-real-browser-mcp-server"]
+      "args": ["-y", "brave-real-browser-mcp-server@latest"]
     }
   }
 }
@@ -134,7 +134,7 @@ brave-real-browser-mcp-server --mode lsp
   "mcpServers": {
     "brave-browser": {
       "command": "npx",
-      "args": ["-y", "brave-real-browser-mcp-server"],
+      "args": ["-y", "brave-real-browser-mcp-server@latest"],
       "env": {
         "BRAVE_PATH": "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe"
       }
@@ -156,7 +156,7 @@ brave-real-browser-mcp-server --mode lsp
   "mcpServers": {
     "brave-browser": {
       "command": "npx",
-      "args": ["-y", "brave-real-browser-mcp-server"]
+      "args": ["-y", "brave-real-browser-mcp-server@latest"]
     }
   }
 }
@@ -175,7 +175,7 @@ brave-real-browser-mcp-server --mode lsp
   "mcpServers": {
     "brave-browser": {
       "command": "npx",
-      "args": ["-y", "brave-real-browser-mcp-server"]
+      "args": ["-y", "brave-real-browser-mcp-server@latest"]
     }
   }
 }
@@ -193,7 +193,7 @@ brave-real-browser-mcp-server --mode lsp
 {
   "lsp": {
     "brave-browser": {
-      "command": "brave-real-browser-mcp-server",
+      "command": "brave-real-browser-mcp-server@latest",
       "args": ["--mode", "lsp"]
     }
   }
@@ -205,7 +205,7 @@ brave-real-browser-mcp-server --mode lsp
 Start the server in HTTP mode:
 
 ```bash
-brave-real-browser-mcp-server --mode http --port 3000
+brave-real-browser-mcp-server@latest --mode http --port 3000
 ```
 
 Then use the REST API endpoint: `http://localhost:3000`
@@ -352,7 +352,7 @@ await use_mcp_tool({
 
 ```bash
 # Start HTTP server
-brave-real-browser-mcp-server --mode http --port 3000
+brave-real-browser-mcp-server@latest --mode http --port 3000
 ```
 
 ```javascript
@@ -421,8 +421,9 @@ await use_mcp_tool({
 
 1. Check Node.js version: `node --version` (should be >= 18)
 2. Clear npm cache: `npm cache clean --force`
-3. Reinstall: `npm install -g brave-real-browser-mcp-server`
+3. Reinstall: `npm install -g brave-real-browser-mcp-server@latest`
 4. Check logs in stderr
+```
 
 ### CAPTCHA Not Solving
 
@@ -477,26 +478,26 @@ This project is licensed under the MIT License.
 
 ```bash
 # Global इंस्टॉल करें
-npm install -g brave-real-browser-mcp-server
+npm install -g brave-real-browser-mcp-server@latest
 
 # या npx से चलाएं (बिना installation के)
-npx brave-real-browser-mcp-server
+npx brave-real-browser-mcp-server@latest
 ```
 
 ### उपयोग
 
 ```bash
 # Auto mode (आपका IDE automatically detect होगा) - डिफ़ॉल्ट
-brave-real-browser-mcp-server
+brave-real-browser-mcp-server@latest
 
 # MCP mode (Claude, Cursor, Windsurf आदि के लिए)
-brave-real-browser-mcp-server --mode mcp
+brave-real-browser-mcp-server@latest --mode mcp
 
 # HTTP mode (सभी IDEs के साथ काम करता है)
-brave-real-browser-mcp-server --mode http --port 3000
+brave-real-browser-mcp-server@latest --mode http --port 3000
 
 # LSP mode (Zed, VSCode आदि के लिए)
-brave-real-browser-mcp-server --mode lsp
+brave-real-browser-mcp-server@latest --mode lsp
 ```
 
 ---
@@ -516,7 +517,7 @@ brave-real-browser-mcp-server --mode lsp
   "mcpServers": {
     "brave-browser": {
       "command": "npx",
-      "args": ["-y", "brave-real-browser-mcp-server"]
+      "args": ["-y", "brave-real-browser-mcp-server@latest"]
     }
   }
 }
@@ -534,7 +535,7 @@ brave-real-browser-mcp-server --mode lsp
   "mcpServers": {
     "brave-browser": {
       "command": "npx",
-      "args": ["-y", "brave-real-browser-mcp-server"]
+      "args": ["-y", "brave-real-browser-mcp-server@latest"]
     }
   }
 }
@@ -545,7 +546,7 @@ brave-real-browser-mcp-server --mode lsp
 Server को HTTP mode में start करें:
 
 ```bash
-brave-real-browser-mcp-server --mode http --port 3000
+brave-real-browser-mcp-server@latest --mode http --port 3000
 ```
 
 फिर REST API endpoint का उपयोग करें: `http://localhost:3000`
