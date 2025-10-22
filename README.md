@@ -68,6 +68,195 @@ Use HTTP/WebSocket mode - [See HTTP/WebSocket Setup](#-httpwebsocket-setup)
 
 ---
 
+## 🌐 HTTP/WebSocket Setup
+
+### HTTP Protocol - 5 Steps
+
+HTTP mode works with **ANY IDE or programming language**. No special configuration needed!
+
+#### Step 1: Start HTTP Server
+
+```bash
+# Start server on port 3000
+npx brave-real-browser-mcp-server@latest --mode http --port 3000
+
+# Custom host and port
+npx brave-real-browser-mcp-server@latest --mode http --host 0.0.0.0 --port 8080
+
+# HTTP only (without WebSocket)
+npx brave-real-browser-mcp-server@latest --mode http --port 3000 --no-websocket
+```
+
+**Server will start and show:**
+```
+🟢 [HTTP] Starting HTTP/WebSocket server...
+✅ [HTTP] Server ready at http://localhost:3000
+💡 [HTTP] Universal mode - works with ALL AI IDEs
+```
+
+#### Step 2: Test Server
+
+```bash
+# Health check
+curl http://localhost:3000/health
+
+# List all available tools
+curl http://localhost:3000/tools
+```
+
+#### Step 5: Configure in Your IDE
+
+**For Qoder AI:**
+```json
+{
+  "extensions": {
+    "brave-real-browser": {
+      "type": "http",
+      "enabled": true,
+      "endpoint": "http://localhost:3000"
+    }
+  }
+}
+```
+
+**For any custom tool:** Just make HTTP POST requests to `http://localhost:3000/tools/{tool_name}`
+
+---
+
+### WebSocket Protocol - 5 Steps
+
+WebSocket provides **real-time, bidirectional communication** for modern applications.
+
+#### Step 1: Start WebSocket Server
+
+```bash
+# WebSocket is automatically enabled with HTTP mode
+npx brave-real-browser-mcp-server@latest --mode http --port 3000
+
+# WebSocket will be available at: ws://localhost:3000
+```
+
+## 🎨 IDE Configurations
+
+### Claude Desktop
+
+**File:** `claude_desktop_config.json`
+
+**Location:**
+- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+- Mac: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- Linux: `~/.config/Claude/claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "brave-real-browser": {
+      "command": "npx",
+      "args": ["-y", "brave-real-browser-mcp-server@latest"]
+    }
+  }
+}
+```
+
+### Cursor AI
+
+**File:** `cline_mcp_settings.json`
+
+**Location:**
+- Windows: `%APPDATA%\Cursor\User\globalStorage\saoudrizwan.claude-dev\settings\cline_mcp_settings.json`
+- Mac: `~/Library/Application Support/Cursor/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json`
+
+```json
+{
+  "mcpServers": {
+    "brave-real-browser": {
+      "command": "npx",
+      "args": ["-y", "brave-real-browser-mcp-server@latest"],
+      "env": {
+        "BRAVE_PATH": "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe"
+      }
+    }
+  }
+}
+```
+
+### Windsurf
+
+**File:** `mcp.json`
+
+**Location:**
+- Windows: `%APPDATA%\Windsurf\mcp.json`
+- Mac: `~/.windsurf/mcp.json`
+
+```json
+{
+  "mcpServers": {
+    "brave-real-browser": {
+      "command": "npx",
+      "args": ["-y", "brave-real-browser-mcp-server@latest"]
+    }
+  }
+}
+```
+
+### Cline (VSCode Extension)
+
+**File:** `cline_mcp_settings.json`
+
+**Location:**
+- Windows: `%APPDATA%\Code\User\globalStorage\saoudrizwan.claude-dev\settings\cline_mcp_settings.json`
+- Mac: `~/Library/Application Support/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json`
+
+```json
+{
+  "mcpServers": {
+    "brave-real-browser": {
+      "command": "npx",
+      "args": ["-y", "brave-real-browser-mcp-server@latest"]
+    }
+  }
+}
+```
+
+### Zed Editor
+
+**File:** `settings.json`
+
+**Location:**
+- Windows: `%APPDATA%\Zed\settings.json`
+- Mac: `~/.config/zed/settings.json`
+
+```json
+{
+  "lsp": {
+    "brave-real-browser": {
+      "command": "brave-real-browser-mcp-server@latest",
+      "args": ["--mode", "lsp"]
+    }
+  }
+}
+```
+
+### Qoder AI / HTTP-based IDEs
+
+Start server in HTTP mode and configure:
+
+```json
+{
+  "extensions": {
+    "brave-real-browser": {
+      "type": "http",
+      "enabled": true,
+      "endpoint": "http://localhost:3000",
+      "timeout": 30000
+    }
+  }
+}
+```
+
+---
+
+
 ## 🛠️ Available Tools (111)
 
 ### 🌐 Browser Management (2 tools)
@@ -271,194 +460,6 @@ Use HTTP/WebSocket mode - [See HTTP/WebSocket Setup](#-httpwebsocket-setup)
 | `ad_protection_detector` | Detect ad protection |
 | `url_redirect_tracer` | Trace URL redirects |
 | `user_agent_extractor` | Extract user agent info |
-
----
-
-## 🌐 HTTP/WebSocket Setup
-
-### HTTP Protocol - 5 Steps
-
-HTTP mode works with **ANY IDE or programming language**. No special configuration needed!
-
-#### Step 1: Start HTTP Server
-
-```bash
-# Start server on port 3000
-npx brave-real-browser-mcp-server@latest --mode http --port 3000
-
-# Custom host and port
-npx brave-real-browser-mcp-server@latest --mode http --host 0.0.0.0 --port 8080
-
-# HTTP only (without WebSocket)
-npx brave-real-browser-mcp-server@latest --mode http --port 3000 --no-websocket
-```
-
-**Server will start and show:**
-```
-🟢 [HTTP] Starting HTTP/WebSocket server...
-✅ [HTTP] Server ready at http://localhost:3000
-💡 [HTTP] Universal mode - works with ALL AI IDEs
-```
-
-#### Step 2: Test Server
-
-```bash
-# Health check
-curl http://localhost:3000/health
-
-# List all available tools
-curl http://localhost:3000/tools
-```
-
-#### Step 5: Configure in Your IDE
-
-**For Qoder AI:**
-```json
-{
-  "extensions": {
-    "brave-real-browser": {
-      "type": "http",
-      "enabled": true,
-      "endpoint": "http://localhost:3000"
-    }
-  }
-}
-```
-
-**For any custom tool:** Just make HTTP POST requests to `http://localhost:3000/tools/{tool_name}`
-
----
-
-### WebSocket Protocol - 5 Steps
-
-WebSocket provides **real-time, bidirectional communication** for modern applications.
-
-#### Step 1: Start WebSocket Server
-
-```bash
-# WebSocket is automatically enabled with HTTP mode
-npx brave-real-browser-mcp-server@latest --mode http --port 3000
-
-# WebSocket will be available at: ws://localhost:3000
-```
-
-## 🎨 IDE Configurations
-
-### Claude Desktop
-
-**File:** `claude_desktop_config.json`
-
-**Location:**
-- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
-- Mac: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- Linux: `~/.config/Claude/claude_desktop_config.json`
-
-```json
-{
-  "mcpServers": {
-    "brave-real-browser": {
-      "command": "npx",
-      "args": ["-y", "brave-real-browser-mcp-server@latest"]
-    }
-  }
-}
-```
-
-### Cursor AI
-
-**File:** `cline_mcp_settings.json`
-
-**Location:**
-- Windows: `%APPDATA%\Cursor\User\globalStorage\saoudrizwan.claude-dev\settings\cline_mcp_settings.json`
-- Mac: `~/Library/Application Support/Cursor/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json`
-
-```json
-{
-  "mcpServers": {
-    "brave-real-browser": {
-      "command": "npx",
-      "args": ["-y", "brave-real-browser-mcp-server@latest"],
-      "env": {
-        "BRAVE_PATH": "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe"
-      }
-    }
-  }
-}
-```
-
-### Windsurf
-
-**File:** `mcp.json`
-
-**Location:**
-- Windows: `%APPDATA%\Windsurf\mcp.json`
-- Mac: `~/.windsurf/mcp.json`
-
-```json
-{
-  "mcpServers": {
-    "brave-real-browser": {
-      "command": "npx",
-      "args": ["-y", "brave-real-browser-mcp-server@latest"]
-    }
-  }
-}
-```
-
-### Cline (VSCode Extension)
-
-**File:** `cline_mcp_settings.json`
-
-**Location:**
-- Windows: `%APPDATA%\Code\User\globalStorage\saoudrizwan.claude-dev\settings\cline_mcp_settings.json`
-- Mac: `~/Library/Application Support/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json`
-
-```json
-{
-  "mcpServers": {
-    "brave-real-browser": {
-      "command": "npx",
-      "args": ["-y", "brave-real-browser-mcp-server@latest"]
-    }
-  }
-}
-```
-
-### Zed Editor
-
-**File:** `settings.json`
-
-**Location:**
-- Windows: `%APPDATA%\Zed\settings.json`
-- Mac: `~/.config/zed/settings.json`
-
-```json
-{
-  "lsp": {
-    "brave-real-browser": {
-      "command": "brave-real-browser-mcp-server@latest",
-      "args": ["--mode", "lsp"]
-    }
-  }
-}
-```
-
-### Qoder AI / HTTP-based IDEs
-
-Start server in HTTP mode and configure:
-
-```json
-{
-  "extensions": {
-    "brave-real-browser": {
-      "type": "http",
-      "enabled": true,
-      "endpoint": "http://localhost:3000",
-      "timeout": 30000
-    }
-  }
-}
-```
 
 ---
 
