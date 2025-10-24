@@ -903,107 +903,169 @@ rm -rf ~/Library/Application\ Support/Cursor/Cache
 
 ### Qoder AI Editor
 
-**Protocol:** HTTP/WebSocket
+**Protocol:** MCP (STDIO) | **Setup Time:** 3 minutes | **Auto-Start:** ✅ Yes
 
-**⚠️ Important:** Qoder AI requires HTTP server to be running separately before configuration!
+**✅ Good News:** Qoder AI supports standard STDIO-based MCP servers (just like Claude, Cursor, Windsurf)!
 
-#### Step-by-Step Setup Guide:
+#### 📋 Step-by-Step Setup Guide:
 
-**Step 1: Start HTTP Server First**
-
-Open a terminal and run:
+**Step 1: Open Qoder Settings**
 
 ```bash
-# Windows (PowerShell)
-npx brave-real-browser-mcp-server@latest --mode http --port 3000
+# Method 1: Using keyboard shortcut
+# Windows: Ctrl + Shift + ,
+# Mac: ⌘ + Shift + ,
 
-# Mac/Linux
-npx brave-real-browser-mcp-server@latest --mode http --port 3000
+# Method 2: Click user icon in upper-right corner
+# Then select "Qoder Settings"
 ```
 
-**Expected Output:**
-```
-🟢 [HTTP] Starting HTTP/WebSocket server...
-✅ [HTTP] Server ready at http://localhost:3000
-💡 [HTTP] Universal mode - works with ALL AI IDEs
-```
+**Step 2: Navigate to MCP Section**
 
-**Step 2: Test Server is Running**
+1. In left-side navigation pane, click **MCP**
+2. Click on **My Servers** tab
+3. Click **+ Add** button in upper-right corner
 
-Open another terminal and verify:
+**Step 3: Add Configuration**
 
-```bash
-# Health check
-curl http://localhost:3000/health
+A JSON file will appear. Add this configuration:
 
-# Expected response:
-# {"status":"ok","timestamp":"..."}
-
-# List all tools
-curl http://localhost:3000/tools
-```
-
-**Step 3: Configure Qoder AI**
-
-Open Qoder AI settings and add:
-
-**Option A - MCP Configuration (Recommended):**
 ```json
 {
   "mcpServers": {
     "brave-real-browser": {
-      "type": "http",
-      "endpoint": "http://localhost:3000",
-      "enabled": true,
-      "timeout": 30000
+      "command": "npx",
+      "args": ["-y", "brave-real-browser-mcp-server@latest"]
     }
   }
 }
 ```
 
-**Option B - Extensions Configuration:**
+**Advanced Configuration (with environment variables):**
+
 ```json
 {
-  "extensions": {
+  "mcpServers": {
     "brave-real-browser": {
-      "type": "http",
-      "enabled": true,
-      "endpoint": "http://localhost:3000",
-      "timeout": 30000
+      "command": "npx",
+      "args": ["-y", "brave-real-browser-mcp-server@latest"],
+      "env": {
+        "BRAVE_PATH": "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe",
+        "HEADLESS": "false"
+      }
     }
   }
 }
 ```
 
-**Step 4: Restart Qoder AI**
+**For Mac:**
 
-Close and reopen Qoder AI for changes to take effect.
+```json
+{
+  "mcpServers": {
+    "brave-real-browser": {
+      "command": "npx",
+      "args": ["-y", "brave-real-browser-mcp-server@latest"],
+      "env": {
+        "BRAVE_PATH": "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"
+      }
+    }
+  }
+}
+```
 
-**Step 5: Verify Connection**
+**Step 4: Save Configuration**
 
-Check Qoder AI's output/console for connection confirmation.
+1. Close the JSON file
+2. Click **Save** when prompted
+3. The new server will appear in your list
+4. A **link icon** (🔗) means the connection is successful
+
+**Step 5: Verify Installation**
+
+1. Expand the **brave-real-browser** entry
+2. You should see list of 111 available tools
+3. If server fails to start, click **Quick Fix** button
+4. If issue persists, check troubleshooting section below
+
+**Step 6: Using Tools in Qoder AI**
+
+1. Switch to **Agent mode** in AI Chat panel
+2. Ask Qoder to use browser automation:
+   ```
+   Use brave-real-browser to navigate to https://example.com and extract the main content
+   ```
+3. Qoder will prompt for confirmation before using MCP tools
+4. Press `Ctrl+Enter` (Windows) or `⌘+Enter` (Mac) to execute
 
 **Important Notes:**
-- 🔴 **Server must be running BEFORE starting Qoder AI**
-- ✅ Keep the HTTP server terminal window open while using Qoder AI
-- ✅ If server stops, restart it before using browser automation
-- 💡 You can run server in background with `pm2` or as a service
 
-**Background Server Setup (Optional):**
+- ⚠️ **Maximum 10 MCP servers** can be used simultaneously
+- ✅ **Only works in Agent mode** (not in Ask mode)
+- ✅ **Server auto-starts** when Qoder launches
+- ✅ **Node.js V18+ required** (includes NPM V8+)
+
+**Prerequisites Check:**
 
 ```bash
-# Install pm2 globally
-npm install -g pm2
+# Verify Node.js installation
+node -v  # Should show v18.0.0 or higher
+npx -v   # Should show version number
 
-# Start server in background
-pm2 start npx --name "brave-browser-server" -- brave-real-browser-mcp-server@latest --mode http --port 3000
-
-# View logs
-pm2 logs brave-browser-server
-
-# Stop server
-pm2 stop brave-browser-server
+# If not installed:
+# Windows: Download from https://nodejs.org/
+# Mac: brew install node
+# Linux: Use package manager (apt, yum, etc.)
 ```
+
+**Troubleshooting:**
+
+**Issue: "exec: npx: executable file not found"**
+
+```bash
+# Solution: Install Node.js V18 or later
+# Windows
+nvm install 22.14.0
+nvm use 22.14.0
+
+# Mac
+brew install node
+
+# Verify
+node -v
+npx -v
+```
+
+**Issue: "failed to initialize MCP client: context deadline exceeded"**
+
+1. Click **Copy complete command** in Qoder UI
+2. Run command in terminal to see detailed error
+3. Check if Node.js is blocked by security software
+4. Add Node.js to security software whitelist
+
+**Issue: Server fails to connect**
+
+1. Click **Retry** icon in Qoder interface
+2. Qoder will attempt to restart MCP server automatically
+3. Check **My Servers** tab for connection status
+4. Expand server details to see tools list
+
+**Issue: Tools not being called by LLM**
+
+1. Make sure you're in **Agent mode** (not Ask mode)
+2. Open a project directory in Qoder
+3. Ensure MCP server shows **link icon** (connected)
+4. Try explicit prompt: "Use brave-real-browser to..."
+
+**Configuration Locations:**
+
+- Windows: Qoder Settings → MCP → My Servers
+- Mac: Qoder Settings → MCP → My Servers
+- Linux: Qoder Settings → MCP → My Servers
+
+**Official Documentation:**
+- Qoder MCP Guide: https://docs.qoder.com/user-guide/chat/model-context-protocol
+- MCP Common Issues: https://docs.qoder.com/support/mcp-common-issues
 
 ### Other HTTP-based IDEs (Gemini CLI, Qwen Code CLI, Custom Tools)
 
