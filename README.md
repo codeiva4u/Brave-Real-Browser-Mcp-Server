@@ -926,10 +926,36 @@ rm -rf ~/Library/Application\ Support/Cursor/Cache
 2. Click on **My Servers** tab
 3. Click **+ Add** button in upper-right corner
 
-**Step 3: Add Configuration**
+**Step 3: Install Package Globally (Important for Qoder AI)**
+
+```bash
+# Install globally for faster startup
+npm install -g brave-real-browser-mcp-server@latest
+
+# Verify installation
+where brave-real-browser-mcp-server  # Windows
+which brave-real-browser-mcp-server  # Mac/Linux
+```
+
+**Why global install?** Qoder AI has a short timeout for MCP server initialization. Using `npx` can be slow on first run. Global installation ensures fast startup.
+
+**Step 4: Add Configuration**
 
 A JSON file will appear. Add this configuration:
 
+**Option A - Using Global Install (Recommended):**
+```json
+{
+  "mcpServers": {
+    "brave-real-browser": {
+      "command": "brave-real-browser-mcp-server",
+      "args": []
+    }
+  }
+}
+```
+
+**Option B - Using NPX (May timeout on first run):**
 ```json
 {
   "mcpServers": {
@@ -940,6 +966,24 @@ A JSON file will appear. Add this configuration:
   }
 }
 ```
+
+**Option C - Using Node directly:**
+```json
+{
+  "mcpServers": {
+    "brave-real-browser": {
+      "command": "node",
+      "args": [
+        "C:\\Users\\Admin\\AppData\\Roaming\\npm\\node_modules\\brave-real-browser-mcp-server\\dist\\index.js"
+      ]
+    }
+  }
+}
+```
+
+**Note:** Replace path in Option C with your actual global npm modules path:
+- Windows: `%APPDATA%\npm\node_modules\brave-real-browser-mcp-server\dist\index.js`
+- Mac/Linux: `/usr/local/lib/node_modules/brave-real-browser-mcp-server/dist/index.js`
 
 **Advanced Configuration (with environment variables):**
 
@@ -974,21 +1018,21 @@ A JSON file will appear. Add this configuration:
 }
 ```
 
-**Step 4: Save Configuration**
+**Step 5: Save Configuration**
 
 1. Close the JSON file
 2. Click **Save** when prompted
 3. The new server will appear in your list
 4. A **link icon** (🔗) means the connection is successful
 
-**Step 5: Verify Installation**
+**Step 6: Verify Installation**
 
 1. Expand the **brave-real-browser** entry
 2. You should see list of 111 available tools
 3. If server fails to start, click **Quick Fix** button
 4. If issue persists, check troubleshooting section below
 
-**Step 6: Using Tools in Qoder AI**
+**Step 7: Using Tools in Qoder AI**
 
 1. Switch to **Agent mode** in AI Chat panel
 2. Ask Qoder to use browser automation:
@@ -1019,6 +1063,66 @@ npx -v   # Should show version number
 ```
 
 **Troubleshooting:**
+
+**Issue: "context deadline exceeded" or Timeout Error**
+
+```
+failed to initialize MCP client: context deadline exceeded
+```
+
+**Cause:** Qoder AI has a short initialization timeout. Using `npx` can be slow on first run because it needs to download and cache the package.
+
+**Solution 1 - Install Globally (Recommended):**
+```bash
+# Install package globally for instant startup
+npm install -g brave-real-browser-mcp-server@latest
+```
+
+Then update your configuration to:
+```json
+{
+  "mcpServers": {
+    "brave-real-browser": {
+      "command": "brave-real-browser-mcp-server",
+      "args": []
+    }
+  }
+}
+```
+
+**Solution 2 - Pre-cache npx package:**
+```bash
+# Run once to cache the package
+npx -y brave-real-browser-mcp-server@latest
+# Press Ctrl+C after server starts
+
+# Now npx will be fast on subsequent runs
+```
+
+**Solution 3 - Use Direct Node Path:**
+
+First, find the global package location:
+```bash
+# Windows
+npm root -g
+# Usually: C:\Users\<USERNAME>\AppData\Roaming\npm\node_modules
+
+# Mac/Linux  
+npm root -g
+# Usually: /usr/local/lib/node_modules
+```
+
+Then use full path:
+```json
+{
+  "mcpServers": {
+    "brave-real-browser": {
+      "command": "node",
+      "args": ["<npm-root>\\brave-real-browser-mcp-server\\dist\\index.js"]
+    }
+  }
+}
+```
 
 **Issue: "exec: npx: executable file not found"**
 
