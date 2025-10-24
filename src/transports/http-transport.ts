@@ -1,14 +1,14 @@
 import express, { Express, Request, Response } from 'express';
 import { createServer, Server as HTTPServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
-import { TOOLS, TOOL_NAMES } from '../tool-definitions.js';
+import { TOOLS } from '../tool-definitions.js';
+import { executeToolByName } from '../index.js';
 
-// Import all handlers
+// Import specific handlers for direct endpoints (for backward compatibility)
 import { handleBrowserInit, handleBrowserClose } from '../handlers/browser-handlers.js';
-import { handleNavigate, handleWait } from '../handlers/navigation-handlers.js';
-import { handleClick, handleType, handleSolveCaptcha, handleRandomScroll } from '../handlers/interaction-handlers.js';
-import { handleGetContent, handleFindSelector } from '../handlers/content-handlers.js';
-import { handleSaveContentAsMarkdown } from '../handlers/file-handlers.js';
+import { handleNavigate } from '../handlers/navigation-handlers.js';
+import { handleClick, handleType } from '../handlers/interaction-handlers.js';
+import { handleGetContent } from '../handlers/content-handlers.js';
 
 export interface HttpTransportConfig {
   port: number;
@@ -147,32 +147,8 @@ export class HttpTransport {
   }
 
   private async executeTool(toolName: string, args: any): Promise<any> {
-    switch (toolName) {
-      case TOOL_NAMES.BROWSER_INIT:
-        return await handleBrowserInit(args || {});
-      case TOOL_NAMES.NAVIGATE:
-        return await handleNavigate(args);
-      case TOOL_NAMES.GET_CONTENT:
-        return await handleGetContent(args || {});
-      case TOOL_NAMES.CLICK:
-        return await handleClick(args);
-      case TOOL_NAMES.TYPE:
-        return await handleType(args);
-      case TOOL_NAMES.WAIT:
-        return await handleWait(args);
-      case TOOL_NAMES.BROWSER_CLOSE:
-        return await handleBrowserClose();
-      case TOOL_NAMES.SOLVE_CAPTCHA:
-        return await handleSolveCaptcha(args);
-      case TOOL_NAMES.RANDOM_SCROLL:
-        return await handleRandomScroll();
-      case TOOL_NAMES.FIND_SELECTOR:
-        return await handleFindSelector(args);
-      case TOOL_NAMES.SAVE_CONTENT_AS_MARKDOWN:
-        return await handleSaveContentAsMarkdown(args);
-      default:
-        throw new Error(`Unknown tool: ${toolName}`);
-    }
+    // Use universal tool executor from index.ts (supports all 110 tools)
+    return await executeToolByName(toolName, args);
   }
 
   private setupWebSocket(): void {

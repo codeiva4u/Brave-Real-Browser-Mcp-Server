@@ -290,14 +290,8 @@ server.setRequestHandler(ListPromptsRequestSchema, async () => {
   return { prompts: [] };
 });
 
-// Main tool call handler
-console.error("🔍 [DEBUG] Registering tool call handler...");
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const { name, arguments: args } = request.params;
-  console.error(
-    `🔍 [DEBUG] Tool call received: ${name} with args: ${JSON.stringify(args)}`,
-  );
-
+// Tool execution function - exported for use in transports
+export async function executeToolByName(name: string, args: any): Promise<any> {
   try {
     let result: any;
     switch (name) {
@@ -790,6 +784,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       isError: true,
     };
   }
+}
+
+// Main tool call handler
+console.error("🔍 [DEBUG] Registering tool call handler...");
+server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  const { name, arguments: args } = request.params;
+  console.error(
+    `🔍 [DEBUG] Tool call received: ${name} with args: ${JSON.stringify(args)}`,
+  );
+
+  return await executeToolByName(name, args);
 });
 
 // Main function - now using multi-protocol launcher

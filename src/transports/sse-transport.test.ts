@@ -132,9 +132,11 @@ describe('SSE Transport', () => {
       });
 
       const data = await response.json();
-      expect(response.status).toBe(500);
-      expect(data.success).toBe(false);
-      expect(data.error).toContain('Unknown tool');
+      // MCP format: errors are returned in content with isError flag
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.result.isError).toBe(true);
+      expect(data.result.content[0].text).toContain('Unknown tool');
     });
 
     it('should validate tool arguments', async () => {
