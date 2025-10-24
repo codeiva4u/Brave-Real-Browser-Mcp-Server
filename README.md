@@ -12,6 +12,8 @@
 
 **सभी AI IDEs के लिए Universal MCP Server | 111+ Tools | Browser Automation | Web Scraping | CAPTCHA Solving**
 
+[📖 **All 5 Protocols Complete Guide**](./ALL-PROTOCOLS.md) 👈 **NEW! Step-by-step setup for all protocols**
+
 [Installation](#-installation) | [Quick Start](#-quick-start) | [Tools](#-available-tools-111) | [HTTP/WebSocket](#-httpwebsocket-setup) | [Configuration](#-ide-configurations) | [Troubleshooting](#-troubleshooting)
 
 </div>
@@ -24,7 +26,7 @@
 
 - ✅ **15+ AI IDEs में काम करता है** (Claude, Cursor, Windsurf, Cline, Zed, VSCode, Qoder AI, etc.)
 - ✅ **111+ Automation Tools** - Browser control, scraping, CAPTCHA solving, video extraction
-- ✅ **3 Protocol Modes** - MCP (STDIO), LSP, HTTP/WebSocket
+- ✅ **5 Protocol Modes** - MCP (STDIO), LSP, HTTP/WebSocket, SSE
 - ✅ **Auto-Detection** - Automatically detects your IDE
 - ✅ **Real Brave Browser** - Anti-detection features, bypass Cloudflare
 - ✅ **Universal API** - Works with any programming language (JS, Python, PHP, Go, etc.)
@@ -37,26 +39,36 @@
 
 **Choose your setup based on your AI Editor:**
 
-| Editor | Setup Time | Method |
-|--------|-----------|--------|
-| **Claude Desktop** | 2 min | Add config → Restart | 
-| **Cursor AI** | 2 min | Add config → Restart |
-| **Windsurf** | 2 min | Add config → Restart |
-| **Zed Editor** | 3 min | Add to `context_servers` → Restart |
-| **Qoder AI** | 4 min | Start HTTP server → Add config → Restart |
-| **Others (HTTP)** | 3 min | Start HTTP server → Configure endpoint |
+| Editor | Setup Time | Protocol | Method |
+|--------|-----------|----------|--------|
+| **Claude Desktop** | 2 min | MCP | Add config → Restart | 
+| **Cursor AI** | 2 min | MCP | Add config → Restart |
+| **Windsurf** | 2 min | MCP | Add config → Restart |
+| **Zed Editor** | 3 min | LSP | Add to `context_servers` → Restart |
+| **Qoder AI** | 4 min | HTTP | Start HTTP server → Add config → Restart |
+| **Custom Apps** | 1 min | HTTP/WebSocket/SSE | Start server → Use API |
 
 **Quick Commands:**
 
 ```bash
-# For MCP Editors (Claude, Cursor, Windsurf)
-npx -y brave-real-browser-mcp-server@latest
+# Auto-detect environment
+npx brave-real-browser-mcp-server@latest
 
-# For HTTP-based Editors (Qoder AI, Custom)
+# MCP mode (Claude, Cursor, Windsurf)
+npx brave-real-browser-mcp-server@latest --mode mcp
+
+# LSP mode (Zed, VSCode, Neovim)
+npx brave-real-browser-mcp-server@latest --mode lsp
+
+# HTTP mode (Universal API + WebSocket)
 npx brave-real-browser-mcp-server@latest --mode http --port 3000
+
+# SSE mode (Real-time monitoring)
+npx brave-real-browser-mcp-server@latest --mode sse --sse-port 3001
 
 # Check if working
 curl http://localhost:3000/health  # For HTTP mode
+curl http://localhost:3001/health  # For SSE mode
 ```
 
 ---
@@ -1944,6 +1956,7 @@ DEBUG=* npx brave-real-browser-mcp-server@latest --mode http
 || **LSP**         | Zed Editor, VSCode, Neovim                    | ✅          | 🟢 Working |
 || **HTTP/REST**   | Any IDE/Tool                                  | ✅          | 🟢 Working |
 || **WebSocket**   | Modern Web Apps, Real-time Tools              | ✅          | 🟢 Working |
+|| **SSE**         | Real-time Streaming, Web Apps                 | ✅          | 🟢 Working |
 
 ---
 
@@ -2001,7 +2014,7 @@ MIT License - See LICENSE file for details.
 
 <div align="center">
 
-**🌟 111 Tools | 15+ AI IDEs | 3 Protocols | Universal Support 🌟**
+**🌟 111 Tools | 15+ AI IDEs | 5 Protocols | Universal Support 🌟**
 
 **Made with ❤️ for the AI Development Community**
 

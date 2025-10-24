@@ -4,6 +4,7 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { HttpTransport } from "./transports/http-transport.js";
 import { LspTransport } from "./transports/lsp-transport.js";
+import { SseTransport } from "./transports/sse-transport.js";
 import { closeBrowser, forceKillAllBraveProcesses } from "./browser-manager.js";
 import { setupProcessCleanup } from "./core-infrastructure.js";
 import {
@@ -12,12 +13,14 @@ import {
   AIIDEType,
 } from "./universal-ide-adapter.js";
 
-export type ProtocolMode = "auto" | "mcp" | "http" | "lsp" | "all";
+export type ProtocolMode = "auto" | "mcp" | "http" | "lsp" | "sse" | "all";
 
 export interface LauncherConfig {
   mode: ProtocolMode;
   httpPort?: number;
   httpHost?: string;
+  ssePort?: number;
+  sseHost?: string;
   enableWebSocket?: boolean;
   enableCors?: boolean;
   enableAutoDetection?: boolean;
@@ -27,6 +30,7 @@ export class MultiProtocolLauncher {
   private config: LauncherConfig;
   private httpTransport?: HttpTransport;
   private lspTransport?: LspTransport;
+  private sseTransport?: SseTransport;
   private mcpServer?: Server;
   private universalAdapter?: UniversalIDEAdapter;
 
@@ -35,6 +39,8 @@ export class MultiProtocolLauncher {
       mode: config.mode || "auto",
       httpPort: config.httpPort || 3000,
       httpHost: config.httpHost || "0.0.0.0",
+      ssePort: config.ssePort || 3001,
+      sseHost: config.sseHost || "0.0.0.0",
       enableWebSocket: config.enableWebSocket !== false,
       enableCors: config.enableCors !== false,
       enableAutoDetection: config.enableAutoDetection !== false,
@@ -93,6 +99,9 @@ export class MultiProtocolLauncher {
         break;
       case "lsp":
         await this.startLsp();
+        break;
+      case "sse":
+        await this.startSse();
         break;
       case "all":
         await this.startAll();
@@ -156,6 +165,25 @@ export class MultiProtocolLauncher {
     );
   }
 
+  private async startSse(): Promise<void> {
+    console.error("🟠 [SSE] Starting Server-Sent Events transport...");
+
+    if (this.universalAdapter?.getDetectionResult()) {
+      const result = this.universalAdapter.getDetectionResult()!;
+      console.error(`🎯 [SSE] Optimized for: ${result.capabilities.name}`);
+    }
+
+    this.sseTransport = new SseTransport({
+      port: this.config.ssePort!,
+      host: this.config.sseHost!,
+    });
+
+    await this.sseTransport.start();
+    console.error(
+      "💡 [SSE] Real-time streaming - works with web apps and modern clients",
+    );
+  }
+
   private async startAll(): Promise<void> {
     console.error("🌈 Starting all protocols...");
 
@@ -193,6 +221,10 @@ export class MultiProtocolLauncher {
       await this.lspTransport.stop();
     }
 
+    if (this.sseTransport) {
+      await this.sseTransport.stop();
+    }
+
     console.error("✅ All servers stopped");
   }
 }
@@ -207,16 +239,18 @@ export function parseArgs(): LauncherConfig {
 
     if (arg === "--mode" || arg === "-m") {
       const mode = args[++i] as ProtocolMode;
-      if (["auto", "mcp", "http", "lsp", "all"].includes(mode)) {
+      if (["auto", "mcp", "http", "lsp", "sse", "all"].includes(mode)) {
         config.mode = mode;
       } else {
         console.error(
-          `❌ Invalid mode: ${mode}. Use: auto, mcp, http, lsp, or all`,
+          `❌ Invalid mode: ${mode}. Use: auto, mcp, http, lsp, sse, or all`,
         );
         process.exit(1);
       }
     } else if (arg === "--port" || arg === "-p") {
       config.httpPort = parseInt(args[++i]);
+    } else if (arg === "--sse-port") {
+      config.ssePort = parseInt(args[++i]);
     } else if (arg === "--host" || arg === "-h") {
       config.httpHost = args[++i];
     } else if (arg === "--no-websocket") {
@@ -233,9 +267,10 @@ Brave Real Browser MCP Server - Universal AI IDE Support
 Usage: brave-real-browser-mcp-server [options]
 
 Options:
-  --mode, -m <mode>       Protocol mode: auto, mcp, http, lsp, or all (default: auto)
+  --mode, -m <mode>       Protocol mode: auto, mcp, http, lsp, sse, or all (default: auto)
   --port, -p <port>       HTTP server port (default: 3000)
-  --host, -h <host>       HTTP server host (default: 0.0.0.0)
+  --sse-port <port>       SSE server port (default: 3001)
+  --host, -h <host>       HTTP/SSE server host (default: 0.0.0.0)
   --no-websocket          Disable WebSocket support in HTTP mode
   --no-auto-detect        Disable automatic IDE detection
   --list-ides             Show list of all supported AI IDEs
@@ -265,7 +300,10 @@ Examples:
   # LSP mode (for Zed, VSCode, Neovim, Emacs, Sublime Text)
   brave-real-browser-mcp-server --mode lsp
 
-  # All protocols (HTTP only, MCP/LSP need separate instances)
+  # SSE mode (for real-time streaming, web apps)
+  brave-real-browser-mcp-server --mode sse --sse-port 3001
+
+  # All protocols (HTTP only, MCP/LSP/SSE need separate instances)
   brave-real-browser-mcp-server --mode all
 
   # Show all supported IDEs

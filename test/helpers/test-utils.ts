@@ -22,7 +22,7 @@ export interface MCPRequest {
 /**
  * Wait for server to start up by monitoring stderr output
  */
-export function waitForServerStartup(serverProcess: ChildProcess, timeoutMs: number = 10000): Promise<void> {
+export function waitForServerStartup(serverProcess: ChildProcess, timeoutMs: number = 45000): Promise<void> {
   return new Promise((resolve, reject) => {
     let resolved = false;
     
