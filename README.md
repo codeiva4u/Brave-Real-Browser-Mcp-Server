@@ -155,7 +155,7 @@ curl http://localhost:3000/tools
 
 ---
 
-### WebSocket Protocol - 5 Steps
+### WebSocket Protocol - Complete Setup Guide
 
 WebSocket provides **real-time, bidirectional communication** for modern applications.
 
@@ -166,6 +166,382 @@ WebSocket provides **real-time, bidirectional communication** for modern applica
 npx brave-real-browser-mcp-server@latest --mode http --port 3000
 
 # WebSocket will be available at: ws://localhost:3000
+```
+
+**Server will start and show:**
+
+```
+🟢 [HTTP] Starting HTTP/WebSocket server...
+✅ [HTTP] Server ready at http://localhost:3000
+✅ [WebSocket] Server running on ws://localhost:3000
+💡 [HTTP] Universal mode - works with ALL AI IDEs
+```
+
+#### Step 2: Verify WebSocket Connection
+
+Test WebSocket connection using browser console or Node.js:
+
+**Using Browser Console:**
+
+```javascript
+// Open browser console (F12) and paste:
+const ws = new WebSocket('ws://localhost:3000');
+
+ws.onopen = () => {
+  console.log('✅ WebSocket connected!');
+  
+  // Test tool execution
+  ws.send(JSON.stringify({
+    id: 1,
+    tool: 'browser_init',
+    args: {}
+  }));
+};
+
+ws.onmessage = (event) => {
+  console.log('📥 Response:', JSON.parse(event.data));
+};
+
+ws.onerror = (error) => {
+  console.error('❌ WebSocket error:', error);
+};
+
+ws.onclose = () => {
+  console.log('🔴 WebSocket disconnected');
+};
+```
+
+**Using Node.js:**
+
+```javascript
+// Install ws package: npm install ws
+const WebSocket = require('ws');
+
+const ws = new WebSocket('ws://localhost:3000');
+
+ws.on('open', () => {
+  console.log('✅ WebSocket connected!');
+  
+  // Execute a tool
+  ws.send(JSON.stringify({
+    id: 1,
+    tool: 'browser_init',
+    args: {}
+  }));
+});
+
+ws.on('message', (data) => {
+  console.log('📥 Response:', JSON.parse(data));
+});
+
+ws.on('error', (error) => {
+  console.error('❌ Error:', error);
+});
+
+ws.on('close', () => {
+  console.log('🔴 Connection closed');
+});
+```
+
+#### Step 3: WebSocket Message Format
+
+**Request Format:**
+
+```json
+{
+  "id": 1,
+  "tool": "tool_name",
+  "args": {
+    "param1": "value1",
+    "param2": "value2"
+  }
+}
+```
+
+**Response Format:**
+
+```json
+{
+  "id": 1,
+  "success": true,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Result data"
+      }
+    ]
+  }
+}
+```
+
+**Error Response:**
+
+```json
+{
+  "id": 1,
+  "success": false,
+  "error": "Error message"
+}
+```
+
+#### Step 4: Example - Complete Browser Automation via WebSocket
+
+```javascript
+const WebSocket = require('ws');
+const ws = new WebSocket('ws://localhost:3000');
+
+let messageId = 0;
+
+function sendCommand(tool, args) {
+  return new Promise((resolve, reject) => {
+    const id = ++messageId;
+    
+    const handler = (data) => {
+      const response = JSON.parse(data);
+      if (response.id === id) {
+        ws.removeListener('message', handler);
+        if (response.success) {
+          resolve(response.result);
+        } else {
+          reject(new Error(response.error));
+        }
+      }
+    };
+    
+    ws.on('message', handler);
+    
+    ws.send(JSON.stringify({ id, tool, args }));
+  });
+}
+
+ws.on('open', async () => {
+  try {
+    // Step 1: Initialize browser
+    console.log('Initializing browser...');
+    await sendCommand('browser_init', {});
+    
+    // Step 2: Navigate to URL
+    console.log('Navigating to page...');
+    await sendCommand('navigate', { url: 'https://example.com' });
+    
+    // Step 3: Get page content
+    console.log('Getting content...');
+    const content = await sendCommand('get_content', { type: 'text' });
+    console.log('Content:', content);
+    
+    // Step 4: Close browser
+    console.log('Closing browser...');
+    await sendCommand('browser_close', {});
+    
+    console.log('✅ Automation complete!');
+    ws.close();
+  } catch (error) {
+    console.error('❌ Error:', error);
+    ws.close();
+  }
+});
+```
+
+#### Step 5: WebSocket Client Libraries
+
+**JavaScript/Node.js:**
+```bash
+npm install ws
+```
+
+**Python:**
+```bash
+pip install websockets
+```
+
+```python
+import asyncio
+import websockets
+import json
+
+async def automation():
+    uri = "ws://localhost:3000"
+    async with websockets.connect(uri) as websocket:
+        # Initialize browser
+        await websocket.send(json.dumps({
+            "id": 1,
+            "tool": "browser_init",
+            "args": {}
+        }))
+        response = await websocket.recv()
+        print(f"Response: {response}")
+        
+        # Navigate
+        await websocket.send(json.dumps({
+            "id": 2,
+            "tool": "navigate",
+            "args": {"url": "https://example.com"}
+        }))
+        response = await websocket.recv()
+        print(f"Response: {response}")
+
+asyncio.run(automation())
+```
+
+**Go:**
+```bash
+go get github.com/gorilla/websocket
+```
+
+```go
+package main
+
+import (
+    "encoding/json"
+    "fmt"
+    "github.com/gorilla/websocket"
+)
+
+type Message struct {
+    ID   int                    `json:"id"`
+    Tool string                 `json:"tool"`
+    Args map[string]interface{} `json:"args"`
+}
+
+func main() {
+    ws, _, err := websocket.DefaultDialer.Dial("ws://localhost:3000", nil)
+    if err != nil {
+        panic(err)
+    }
+    defer ws.Close()
+    
+    // Initialize browser
+    msg := Message{
+        ID:   1,
+        Tool: "browser_init",
+        Args: make(map[string]interface{}),
+    }
+    
+    ws.WriteJSON(msg)
+    
+    var response map[string]interface{}
+    ws.ReadJSON(&response)
+    fmt.Printf("Response: %+v\n", response)
+}
+```
+
+**PHP:**
+```bash
+composer require textalk/websocket
+```
+
+```php
+<?php
+require 'vendor/autoload.php';
+
+use WebSocket\Client;
+
+$client = new Client("ws://localhost:3000");
+
+// Initialize browser
+$client->send(json_encode([
+    'id' => 1,
+    'tool' => 'browser_init',
+    'args' => new stdClass()
+]));
+
+$response = json_decode($client->receive());
+echo "Response: " . print_r($response, true);
+
+$client->close();
+?>
+```
+
+#### Step 6: WebSocket Advanced Features
+
+**Connection Options:**
+
+```javascript
+const ws = new WebSocket('ws://localhost:3000', {
+  headers: {
+    'Authorization': 'Bearer your-token',
+    'X-Custom-Header': 'value'
+  }
+});
+```
+
+**Reconnection Logic:**
+
+```javascript
+function connectWebSocket() {
+  const ws = new WebSocket('ws://localhost:3000');
+  
+  ws.on('close', () => {
+    console.log('Connection closed, reconnecting in 5s...');
+    setTimeout(connectWebSocket, 5000);
+  });
+  
+  ws.on('error', (error) => {
+    console.error('WebSocket error:', error);
+  });
+  
+  return ws;
+}
+
+const ws = connectWebSocket();
+```
+
+**Heartbeat/Ping-Pong:**
+
+```javascript
+const ws = new WebSocket('ws://localhost:3000');
+
+setInterval(() => {
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.ping();
+  }
+}, 30000); // Ping every 30 seconds
+
+ws.on('pong', () => {
+  console.log('Pong received - connection alive');
+});
+```
+
+#### Troubleshooting WebSocket
+
+**Issue: Connection Refused**
+
+```bash
+# Check if HTTP server is running
+curl http://localhost:3000/health
+
+# If not running, start it:
+npx brave-real-browser-mcp-server@latest --mode http --port 3000
+```
+
+**Issue: WebSocket Disabled**
+
+```bash
+# Start server with WebSocket explicitly enabled
+npx brave-real-browser-mcp-server@latest --mode http --port 3000
+
+# Note: WebSocket is enabled by default
+# To disable: use --no-websocket flag
+```
+
+**Issue: Connection Timeout**
+
+```javascript
+// Increase connection timeout
+const ws = new WebSocket('ws://localhost:3000', {
+  handshakeTimeout: 10000 // 10 seconds
+});
+```
+
+**Issue: Firewall Blocking**
+
+```bash
+# Windows - Allow Node.js through firewall
+netsh advfirewall firewall add rule name="Node.js WebSocket" dir=in action=allow program="C:\Program Files\nodejs\node.exe" enable=yes
+
+# Linux - Allow port 3000
+sudo ufw allow 3000
 ```
 
 ## 🎨 IDE Configurations
