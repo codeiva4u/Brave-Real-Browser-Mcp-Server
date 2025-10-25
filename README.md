@@ -175,7 +175,41 @@ curl http://localhost:3000/tools/browser_init
 | **GET** | `/tools/:toolName` | Get tool info | `curl http://localhost:3000/tools/browser_init` |
 | **POST** | `/tools/:toolName` | Execute any tool | See documentation |
 
-#### Step 4: Error Handling
+#### Step 4: MCP Configuration for HTTP
+
+If your IDE supports HTTP-based MCP servers, use this configuration:
+
+**Config format:**
+```json
+{
+  "mcpServers": {
+    "brave-real-browser-http": {
+      "url": "http://localhost:3000",
+      "transport": "http",
+      "name": "Brave Browser (HTTP)",
+      "enabled": true
+    }
+  }
+}
+```
+
+**With authentication:**
+```json
+{
+  "mcpServers": {
+    "brave-real-browser-http": {
+      "url": "http://localhost:3000",
+      "transport": "http",
+      "headers": {
+        "Authorization": "Bearer your-token"
+      },
+      "enabled": true
+    }
+  }
+}
+```
+
+#### Step 5: Error Handling
 
 **Success Response:**
 ```json
@@ -245,7 +279,43 @@ npx brave-real-browser-mcp-server@latest --mode http --port 3000
 }
 ```
 
-#### Step 3: WebSocket Connection
+#### Step 3: MCP Configuration for WebSocket
+
+If your IDE supports WebSocket-based MCP servers:
+
+**Config format:**
+```json
+{
+  "mcpServers": {
+    "brave-real-browser-ws": {
+      "url": "ws://localhost:3000",
+      "transport": "websocket",
+      "name": "Brave Browser (WebSocket)",
+      "enabled": true
+    }
+  }
+}
+```
+
+**With custom options:**
+```json
+{
+  "mcpServers": {
+    "brave-real-browser-ws": {
+      "url": "ws://localhost:3000",
+      "transport": "websocket",
+      "reconnect": true,
+      "reconnectDelay": 3000,
+      "headers": {
+        "Authorization": "Bearer your-token"
+      },
+      "enabled": true
+    }
+  }
+}
+```
+
+#### Step 4: WebSocket Features
 
 **WebSocket URL:** `ws://localhost:3000`
 
@@ -312,7 +382,39 @@ curl http://localhost:3001/events/types
 | `screenshot_captured` | Screenshot taken | `{"path": "/path/to/screenshot.png"}` |
 | `error_occurred` | General error | `{"error": "Connection timeout"}` |
 
-#### Step 4: SSE Advanced Features
+#### Step 4: MCP Configuration for SSE
+
+If your IDE supports SSE-based MCP servers:
+
+**Config format:**
+```json
+{
+  "mcpServers": {
+    "brave-real-browser-sse": {
+      "url": "http://localhost:3001/sse",
+      "transport": "sse",
+      "name": "Brave Browser (SSE)",
+      "enabled": true
+    }
+  }
+}
+```
+
+**With event filters:**
+```json
+{
+  "mcpServers": {
+    "brave-real-browser-sse": {
+      "url": "http://localhost:3001/sse?filter=tool_success,navigation_complete",
+      "transport": "sse",
+      "reconnect": true,
+      "enabled": true
+    }
+  }
+}
+```
+
+#### Step 5: SSE Advanced Features
 
 **Custom Event Filters:**
 ```bash
