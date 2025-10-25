@@ -14,7 +14,7 @@
 
 [📖 **All 5 Protocols Complete Guide**](./ALL-PROTOCOLS.md) 👈 **NEW! Step-by-step setup for all protocols**
 
-[Installation](#-installation) | [Quick Start](#-quick-start) | [Tools](#-available-tools-111) | [HTTP/WebSocket](#-httpwebsocket-setup) | [Configuration](#-ide-configurations) | [Troubleshooting](#-troubleshooting)
+[Installation](#-installation) | [Quick Start](#-quick-start) | [Qoder AI Setup](#-qoder-ai---complete-integration-guide) | [Tools](#-available-tools-111) | [HTTP/WebSocket/SSE](#-httpwebsocketsse-protocol-setup) | [IDE Configurations](#-ide-configurations)
 
 </div>
 
@@ -45,7 +45,7 @@
 | **Cursor AI** | 2 min | MCP | Add config → Restart |
 | **Windsurf** | 2 min | MCP | Add config → Restart |
 | **Zed Editor** | 3 min | LSP | Add to `context_servers` → Restart |
-| **Qoder AI** | 4 min | HTTP | Start HTTP server → Add config → Restart |
+|| **Qoder AI** | 3 min | MCP (STDIO/SSE) | Add config → Restart |
 | **Custom Apps** | 1 min | HTTP/WebSocket/SSE | Start server → Use API |
 
 **Quick Commands:**
@@ -104,15 +104,26 @@ npx brave-real-browser-mcp-server@latest
 - **Cursor:** `%APPDATA%\Cursor\User\globalStorage\saoudrizwan.claude-dev\settings\cline_mcp_settings.json`
 - **Windsurf:** `%APPDATA%\Windsurf\mcp.json`
 
-### For Other IDEs (Qoder AI, Custom Tools)
+### For Qoder AI
 
-Use HTTP/WebSocket mode - [See HTTP/WebSocket Setup](#-httpwebsocket-setup)
+**Qoder AI supports 2 MCP transport types:** STDIO (local) and SSE (remote)
+
+**Complete step-by-step guide:** [See Qoder AI Integration Guide](#-qoder-ai---complete-integration-guide)
+
+**Quick setup (STDIO):**
+1. Add to config: `{"command": "npx", "args": ["-y", "brave-real-browser-mcp-server@latest"]}`
+2. Restart Qoder AI
+3. Use 111 browser automation tools!
+
+### For Other Custom Tools
+
+Use HTTP/WebSocket/SSE mode - [See Protocol Setup](#-httpwebsocketsse-protocol-setup)
 
 ---
 
-## 🌐 HTTP/WebSocket Setup
+## 🌐 HTTP/WebSocket/SSE Protocol Setup
 
-### HTTP Protocol - 5 Steps
+### 1️⃣ HTTP Protocol - Complete Configuration
 
 HTTP mode works with **ANY IDE or programming language**. No special configuration needed!
 
@@ -127,6 +138,10 @@ npx brave-real-browser-mcp-server@latest --mode http --host 0.0.0.0 --port 8080
 
 # HTTP only (without WebSocket)
 npx brave-real-browser-mcp-server@latest --mode http --port 3000 --no-websocket
+
+# With custom Brave browser path
+set BRAVE_PATH=C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe
+npx brave-real-browser-mcp-server@latest --mode http --port 3000
 ```
 
 **Server will start and show:**
@@ -134,6 +149,7 @@ npx brave-real-browser-mcp-server@latest --mode http --port 3000 --no-websocket
 ```
 🟢 [HTTP] Starting HTTP/WebSocket server...
 ✅ [HTTP] Server ready at http://localhost:3000
+✅ [WebSocket] Server running on ws://localhost:3000
 💡 [HTTP] Universal mode - works with ALL AI IDEs
 ```
 
@@ -145,9 +161,44 @@ curl http://localhost:3000/health
 
 # List all available tools
 curl http://localhost:3000/tools
+
+# Get specific tool info
+curl http://localhost:3000/tools/browser_init
 ```
 
-### WebSocket Protocol - Complete Setup Guide
+#### Step 3: Available HTTP Endpoints
+
+| Method | Endpoint | Description | Example |
+|--------|----------|-------------|----------|
+| **GET** | `/health` | Health check | `curl http://localhost:3000/health` |
+| **GET** | `/tools` | List all 111 tools | `curl http://localhost:3000/tools` |
+| **GET** | `/tools/:toolName` | Get tool info | `curl http://localhost:3000/tools/browser_init` |
+| **POST** | `/tools/:toolName` | Execute any tool | See documentation |
+
+#### Step 4: Error Handling
+
+**Success Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "result": "Browser initialized successfully"
+  }
+}
+```
+
+**Error Response:**
+```json
+{
+  "success": false,
+  "error": "Browser initialization failed",
+  "details": "Brave browser not found at specified path"
+}
+```
+
+---
+
+### 2️⃣ WebSocket Protocol - Complete Configuration
 
 WebSocket provides **real-time, bidirectional communication** for modern applications.
 
@@ -169,19 +220,351 @@ npx brave-real-browser-mcp-server@latest --mode http --port 3000
 💡 [HTTP] Universal mode - works with ALL AI IDEs
 ```
 
-#### Step 6: WebSocket Advanced Features
+#### Step 2: WebSocket Message Format
 
-**Connection Options:**
-
-```javascript
-const ws = new WebSocket('ws://localhost:3000', {
-  headers: {
-    'Authorization': 'Bearer your-token',
-    'X-Custom-Header': 'value'
+**Request Format:**
+```json
+{
+  "tool": "tool_name",
+  "params": {
+    "param1": "value1",
+    "param2": "value2"
   }
-});
+}
 ```
 
+**Response Format:**
+```json
+{
+  "success": true,
+  "tool": "browser_init",
+  "data": {
+    "result": "Browser initialized successfully"
+  },
+  "timestamp": "2025-01-25T04:20:00.000Z"
+}
+```
+
+#### Step 3: WebSocket Connection
+
+**WebSocket URL:** `ws://localhost:3000`
+
+**Features:**
+- ✅ Real-time bidirectional communication
+- ✅ Auto-reconnection support
+- ✅ Ping/Pong keep-alive
+- ✅ Custom headers support
+- ✅ All 111 tools accessible
+
+---
+
+### 3️⃣ SSE Protocol - Complete Configuration
+
+Server-Sent Events (SSE) provides **real-time, one-way streaming** from server to client.
+
+#### Step 1: Start SSE Server
+
+```bash
+# Default (port 3001)
+npx brave-real-browser-mcp-server@latest --mode sse
+
+# Custom port
+npx brave-real-browser-mcp-server@latest --mode sse --sse-port 3001
+
+# Custom host
+npx brave-real-browser-mcp-server@latest --mode sse --sse-port 3001 --host 0.0.0.0
+
+# With custom Brave path
+set BRAVE_PATH=C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe
+npx brave-real-browser-mcp-server@latest --mode sse --sse-port 3001
+```
+
+**Server will start and show:**
+
+```
+🟢 [SSE] Starting SSE server...
+✅ [SSE] Server ready at http://localhost:3001
+💡 [SSE] Real-time monitoring enabled
+```
+
+#### Step 2: Test SSE Server
+
+```bash
+# Health check
+curl http://localhost:3001/health
+
+# List available event types
+curl http://localhost:3001/events/types
+```
+
+#### Step 3: Available SSE Event Types
+
+| Event Type | Description | Example Data |
+|------------|-------------|-------------|
+| `browser_init_success` | Browser initialized | `{"status": "ready", "pid": 12345}` |
+| `browser_init_error` | Browser failed to start | `{"error": "Brave not found"}` |
+| `navigation_start` | Navigation started | `{"url": "https://example.com"}` |
+| `navigation_complete` | Navigation finished | `{"url": "https://example.com", "time": 1250}` |
+| `tool_start` | Tool execution started | `{"tool": "scrape_table"}` |
+| `tool_success` | Tool completed successfully | `{"tool": "scrape_table", "result": [...]}` |
+| `tool_error` | Tool execution failed | `{"tool": "scrape_table", "error": "Selector not found"}` |
+| `content_extracted` | Content extracted | `{"type": "html", "size": 50000}` |
+| `screenshot_captured` | Screenshot taken | `{"path": "/path/to/screenshot.png"}` |
+| `error_occurred` | General error | `{"error": "Connection timeout"}` |
+
+#### Step 4: SSE Advanced Features
+
+**Custom Event Filters:**
+```bash
+# Connect with filter query parameter
+curl http://localhost:3001/events?filter=tool_success,navigation_complete
+```
+
+---
+
+## 🤖 Qoder AI - Complete Integration Guide
+
+**Qoder AI** supports MCP servers through **2 official transport types:**
+- ✅ **STDIO** (Standard Input/Output) - For local MCP servers
+- ✅ **SSE** (Server-Sent Events) - For remote MCP servers
+
+[Official Documentation](https://docs.qoder.com/user-guide/chat/model-context-protocol)
+
+---
+
+### 🟢 Method 1: STDIO Transport (Recommended for Local)
+
+**STDIO** uses stdin/stdout streams for communication. Perfect for local MCP servers.
+
+#### Step 1: Find Qoder AI MCP Config File
+
+**Config file locations:**
+
+```bash
+# Windows
+%APPDATA%\Qoder\mcp_settings.json
+
+# Mac
+~/Library/Application Support/Qoder/mcp_settings.json
+
+# Linux
+~/.config/Qoder/mcp_settings.json
+```
+
+#### Step 2: Add STDIO Configuration
+
+**Windows Configuration:**
+```json
+{
+  "mcpServers": {
+    "brave-real-browser": {
+      "command": "npx",
+      "args": ["-y", "brave-real-browser-mcp-server@latest"],
+      "env": {
+        "BRAVE_PATH": "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe"
+      }
+    }
+  }
+}
+```
+
+**Mac Configuration:**
+```json
+{
+  "mcpServers": {
+    "brave-real-browser": {
+      "command": "npx",
+      "args": ["-y", "brave-real-browser-mcp-server@latest"],
+      "env": {
+        "BRAVE_PATH": "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"
+      }
+    }
+  }
+}
+```
+
+**Linux Configuration:**
+```json
+{
+  "mcpServers": {
+    "brave-real-browser": {
+      "command": "npx",
+      "args": ["-y", "brave-real-browser-mcp-server@latest"],
+      "env": {
+        "BRAVE_PATH": "/usr/bin/brave-browser"
+      }
+    }
+  }
+}
+```
+
+#### Step 3: Restart Qoder AI
+
+Close and reopen Qoder AI completely.
+
+#### Step 4: Verify Integration
+
+In Qoder AI, test:
+
+```
+"List all available MCP tools"
+→ Expected: 111 tools from Brave Real Browser
+
+"Use browser_init to start the browser"
+→ Expected: Browser opens
+
+"Navigate to https://example.com and get content"
+→ Expected: Page content extracted
+```
+
+---
+
+### 🔵 Method 2: SSE Transport (For Remote MCP Servers)
+
+**SSE** uses HTTP POST for requests and event streams for responses. Perfect for remote hosted servers.
+
+#### Step 1: Start SSE Server
+
+```bash
+# Windows
+set BRAVE_PATH=C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe
+npx brave-real-browser-mcp-server@latest --mode sse --sse-port 3001
+
+# Mac
+export BRAVE_PATH="/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"
+npx brave-real-browser-mcp-server@latest --mode sse --sse-port 3001
+
+# Linux
+export BRAVE_PATH="/usr/bin/brave-browser"
+npx brave-real-browser-mcp-server@latest --mode sse --sse-port 3001
+```
+
+**Server will start:**
+```
+🟢 [SSE] Starting SSE server...
+✅ [SSE] Server ready at http://localhost:3001
+💡 [SSE] Real-time monitoring enabled
+```
+
+#### Step 2: Configure Qoder AI for SSE
+
+**In Qoder AI Settings → MCP Servers:**
+
+```json
+{
+  "brave-real-browser": {
+    "url": "http://localhost:3001/sse",
+    "transport": "sse",
+    "name": "Brave Real Browser (SSE)",
+    "enabled": true
+  }
+}
+```
+
+#### Step 3: Restart Qoder AI
+
+Close and reopen Qoder AI.
+
+---
+
+### 🛠️ Using Brave Browser in Qoder AI
+
+Once configured, you can use **all 111 tools** in Qoder AI:
+
+**Example 1: Web Scraping**
+```
+"Initialize browser, navigate to https://news.ycombinator.com and scrape all article titles"
+```
+
+**Example 2: Form Automation**
+```
+"Open https://example.com/login, fill the form with username 'test' and password 'pass123', then click submit"
+```
+
+**Example 3: Data Extraction**
+```
+"Go to https://example.com/products and extract all product names, prices, and images"
+```
+
+**Example 4: Video Extraction**
+```
+"Navigate to [video URL] and extract all video download links"
+```
+
+**Example 5: Screenshot**
+```
+"Take a full-page screenshot of https://example.com and save it"
+```
+
+---
+
+### ⚡ Quick Troubleshooting for Qoder AI
+
+**Problem 1: "MCP Server timeout" or "Connection failed"**
+
+**Solution:**
+```bash
+# Install globally for faster startup
+npm install -g brave-real-browser-mcp-server@latest
+```
+
+Then update config to:
+```json
+{
+  "mcpServers": {
+    "brave-real-browser": {
+      "command": "brave-real-browser-mcp-server",
+      "args": []
+    }
+  }
+}
+```
+
+**Problem 2: "Tools not showing in Qoder AI"**
+
+**Solution:**
+1. Check config file path is correct
+2. Verify JSON format is valid
+3. Restart Qoder AI completely
+4. Check Qoder AI logs for errors
+
+**Problem 3: "Browser not opening"**
+
+**Solution:**
+```bash
+# Set Brave path explicitly in config
+"env": {
+  "BRAVE_PATH": "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe"
+}
+```
+
+**Problem 4: "SSE server not connecting"**
+
+**Solution:**
+```bash
+# Check if server is running
+curl http://localhost:3001/health
+
+# Try different port
+npx brave-real-browser-mcp-server@latest --mode sse --sse-port 3002
+```
+
+---
+
+### 📊 Available Tools in Qoder AI
+
+All **111 tools** are available:
+
+✅ **Browser Management:** `browser_init`, `browser_close`  
+✅ **Navigation:** `navigate`, `wait`, `click`, `type`  
+✅ **Content Extraction:** `get_content`, `scrape_table`, `extract_json`, `scrape_meta_tags`  
+✅ **Media Tools:** `video_link_finder`, `image_scraper`, `media_extractor`  
+✅ **CAPTCHA Solving:** `solve_captcha`, `ocr_engine`  
+✅ **Data Processing:** `price_parser`, `date_normalizer`, `contact_extractor`  
+✅ **Visual Tools:** `full_page_screenshot`, `pdf_generation`  
+✅ **And 90+ more tools!**
+
+---
 
 ## 🎨 IDE Configurations
 
