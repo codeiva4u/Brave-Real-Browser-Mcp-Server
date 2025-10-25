@@ -147,26 +147,6 @@ curl http://localhost:3000/health
 curl http://localhost:3000/tools
 ```
 
-#### Step 5: Configure in Your IDE
-
-**For Qoder AI:**
-
-```json
-{
-  "extensions": {
-    "brave-real-browser": {
-      "type": "http",
-      "enabled": true,
-      "endpoint": "http://localhost:3000"
-    }
-  }
-}
-```
-
-**For any custom tool:** Just make HTTP POST requests to `http://localhost:3000/tools/{tool_name}`
-
----
-
 ### WebSocket Protocol - Complete Setup Guide
 
 WebSocket provides **real-time, bidirectional communication** for modern applications.
@@ -288,18 +268,6 @@ Copy and paste this configuration:
     }
   }
 }
-```
-
-**Step 4: Save and Restart Cursor**
-
-```bash
-# Windows
-taskkill /F /IM Cursor.exe
-# Then reopen Cursor
-
-# Mac
-pkill -f Cursor
-# Then reopen Cursor
 ```
 
 ### Windsurf
@@ -648,131 +616,6 @@ Then update your configuration to:
 | `url_redirect_tracer`        | Trace URL redirects         |
 | `user_agent_extractor`       | Extract user agent info     |
 
----
-
-## 💡 Usage Examples
-
-### Example 1: Simple Web Scraping (MCP Mode)
-
-```javascript
-// Using MCP tool in Claude/Cursor
-await use_mcp_tool({
-  server_name: "brave-real-browser",
-  tool_name: "browser_init",
-  arguments: {},
-});
-
-await use_mcp_tool({
-  server_name: "brave-real-browser",
-  tool_name: "navigate",
-  arguments: { url: "https://example.com" },
-});
-
-await use_mcp_tool({
-  server_name: "brave-real-browser",
-  tool_name: "get_content",
-  arguments: { type: "text" },
-});
-```
-
-### Example 2: CAPTCHA Solving
-
-```javascript
-// Navigate to CAPTCHA page
-await use_mcp_tool({
-  server_name: "brave-real-browser",
-  tool_name: "navigate",
-  arguments: { url: "https://site-with-captcha.com" },
-});
-
-// Solve CAPTCHA
-await use_mcp_tool({
-  server_name: "brave-real-browser",
-  tool_name: "solve_captcha",
-  arguments: { type: "recaptcha" },
-});
-
-// Continue automation
-await use_mcp_tool({
-  server_name: "brave-real-browser",
-  tool_name: "click",
-  arguments: { selector: "button.submit" },
-});
-```
-
-### Example 3: Video Extraction
-
-```javascript
-// Navigate to video page
-await use_mcp_tool({
-  server_name: "brave-real-browser",
-  tool_name: "navigate",
-  arguments: { url: "https://video-site.com/video/123" },
-});
-
-// Find video links
-await use_mcp_tool({
-  server_name: "brave-real-browser",
-  tool_name: "video_link_finder",
-  arguments: {},
-});
-
-// Advanced video extraction with ad bypass
-await use_mcp_tool({
-  server_name: "brave-real-browser",
-  tool_name: "advanced_video_extraction",
-  arguments: {},
-});
-```
-
-### Example 4: Multi-Page Scraping
-
-```javascript
-// Initialize browser
-await use_mcp_tool({
-  server_name: "brave-real-browser",
-  tool_name: "browser_init",
-  arguments: {},
-});
-
-// Auto-paginate through all pages
-await use_mcp_tool({
-  server_name: "brave-real-browser",
-  tool_name: "multi_page_scraper",
-  arguments: {
-    startUrl: "https://example.com/page/1",
-    maxPages: 10,
-  },
-});
-```
-
----
-
-## 📋 API Endpoints (HTTP Mode)
-
-When running in HTTP mode, these endpoints are available:
-
-```
-GET  /health                    - Health check
-GET  /tools                     - List all tools
-POST /tools/:toolName           - Execute any tool
-POST /browser/init              - Initialize browser
-POST /browser/navigate          - Navigate to URL
-POST /browser/get_content       - Get page content
-POST /browser/click             - Click element
-POST /browser/type              - Type text
-POST /browser/close             - Close browser
-```
-
-**Example:**
-
-```bash
-curl -X POST http://localhost:3000/tools/navigate \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://example.com"}'
-```
-
----
 
 ## 🔧 Environment Variables
 
@@ -789,38 +632,6 @@ DISABLE_CONTENT_PRIORITY=true
 # Optional: HTTP port
 HTTP_PORT=3000
 ```
-
----
-
-## 🐛 Troubleshooting
-
-### Common Issues & Solutions
-
-#### 1. Brave Browser Not Found
-
-**Symptoms:**
-- Error: "Brave browser not found"
-- Browser fails to launch
-
-**Solutions:**
-
-```bash
-# Windows (PowerShell)
-$env:BRAVE_PATH="C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe"
-
-# Windows (CMD)
-set BRAVE_PATH="C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe"
-
-# Mac
-export BRAVE_PATH="/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"
-
-# Linux (Ubuntu/Debian)
-export BRAVE_PATH="/usr/bin/brave-browser"
-
-# Linux (Snap)
-export BRAVE_PATH="/snap/bin/brave"
-```
-
 
 ## 📊 Supported Protocols
 
