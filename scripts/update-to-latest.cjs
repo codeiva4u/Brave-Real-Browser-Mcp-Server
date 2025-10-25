@@ -44,7 +44,9 @@ const packagesToUpdate = [
   'brave-real-puppeteer-core',
   '@modelcontextprotocol/sdk',
   'turndown',
-  '@types/turndown'
+  '@types/turndown',
+  'puppeteer-screen-recorder',
+  'rimraf'
 ];
 
 try {

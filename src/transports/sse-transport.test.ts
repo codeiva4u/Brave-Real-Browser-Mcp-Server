@@ -149,8 +149,10 @@ describe('SSE Transport', () => {
       });
 
       const data = await response.json();
-      expect(response.status).toBe(500);
-      expect(data.success).toBe(false);
+      // MCP format: validation errors are returned with success=true but result.isError=true
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.result.isError).toBe(true);
     });
   });
 
