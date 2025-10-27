@@ -44,12 +44,8 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
   });
 
   afterEach(async () => {
-    // Clean up after each test
-    try {
-      await handleBrowserClose();
-    } catch (error) {
-      // Ignore close errors - browser might already be closed
-    }
+    // NOTE: Not closing browser here to keep it stable and visible during all tests
+    // Browser will only close in afterAll for final cleanup
     
     // Reset depth counter after each test
     resetBrowserInitDepth();
