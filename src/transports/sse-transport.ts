@@ -148,7 +148,17 @@ export class SseTransport {
           timestamp: new Date().toISOString(),
         });
 
-        res.status(500).json({ success: false, error: errorMessage });
+        // Return errors in MCP format (status 200 with isError flag)
+        res.json({ 
+          success: true, 
+          result: {
+            isError: true,
+            content: [{
+              type: 'text',
+              text: errorMessage
+            }]
+          }
+        });
       }
     });
 
