@@ -311,34 +311,99 @@ export async function handleVideoPlayPushSource(args: any) {
     
     page.on('response', responseHandler);
     
-    // Try to find and click play button
+    // Enhanced play button selectors
     const playSelectors = [
       'button[class*="play"]',
       '[class*="play-button"]',
+      '[class*="btn-play"]',
       '[aria-label*="Play"]',
+      '[aria-label*="play"]',
+      'button[title*="Play"]',
+      'button[title*="play"]',
       '.video-play',
       '#play-button',
+      '#playButton',
+      '.play-btn',
+      'video', // Direct video element
+      // Icon-based play buttons
+      '[class*="fa-play"]',
+      '[class*="icon-play"]',
+      'i[class*="play"]',
     ];
     
     let clicked = false;
+    let clickMethod = 'none';
+    
+    // Try clicking play buttons
     for (const selector of playSelectors) {
       try {
-        await page.click(selector, { timeout: 2000 });
-        clicked = true;
-        break;
+        if (selector === 'video') {
+          // Try to play video directly
+          const played = await page.evaluate(() => {
+            const videos = document.querySelectorAll('video');
+            let success = false;
+            videos.forEach((video: any) => {
+              try {
+                video.play();
+                success = true;
+              } catch (e) {}
+            });
+            return success;
+          });
+          if (played) {
+            clicked = true;
+            clickMethod = 'video.play()';
+            break;
+          }
+        } else {
+          const element = await page.$(selector);
+          if (element) {
+            await element.click();
+            clicked = true;
+            clickMethod = selector;
+            break;
+          }
+        }
       } catch (e) {
         // Try next selector
       }
     }
     
-    // Wait for sources to load
-    await sleep(3000);
+    // If no play button found, try clicking center of iframe
+    if (!clicked) {
+      try {
+        const iframeClicked = await page.evaluate(() => {
+          const iframe = document.querySelector('iframe');
+          if (iframe) {
+            const rect = iframe.getBoundingClientRect();
+            const event = new MouseEvent('click', {
+              view: window,
+              bubbles: true,
+              cancelable: true,
+              clientX: rect.left + rect.width / 2,
+              clientY: rect.top + rect.height / 2
+            });
+            iframe.dispatchEvent(event);
+            return true;
+          }
+          return false;
+        });
+        
+        if (iframeClicked) {
+          clicked = true;
+          clickMethod = 'iframe-click';
+        }
+      } catch (e) {}
+    }
+    
+    // Wait for sources to load (longer wait for iframe-based)
+    await sleep(5000);
     page.off('response', responseHandler);
 
     return {
       content: [{
         type: 'text' as const,
-        text: `✅ Video sources captured\n\nPlay button clicked: ${clicked}\nSources found: ${videoSources.length}\n\n${JSON.stringify(videoSources, null, 2)}`,
+        text: `✅ Video sources captured\n\n📊 Status:\n  • Interaction attempted: ${clicked ? 'Yes' : 'No'}\n  • Method: ${clickMethod}\n  • Sources found: ${videoSources.length}\n\n${videoSources.length > 0 ? JSON.stringify(videoSources, null, 2) : '💡 Tip: This site may use iframe-embedded videos. Try navigating to the iframe URL and using advanced_video_extraction.'}`,
       }],
     };
   }, 'Failed to capture video play sources');
@@ -357,47 +422,127 @@ export async function handleVideoPlayButtonClick(args: any) {
     const page = getCurrentPage();
     const customSelector = args.selector;
     
-    const playSelectors = customSelector ? [customSelector] : [
+    // Enhanced play button selectors
+    const defaultSelectors = [
       'button[class*="play"]',
       '[class*="play-button"]',
+      '[class*="btn-play"]',
       '[aria-label*="Play"]',
+      '[aria-label*="play"]',
       'button[title*="Play"]',
+      'button[title*="play"]',
       '.video-play',
+      '.play-btn',
       '#play-button',
-      'video', // Direct video element
+      '#playButton',
+      // Icon-based
+      'button i[class*="play"]',
+      'button i[class*="fa-play"]',
+      '[class*="fa-play"]',
+      '[class*="icon-play"]',
+      // Video element
+      'video',
     ];
+    
+    const playSelectors = customSelector ? [customSelector] : defaultSelectors;
+    
+    const results: any = {
+      attempted: [],
+      clicked: false,
+      method: 'none',
+      selector: null
+    };
     
     for (const selector of playSelectors) {
       try {
-        const element = await page.$(selector);
-        
-        if (element) {
-          if (selector === 'video') {
-            // For video element, use play() method
-            await page.evaluate(() => {
-              const video = document.querySelector('video') as any;
-              if (video) video.play();
+        if (selector === 'video') {
+          // For video element, use play() method
+          const played = await page.evaluate(() => {
+            const videos = document.querySelectorAll('video');
+            let success = false;
+            videos.forEach((video: any) => {
+              try {
+                video.play();
+                success = true;
+              } catch (e) {}
             });
-          } else {
-            await element.click();
-          }
+            return success;
+          });
           
-          return {
-            content: [{
-              type: 'text' as const,
-              text: `✅ Play button clicked: ${selector}`,
-            }],
-          };
+          results.attempted.push({ selector, found: played });
+          
+          if (played) {
+            results.clicked = true;
+            results.method = 'video.play()';
+            results.selector = selector;
+            
+            return {
+              content: [{
+                type: 'text' as const,
+                text: `✅ Play button clicked\n\n📊 Details:\n  • Method: ${results.method}\n  • Selector: ${selector}\n  • Attempts: ${results.attempted.length}`,
+              }],
+            };
+          }
+        } else {
+          const element = await page.$(selector);
+          results.attempted.push({ selector, found: !!element });
+          
+          if (element) {
+            await element.click();
+            results.clicked = true;
+            results.method = 'element.click()';
+            results.selector = selector;
+            
+            return {
+              content: [{
+                type: 'text' as const,
+                text: `✅ Play button clicked\n\n📊 Details:\n  • Method: ${results.method}\n  • Selector: ${selector}\n  • Attempts: ${results.attempted.length}`,
+              }],
+            };
+          }
         }
       } catch (e) {
-        // Try next selector
+        results.attempted.push({ selector, error: String(e) });
       }
+    }
+    
+    // Fallback: Try clicking iframe center
+    try {
+      const iframeInfo = await page.evaluate(() => {
+        const iframe = document.querySelector('iframe');
+        if (iframe) {
+          const rect = iframe.getBoundingClientRect();
+          return {
+            found: true,
+            x: rect.left + rect.width / 2,
+            y: rect.top + rect.height / 2,
+            src: iframe.src
+          };
+        }
+        return { found: false };
+      });
+      
+      if (iframeInfo.found) {
+        await page.mouse.click(iframeInfo.x, iframeInfo.y);
+        results.clicked = true;
+        results.method = 'iframe-click';
+        results.selector = 'iframe (center)';
+        
+        return {
+          content: [{
+            type: 'text' as const,
+            text: `✅ Play action attempted\n\n📊 Details:\n  • Method: iframe center click\n  • Iframe src: ${iframeInfo.src}\n  • Position: (${Math.round(iframeInfo.x)}, ${Math.round(iframeInfo.y)})\n\n💡 Tip: For iframe-based videos, navigate to iframe URL first`,
+          }],
+        };
+      }
+    } catch (e) {
+      results.attempted.push({ selector: 'iframe-fallback', error: String(e) });
     }
 
     return {
       content: [{
         type: 'text' as const,
-        text: `❌ No play button found`,
+        text: `⚠️ No direct play button found\n\n📊 Attempts: ${results.attempted.length}\n💡 Suggestions:\n  • This site uses iframe-embedded videos\n  • Use iframe_extractor to find video iframe\n  • Navigate to iframe URL\n  • Then use advanced_video_extraction\n\nAttempted selectors:\n${results.attempted.map((a: any) => `  • ${a.selector}: ${a.found ? '✓ found' : '✗ not found'}`).join('\n')}`,
       }],
     };
   }, 'Failed to click play button');
@@ -509,12 +654,17 @@ export async function handleNetworkRecordingFinder(args: any) {
         const isStreamAsset = /\.m3u8(\?|$)|\.mpd(\?|$)|\.ts(\?|$)|\.vtt(\?|$)|\.mp4(\?|$)|\.webm(\?|$)/i.test(urlLower) ||
                               contentType.includes('application/vnd.apple.mpegurl') ||
                               contentType.includes('application/x-mpegurl');
+        
+        // Video API detection (like /api/v1/video, /stream, etc.)
+        const isVideoAPI = urlLower.includes('/video') || 
+                          urlLower.includes('/stream') ||
+                          (contentType.includes('application/octet-stream') && urlLower.includes('video'));
 
-        if (filterType === 'video' && (contentType.includes('video') || resourceType === 'media' || isStreamAsset)) {
+        if (filterType === 'video' && (contentType.includes('video') || resourceType === 'media' || isStreamAsset || isVideoAPI)) {
           shouldRecord = true;
         } else if (filterType === 'audio' && contentType.includes('audio')) {
           shouldRecord = true;
-        } else if (filterType === 'media' && (contentType.includes('video') || contentType.includes('audio') || isStreamAsset)) {
+        } else if (filterType === 'media' && (contentType.includes('video') || contentType.includes('audio') || isStreamAsset || isVideoAPI)) {
           shouldRecord = true;
         }
 
@@ -622,19 +772,34 @@ export async function handleNetworkRecordingExtractors(args: any) {
     };
     let totalResponses = 0;
     
-    const responseHandler = async (response: any) => {
-      totalResponses++;
-      const url = response.url();
-      const contentType = response.headers()['content-type'] || '';
-      
+    const responseHandler = (response: any) => {
       try {
-        // Video files
-        if (contentType.includes('video') || url.includes('.mp4') || url.includes('.webm')) {
+        totalResponses++;
+        const url = response.url();
+        const contentType = response.headers()['content-type'] || '';
+        
+        // Video files (includes API video requests)
+        const isVideoFile = contentType.includes('video') || 
+                           url.includes('.mp4') || 
+                           url.includes('.webm') ||
+                           url.includes('.mov') ||
+                           url.includes('.avi') ||
+                           url.includes('.mkv');
+        
+        // Video API patterns (like cherry.upns.online/api/v1/video)
+        const isVideoAPI = url.toLowerCase().includes('/video') || 
+                          url.toLowerCase().includes('/stream') ||
+                          url.toLowerCase().includes('/api') ||
+                          (contentType.includes('application/octet-stream') && url.includes('video'));
+        
+        if (isVideoFile || isVideoAPI) {
           if (verbose) console.log(`[Extractor] 🎥 Video found: ${url.substring(0, 80)}`);
           extractedData.videos.push({
             url,
             contentType,
             size: response.headers()['content-length'],
+            status: response.status(),
+            type: isVideoAPI ? 'api' : 'direct',
           });
         }
         
@@ -647,28 +812,28 @@ export async function handleNetworkRecordingExtractors(args: any) {
           });
         }
         
-        // Manifest files (HLS, DASH)
+        // Manifest files (HLS, DASH) - Don't try to read content in handler
         if (url.includes('.m3u8') || url.includes('.mpd')) {
           if (verbose) console.log(`[Extractor] 📜 Manifest found: ${url.substring(0, 80)}`);
-          const text = await response.text();
           extractedData.manifests.push({
             url,
             type: url.includes('.m3u8') ? 'HLS' : 'DASH',
-            content: text.substring(0, 500),
+            contentType,
+            status: response.status(),
           });
         }
         
-        // API responses with video data
-        if (contentType.includes('json') && (url.includes('video') || url.includes('media'))) {
+        // API responses with video data - Don't try to parse in handler
+        if (contentType.includes('json') && (url.includes('video') || url.includes('media') || url.includes('api') || url.includes('player'))) {
           if (verbose) console.log(`[Extractor] 📡 API found: ${url.substring(0, 80)}`);
-          const json = await response.json();
           extractedData.apis.push({
             url,
-            data: json,
+            contentType,
+            status: response.status(),
           });
         }
       } catch (e) {
-        // Response not available
+        if (verbose) console.log(`[Extractor] ⚠️ Error processing response: ${e}`);
       }
     };
     
@@ -851,6 +1016,7 @@ export async function handleVideosSelectors(args: any) {
     const selectors = await page.evaluate(() => {
       const results: any = {
         videoElements: [],
+        iframeElements: [],
         playerContainers: [],
         controlButtons: [],
         sources: [],
@@ -866,16 +1032,40 @@ export async function handleVideosSelectors(args: any) {
           selector,
           src: video.src,
           hasControls: video.controls,
+          type: 'direct_video'
         });
       });
       
-      // Player containers
+      // Iframe elements (video sources)
+      document.querySelectorAll('iframe').forEach((iframe: any, idx) => {
+        const selector = iframe.id ? `#${iframe.id}` : 
+                        iframe.className ? `.${iframe.className.split(' ')[0]}` :
+                        `iframe:nth-of-type(${idx + 1})`;
+        
+        if (iframe.src) {
+          results.iframeElements.push({
+            selector,
+            src: iframe.src,
+            title: iframe.title || '',
+            allow: iframe.getAttribute('allow') || '',
+            type: 'iframe_video'
+          });
+        }
+      });
+      
+      // Player containers (check for both video and iframe)
       ['[class*="player"]', '[id*="player"]', '[data-player]'].forEach(sel => {
         document.querySelectorAll(sel).forEach((el: any) => {
+          const hasVideo = !!el.querySelector('video');
+          const hasIframe = !!el.querySelector('iframe');
+          
           results.playerContainers.push({
             selector: sel,
             id: el.id,
             className: el.className,
+            hasVideo,
+            hasIframe,
+            contentType: hasVideo ? 'video' : hasIframe ? 'iframe' : 'empty'
           });
         });
       });
@@ -1064,47 +1254,161 @@ export async function handleVideoDownloadButtonFinders(args: any) {
     
     const downloadButtons = await page.evaluate(() => {
       const results: any[] = [];
+      const foundElements = new Set(); // Avoid duplicates
       
+      // Enhanced patterns for download buttons
       const buttonPatterns = [
-        'button[class*="download"]',
-        'a[class*="download"]',
+        // Direct download attributes
+        'a[download]',
+        'button[download]',
         '[data-download]',
-        'button:contains("Download")',
-        'a:contains("Download")',
-        'button:contains("Save")',
+        '[data-download-url]',
+        '[data-file]',
+        '[data-link]',
+        
+        // Class-based
+        'a[class*="download"]',
+        'button[class*="download"]',
+        'a[class*="btn-download"]',
+        '[class*="download-button"]',
+        '[class*="download-link"]',
+        '[class*="dlvideoLinks"]',
+        '[class*="btn-info"]',
+        '[class*="btn-primary"]',
+        
+        // ID-based
+        '[id*="download"]',
+        '[id*="btn-download"]',
+        '[id*="downloadButton"]',
+        '[id*="Download"]',
+        
+        // Href patterns
+        'a[href*="download"]',
+        'a[href*=".mp4"]',
+        'a[href*=".webm"]',
+        'a[href*=".mkv"]',
+        'a[href*=".avi"]',
+        'a[href*="/file/"]',
+        'a[href*="/stream/"]',
+        'a[href*="ddn."]',
+        'a[href*="igx."]',
+        
+        // Onclick patterns
         '[onclick*="download"]',
-        '[href*="download"]',
+        '[onclick*="Download"]',
+        '[onclick*="window.open"]',
+        
+        // Icon-based (common patterns)
+        'a i[class*="download"]',
+        'button i[class*="download"]',
+        '.fa-download',
+        '.icon-download',
+        
+        // Form submit buttons
+        'input[type="submit"][value*="Download"]',
+        'input[type="submit"][value*="Stream"]',
+        'button[type="submit"]',
+      ];
+      
+      // Text-based search (case insensitive) - ENHANCED with GDL patterns
+      const searchTexts = [
+        'download', 'descargar', 'télécharger', 'baixar', 'скачать', 'save', 'get',
+        'gdl', '5gdl', '4gdl', '3gdl', '2gdl', '1gdl', '⚡5gdl', // GDL variations with lightning
+        'dl', 'down', 'grab', 'fetch', 'stream', 'watch', 'play', 'click'
       ];
       
       buttonPatterns.forEach(pattern => {
         try {
-          document.querySelectorAll(pattern).forEach((btn: any, idx) => {
+          document.querySelectorAll(pattern).forEach((btn: any) => {
+            // Avoid duplicates
+            if (foundElements.has(btn)) return;
+            foundElements.add(btn);
+            
             const isVisible = btn.offsetWidth > 0 && btn.offsetHeight > 0;
+            const text = btn.textContent?.trim() || '';
+            const href = btn.href || btn.getAttribute('href') || '';
             
             results.push({
               pattern,
-              index: idx,
-              text: btn.textContent?.trim() || '',
-              href: btn.href || btn.getAttribute('href'),
-              dataDownload: btn.dataset.download,
+              text,
+              href,
+              dataDownload: btn.dataset.download || btn.getAttribute('data-download'),
               isVisible,
               tag: btn.tagName.toLowerCase(),
               className: btn.className,
               id: btn.id,
+              hasDownloadAttr: btn.hasAttribute('download'),
+              onclick: btn.onclick ? 'present' : 'none'
             });
           });
         } catch (e) {
-          // Pattern not supported
+          // Pattern not supported or error
+        }
+      });
+      
+      // Additional: Search for buttons/links with download-related text
+      document.querySelectorAll('a, button').forEach((el: any) => {
+        if (foundElements.has(el)) return;
+        
+        const text = el.textContent?.toLowerCase() || '';
+        const hasDownloadText = searchTexts.some(term => text.includes(term));
+        
+        if (hasDownloadText) {
+          foundElements.add(el);
+          const isVisible = el.offsetWidth > 0 && el.offsetHeight > 0;
+          
+          results.push({
+            pattern: 'text-based-search',
+            text: el.textContent?.trim() || '',
+            href: el.href || el.getAttribute('href') || '',
+            dataDownload: el.dataset.download,
+            isVisible,
+            tag: el.tagName.toLowerCase(),
+            className: el.className,
+            id: el.id,
+            matchedText: searchTexts.find(term => text.includes(term))
+          });
         }
       });
       
       return results;
     });
 
+    // Include option to filter by visibility
+    const includeHidden = args.includeHidden !== false; // Default: include hidden
+    const filteredButtons = includeHidden ? downloadButtons : downloadButtons.filter((btn: any) => btn.isVisible);
+
+    // If no buttons found, provide helpful context
+    let additionalInfo = '';
+    if (filteredButtons.length === 0) {
+      const pageContext = await page.evaluate(() => {
+        const allButtons = document.querySelectorAll('button, input[type="submit"], [role="button"]');
+        const allLinks = document.querySelectorAll('a[href]');
+        const allForms = document.querySelectorAll('form');
+        
+        return {
+          totalButtons: allButtons.length,
+          totalLinks: allLinks.length,
+          totalForms: allForms.length,
+          sampleButtons: Array.from(allButtons).slice(0, 5).map((b: any) => ({
+            text: b.textContent?.trim().substring(0, 50) || '',
+            id: b.id,
+            className: b.className
+          })),
+          sampleLinks: Array.from(allLinks).slice(0, 5).map((l: any) => ({
+            text: l.textContent?.trim().substring(0, 50) || '',
+            href: l.href?.substring(0, 100) || ''
+          }))
+        };
+      });
+      
+      additionalInfo = `\n\n💡 No download buttons found. Page has:\n  • ${pageContext.totalButtons} buttons\n  • ${pageContext.totalLinks} links\n  • ${pageContext.totalForms} forms\n\nSample elements:\n${JSON.stringify(pageContext, null, 2)}`;
+    }
+
     return {
       content: [{
         type: 'text' as const,
-        text: `✅ Found ${downloadButtons.length} download buttons\n\n${JSON.stringify(downloadButtons, null, 2)}`,
+        text: `✅ Found ${filteredButtons.length} download buttons (${downloadButtons.length} total, ${downloadButtons.filter((b: any) => !b.isVisible).length} hidden)\n\n${JSON.stringify(filteredButtons, null, 2)}${additionalInfo}`,
       }],
     };
   }, 'Failed to find download buttons');

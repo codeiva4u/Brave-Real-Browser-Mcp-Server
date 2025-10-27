@@ -22,12 +22,29 @@ export interface MCPRequest {
 /**
  * Wait for server to start up by monitoring stderr output
  */
+// Track which servers have been started
+const startedServers = new WeakSet<ChildProcess>();
+
 export function waitForServerStartup(serverProcess: ChildProcess, timeoutMs: number = 45000): Promise<void> {
+  // If already started, resolve immediately
+  if (startedServers.has(serverProcess)) {
+    return Promise.resolve();
+  }
+  
   return new Promise((resolve, reject) => {
     let resolved = false;
     
+    const cleanup = () => {
+      clearTimeout(timeout);
+      serverProcess.stderr?.removeListener('data', stderrHandler);
+      serverProcess.removeListener('error', errorHandler);
+      serverProcess.removeListener('exit', exitHandler);
+    };
+    
     const timeout = setTimeout(() => {
       if (!resolved) {
+        resolved = true;
+        cleanup();
         console.error(`[TEST] Server startup timeout after ${timeoutMs}ms`);
         reject(new Error(`Server did not start within ${timeoutMs}ms`));
       }
@@ -38,8 +55,8 @@ export function waitForServerStartup(serverProcess: ChildProcess, timeoutMs: num
       if (output.includes('Brave Real Browser MCP Server started successfully')) {
         if (!resolved) {
           resolved = true;
-          clearTimeout(timeout);
-          serverProcess.stderr?.removeListener('data', stderrHandler);
+          cleanup();
+          startedServers.add(serverProcess);
           console.error('[TEST] Server startup detected successfully');
           resolve();
         }
@@ -49,16 +66,16 @@ export function waitForServerStartup(serverProcess: ChildProcess, timeoutMs: num
     const errorHandler = (error: Error) => {
       if (!resolved) {
         resolved = true;
-        clearTimeout(timeout);
+        cleanup();
         console.error('[TEST] Server process error:', error.message);
         reject(new Error(`Server process error: ${error.message}`));
       }
     };
     
     const exitHandler = (code: number | null) => {
-      if (!resolved && code !== 0) {
+      if (!resolved) {
         resolved = true;
-        clearTimeout(timeout);
+        cleanup();
         console.error(`[TEST] Server process exited with code: ${code}`);
         reject(new Error(`Server process exited with code ${code}`));
       }
@@ -67,15 +84,6 @@ export function waitForServerStartup(serverProcess: ChildProcess, timeoutMs: num
     serverProcess.stderr?.on('data', stderrHandler);
     serverProcess.on('error', errorHandler);
     serverProcess.on('exit', exitHandler);
-    
-    // Cleanup listeners if resolved
-    const cleanup = () => {
-      serverProcess.stderr?.removeListener('data', stderrHandler);
-      serverProcess.removeListener('error', errorHandler);
-      serverProcess.removeListener('exit', exitHandler);
-    };
-    
-    timeout.unref(); // Don't keep process alive just for timeout
   });
 }
 

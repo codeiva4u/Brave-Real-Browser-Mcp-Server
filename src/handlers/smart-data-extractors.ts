@@ -220,7 +220,7 @@ export async function handleXpathLinks(args: any) {
 }
 
 /**
- * AJAX Extractor - Extract AJAX/XHR request data
+ * AJAX Extractor - Extract AJAX/XHR request data with responses
  */
 export async function handleAjaxExtractor(args: any) {
   return await withErrorHandling(async () => {
@@ -232,35 +232,116 @@ export async function handleAjaxExtractor(args: any) {
     const page = getCurrentPage();
     const duration = args.duration || 15000;
     const url = args.url;
+    const forceReload = args.forceReload !== false; // Force reload by default
+    const includeResponses = args.includeResponses !== false;
     
     const requests: any[] = [];
+    const responses: any[] = [];
     
     const requestHandler = (request: any) => {
-      const resourceType = request.resourceType();
-      if (resourceType === 'xhr' || resourceType === 'fetch') {
-        requests.push({
-          url: request.url(),
-          method: request.method(),
-          resourceType,
-          headers: request.headers(),
-          timestamp: new Date().toISOString(),
-        });
+      try {
+        const resourceType = request.resourceType();
+        if (resourceType === 'xhr' || resourceType === 'fetch') {
+          requests.push({
+            url: request.url(),
+            method: request.method(),
+            resourceType,
+            headers: request.headers(),
+            postData: request.postData(),
+            timestamp: new Date().toISOString(),
+          });
+        }
+      } catch (e) {
+        // Ignore errors
+      }
+    };
+    
+    const responseHandler = async (response: any) => {
+      try {
+        const resourceType = response.request().resourceType();
+        if (resourceType === 'xhr' || resourceType === 'fetch') {
+          let body = null;
+          if (includeResponses) {
+            try {
+              const text = await response.text();
+              // Try to parse as JSON
+              try {
+                body = JSON.parse(text);
+              } catch {
+                body = text.substring(0, 500); // First 500 chars if not JSON
+              }
+            } catch {}
+          }
+          
+          responses.push({
+            url: response.url(),
+            status: response.status(),
+            statusText: response.statusText(),
+            headers: response.headers(),
+            body,
+            timestamp: new Date().toISOString(),
+          });
+        }
+      } catch (e) {
+        // Ignore errors
       }
     };
     
     page.on('request', requestHandler);
-    
-    if (url && page.url() !== url) {
-      await page.goto(url, { waitUntil: 'networkidle2' });
+    if (includeResponses) {
+      page.on('response', responseHandler);
     }
     
+    if (url && page.url() !== url) {
+      await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
+    } else if (forceReload && !url) {
+      // Force reload current page to capture AJAX requests
+      try {
+        await page.reload({ waitUntil: 'networkidle2', timeout: 30000 });
+      } catch {}
+    }
+    
+    // Trigger interactions to generate AJAX requests
+    try {
+      await page.evaluate(() => {
+        // Scroll to trigger lazy loading
+        window.scrollTo(0, document.body.scrollHeight / 2);
+        window.scrollTo(0, document.body.scrollHeight);
+        
+        // Click visible buttons that might trigger AJAX
+        const clickableElements = document.querySelectorAll('button, [role="button"], .btn, [onclick]');
+        clickableElements.forEach((el: any) => {
+          if (el.offsetWidth > 0 && el.offsetHeight > 0) {
+            const text = el.textContent?.toLowerCase() || '';
+            // Click safe elements (avoid dangerous buttons like delete, remove, etc.)
+            if (text.includes('load') || text.includes('more') || text.includes('show')) {
+              try {
+                el.click();
+              } catch {}
+            }
+          }
+        });
+      });
+    } catch {}
+    
     await sleep(duration);
+    
     page.off('request', requestHandler);
+    if (includeResponses) {
+      page.off('response', responseHandler);
+    }
+
+    const combined = {
+      totalRequests: requests.length,
+      totalResponses: responses.length,
+      requests: requests.slice(0, 50), // First 50
+      responses: responses.slice(0, 50), // First 50
+    };
 
     return {
       content: [{
         type: 'text' as const,
-        text: `✅ Captured ${requests.length} AJAX/XHR requests\n\n${JSON.stringify(requests, null, 2)}`,
+        text: `✅ Captured ${requests.length} AJAX/XHR requests and ${responses.length} responses\n\n${JSON.stringify(combined, null, 2)}${requests.length === 0 ? '\n\n💡 Tip: Page may not have AJAX requests, or use {"forceReload": true} to capture from page load' : ''}`,
       }],
     };
   }, 'Failed to extract AJAX requests');
@@ -328,47 +409,114 @@ export async function handleNetworkRecorder(args: any) {
     const page = getCurrentPage();
     const duration = args.duration || 20000;
     const filterTypes = args.filterTypes || ['video', 'xhr', 'fetch', 'media'];
+    const navigateUrl = args.navigateUrl; // Optional: Navigate to URL to capture from start
+    const clearCache = args.clearCache || false;
+    const forceReload = args.forceReload !== false; // Force reload by default to capture events
     
     const networkActivity: any[] = [];
     
     const requestHandler = (request: any) => {
-      const resourceType = request.resourceType();
-      if (filterTypes.includes('all') || filterTypes.includes(resourceType)) {
-        networkActivity.push({
-          type: 'request',
-          url: request.url(),
-          method: request.method(),
-          resourceType,
-          timestamp: new Date().toISOString(),
-        });
+      try {
+        const resourceType = request.resourceType();
+        if (filterTypes.includes('all') || filterTypes.includes(resourceType)) {
+          networkActivity.push({
+            type: 'request',
+            url: request.url(),
+            method: request.method(),
+            resourceType,
+            headers: request.headers(),
+            postData: request.postData(),
+            timestamp: new Date().toISOString(),
+          });
+        }
+      } catch (e) {
+        // Ignore request errors
       }
     };
     
-    const responseHandler = (response: any) => {
-      const resourceType = response.request().resourceType();
-      if (filterTypes.includes('all') || filterTypes.includes(resourceType)) {
-        networkActivity.push({
-          type: 'response',
-          url: response.url(),
-          status: response.status(),
-          resourceType,
-          timestamp: new Date().toISOString(),
-        });
+    const responseHandler = async (response: any) => {
+      try {
+        const resourceType = response.request().resourceType();
+        if (filterTypes.includes('all') || filterTypes.includes(resourceType)) {
+          const headers = response.headers();
+          networkActivity.push({
+            type: 'response',
+            url: response.url(),
+            status: response.status(),
+            statusText: response.statusText(),
+            resourceType,
+            contentType: headers['content-type'] || '',
+            contentLength: headers['content-length'] || '',
+            timestamp: new Date().toISOString(),
+          });
+        }
+      } catch (e) {
+        // Ignore response errors
       }
     };
     
+    // Start monitoring FIRST
     page.on('request', requestHandler);
     page.on('response', responseHandler);
+    
+    // Optional: Clear cache for fresh load
+    if (clearCache) {
+      try {
+        const client = await page.target().createCDPSession();
+        await client.send('Network.clearBrowserCache');
+        await client.detach();
+      } catch {}
+    }
+    
+    // Optional: Navigate to URL (capturing from start)
+    if (navigateUrl) {
+      try {
+        await page.goto(navigateUrl, { waitUntil: 'networkidle2', timeout: 30000 });
+      } catch (e) {
+        // Continue monitoring even if navigation fails
+      }
+    } else if (forceReload && !navigateUrl) {
+      // Force reload current page to capture network events
+      const currentUrl = page.url();
+      try {
+        await page.reload({ waitUntil: 'networkidle2', timeout: 30000 });
+      } catch (e) {
+        // Continue monitoring even if reload fails
+      }
+    }
+    
+    // Also trigger any lazy-loaded content by scrolling
+    try {
+      await page.evaluate(() => {
+        window.scrollTo(0, document.body.scrollHeight / 2);
+        window.scrollTo(0, document.body.scrollHeight);
+        window.scrollTo(0, 0);
+      });
+    } catch {}
     
     await sleep(duration);
     
     page.off('request', requestHandler);
     page.off('response', responseHandler);
 
+    const summary = {
+      totalEvents: networkActivity.length,
+      requests: networkActivity.filter(e => e.type === 'request').length,
+      responses: networkActivity.filter(e => e.type === 'response').length,
+      byResourceType: networkActivity.reduce((acc: any, e) => {
+        acc[e.resourceType] = (acc[e.resourceType] || 0) + 1;
+        return acc;
+      }, {})
+    };
+    
+    const tipMessage = networkActivity.length === 0 ? 
+      `\n\n💡 Tips:\n  • Page was already loaded. Use {"navigateUrl": "https://example.com"} to capture from start\n  • Use {"filterTypes": ["all"]} to capture all network activity\n  • Use {"clearCache": true} for fresh page load` :
+      '';
+
     return {
       content: [{
         type: 'text' as const,
-        text: `✅ Recorded ${networkActivity.length} network events\n\n${JSON.stringify(networkActivity.slice(0, 50), null, 2)}${networkActivity.length > 50 ? '\n\n... (showing first 50)' : ''}`,
+        text: `✅ Recorded ${networkActivity.length} network events\n\n📊 Summary:\n${JSON.stringify(summary, null, 2)}\n\nEvents (first 50):\n${JSON.stringify(networkActivity.slice(0, 50), null, 2)}${networkActivity.length > 50 ? '\n\n... (showing first 50 of ' + networkActivity.length + ')' : ''}${tipMessage}`,
       }],
     };
   }, 'Failed to record network');
@@ -462,14 +610,62 @@ export async function handleRegexPatternFinder(args: any) {
     
     const matches = await page.evaluate(({ pattern, flags }) => {
       const regex = new RegExp(pattern, flags);
-      const html = document.body.innerHTML;
-      const results = Array.from(html.matchAll(regex));
+      const results: any[] = [];
       
-      return results.slice(0, 100).map((match, idx) => ({
-        index: idx,
-        match: match[0],
-        groups: match.slice(1),
-      }));
+      // 1. Search in body HTML
+      const html = document.body.innerHTML;
+      Array.from(html.matchAll(regex)).forEach(match => {
+        results.push({
+          source: 'html',
+          match: match[0],
+          groups: match.slice(1),
+          index: match.index
+        });
+      });
+      
+      // 2. Search in script tags
+      document.querySelectorAll('script').forEach((script: any, scriptIdx) => {
+        const content = script.textContent || '';
+        Array.from(content.matchAll(regex)).forEach(match => {
+          results.push({
+            source: `script[${scriptIdx}]`,
+            match: match[0],
+            groups: match.slice(1),
+            index: match.index,
+            scriptSrc: script.src || 'inline'
+          });
+        });
+      });
+      
+      // 3. Search in element attributes (href, src, data-* etc.)
+      document.querySelectorAll('*').forEach((el: any) => {
+        ['href', 'src', 'data-video', 'data-src', 'data-url'].forEach(attr => {
+          const value = el.getAttribute(attr);
+          if (value) {
+            Array.from(value.matchAll(regex)).forEach(match => {
+              results.push({
+                source: `attribute[${attr}]`,
+                match: match[0],
+                groups: match.slice(1),
+                element: el.tagName.toLowerCase(),
+                attribute: attr,
+                fullValue: value
+              });
+            });
+          }
+        });
+      });
+      
+      // Dedupe and limit
+      const seen = new Set();
+      const unique = results.filter(r => {
+        const key = `${r.source}:${r.match}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      
+      return unique.slice(0, 100);
     }, { pattern, flags });
 
     return {
@@ -622,11 +818,16 @@ export async function handleVideoSourceExtractor(args: any) {
     const page = getCurrentPage();
     const captureDuration = typeof args.captureDuration === 'number' ? args.captureDuration : 6000;
 
-    // DOM video elements
-    const videos = await page.evaluate(() => {
-      const videoElements = document.querySelectorAll('video');
-      const results: any[] = [];
+    // DOM video elements + iframe detection
+    const videoData = await page.evaluate(() => {
+      const results: any = {
+        videos: [],
+        iframes: [],
+        embeddedPlayers: []
+      };
       
+      // 1. Direct video elements
+      const videoElements = document.querySelectorAll('video');
       videoElements.forEach((video: any, idx) => {
         const sources: any[] = [];
         
@@ -643,14 +844,51 @@ export async function handleVideoSourceExtractor(args: any) {
           });
         });
         
-        results.push({
+        results.videos.push({
           index: idx,
           poster: video.poster || '',
           sources,
           duration: video.duration || 0,
           width: video.videoWidth || video.width || 0,
           height: video.videoHeight || video.height || 0,
+          type: 'direct_video'
         });
+      });
+      
+      // 2. Iframe video sources
+      const iframes = document.querySelectorAll('iframe');
+      iframes.forEach((iframe: any, idx) => {
+        if (iframe.src) {
+          results.iframes.push({
+            index: idx,
+            src: iframe.src,
+            title: iframe.title || '',
+            id: iframe.id,
+            className: iframe.className,
+            width: iframe.width,
+            height: iframe.height,
+            type: 'iframe_video'
+          });
+        }
+      });
+      
+      // 3. Video players with iframes inside
+      const playerContainers = document.querySelectorAll('[class*="player"], [id*="player"], [data-player]');
+      playerContainers.forEach((container: any, idx) => {
+        const iframe = container.querySelector('iframe');
+        const video = container.querySelector('video');
+        
+        if (iframe || video) {
+          results.embeddedPlayers.push({
+            index: idx,
+            hasVideo: !!video,
+            hasIframe: !!iframe,
+            videoSrc: video ? (video.src || video.currentSrc) : null,
+            iframeSrc: iframe ? iframe.src : null,
+            containerId: container.id,
+            containerClass: container.className
+          });
+        }
       });
       
       return results;
@@ -687,12 +925,23 @@ export async function handleVideoSourceExtractor(args: any) {
     await sleep(captureDuration);
     page.off('response', respHandler);
 
-    const result = { videos, manifests, segments };
+    const result = { 
+      ...videoData,
+      manifests, 
+      segments,
+      summary: {
+        totalVideos: videoData.videos.length,
+        totalIframes: videoData.iframes.length,
+        totalEmbeddedPlayers: videoData.embeddedPlayers.length,
+        totalManifests: manifests.length,
+        totalSegments: segments.length
+      }
+    };
 
     return {
       content: [{
         type: 'text' as const,
-        text: `✅ Extracted video sources\n\n${JSON.stringify(result, null, 2)}`,
+        text: `✅ Extracted video sources\n\n📊 Summary:\n  • Direct <video> elements: ${videoData.videos.length}\n  • Iframe sources: ${videoData.iframes.length}\n  • Embedded players: ${videoData.embeddedPlayers.length}\n  • Manifests: ${manifests.length}\n  • Segments: ${segments.length}\n\n${JSON.stringify(result, null, 2)}`,
       }],
     };
   }, 'Failed to extract video sources');
@@ -723,19 +972,71 @@ export async function handleVideoPlayerExtractor(args: any) {
       
       playerSelectors.forEach(selector => {
         document.querySelectorAll(selector).forEach((el: any, idx) => {
-          const videoEl = el.querySelector('video') || el.querySelector('iframe');
-          if (videoEl) {
-            results.push({
+          const videoEl = el.querySelector('video');
+          const iframeEl = el.querySelector('iframe');
+          
+          if (videoEl || iframeEl) {
+            const playerInfo: any = {
               selector,
               index: idx,
-              hasVideo: !!el.querySelector('video'),
-              hasIframe: !!el.querySelector('iframe'),
-              src: videoEl.src || videoEl.currentSrc || '',
+              hasVideo: !!videoEl,
+              hasIframe: !!iframeEl,
               className: el.className,
               id: el.id,
-            });
+            };
+            
+            // Video element info
+            if (videoEl) {
+              playerInfo.videoSrc = videoEl.src || videoEl.currentSrc || '';
+              playerInfo.videoPoster = videoEl.poster || '';
+              playerInfo.videoType = 'direct';
+            }
+            
+            // Iframe element info
+            if (iframeEl) {
+              playerInfo.iframeSrc = iframeEl.src || '';
+              playerInfo.iframeTitle = iframeEl.title || '';
+              playerInfo.iframeAllow = iframeEl.getAttribute('allow') || '';
+              playerInfo.videoType = videoEl ? 'hybrid' : 'iframe';
+            }
+            
+            results.push(playerInfo);
           }
         });
+      });
+      
+      // Also check standalone iframes (ALL iframes that might be video players)
+      document.querySelectorAll('iframe').forEach((iframe: any, idx) => {
+        const src = (iframe.src || '').toLowerCase();
+        
+        // Check if iframe is likely a video player
+        const isLikelyVideoIframe = src.includes('embed') || 
+                                    src.includes('player') || 
+                                    src.includes('video') ||
+                                    src.includes('stream') ||
+                                    iframe.allow?.includes('autoplay') ||
+                                    iframe.allow?.includes('encrypted-media');
+        
+        // Include ALL iframes if they have src and are likely video players
+        if (iframe.src && isLikelyVideoIframe) {
+          // Check if already added
+          const alreadyAdded = results.some(r => r.iframeSrc === iframe.src);
+          if (!alreadyAdded) {
+            results.push({
+              selector: iframe.id ? `#${iframe.id}` : `iframe:nth-of-type(${idx + 1})`,
+              index: idx,
+              hasVideo: false,
+              hasIframe: true,
+              iframeSrc: iframe.src,
+              iframeTitle: iframe.title || '',
+              iframeAllow: iframe.getAttribute('allow') || '',
+              className: iframe.className,
+              id: iframe.id,
+              videoType: 'standalone_iframe',
+              isVisible: iframe.offsetWidth > 0 && iframe.offsetHeight > 0
+            });
+          }
+        }
       });
       
       return results;
@@ -767,6 +1068,7 @@ export async function handleVideoPlayerHosterFinder(args: any) {
       const iframes = document.querySelectorAll('iframe');
       
       const platforms: any = {
+        // Popular platforms
         'youtube.com': 'YouTube',
         'youtu.be': 'YouTube',
         'vimeo.com': 'Vimeo',
@@ -775,6 +1077,24 @@ export async function handleVideoPlayerHosterFinder(args: any) {
         'twitter.com': 'Twitter',
         'twitch.tv': 'Twitch',
         'streamable.com': 'Streamable',
+        
+        // Custom video hosting platforms
+        'gdmirrorbot': 'GD Mirror Bot',
+        'multimoviesshg.com': 'MultiMovies StreamHG',
+        'streamhg.com': 'StreamHG',
+        'techinmind.space': 'Tech In Mind Player',
+        'premilkyway.com': 'Premium Milky Way CDN',
+        'p2pplay.pro': 'P2P Play',
+        'rpmhub.site': 'RPM Share',
+        'uns.bio': 'UpnShare',
+        'smoothpre.com': 'EarnVids/SmoothPre',
+        'doodstream.com': 'DoodStream',
+        'streamtape.com': 'StreamTape',
+        'mixdrop.co': 'MixDrop',
+        'upstream.to': 'UpStream',
+        'vidcloud': 'VidCloud',
+        'fembed': 'Fembed',
+        'mp4upload': 'MP4Upload',
       };
       
       iframes.forEach((iframe: any, idx) => {
