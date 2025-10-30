@@ -3,7 +3,7 @@ import { withErrorHandling } from '../system-utils.js';
 import { validateWorkflow, recordExecution, workflowValidator } from '../workflow-validation.js';
 import { selfHealingLocators } from '../self-healing-locators.js';
 import { randomScroll } from '../stealth-actions.js';
-import { ClickArgs, TypeArgs, SolveCaptchaArgs } from '../tool-definitions.js';
+import { ClickArgs, TypeArgs, PressKeyArgs, SolveCaptchaArgs } from '../tool-definitions.js';
 import { setTimeout as sleep } from 'node:timers/promises';
 
 // Click handler
@@ -202,6 +202,79 @@ export async function handleType(args: TypeArgs) {
         }
       }
     }, 'Failed to type text');
+  });
+}
+
+// Press key handler
+export async function handlePressKey(args: PressKeyArgs) {
+  return await withWorkflowValidation('press_key', args, async () => {
+    return await withErrorHandling(async () => {
+      const pageInstance = getPageInstance();
+      if (!pageInstance) {
+        throw new Error('Browser not initialized. Call browser_init first.');
+      }
+
+      const { key, selector, modifiers = [] } = args;
+
+      try {
+        // If selector is provided, focus on element first
+        if (selector) {
+          const elementResult = await selfHealingLocators.findElementWithFallbacks(
+            pageInstance,
+            selector
+          );
+
+          if (elementResult) {
+            await elementResult.element.focus();
+          } else {
+            console.warn(`Element not found: ${selector}, pressing key on current focus`);
+          }
+        }
+
+        // Press key with modifiers if specified
+        if (modifiers.length > 0) {
+          // Hold down modifiers
+          for (const modifier of modifiers) {
+            await pageInstance.keyboard.down(modifier);
+          }
+          
+          // Press the main key
+          await pageInstance.keyboard.press(key);
+          
+          // Release modifiers
+          for (const modifier of modifiers.reverse()) {
+            await pageInstance.keyboard.up(modifier);
+          }
+          
+          const modifierStr = modifiers.join('+');
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Pressed key combination: ${modifierStr}+${key}${selector ? ` on element: ${selector}` : ''}\n\n✅ Keyboard interaction completed successfully`,
+              },
+            ],
+          };
+        } else {
+          // Simple key press without modifiers
+          await pageInstance.keyboard.press(key);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Pressed key: ${key}${selector ? ` on element: ${selector}` : ''}\n\n✅ Keyboard interaction completed successfully`,
+              },
+            ],
+          };
+        }
+      } catch (pressError) {
+        throw new Error(
+          `Failed to press key: ${key}. ` +
+          `Error: ${pressError instanceof Error ? pressError.message : String(pressError)}`
+        );
+      }
+    }, 'Failed to press key');
   });
 }
 

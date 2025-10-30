@@ -187,6 +187,33 @@ export const TOOLS = [
     },
   },
   {
+    name: 'press_key',
+    description: 'Press keyboard keys (Enter, Tab, Escape, Arrow keys, etc.) - Useful for form submission, navigation, and keyboard shortcuts',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        key: {
+          type: 'string',
+          description: 'Key to press. Common keys: Enter, Tab, Escape, Backspace, Delete, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Space, PageUp, PageDown, Home, End, F1-F12',
+          enum: ['Enter', 'Tab', 'Escape', 'Backspace', 'Delete', 'Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End', 'F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12'],
+        },
+        selector: {
+          type: 'string',
+          description: 'Optional: CSS selector of element to focus before pressing key',
+        },
+        modifiers: {
+          type: 'array',
+          description: 'Optional: Modifier keys to hold (Ctrl, Shift, Alt, Meta)',
+          items: {
+            type: 'string',
+            enum: ['Control', 'Shift', 'Alt', 'Meta'],
+          },
+        },
+      },
+      required: ['key'],
+    },
+  },
+  {
     name: 'wait',
     description: 'Wait for various conditions',
     inputSchema: {
@@ -1495,6 +1522,7 @@ export const TOOL_NAMES = {
   GET_CONTENT: 'get_content',
   CLICK: 'click',
   TYPE: 'type',
+  PRESS_KEY: 'press_key',
   WAIT: 'wait',
   BROWSER_CLOSE: 'browser_close',
   SOLVE_CAPTCHA: 'solve_captcha',
@@ -1602,6 +1630,12 @@ export interface TypeArgs {
   delay?: number;
 }
 
+export interface PressKeyArgs {
+  key: string;
+  selector?: string;
+  modifiers?: Array<'Control' | 'Shift' | 'Alt' | 'Meta'>;
+}
+
 export interface WaitArgs {
   type: 'selector' | 'navigation' | 'timeout';
   value: string;
@@ -1637,6 +1671,7 @@ export type ToolArgs =
   | GetContentArgs
   | ClickArgs
   | TypeArgs
+  | PressKeyArgs
   | WaitArgs
   | SolveCaptchaArgs
   | FindSelectorArgs
@@ -1647,6 +1682,6 @@ export type ToolArgs =
 export const TOOL_CATEGORIES = {
   BROWSER_MANAGEMENT: [TOOL_NAMES.BROWSER_INIT, TOOL_NAMES.BROWSER_CLOSE],
   NAVIGATION: [TOOL_NAMES.NAVIGATE, TOOL_NAMES.WAIT],
-  INTERACTION: [TOOL_NAMES.CLICK, TOOL_NAMES.TYPE, TOOL_NAMES.SOLVE_CAPTCHA, TOOL_NAMES.RANDOM_SCROLL],
+  INTERACTION: [TOOL_NAMES.CLICK, TOOL_NAMES.TYPE, TOOL_NAMES.PRESS_KEY, TOOL_NAMES.SOLVE_CAPTCHA, TOOL_NAMES.RANDOM_SCROLL],
   CONTENT: [TOOL_NAMES.GET_CONTENT, TOOL_NAMES.FIND_SELECTOR, TOOL_NAMES.SAVE_CONTENT_AS_MARKDOWN],
 } as const;

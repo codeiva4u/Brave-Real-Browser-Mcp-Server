@@ -7,13 +7,13 @@ import {
   InitializeRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 
-import { TOOLS, SERVER_INFO, CAPABILITIES, TOOL_NAMES, NavigateArgs, ClickArgs, TypeArgs, WaitArgs, SolveCaptchaArgs, FindSelectorArgs, SaveContentAsMarkdownArgs } from './tool-definitions.js';
+import { TOOLS, SERVER_INFO, CAPABILITIES, TOOL_NAMES, NavigateArgs, ClickArgs, TypeArgs, PressKeyArgs, WaitArgs, SolveCaptchaArgs, FindSelectorArgs, SaveContentAsMarkdownArgs } from './tool-definitions.js';
 import { validateMCPResponse } from './mcp-response-validator.js';
 
 // Import handlers
 import { handleBrowserInit, handleBrowserClose } from './handlers/browser-handlers.js';
 import { handleNavigate, handleWait } from './handlers/navigation-handlers.js';
-import { handleClick, handleType, handleSolveCaptcha, handleRandomScroll } from './handlers/interaction-handlers.js';
+import { handleClick, handleType, handlePressKey, handleSolveCaptcha, handleRandomScroll } from './handlers/interaction-handlers.js';
 import { handleGetContent, handleFindSelector } from './handlers/content-handlers.js';
 import { handleSaveContentAsMarkdown } from './handlers/file-handlers.js';
 import { 
@@ -86,6 +86,10 @@ export async function createMcpServer(): Promise<Server> {
 
         case TOOL_NAMES.TYPE:
           result = await handleType(args as unknown as TypeArgs);
+          break;
+
+        case TOOL_NAMES.PRESS_KEY:
+          result = await handlePressKey(args as unknown as PressKeyArgs);
           break;
 
         case TOOL_NAMES.WAIT:
