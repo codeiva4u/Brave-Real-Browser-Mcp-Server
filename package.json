@@ -5,6 +5,7 @@
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
+    "preinstall": "npm view brave-real-puppeteer-core version > .latest-version 2>&1 || echo 'Version check skipped'",
     "postinstall": "node scripts/patch-puppeteer-screen-recorder.cjs && node scripts/update-to-latest.cjs || echo 'Auto-update skipped'",
     "clean": "rimraf dist",
     "clean:cache": "npm cache clean --force",
@@ -133,12 +134,33 @@
     "linux",
     "win32"
   ],
+  "resolutions": {
+    "puppeteer": "npm:brave-real-puppeteer-core@latest",
+    "puppeteer-core": "npm:brave-real-puppeteer-core@latest",
+    "**/puppeteer": "npm:brave-real-puppeteer-core@latest",
+    "**/puppeteer-core": "npm:brave-real-puppeteer-core@latest"
+  },
   "overrides": {
     "puppeteer": "npm:brave-real-puppeteer-core@latest",
     "puppeteer-core": "npm:brave-real-puppeteer-core@latest",
     "puppeteer-screen-recorder": {
       "puppeteer": "npm:brave-real-puppeteer-core@latest",
-      "fluent-ffmpeg": "latest"
+      "puppeteer-core": "npm:brave-real-puppeteer-core@latest",
+      "fluent-ffmpeg": "latest",
+      "glob": "latest",
+      "rimraf": "latest"
+    },
+    "brave-real-browser": {
+      "puppeteer": "npm:brave-real-puppeteer-core@latest",
+      "puppeteer-core": "npm:brave-real-puppeteer-core@latest"
+    },
+    "tesseract.js": {
+      "puppeteer": "npm:brave-real-puppeteer-core@latest",
+      "puppeteer-core": "npm:brave-real-puppeteer-core@latest"
+    },
+    "*": {
+      "puppeteer": "npm:brave-real-puppeteer-core@latest",
+      "puppeteer-core": "npm:brave-real-puppeteer-core@latest"
     },
     "fluent-ffmpeg": "latest",
     "glob": "latest",

@@ -35,17 +35,18 @@ try {
   // Check if patch is needed
   if (packageJson.peerDependencies && packageJson.peerDependencies.puppeteer) {
     const currentValue = packageJson.peerDependencies.puppeteer;
+    const targetValue = 'npm:brave-real-puppeteer-core@latest';
     
-    // Only patch if it's the old version
-    if (currentValue === '19.0.0' || !currentValue.includes('brave-real-puppeteer-core')) {
-      // Update to brave-real-puppeteer-core
-      packageJson.peerDependencies.puppeteer = 'npm:brave-real-puppeteer-core@>=24.0.0';
+    // Always update to ensure it's using @latest tag (not @>=24.0.0)
+    if (currentValue !== targetValue) {
+      // Update to brave-real-puppeteer-core with latest tag
+      packageJson.peerDependencies.puppeteer = targetValue;
       
       // Write back to file
       fs.writeFileSync(packagePath, JSON.stringify(packageJson, null, 2), 'utf8');
       
       console.log('   ✓ puppeteer-screen-recorder patched successfully');
-      console.log('   ✓ peerDependencies.puppeteer: npm:brave-real-puppeteer-core@>=24.0.0');
+      console.log('   ✓ peerDependencies.puppeteer: npm:brave-real-puppeteer-core@latest');
     } else {
       console.log('   ✓ puppeteer-screen-recorder already patched');
     }

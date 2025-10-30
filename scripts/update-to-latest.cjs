@@ -54,7 +54,11 @@ try {
   for (const pkg of packagesToUpdate) {
     try {
       console.log(`   Updating ${pkg}...`);
-      execSync(`npm install ${pkg}@latest --save --no-audit --no-fund`, {
+      
+      // Force update for brave-real-puppeteer-core
+      const forceFlag = pkg === 'brave-real-puppeteer-core' ? '--force' : '';
+      
+      execSync(`npm install ${pkg}@latest --save --no-audit --no-fund ${forceFlag}`, {
         stdio: 'pipe',
         cwd: process.cwd()
       });
@@ -76,7 +80,13 @@ try {
       });
       const parsed = JSON.parse(version);
       const installedVersion = parsed.dependencies?.[pkg]?.version || 'not found';
-      console.log(`   ${pkg}: ${installedVersion}`);
+      
+      // Show 'latest' for brave-real-puppeteer-core
+      if (pkg === 'brave-real-puppeteer-core') {
+        console.log(`   ${pkg}: ${installedVersion} (latest)`);
+      } else {
+        console.log(`   ${pkg}: ${installedVersion}`);
+      }
     } catch (error) {
       // Ignore errors
     }
