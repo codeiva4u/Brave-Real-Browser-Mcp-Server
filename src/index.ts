@@ -1,14 +1,6 @@
 #!/usr/bin/env node
 
-// Debug logging setup - Log process start
-console.error(
-  `🔍 [DEBUG] Process starting - PID: ${process.pid}, Node: ${process.version}, Platform: ${process.platform}`,
-);
-console.error(`🔍 [DEBUG] Working directory: ${process.cwd()}`);
-console.error(`🔍 [DEBUG] Command args: ${process.argv.join(" ")}`);
-
 // Universal AI IDE Adapter - Auto-detect and support all AI IDEs
-console.error("🔍 [DEBUG] Loading Universal IDE Adapter...");
 import {
   UniversalIDEAdapter,
   AIIDEType,
@@ -25,10 +17,7 @@ import {
   InitializeRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 
-console.error("🔍 [DEBUG] MCP SDK imports completed successfully");
-
 // Import extracted modules
-console.error("🔍 [DEBUG] Loading tool definitions...");
 import {
   TOOLS,
   SERVER_INFO,
@@ -42,13 +31,9 @@ import {
   FindSelectorArgs,
   SaveContentAsMarkdownArgs,
 } from "./tool-definitions.js";
-console.error("🔍 [DEBUG] Universal IDE Adapter loaded successfully");
-console.error("🔍 [DEBUG] Loading system utils...");
 import { withErrorHandling } from "./system-utils.js";
 import { validateMCPResponse } from "./mcp-response-validator.js";
-console.error("🔍 [DEBUG] Loading browser manager...");
 import { closeBrowser, forceKillAllBraveProcesses } from "./browser-manager.js";
-console.error("🔍 [DEBUG] Loading core infrastructure...");
 import {
   setupProcessCleanup,
   MCP_SERVER_CONFIG,
@@ -58,11 +43,10 @@ import {
 const universalAdapter = new UniversalIDEAdapter({
   enableAutoDetection: true,
   fallbackToHttp: true,
-  logDetectionDetails: true,
+  logDetectionDetails: false,
 });
 
 // Import handlers
-console.error("🔍 [DEBUG] Loading handlers...");
 import {
   handleBrowserInit,
   handleBrowserClose,
@@ -224,73 +208,35 @@ import {
   handleAdProtectionDetector,
 } from "./handlers/advanced-extraction-handlers.js";
 
-console.error("🔍 [DEBUG] All modules loaded successfully");
-console.error(`🔍 [DEBUG] Server info: ${JSON.stringify(SERVER_INFO)}`);
-console.error(`🔍 [DEBUG] Available tools: ${TOOLS.length} tools loaded`);
-
 // Initialize MCP server
-console.error("🔍 [DEBUG] Creating MCP server instance...");
 const server = new Server(SERVER_INFO, { capabilities: CAPABILITIES });
-console.error("🔍 [DEBUG] MCP server instance created successfully");
 
-// Register initialize handler (CRITICAL - missing handler can cause crash)
-console.error("🔍 [DEBUG] Registering initialize handler...");
+// Register initialize handler
 server.setRequestHandler(InitializeRequestSchema, async (request) => {
-  console.error(
-    `🔍 [DEBUG] Initialize request received: ${JSON.stringify(request)}`,
-  );
-
-  // Use the client's protocol version to ensure compatibility
   const clientProtocolVersion = request.params.protocolVersion;
-  console.error(`🔍 [DEBUG] Client protocol version: ${clientProtocolVersion}`);
-
-  const response = {
-    protocolVersion: clientProtocolVersion, // Match client version for compatibility
+  return {
+    protocolVersion: clientProtocolVersion,
     capabilities: CAPABILITIES,
     serverInfo: SERVER_INFO,
   };
-  console.error(
-    `🔍 [DEBUG] Sending initialize response: ${JSON.stringify(response)}`,
-  );
-
-  // Add a small delay to see if there are any immediate errors after response
-  setTimeout(() => {
-    console.error(
-      `🔍 [DEBUG] 1 second after initialize response - server still alive`,
-    );
-  }, 1000);
-
-  setTimeout(() => {
-    console.error(
-      `🔍 [DEBUG] 5 seconds after initialize response - server still alive`,
-    );
-  }, 5000);
-
-  return response;
 });
 
 // Register tool handlers
-console.error("🔍 [DEBUG] Registering tools handler...");
 server.setRequestHandler(ListToolsRequestSchema, async () => {
-  console.error("🔍 [DEBUG] Tools list requested");
   return { tools: TOOLS };
 });
 
-// Register resource handlers (placeholder)
-console.error("🔍 [DEBUG] Registering resources handler...");
+// Register resource handlers
 server.setRequestHandler(ListResourcesRequestSchema, async () => {
-  console.error("🔍 [DEBUG] Resources list requested");
   return { resources: [] };
 });
 
-// Register prompt handlers (placeholder)
-console.error("🔍 [DEBUG] Registering prompts handler...");
+// Register prompt handlers
 server.setRequestHandler(ListPromptsRequestSchema, async () => {
-  console.error("🔍 [DEBUG] Prompts list requested");
   return { prompts: [] };
 });
 
-// Tool execution function - exported for use in transports
+// Tool execution function
 export async function executeToolByName(name: string, args: any): Promise<any> {
   try {
     let result: any;
@@ -758,13 +704,10 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
         throw new Error(`Unknown tool: ${name}`);
     }
 
-    // Validate MCP response format universally
     return validateMCPResponse(result, name) as any;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error(`Tool ${name} failed:`, errorMessage);
 
-    // For workflow validation errors, throw them so MCP SDK handles them properly
     if (
       errorMessage.includes("cannot be executed in current state") ||
       errorMessage.includes("Cannot search for selectors") ||
@@ -773,7 +716,6 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
       throw error;
     }
 
-    // For other errors, return formatted response
     return {
       content: [
         {
@@ -787,34 +729,23 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
 }
 
 // Main tool call handler
-console.error("🔍 [DEBUG] Registering tool call handler...");
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
-  console.error(
-    `🔍 [DEBUG] Tool call received: ${name} with args: ${JSON.stringify(args)}`,
-  );
-
   return await executeToolByName(name, args);
 });
 
-// Main function - now using multi-protocol launcher
+// Main function
 import { main as launcherMain } from "./launcher.js";
 
 async function main(): Promise<void> {
-  // Check if user wants multi-protocol mode
   const hasProtocolArg = process.argv.some(
     (arg) =>
       arg === "--mode" || arg === "-m" || arg === "--http" || arg === "--lsp",
   );
 
   if (hasProtocolArg) {
-    // Use multi-protocol launcher
     await launcherMain();
   } else {
-    // Default: MCP mode (backward compatibility)
-    console.error("🔍 [DEBUG] Starting in MCP mode (default)...");
-    console.error("💡 Tip: Use --mode http or --mode lsp for other protocols");
-
     setupProcessCleanup(async () => {
       await closeBrowser();
       await forceKillAllBraveProcesses();
@@ -824,88 +755,36 @@ async function main(): Promise<void> {
 
     await withErrorHandling(async () => {
       await server.connect(transport);
-      console.error("🚀 Brave Real Browser MCP Server started successfully");
-      console.error("📋 Available tools:", TOOLS.map((t) => t.name).join(", "));
     }, "Failed to start MCP server");
   }
 }
 
-// Enhanced error handling with debug info
-console.error("🔍 [DEBUG] Setting up error handlers...");
-
+// Error handling
 process.on("uncaughtException", (error) => {
-  console.error(`🔍 [DEBUG] Uncaught exception at ${new Date().toISOString()}`);
   console.error("❌ Uncaught exception:", error);
-  console.error(`🔍 [DEBUG] Stack trace:`, error.stack);
   process.exit(1);
 });
 
-process.on("unhandledRejection", (reason, promise) => {
-  console.error(
-    `🔍 [DEBUG] Unhandled rejection at ${new Date().toISOString()}`,
-  );
+process.on("unhandledRejection", (reason) => {
   console.error("❌ Unhandled rejection:", reason);
-  console.error(`🔍 [DEBUG] Promise:`, promise);
   process.exit(1);
 });
-
-// Process lifecycle debugging
-process.on("exit", (code) => {
-  console.error(
-    `🔍 [DEBUG] Process exiting with code: ${code} at ${new Date().toISOString()}`,
-  );
-});
-
-process.on("beforeExit", (code) => {
-  console.error(
-    `🔍 [DEBUG] Before exit event with code: ${code} at ${new Date().toISOString()}`,
-  );
-});
-
-process.on("SIGTERM", () => {
-  console.error(`🔍 [DEBUG] SIGTERM received at ${new Date().toISOString()}`);
-});
-
-process.on("SIGINT", () => {
-  console.error(`🔍 [DEBUG] SIGINT received at ${new Date().toISOString()}`);
-});
-
-console.error("🔍 [DEBUG] All error handlers registered");
 
 // Start the server
-console.error("🔍 [DEBUG] Checking if module is main...");
-console.error(`🔍 [DEBUG] import.meta.url: ${import.meta.url}`);
-console.error(`🔍 [DEBUG] process.argv[1]: ${process.argv[1]}`);
-console.error(`🔍 [DEBUG] process.argv[0]: ${process.argv[0]}`);
-
-// Enhanced main module detection for npx compatibility
 const isMain =
   import.meta.url === `file://${process.argv[1]}` ||
   process.argv[1].includes("brave-real-browser-mcp-server") ||
   process.argv[1].endsWith(".bin/brave-real-browser-mcp-server") ||
   process.argv.some((arg) => arg.includes("brave-real-browser-mcp-server"));
 
-console.error(`🔍 [DEBUG] Enhanced main detection result: ${isMain}`);
-
 if (isMain) {
-  console.error("🔍 [DEBUG] Module is main - starting server...");
   main().catch((error) => {
-    console.error(
-      `🔍 [DEBUG] Main function failed at ${new Date().toISOString()}`,
-    );
     console.error("❌ Failed to start server:", error);
-    console.error(`🔍 [DEBUG] Error stack:`, error.stack);
     process.exit(1);
   });
 } else {
-  console.error("🔍 [DEBUG] Module is not main - not starting server");
-  console.error("🔍 [DEBUG] FORCE STARTING - This is likely an npx execution");
   main().catch((error) => {
-    console.error(
-      `🔍 [DEBUG] Forced main function failed at ${new Date().toISOString()}`,
-    );
     console.error("❌ Failed to start server:", error);
-    console.error(`🔍 [DEBUG] Error stack:`, error.stack);
     process.exit(1);
   });
 }
