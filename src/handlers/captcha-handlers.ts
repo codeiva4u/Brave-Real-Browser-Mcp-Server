@@ -3,54 +3,78 @@ import { getBrowserInstance, getPageInstance } from '../browser-manager.js';
 import Tesseract from 'tesseract.js';
 import { sleep } from '../system-utils.js';
 
+import { sleep } from '../system-utils.js';
+
+export interface OCREngineArgs {
+  url?: string;
+  selector?: string;
+  imageUrl?: string;
+  imageBuffer?: string;
+  language?: string;
+}
+
+export interface AudioCaptchaSolverArgs {
+  url?: string;
+  audioSelector?: string;
+  audioUrl?: string;
+  downloadPath?: string;
+}
+
+export interface PuzzleCaptchaHandlerArgs {
+  url?: string;
+  puzzleSelector?: string;
+  sliderSelector?: string;
+  method?: string;
+}
+
 /**
  * OCR Engine - Extract text from captcha images using OCR
  */
-export async function handleOCREngine(args: any): Promise<any> {
+export async function handleOCREngine(args: OCREngineArgs): Promise<any> {
   const { url, selector, imageUrl, imageBuffer, language = 'eng' } = args;
-  
+
   try {
     let imageSource: string | Buffer;
-    
+
     if (imageBuffer) {
       imageSource = Buffer.from(imageBuffer, 'base64');
     } else if (imageUrl) {
       imageSource = imageUrl;
     } else if (selector) {
-      const page = getPageInstance();      if (!page) {        throw new Error('Browser not initialized. Call browser_init first.');      }
-      
+      const page = getPageInstance(); if (!page) { throw new Error('Browser not initialized. Call browser_init first.'); }
+
       if (url && page.url() !== url) {
         await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
       }
-      
+
       // Get image element and take screenshot
       const element = await page.$(selector);
       if (!element) {
         throw new Error(`Element not found: ${selector}`);
       }
-      
+
       const screenshot = await element.screenshot({ encoding: 'base64' });
       imageSource = Buffer.from(screenshot, 'base64');
     } else {
       throw new Error('No image source provided');
     }
-    
+
     // Perform OCR
     const result = await Tesseract.recognize(imageSource, language, {
-      logger: () => {} // Suppress logs
+      logger: () => { } // Suppress logs
     });
-    
+
     // Clean and process text
     const text = result.data.text.trim();
     const confidence = result.data.confidence;
-    
+
     // Extract words with their confidence
     const words = result.data.words.map(word => ({
       text: word.text,
       confidence: word.confidence,
       bbox: word.bbox
     }));
-    
+
     return {
       content: [
         {
@@ -75,38 +99,38 @@ export async function handleOCREngine(args: any): Promise<any> {
 /**
  * Audio Captcha Solver - Handle audio captchas
  */
-export async function handleAudioCaptchaSolver(args: any): Promise<any> {
+export async function handleAudioCaptchaSolver(args: AudioCaptchaSolverArgs): Promise<any> {
   const { url, audioSelector, audioUrl, downloadPath } = args;
-  
+
   try {
-    const page = getPageInstance();    if (!page) {      throw new Error('Browser not initialized. Call browser_init first.');    }
-    
+    const page = getPageInstance(); if (!page) { throw new Error('Browser not initialized. Call browser_init first.'); }
+
     if (url && page.url() !== url) {
       await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
     }
-    
+
     let audioSource = audioUrl;
-    
+
     // If selector provided, extract audio URL
     if (audioSelector && !audioUrl) {
       audioSource = await page.evaluate((sel: string) => {
         const element = document.querySelector(sel) as HTMLAudioElement | HTMLSourceElement;
         if (!element) return null;
-        
+
         if (element.tagName === 'AUDIO') {
           return (element as HTMLAudioElement).src || (element as HTMLAudioElement).currentSrc;
         } else if (element.tagName === 'SOURCE') {
           return (element as HTMLSourceElement).src;
         }
-        
+
         return element.getAttribute('src') || element.getAttribute('data-src');
       }, audioSelector);
     }
-    
+
     if (!audioSource) {
       throw new Error('No audio source found');
     }
-    
+
     // Download audio if path provided
     let downloaded = false;
     if (downloadPath) {
@@ -118,7 +142,7 @@ export async function handleAudioCaptchaSolver(args: any): Promise<any> {
         downloaded = true;
       }
     }
-    
+
     return {
       content: [
         {
@@ -143,29 +167,29 @@ export async function handleAudioCaptchaSolver(args: any): Promise<any> {
 /**
  * Puzzle Captcha Handler - Handle slider and puzzle captchas
  */
-export async function handlePuzzleCaptchaHandler(args: any): Promise<any> {
+export async function handlePuzzleCaptchaHandler(args: PuzzleCaptchaHandlerArgs): Promise<any> {
   const { url, puzzleSelector, sliderSelector, method = 'auto' } = args;
-  
+
   try {
-    const page = getPageInstance();    if (!page) {      throw new Error('Browser not initialized. Call browser_init first.');    }
-    
+    const page = getPageInstance(); if (!page) { throw new Error('Browser not initialized. Call browser_init first.'); }
+
     if (url && page.url() !== url) {
       await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
     }
-    
+
     const result = await page.evaluate(async (puzzleSel: string, sliderSel: string, meth: string) => {
       const puzzleElement = puzzleSel ? document.querySelector(puzzleSel) : null;
       const sliderElement = sliderSel ? document.querySelector(sliderSel) : null;
-      
+
       if (!puzzleElement && !sliderElement) {
         throw new Error('No puzzle or slider element found');
       }
-      
+
       const info: any = {
         puzzleFound: !!puzzleElement,
         sliderFound: !!sliderElement
       };
-      
+
       // Get puzzle dimensions if exists
       if (puzzleElement) {
         const rect = puzzleElement.getBoundingClientRect();
@@ -176,7 +200,7 @@ export async function handlePuzzleCaptchaHandler(args: any): Promise<any> {
           left: rect.left,
           visible: rect.width > 0 && rect.height > 0
         };
-        
+
         // Check for puzzle piece
         const puzzlePiece = puzzleElement.querySelector('.puzzle-piece, [class*="piece"], [class*="puzzle"]');
         if (puzzlePiece) {
@@ -189,7 +213,7 @@ export async function handlePuzzleCaptchaHandler(args: any): Promise<any> {
           };
         }
       }
-      
+
       // Get slider info if exists
       if (sliderElement) {
         const rect = sliderElement.getBoundingClientRect();
@@ -202,10 +226,10 @@ export async function handlePuzzleCaptchaHandler(args: any): Promise<any> {
           tagName: sliderElement.tagName.toLowerCase()
         };
       }
-      
+
       return info;
     }, puzzleSelector || '', sliderSelector || '', method);
-    
+
     // If auto method, attempt to solve
     if (method === 'auto' && sliderSelector) {
       try {
@@ -217,12 +241,12 @@ export async function handlePuzzleCaptchaHandler(args: any): Promise<any> {
             // Real puzzle solving would need image analysis
             await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
             await page.mouse.down();
-            
+
             // Move in small increments
             const targetDistance = result.puzzle?.width || 300;
             const steps = 20;
             const stepSize = targetDistance / steps;
-            
+
             for (let i = 0; i < steps; i++) {
               await page.mouse.move(
                 box.x + box.width / 2 + (stepSize * i),
@@ -231,9 +255,9 @@ export async function handlePuzzleCaptchaHandler(args: any): Promise<any> {
               );
               await sleep(50 + Math.random() * 50); // Random delay for human-like behavior
             }
-            
+
             await page.mouse.up();
-            
+
             result.attemptedSolve = true;
             result.method = 'automated_drag';
           }
@@ -242,27 +266,27 @@ export async function handlePuzzleCaptchaHandler(args: any): Promise<any> {
         result.solveError = solveError.message;
       }
     }
-    
+
     let summary = `Puzzle Captcha Analysis:\n- Puzzle Found: ${result.puzzleFound ? 'Yes' : 'No'}\n- Slider Found: ${result.sliderFound ? 'Yes' : 'No'}`;
-    
+
     if (result.puzzle) {
       summary += `\n\nPuzzle Details:\n- Dimensions: ${result.puzzle.width}x${result.puzzle.height}\n- Position: (${result.puzzle.left}, ${result.puzzle.top})\n- Visible: ${result.puzzle.visible ? 'Yes' : 'No'}`;
     }
-    
+
     if (result.puzzlePiece) {
       summary += `\n\nPuzzle Piece:\n- Dimensions: ${result.puzzlePiece.width}x${result.puzzlePiece.height}\n- Position: (${result.puzzlePiece.left}, ${result.puzzlePiece.top})`;
     }
-    
+
     if (result.slider) {
       summary += `\n\nSlider Details:\n- Dimensions: ${result.slider.width}x${result.slider.height}\n- Position: (${result.slider.left}, ${result.slider.top})\n- Visible: ${result.slider.visible ? 'Yes' : 'No'}\n- Tag: ${result.slider.tagName}`;
     }
-    
+
     if (result.attemptedSolve) {
       summary += `\n\nSolve Attempt:\n- Method: ${result.method}\n- Status: ${result.solveError ? 'Failed' : 'Completed'}${result.solveError ? `\n- Error: ${result.solveError}` : ''}`;
     }
-    
+
     summary += `\n\nNote: Advanced puzzle solving requires computer vision libraries (OpenCV, TensorFlow)`;
-    
+
     return {
       content: [
         {

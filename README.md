@@ -557,7 +557,7 @@ Copy and paste this configuration:
 | Tool                    | Description               |
 | ----------------------- | ------------------------- |
 | `progress_tracker`      | Track automation progress |
-| `error_logger`          | Log errors                |
+
 | `success_rate_reporter` | Report success rates      |
 | `data_quality_metrics`  | Data quality metrics      |
 | `performance_monitor`   | Monitor performance       |

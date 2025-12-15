@@ -1199,9 +1199,102 @@ export const TOOLS = [
     description: 'Detect ad-protection mechanisms including ad-block detection, anti-debugger code, popup layers, and hidden elements.',
     inputSchema: {
       type: 'object',
-      properties: {},
+      properties: {
+        url: { type: 'string', description: 'URL of the page to analyze (optional)' },
+        selector: { type: 'string', description: 'CSS selector for content to analyze (optional)' },
+        text: { type: 'string', description: 'Direct text to analyze (optional)' },
+        criteria: { type: 'object', description: 'Visual criteria (visible, color, size, etc.)' },
+      },
     },
   },
+  {
+    name: 'sentiment_analysis',
+    description: 'Analyze the sentiment of text or page content',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        text: { type: 'string', description: 'Text to analyze' },
+        url: { type: 'string', description: 'URL to analyze' },
+        selector: { type: 'string', description: 'Selector to extract text from' }
+      }
+    }
+  },
+  {
+    name: 'summary_generator',
+    description: 'Generate a summary of text or page content',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        text: { type: 'string', description: 'Text to summarize' },
+        url: { type: 'string', description: 'URL to summarize' },
+        selector: { type: 'string', description: 'Selector to extract text from' },
+        maxLength: { type: 'number', description: 'Maximum length of summary' }
+      }
+    }
+  },
+  {
+    name: 'translation_support',
+    description: 'Detect language and translate text',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        text: { type: 'string', description: 'Text to translate' },
+        url: { type: 'string', description: 'URL to translate content from' },
+        targetLanguage: { type: 'string', description: 'Target language code (e.g. "es", "fr")' }
+      }
+    }
+  },
+  // Phase 3: Media & Video Tools
+  {
+    name: 'video_source_extractor',
+    description: 'Extract raw video sources from video tags and sources',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        url: { type: 'string' }
+      }
+    }
+  },
+  {
+    name: 'video_player_finder',
+    description: 'Identify video players (JWPlayer, VideoJS, etc) and extract config',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        url: { type: 'string' }
+      }
+    }
+  },
+  {
+    name: 'stream_detector',
+    description: 'Detects HLS (m3u8) and DASH (mpd) streams from network traffic',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        duration: { type: 'number', description: 'Monitoring duration in ms' }
+      }
+    }
+  },
+  {
+    name: 'redirect_tracer',
+    description: 'Trace URL redirects to find final destination',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        url: { type: 'string' }
+      }
+    }
+  },
+  {
+    name: 'video_download_link_finder',
+    description: 'Find direct download links for video files',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        extensions: { type: 'array', items: { type: 'string' } }
+      }
+    }
+  }
 ];
 
 // Tool name constants for type safety
@@ -1231,6 +1324,21 @@ export const TOOL_NAMES = {
   LINK_HARVESTER: 'link_harvester',
   MEDIA_EXTRACTOR: 'media_extractor',
 
+  // DOM & HTML Extraction (Phase 1)
+  HTML_ELEMENTS_EXTRACTOR: 'html_elements_extractor',
+  TAGS_FINDER: 'tags_finder',
+  LINKS_FINDER: 'links_finder',
+  XPATH_LINKS: 'xpath_links',
+  SHADOW_DOM_EXTRACTOR: 'shadow_dom_extractor',
+  IFRAME_EXTRACTOR: 'iframe_extractor',
+  EMBED_PAGE_EXTRACTOR: 'embed_page_extractor',
+
+  // Network Tools (Phase 1)
+  AJAX_EXTRACTOR: 'ajax_extractor',
+  FETCH_XHR: 'fetch_xhr',
+  NETWORK_RECORDER: 'network_recorder',
+  API_FINDER: 'api_finder',
+
   // Pagination Tools
   MULTI_PAGE_SCRAPER: 'multi_page_scraper',
   BREADCRUMB_NAVIGATOR: 'breadcrumb_navigator',
@@ -1242,6 +1350,16 @@ export const TOOL_NAMES = {
   // AI-Powered Features
   SMART_SELECTOR_GENERATOR: 'smart_selector_generator',
   CONTENT_CLASSIFICATION: 'content_classification',
+  SENTIMENT_ANALYSIS: 'sentiment_analysis',
+  SUMMARY_GENERATOR: 'summary_generator',
+  TRANSLATION_SUPPORT: 'translation_support',
+
+  // Phase 3: Media & Video
+  VIDEO_SOURCE_EXTRACTOR: 'video_source_extractor',
+  VIDEO_PLAYER_FINDER: 'video_player_finder',
+  STREAM_DETECTOR: 'stream_detector',
+  REDIRECT_TRACER: 'redirect_tracer',
+  VIDEO_DOWNLOAD_LINK_FINDER: 'video_download_link_finder',
 
   // Search & Filter Tools
   KEYWORD_SEARCH: 'keyword_search',

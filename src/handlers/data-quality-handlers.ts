@@ -290,4 +290,80 @@ export async function handleOutlierDetection(args: any): Promise<any> {
 /**
  * Consistency Checker - Check data consistency across fields
  */
+export async function handleConsistencyChecker(args: any): Promise<any> {
+  const { data, rules } = args;
+
+  try {
+    if (!Array.isArray(data)) {
+      throw new Error('Data must be an array');
+    }
+
+    if (!rules || !Array.isArray(rules)) {
+      if (!rules) return { content: [{ type: "text", text: "No rules provided. Pass." }] };
+      throw new Error('Rules must be an array');
+    }
+
+    const report: any = {
+      totalItems: data.length,
+      passedItems: 0,
+      failedItems: 0,
+      failures: []
+    };
+
+    data.forEach((item, index) => {
+      let itemPassed = true;
+      const itemFailures: any[] = [];
+
+      rules.forEach((rule: any) => {
+        try {
+          if (rule.type === 'dependency') {
+            if (item[rule.field] && !item[rule.dependentField]) {
+              itemPassed = false;
+              itemFailures.push(`Field '${rule.field}' requires '${rule.dependentField}'`);
+            }
+          } else if (rule.type === 'value_match') {
+            if (item[rule.field] === rule.value && item[rule.targetField] !== rule.targetValue) {
+              itemPassed = false;
+              itemFailures.push(`When '${rule.field}' is '${rule.value}', '${rule.targetField}' must be '${rule.targetValue}'`);
+            }
+          }
+        } catch (e) {
+          itemPassed = false;
+          // @ts-ignore
+          itemFailures.push(`Rule execution error: ${e.message}`);
+        }
+      });
+
+      if (itemPassed) {
+        report.passedItems++;
+      } else {
+        report.failedItems++;
+        report.failures.push({
+          index,
+          item,
+          errors: itemFailures
+        });
+      }
+    });
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Consistency Check Results:\nTotal: ${report.totalItems}\nPassed: ${report.passedItems}\nFailed: ${report.failedItems}\n\nFailures:\n${JSON.stringify(report.failures, null, 2)}`
+        }
+      ]
+    };
+  } catch (error: any) {
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Consistency Checker Error: ${error.message}`
+        }
+      ],
+      isError: true
+    };
+  }
+}
 

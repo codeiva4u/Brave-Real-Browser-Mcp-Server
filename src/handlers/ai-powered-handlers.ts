@@ -1,11 +1,40 @@
-// @ts-nocheck
-import { getBrowserInstance, getPageInstance } from '../browser-manager.js';
 
+import { getPageInstance } from '../browser-manager.js';
+
+export interface SmartSelectorGeneratorArgs {
+  url?: string;
+  description: string;
+  context?: string;
+}
+
+export interface ContentClassificationArgs {
+  url?: string;
+  categories?: { name: string; keywords: string[] }[];
+}
+
+export interface SentimentAnalysisArgs {
+  text?: string;
+  url?: string;
+  selector?: string;
+}
+
+export interface SummaryGeneratorArgs {
+  text?: string;
+  url?: string;
+  selector?: string;
+  maxLength?: number;
+}
+
+export interface TranslationSupportArgs {
+  text?: string;
+  url?: string;
+  targetLanguage: string;
+}
 
 /**
- * Smart Selector Generator - AI-powered CSS selector generation
+ * Smart Selector Generator - AI-powered CSS selector generation (Heuristic)
  */
-export async function handleSmartSelectorGenerator(args: any): Promise<any> {
+export async function handleSmartSelectorGenerator(args: SmartSelectorGeneratorArgs) {
   const { url, description, context } = args;
 
   try {
@@ -34,7 +63,7 @@ export async function handleSmartSelectorGenerator(args: any): Promise<any> {
         // Score based on text content matching
         keywords.forEach(keyword => {
           if (text.includes(keyword)) score += 10;
-          if (className.includes(keyword)) score += 5;
+          if (typeof className === 'string' && className.includes(keyword)) score += 5;
           if (id.includes(keyword)) score += 5;
         });
 
@@ -53,8 +82,8 @@ export async function handleSmartSelectorGenerator(args: any): Promise<any> {
         if (score > 0) {
           // Generate selector
           let selector = tag;
-          if (id) selector = `#${id}`;
-          else if (className) selector = `${tag}.${className.split(' ')[0]}`;
+          if (id) selector = `#${CSS.escape(id)}`;
+          else if (typeof className === 'string' && className.trim()) selector = `${tag}.${CSS.escape(className.trim().split(/\s+/)[0])}`;
 
           scores.push({ selector, score, text: text.substring(0, 100), element: tag });
         }
@@ -70,16 +99,17 @@ export async function handleSmartSelectorGenerator(args: any): Promise<any> {
       };
     }, description, context || '');
 
-    const resultText = `? Smart Selector Generated\n\nBest Match: ${JSON.stringify(result.bestMatch, null, 2)}\nAlternatives: ${JSON.stringify(result.alternatives, null, 2)}\nTotal Candidates: ${result.totalCandidates}`; return { content: [{ type: 'text', text: resultText }] };
+    const resultText = `🤖 Smart Selector Generated\n\nBest Match: ${JSON.stringify(result.bestMatch, null, 2)}\nAlternatives: ${JSON.stringify(result.alternatives, null, 2)}\nTotal Candidates: ${result.totalCandidates}`;
+    return { content: [{ type: 'text', text: resultText }] };
   } catch (error: any) {
-    return { content: [{ type: 'text', text: `? Error: ${error.message}` }], isError: true };
+    return { content: [{ type: 'text', text: `❌ Error: ${error.message}` }], isError: true };
   }
 }
 
 /**
  * Content Classification - Classify webpage content into categories
  */
-export async function handleContentClassification(args: any): Promise<any> {
+export async function handleContentClassification(args: ContentClassificationArgs) {
   const { url, categories } = args;
 
   try {
@@ -131,32 +161,134 @@ export async function handleContentClassification(args: any): Promise<any> {
 
     scores.sort((a, b) => b.score - a.score);
 
-    const confidence = scores[0].score / (scores.reduce((sum, s) => sum + s.score, 0) || 1);
-    const resultText = `✅ Content Classification\n\nPrimary Category: ${scores[0].category} (Score: ${scores[0].score})\nConfidence: ${(confidence * 100).toFixed(2)}%\n\nAll Categories:\n${JSON.stringify(scores.slice(0, 5), null, 2)}`;
+    const match = scores[0];
+    const totalScore = scores.reduce((sum, s) => sum + s.score, 0) || 1;
+    const confidence = match.score / totalScore;
+
+    const resultText = `✅ Content Classification\n\nPrimary Category: ${match.category} (Score: ${match.score})\nConfidence: ${(confidence * 100).toFixed(2)}%\n\nAll Categories:\n${JSON.stringify(scores.slice(0, 5), null, 2)}`;
 
     return {
-      content: [{
-        type: 'text',
-        text: resultText
-      }]
+      content: [{ type: 'text', text: resultText }]
     };
   } catch (error: any) {
-    return { content: [{ type: 'text', text: `? Error: ${error.message}` }], isError: true };
+    return { content: [{ type: 'text', text: `❌ Error: ${error.message}` }], isError: true };
   }
 }
 
 /**
- * Sentiment Analysis - Analyze sentiment of page content
+ * Sentiment Analysis - Analyze sentiment of page content (Basic Heuristic)
  */
+export async function handleSentimentAnalysis(args: SentimentAnalysisArgs) {
+  try {
+    let textToAnalyze = args.text || '';
 
+    if (args.url || args.selector) {
+      const page = getPageInstance();
+      if (!page) throw new Error('Browser not initialized');
+
+      if (args.url && page.url() !== args.url) {
+        await page.goto(args.url, { waitUntil: 'domcontentloaded' });
+      }
+
+      if (args.selector) {
+        textToAnalyze = await page.evaluate((sel: string) => document.querySelector(sel)?.textContent || '', args.selector);
+      } else if (!textToAnalyze) {
+        textToAnalyze = await page.evaluate(() => document.body.innerText);
+      }
+    }
+
+    if (!textToAnalyze) throw new Error('No text to analyze');
+
+    // Simple Bag of Words
+    const positiveWords = ['good', 'great', 'awesome', 'excellent', 'happy', 'love', 'best', 'wonderful', 'amazing'];
+    const negativeWords = ['bad', 'terrible', 'awful', 'worst', 'hate', 'sad', 'poor', 'disappointing', 'fail'];
+
+    const lowerText = textToAnalyze.toLowerCase();
+    let score = 0;
+    let matchCount = 0;
+
+    positiveWords.forEach(w => {
+      const regex = new RegExp(`\\b${w}\\b`, 'g');
+      const count = (lowerText.match(regex) || []).length;
+      score += count;
+      matchCount += count;
+    });
+
+    negativeWords.forEach(w => {
+      const regex = new RegExp(`\\b${w}\\b`, 'g');
+      const count = (lowerText.match(regex) || []).length;
+      score -= count;
+      matchCount += count;
+    });
+
+    let sentiment = 'Neutral';
+    if (score > 0) sentiment = 'Positive';
+    if (score < 0) sentiment = 'Negative';
+
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({ sentiment, score, matchCount, analyzedLength: textToAnalyze.length }, null, 2)
+      }]
+    };
+
+  } catch (error: any) {
+    return { content: [{ type: 'text', text: `❌ Error: ${error.message}` }], isError: true };
+  }
+}
 
 /**
- * Summary Generator - Generate summary of page content
+ * Summary Generator - Generate summary of page content (Basic Truncation/Extraction)
  */
+export async function handleSummaryGenerator(args: SummaryGeneratorArgs) {
+  try {
+    let textToSummary = args.text || '';
 
+    if (args.url || args.selector) {
+      const page = getPageInstance();
+      if (!page) throw new Error('Browser not initialized');
+
+      if (args.url && page.url() !== args.url) {
+        await page.goto(args.url, { waitUntil: 'domcontentloaded' });
+      }
+
+      if (args.selector) {
+        textToSummary = await page.evaluate((sel: string) => document.querySelector(sel)?.textContent || '', args.selector);
+      } else if (!textToSummary) {
+        // Heuristic: Get paragraphs
+        textToSummary = await page.evaluate(() => {
+          return Array.from(document.querySelectorAll('p')).map(p => p.textContent).join('\n\n');
+        });
+      }
+    }
+
+    if (!textToSummary) throw new Error('No text to summarize');
+
+    // Basic Summary: First 5 sentences or maxLength
+    const sentences = textToSummary.split(/[.!?]+/).filter(s => s.trim().length > 20);
+    const summary = sentences.slice(0, 5).join('. ') + '.';
+
+    const finalSummary = args.maxLength ? summary.slice(0, args.maxLength) : summary;
+
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({ summary: finalSummary, originalLength: textToSummary.length }, null, 2)
+      }]
+    };
+  } catch (error: any) {
+    return { content: [{ type: 'text', text: `❌ Error: ${error.message}` }], isError: true };
+  }
+}
 
 /**
- * Translation Support - Detect language and provide translation info
+ * Translation Support - Placeholder
  */
-
-
+export async function handleTranslationSupport(args: TranslationSupportArgs) {
+  return {
+    content: [{
+      type: 'text',
+      text: `⚠️ Translation Support requires an external API (e.g., Google Translate, DeepL). This feature is defined but currently running in 'offline' mode. To implement, valid API keys would be required.\n\nInput extracted: ${args.text ? 'Yes' : 'No'}\nTarget Language: ${args.targetLanguage}`
+    }]
+  };
+}
