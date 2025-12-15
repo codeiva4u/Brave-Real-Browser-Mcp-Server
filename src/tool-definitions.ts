@@ -348,7 +348,7 @@ export const TOOLS = [
 
   {
     name: 'extract_list',
-    description: 'Bullet lists और numbered lists से data extract करता है',
+    description: 'Extract data from bullet lists and numbered lists',
     inputSchema: {
       type: 'object',
       properties: {
@@ -360,7 +360,7 @@ export const TOOLS = [
   },
   {
     name: 'extract_json',
-    description: 'Page में embedded JSON/API data extract करता है',
+    description: 'Extract embedded JSON/API data from the page',
     inputSchema: {
       type: 'object',
       properties: {
@@ -372,7 +372,7 @@ export const TOOLS = [
   },
   {
     name: 'scrape_meta_tags',
-    description: 'SEO meta tags और Open Graph data extract करता है',
+    description: 'Extract SEO meta tags and Open Graph data',
     inputSchema: {
       type: 'object',
       properties: {
@@ -384,7 +384,7 @@ export const TOOLS = [
   },
   {
     name: 'extract_schema',
-    description: 'Schema.org structured data (JSON-LD, Microdata) extract करता है',
+    description: 'Extract Schema.org structured data (JSON-LD, Microdata)',
     inputSchema: {
       type: 'object',
       properties: {
@@ -396,7 +396,7 @@ export const TOOLS = [
   // Multi-Element Extractors
   {
     name: 'batch_element_scraper',
-    description: 'Multiple similar elements को batch में scrape करता है',
+    description: 'Scrape multiple similar elements in a batch',
     inputSchema: {
       type: 'object',
       properties: {
@@ -410,7 +410,7 @@ export const TOOLS = [
   },
   {
     name: 'nested_data_extraction',
-    description: 'Parent-child relationships maintain करते हुए data extract करता है',
+    description: 'Extract data maintaining parent-child relationships',
     inputSchema: {
       type: 'object',
       properties: {
@@ -423,7 +423,7 @@ export const TOOLS = [
   },
   {
     name: 'attribute_harvester',
-    description: 'Elements के attributes (href, src, data-*) collect करता है',
+    description: 'Collect attributes (href, src, data-*) from elements',
     inputSchema: {
       type: 'object',
       properties: {
@@ -438,7 +438,7 @@ export const TOOLS = [
 
   {
     name: 'link_harvester',
-    description: 'Internal/external links classification के साथ collect करता है',
+    description: 'Collect internal/external links with classification',
     inputSchema: {
       type: 'object',
       properties: {
@@ -450,7 +450,7 @@ export const TOOLS = [
   },
   {
     name: 'media_extractor',
-    description: 'Videos, audio, iframes का URLs और metadata extract करता है',
+    description: 'Extract URLs and metadata for videos, audio, and iframes',
     inputSchema: {
       type: 'object',
       properties: {
@@ -465,7 +465,7 @@ export const TOOLS = [
 
   {
     name: 'multi_page_scraper',
-    description: 'Multiple pages से data collect और merge करता है',
+    description: 'Collect and merge data from multiple pages',
     inputSchema: {
       type: 'object',
       properties: {
@@ -479,7 +479,7 @@ export const TOOLS = [
 
   {
     name: 'breadcrumb_navigator',
-    description: 'Site structure follow करके navigation path extract करता है',
+    description: 'Extract navigation path by following site structure',
     inputSchema: {
       type: 'object',
       properties: {
@@ -492,7 +492,7 @@ export const TOOLS = [
 
   {
     name: 'html_to_text',
-    description: 'HTML को clean text में convert करता है',
+    description: 'Convert HTML content to clean text',
     inputSchema: {
       type: 'object',
       properties: {
@@ -511,7 +511,7 @@ export const TOOLS = [
 
   {
     name: 'duplicate_remover',
-    description: 'Array से duplicate items remove करता है',
+    description: 'Remove duplicate items from an array',
     inputSchema: {
       type: 'object',
       properties: {
