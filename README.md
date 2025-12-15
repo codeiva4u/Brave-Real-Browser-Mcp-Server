@@ -360,6 +360,58 @@ Copy and paste this configuration:
 }
 ```
 
+}
+}
+
+### Antigravity IDE
+
+**Auto-Detection:**
+Antigravity IDE automatically detects installed MCP servers.
+
+**Manual Configuration:**
+If auto-detection fails, add this to your project config:
+
+```json
+{
+  "mcpServers": {
+    "brave-real-browser": {
+      "command": "npx",
+      "args": ["-y", "brave-real-browser-mcp-server@latest"]
+    }
+  }
+}
+```
+
+### Warp AI
+
+**File:** `~/.warp/mcp_config.json`
+
+```json
+{
+  "mcpServers": {
+    "brave-real-browser": {
+      "command": "npx",
+      "args": ["-y", "brave-real-browser-mcp-server@latest"]
+    }
+  }
+}
+```
+
+### Zed AI
+
+**File:** `.zed/settings.json` (Project specific) or Global Settings
+
+```json
+{
+  "mcp_servers": {
+    "brave-real-browser": {
+      "command": "npx",
+      "args": ["-y", "brave-real-browser-mcp-server@latest"]
+    }
+  }
+}
+```
+
 ### Cline (VSCode Extension)
 
 **File:** `cline_mcp_settings.json`
