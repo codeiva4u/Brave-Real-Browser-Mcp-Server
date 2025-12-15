@@ -22,7 +22,7 @@
 
 **Brave Real Browser MCP Server** एक powerful automation tool है जो:
 
-- ✅ **15+ AI IDEs में काम करता है** (Claude, Cursor, Windsurf, Cline, Zed, VSCode, Qoder AI, etc.)
+- ✅ **20+ AI IDEs में काम करता है** (Antigravity, Warp AI, Zed, Cursor, Claude, Windsurf, Cline, Qoder AI, etc.)
 - ✅ **108+ Automation Tools** - Browser control, scraping, CAPTCHA solving, video extraction
 - ✅ **MCP Protocol (STDIO)** - Fast and secure local communication
 - ✅ **Auto-Detection** - Automatically detects your IDE
@@ -42,6 +42,9 @@
 | **Claude Desktop** | 2 min | MCP | Add config → Restart | 
 | **Cursor AI** | 2 min | MCP | Add config → Restart |
 | **Windsurf** | 2 min | MCP | Add config → Restart |
+| **Antigravity IDE** | 1 min | MCP | Auto-Detect |
+| **Warp AI** | 2 min | MCP | Add config |
+| **Zed AI** | 2 min | MCP | Add config |
 | **Qoder AI** | 3 min | MCP (STDIO) | Add config → Restart |
 
 **Quick Commands:**
