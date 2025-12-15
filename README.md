@@ -386,15 +386,26 @@ npm install -g brave-real-browser-mcp-server@latest
 
 ## 🔧 Environment Variables
 
+You can configure the server using a local `.env` file (recommended for development) or by passing variables in your IDE config.
+
+1. Copy `.env.example` to `.env`:
+   ```bash
+   cp .env.example .env
+   ```
+2. Edit `.env` to set your preferences:
+
 ```bash
 # Optional: Specify Brave browser path
 BRAVE_PATH="C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe"
 
-# Optional: Run in headless mode
+# Optional: Run in headless mode (default: false)
 HEADLESS=true
 
 # Optional: Disable content priority
 DISABLE_CONTENT_PRIORITY=true
+
+# Optional: Proxy URL
+PROXY_URL=http://localhost:8080
 ```
 
 ## 📊 Supported Protocols

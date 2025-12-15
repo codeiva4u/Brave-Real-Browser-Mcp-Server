@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 // Debug logging setup - Log process start
+import 'dotenv/config';
 console.error(
   `🔍 [DEBUG] Process starting - PID: ${process.pid}, Node: ${process.version}, Platform: ${process.platform}`,
 );
