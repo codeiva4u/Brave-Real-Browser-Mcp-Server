@@ -17,7 +17,7 @@ import { handleClick, handleType, handlePressKey, handleSolveCaptcha, handleRand
 import { handleGetContent, handleFindSelector } from './handlers/content-handlers.js';
 import { handleSaveContentAsMarkdown } from './handlers/file-handlers.js';
 import {
-  handleScrapeTable,
+
   handleExtractList,
   handleExtractJSON,
   handleScrapeMetaTags,
@@ -27,8 +27,8 @@ import {
   handleBatchElementScraper,
   handleNestedDataExtraction,
   handleAttributeHarvester,
-  handleImageScraper,
   handleLinkHarvester,
+
   handleMediaExtractor,
 
 } from './handlers/multi-element-handlers.js';
@@ -117,9 +117,7 @@ export async function createMcpServer(): Promise<Server> {
           break;
 
         // Smart Data Extractors
-        case TOOL_NAMES.SCRAPE_TABLE:
-          result = await handleScrapeTable(args || {});
-          break;
+
 
         case TOOL_NAMES.EXTRACT_LIST:
           result = await handleExtractList(args || {});
@@ -151,9 +149,7 @@ export async function createMcpServer(): Promise<Server> {
           break;
 
         // Content Type Specific
-        case TOOL_NAMES.IMAGE_SCRAPER:
-          result = await handleImageScraper(args || {});
-          break;
+
 
         case TOOL_NAMES.LINK_HARVESTER:
           result = await handleLinkHarvester(args || {});

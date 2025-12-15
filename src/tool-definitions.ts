@@ -345,19 +345,7 @@ export const TOOLS = [
     },
   },
   // Smart Data Extractors
-  {
-    name: 'scrape_table',
-    description: 'HTML tables से structured data extract करता है',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        selector: { type: 'string', description: 'Table selector', default: 'table' },
-        includeHeaders: { type: 'boolean', default: true },
-        cleanData: { type: 'boolean', default: true },
-        maxRows: { type: 'number', default: 1000 },
-      },
-    },
-  },
+
   {
     name: 'extract_list',
     description: 'Bullet lists और numbered lists से data extract करता है',
@@ -447,18 +435,7 @@ export const TOOLS = [
     },
   },
   // Content Type Specific Extractors
-  {
-    name: 'image_scraper',
-    description: 'सभी images URLs, alt text, dimensions के साथ extract करता है',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        selector: { type: 'string', default: 'img' },
-        includeDataUrls: { type: 'boolean', default: false },
-        includeDimensions: { type: 'boolean', default: true },
-      },
-    },
-  },
+
   {
     name: 'link_harvester',
     description: 'Internal/external links classification के साथ collect करता है',
@@ -484,31 +461,8 @@ export const TOOLS = [
   },
 
   // Pagination Tools
-  {
-    name: 'auto_pagination',
-    description: 'Next button automatically detect करके pages scrape करता है',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        nextButtonSelector: { type: 'string' },
-        maxPages: { type: 'number', default: 10 },
-        dataSelector: { type: 'string' },
-        waitBetweenPages: { type: 'number', default: 1000 },
-      },
-    },
-  },
-  {
-    name: 'infinite_scroll',
-    description: 'Lazy-loading pages के लिए auto-scroll करता है',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        maxScrolls: { type: 'number', default: 10 },
-        scrollDelay: { type: 'number', default: 1000 },
-        dataSelector: { type: 'string' },
-      },
-    },
-  },
+
+
   {
     name: 'multi_page_scraper',
     description: 'Multiple pages से data collect और merge करता है',
@@ -522,18 +476,7 @@ export const TOOLS = [
       required: ['urls', 'dataSelector'],
     },
   },
-  {
-    name: 'sitemap_parser',
-    description: 'sitemap.xml से URLs automatically extract करता है',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        sitemapUrl: { type: 'string' },
-        maxUrls: { type: 'number', default: 100 },
-        filterPattern: { type: 'string' },
-      },
-    },
-  },
+
   {
     name: 'breadcrumb_navigator',
     description: 'Site structure follow करके navigation path extract करता है',
@@ -546,21 +489,7 @@ export const TOOLS = [
     },
   },
   // Data Processing Tools
-  {
-    name: 'smart_text_cleaner',
-    description: 'Text cleaning - whitespace, special characters remove करता है',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        text: { type: 'string' },
-        removeExtraWhitespace: { type: 'boolean', default: true },
-        removeSpecialChars: { type: 'boolean', default: false },
-        toLowerCase: { type: 'boolean', default: false },
-        trim: { type: 'boolean', default: true },
-      },
-      required: ['text'],
-    },
-  },
+
   {
     name: 'html_to_text',
     description: 'HTML को clean text में convert करता है',
@@ -576,44 +505,10 @@ export const TOOLS = [
   },
 
 
-  {
-    name: 'contact_extractor',
-    description: 'Phone numbers और email addresses automatically detect करता है',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        text: { type: 'string' },
-        types: { type: 'array', items: { type: 'string', enum: ['phone', 'email'] } },
-        defaultCountry: { type: 'string', default: 'US' },
-      },
-      required: ['text'],
-    },
-  },
+
   // Data Validation Tools
-  {
-    name: 'schema_validator',
-    description: 'JSON schema के against data validate करता है',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        data: { type: 'object' },
-        schema: { type: 'object' },
-      },
-      required: ['data', 'schema'],
-    },
-  },
-  {
-    name: 'required_fields_checker',
-    description: 'Missing required fields check करता है',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        data: { type: 'object' },
-        requiredFields: { type: 'array', items: { type: 'string' } },
-      },
-      required: ['data', 'requiredFields'],
-    },
-  },
+
+
   {
     name: 'duplicate_remover',
     description: 'Array से duplicate items remove करता है',
@@ -651,43 +546,9 @@ export const TOOLS = [
       },
     },
   },
-  {
-    name: 'sentiment_analysis',
-    description: 'Analyze sentiment of page content or text',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        url: { type: 'string' },
-        selector: { type: 'string' },
-        text: { type: 'string' },
-      },
-    },
-  },
-  {
-    name: 'summary_generator',
-    description: 'Generate summary of page content using TF-IDF',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        url: { type: 'string' },
-        maxSentences: { type: 'number', default: 5 },
-        selector: { type: 'string' },
-      },
-    },
-  },
-  {
-    name: 'translation_support',
-    description: 'Detect language and provide translation info',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        url: { type: 'string' },
-        selector: { type: 'string' },
-        text: { type: 'string' },
-        targetLanguage: { type: 'string', default: 'en' },
-      },
-    },
-  },
+
+
+
   // Search & Filter Tools (5 tools)
   {
     name: 'keyword_search',
@@ -775,19 +636,7 @@ export const TOOLS = [
       required: ['data'],
     },
   },
-  {
-    name: 'missing_data_handler',
-    description: 'Detect and handle missing data',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        data: { type: 'array' },
-        requiredFields: { type: 'array', items: { type: 'string' } },
-        strategy: { type: 'string', enum: ['report', 'remove', 'fill', 'flag'], default: 'report' },
-      },
-      required: ['data'],
-    },
-  },
+
   {
     name: 'data_type_validator',
     description: 'Validate data types against JSON schema',
@@ -1124,17 +973,7 @@ export const TOOLS = [
       },
     },
   },
-  {
-    name: 'session_persistence',
-    description: 'Save and restore browser session',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        action: { type: 'string', enum: ['save', 'restore'], default: 'save' },
-        sessionData: { type: 'object' },
-      },
-    },
-  },
+
   {
     name: 'form_auto_fill',
     description: 'Automatically fill form fields',
@@ -1159,32 +998,8 @@ export const TOOLS = [
       },
     },
   },
-  {
-    name: 'modal_popup_handler',
-    description: 'Handle modal popups (detect, close)',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        action: { type: 'string', enum: ['detect', 'close'], default: 'detect' },
-        closeSelector: { type: 'string' },
-      },
-    },
-  },
-  {
-    name: 'login_session_manager',
-    description: 'Manage login sessions',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        action: { type: 'string', enum: ['check', 'login', 'logout'], default: 'check' },
-        username: { type: 'string' },
-        password: { type: 'string' },
-        usernameSelector: { type: 'string' },
-        passwordSelector: { type: 'string' },
-        submitSelector: { type: 'string' },
-      },
-    },
-  },
+
+
   // Monitoring & Reporting
   {
     name: 'progress_tracker',
@@ -1404,7 +1219,6 @@ export const TOOL_NAMES = {
   FIND_SELECTOR: 'find_selector',
   SAVE_CONTENT_AS_MARKDOWN: 'save_content_as_markdown',
   // Smart Data Extractors
-  SCRAPE_TABLE: 'scrape_table',
   EXTRACT_LIST: 'extract_list',
   EXTRACT_JSON: 'extract_json',
   SCRAPE_META_TAGS: 'scrape_meta_tags',
@@ -1414,32 +1228,21 @@ export const TOOL_NAMES = {
   NESTED_DATA_EXTRACTION: 'nested_data_extraction',
   ATTRIBUTE_HARVESTER: 'attribute_harvester',
   // Content Type Specific
-  IMAGE_SCRAPER: 'image_scraper',
   LINK_HARVESTER: 'link_harvester',
   MEDIA_EXTRACTOR: 'media_extractor',
 
   // Pagination Tools
-  AUTO_PAGINATION: 'auto_pagination',
-  INFINITE_SCROLL: 'infinite_scroll',
   MULTI_PAGE_SCRAPER: 'multi_page_scraper',
-  SITEMAP_PARSER: 'sitemap_parser',
   BREADCRUMB_NAVIGATOR: 'breadcrumb_navigator',
+
   // Data Processing
-  SMART_TEXT_CLEANER: 'smart_text_cleaner',
   HTML_TO_TEXT: 'html_to_text',
-
-
-  CONTACT_EXTRACTOR: 'contact_extractor',
-  // Data Validation
-  SCHEMA_VALIDATOR: 'schema_validator',
-  REQUIRED_FIELDS_CHECKER: 'required_fields_checker',
   DUPLICATE_REMOVER: 'duplicate_remover',
+
   // AI-Powered Features
   SMART_SELECTOR_GENERATOR: 'smart_selector_generator',
   CONTENT_CLASSIFICATION: 'content_classification',
-  SENTIMENT_ANALYSIS: 'sentiment_analysis',
-  SUMMARY_GENERATOR: 'summary_generator',
-  TRANSLATION_SUPPORT: 'translation_support',
+
   // Search & Filter Tools
   KEYWORD_SEARCH: 'keyword_search',
   REGEX_PATTERN_MATCHER: 'regex_pattern_matcher',
@@ -1448,10 +1251,9 @@ export const TOOL_NAMES = {
   VISUAL_ELEMENT_FINDER: 'visual_element_finder',
   // Data Quality & Validation
   DATA_DEDUPLICATION: 'data_deduplication',
-  MISSING_DATA_HANDLER: 'missing_data_handler',
   DATA_TYPE_VALIDATOR: 'data_type_validator',
   OUTLIER_DETECTION: 'outlier_detection',
-  CONSISTENCY_CHECKER: 'consistency_checker',
+
   // Advanced Captcha Handling
   OCR_ENGINE: 'ocr_engine',
   AUDIO_CAPTCHA_SOLVER: 'audio_captcha_solver',

@@ -67,7 +67,6 @@ import {
 import { handleSaveContentAsMarkdown } from "./handlers/file-handlers.js";
 // Import new data extraction handlers
 import {
-  handleScrapeTable,
   handleExtractList,
   handleExtractJSON,
   handleScrapeMetaTags,
@@ -78,36 +77,26 @@ import {
   handleBatchElementScraper,
   handleNestedDataExtraction,
   handleAttributeHarvester,
-  handleImageScraper,
   handleLinkHarvester,
   handleMediaExtractor,
 
 } from "./handlers/multi-element-handlers.js";
 // Import pagination handlers
 import {
-  handleAutoPagination,
-  handleInfiniteScroll,
+
   handleMultiPageScraper,
-  handleSitemapParser,
   handleBreadcrumbNavigator,
 } from "./handlers/pagination-handlers.js";
 // Import data processing handlers
 import {
-  handleSmartTextCleaner,
   handleHTMLToText,
-
-  handleContactExtractor,
-  handleSchemaValidator,
-  handleRequiredFieldsChecker,
   handleDuplicateRemover,
 } from "./handlers/data-processing-handlers.js";
 // Import AI-powered handlers
 import {
   handleSmartSelectorGenerator,
   handleContentClassification,
-  handleSentimentAnalysis,
-  handleSummaryGenerator,
-  handleTranslationSupport,
+
 } from "./handlers/ai-powered-handlers.js";
 // Import search & filter handlers
 import {
@@ -120,10 +109,8 @@ import {
 // Import data quality handlers
 import {
   handleDataDeduplication,
-  handleMissingDataHandler,
   handleDataTypeValidator,
   handleOutlierDetection,
-  handleConsistencyChecker,
 } from "./handlers/data-quality-handlers.js";
 // Import captcha handlers
 import {
@@ -163,11 +150,8 @@ import {
 import {
   handleShadowDOMExtractor,
   handleCookieManager,
-  handleSessionPersistence,
   handleFormAutoFill,
   handleAjaxContentWaiter,
-  handleModalPopupHandler,
-  handleLoginSessionManager,
 } from "./handlers/dynamic-session-handlers.js";
 // Import monitoring & reporting handlers
 import {
@@ -319,10 +303,6 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
         break;
 
       // Smart Data Extractors
-      case TOOL_NAMES.SCRAPE_TABLE:
-        result = await handleScrapeTable(args || {});
-        break;
-
       case TOOL_NAMES.EXTRACT_LIST:
         result = await handleExtractList(args || {});
         break;
@@ -353,10 +333,6 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
         break;
 
       // Content Type Specific
-      case TOOL_NAMES.IMAGE_SCRAPER:
-        result = await handleImageScraper(args || {});
-        break;
-
       case TOOL_NAMES.LINK_HARVESTER:
         result = await handleLinkHarvester(args || {});
         break;
@@ -368,30 +344,23 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
 
 
       // Pagination Tools
-      case TOOL_NAMES.AUTO_PAGINATION:
-        result = await handleAutoPagination(args || {});
-        break;
 
-      case TOOL_NAMES.INFINITE_SCROLL:
-        result = await handleInfiniteScroll(args || {});
-        break;
 
+
+
+      // Pagination Tools
       case TOOL_NAMES.MULTI_PAGE_SCRAPER:
         result = await handleMultiPageScraper(args as any);
         break;
 
-      case TOOL_NAMES.SITEMAP_PARSER:
-        result = await handleSitemapParser(args || {});
-        break;
+
 
       case TOOL_NAMES.BREADCRUMB_NAVIGATOR:
         result = await handleBreadcrumbNavigator(args || {});
         break;
 
       // Data Processing Tools
-      case TOOL_NAMES.SMART_TEXT_CLEANER:
-        result = await handleSmartTextCleaner(args as any);
-        break;
+
 
       case TOOL_NAMES.HTML_TO_TEXT:
         result = await handleHTMLToText(args as any);
@@ -401,18 +370,7 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
 
 
 
-      case TOOL_NAMES.CONTACT_EXTRACTOR:
-        result = await handleContactExtractor(args as any);
-        break;
 
-      // Data Validation Tools
-      case TOOL_NAMES.SCHEMA_VALIDATOR:
-        result = await handleSchemaValidator(args as any);
-        break;
-
-      case TOOL_NAMES.REQUIRED_FIELDS_CHECKER:
-        result = await handleRequiredFieldsChecker(args as any);
-        break;
 
       case TOOL_NAMES.DUPLICATE_REMOVER:
         result = await handleDuplicateRemover(args as any);
@@ -427,17 +385,11 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
         result = await handleContentClassification(args as any);
         break;
 
-      case TOOL_NAMES.SENTIMENT_ANALYSIS:
-        result = await handleSentimentAnalysis(args as any);
-        break;
 
-      case TOOL_NAMES.SUMMARY_GENERATOR:
-        result = await handleSummaryGenerator(args as any);
-        break;
 
-      case TOOL_NAMES.TRANSLATION_SUPPORT:
-        result = await handleTranslationSupport(args as any);
-        break;
+
+
+
 
       // Search & Filter Tools
       case TOOL_NAMES.KEYWORD_SEARCH:
@@ -465,9 +417,7 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
         result = await handleDataDeduplication(args as any);
         break;
 
-      case TOOL_NAMES.MISSING_DATA_HANDLER:
-        result = await handleMissingDataHandler(args as any);
-        break;
+
 
       case TOOL_NAMES.DATA_TYPE_VALIDATOR:
         result = await handleDataTypeValidator(args as any);
@@ -477,9 +427,7 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
         result = await handleOutlierDetection(args as any);
         break;
 
-      case TOOL_NAMES.CONSISTENCY_CHECKER:
-        result = await handleConsistencyChecker(args as any);
-        break;
+
 
       // Advanced Captcha Handling
       case TOOL_NAMES.OCR_ENGINE:
@@ -593,9 +541,7 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
         result = await handleCookieManager(args as any);
         break;
 
-      case "session_persistence":
-        result = await handleSessionPersistence(args as any);
-        break;
+
 
       case "form_auto_fill":
         result = await handleFormAutoFill(args as any);
@@ -605,13 +551,9 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
         result = await handleAjaxContentWaiter(args as any);
         break;
 
-      case "modal_popup_handler":
-        result = await handleModalPopupHandler(args as any);
-        break;
 
-      case "login_session_manager":
-        result = await handleLoginSessionManager(args as any);
-        break;
+
+
 
       // Monitoring & Reporting
       case "progress_tracker":

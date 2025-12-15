@@ -19,16 +19,16 @@ export async function handleShadowDOMExtractor(args: any) {
 
     const page = getCurrentPage();
     const selector = args.selector || '*';
-    
+
     const shadowData = await page.evaluate((selector) => {
       const results: any[] = [];
       const elements = document.querySelectorAll(selector);
-      
+
       elements.forEach((el: any, idx) => {
         if (el.shadowRoot) {
           const shadowContent = el.shadowRoot.innerHTML;
           const shadowElements = el.shadowRoot.querySelectorAll('*');
-          
+
           results.push({
             index: idx,
             hostElement: el.tagName,
@@ -43,7 +43,7 @@ export async function handleShadowDOMExtractor(args: any) {
           });
         }
       });
-      
+
       return results;
     }, selector);
 
@@ -68,7 +68,7 @@ export async function handleCookieManager(args: any) {
 
     const page = getCurrentPage();
     const action = args.action || 'get'; // get, set, delete, clear
-    
+
     if (action === 'get') {
       const cookies = await page.cookies();
       return {
@@ -78,13 +78,13 @@ export async function handleCookieManager(args: any) {
         }],
       };
     }
-    
+
     if (action === 'set') {
       const cookie = args.cookie;
       if (!cookie || !cookie.name || !cookie.value) {
         throw new Error('Cookie name and value are required');
       }
-      
+
       await page.setCookie({
         name: cookie.name,
         value: cookie.value,
@@ -95,7 +95,7 @@ export async function handleCookieManager(args: any) {
         secure: cookie.secure || false,
         sameSite: cookie.sameSite || 'Lax',
       });
-      
+
       return {
         content: [{
           type: 'text' as const,
@@ -103,16 +103,16 @@ export async function handleCookieManager(args: any) {
         }],
       };
     }
-    
+
     if (action === 'delete') {
       const cookieName = args.cookieName;
       if (!cookieName) {
         throw new Error('Cookie name is required');
       }
-      
+
       const cookies = await page.cookies();
       const cookieToDelete = cookies.find(c => c.name === cookieName);
-      
+
       if (cookieToDelete) {
         await page.deleteCookie(cookieToDelete);
         return {
@@ -122,7 +122,7 @@ export async function handleCookieManager(args: any) {
           }],
         };
       }
-      
+
       return {
         content: [{
           type: 'text' as const,
@@ -130,11 +130,11 @@ export async function handleCookieManager(args: any) {
         }],
       };
     }
-    
+
     if (action === 'clear') {
       const cookies = await page.cookies();
       await Promise.all(cookies.map(cookie => page.deleteCookie(cookie)));
-      
+
       return {
         content: [{
           type: 'text' as const,
@@ -150,96 +150,7 @@ export async function handleCookieManager(args: any) {
 /**
  * Session Persistence - Save and restore browser session
  */
-export async function handleSessionPersistence(args: any) {
-  return await withErrorHandling(async () => {
-    validateWorkflow('session_persistence', {
-      requireBrowser: true,
-      requirePage: true,
-    });
 
-    const page = getCurrentPage();
-    const action = args.action || 'save'; // save, restore
-    
-    if (action === 'save') {
-      const cookies = await page.cookies();
-      const localStorage = await page.evaluate(() => {
-        const items: any = {};
-        for (let i = 0; i < window.localStorage.length; i++) {
-          const key = window.localStorage.key(i);
-          if (key) {
-            items[key] = window.localStorage.getItem(key);
-          }
-        }
-        return items;
-      });
-      
-      const sessionStorage = await page.evaluate(() => {
-        const items: any = {};
-        for (let i = 0; i < window.sessionStorage.length; i++) {
-          const key = window.sessionStorage.key(i);
-          if (key) {
-            items[key] = window.sessionStorage.getItem(key);
-          }
-        }
-        return items;
-      });
-      
-      const sessionData = {
-        url: page.url(),
-        cookies,
-        localStorage,
-        sessionStorage,
-        timestamp: new Date().toISOString(),
-      };
-      
-      return {
-        content: [{
-          type: 'text' as const,
-          text: `✅ Session saved\n\n${JSON.stringify(sessionData, null, 2)}`,
-        }],
-      };
-    }
-    
-    if (action === 'restore') {
-      const sessionData = args.sessionData;
-      if (!sessionData) {
-        throw new Error('Session data is required for restore');
-      }
-      
-      // Restore cookies
-      if (sessionData.cookies) {
-        await Promise.all(sessionData.cookies.map((cookie: any) => page.setCookie(cookie)));
-      }
-      
-      // Restore localStorage
-      if (sessionData.localStorage) {
-        await page.evaluate((items) => {
-          for (const [key, value] of Object.entries(items)) {
-            window.localStorage.setItem(key, value as string);
-          }
-        }, sessionData.localStorage);
-      }
-      
-      // Restore sessionStorage
-      if (sessionData.sessionStorage) {
-        await page.evaluate((items) => {
-          for (const [key, value] of Object.entries(items)) {
-            window.sessionStorage.setItem(key, value as string);
-          }
-        }, sessionData.sessionStorage);
-      }
-      
-      return {
-        content: [{
-          type: 'text' as const,
-          text: `✅ Session restored from ${sessionData.timestamp}`,
-        }],
-      };
-    }
-
-    throw new Error(`Unknown action: ${action}`);
-  }, 'Failed session persistence');
-}
 
 /**
  * Form Auto Fill - Automatically fill form fields
@@ -254,23 +165,23 @@ export async function handleFormAutoFill(args: any) {
     const page = getCurrentPage();
     const formData = args.formData || {};
     const submitAfterFill = args.submitAfterFill || false;
-    
+
     const fillResults = await page.evaluate((data) => {
       const results: any[] = [];
-      
+
       for (const [selector, value] of Object.entries(data)) {
         const element = document.querySelector(selector) as any;
-        
+
         if (!element) {
           results.push({ selector, status: 'not_found' });
           continue;
         }
-        
+
         const tagName = element.tagName.toLowerCase();
-        
+
         if (tagName === 'input') {
           const inputType = element.type?.toLowerCase() || 'text';
-          
+
           if (inputType === 'checkbox' || inputType === 'radio') {
             element.checked = Boolean(value);
           } else if (inputType === 'file') {
@@ -279,10 +190,10 @@ export async function handleFormAutoFill(args: any) {
           } else {
             element.value = value;
           }
-          
+
           element.dispatchEvent(new Event('input', { bubbles: true }));
           element.dispatchEvent(new Event('change', { bubbles: true }));
-          
+
           results.push({ selector, status: 'filled', value });
         } else if (tagName === 'select') {
           element.value = value;
@@ -296,13 +207,13 @@ export async function handleFormAutoFill(args: any) {
           results.push({ selector, status: 'unsupported_element', tagName });
         }
       }
-      
+
       return results;
     }, formData);
-    
+
     if (submitAfterFill) {
       const submitButton = args.submitButtonSelector || 'button[type="submit"], input[type="submit"]';
-      
+
       try {
         await page.click(submitButton);
         return {
@@ -339,7 +250,7 @@ export async function handleAjaxContentWaiter(args: any) {
       requireBrowser: true,
       requirePage: true,
     });
-    
+
     if (!validation.isValid) {
       return {
         content: [{
@@ -354,7 +265,7 @@ export async function handleAjaxContentWaiter(args: any) {
     const waitFor = args.waitFor || 'selector'; // selector, xhr, timeout
     const value = args.value;
     const timeout = args.timeout || 30000;
-    
+
     if (waitFor === 'selector' && value) {
       try {
         await page.waitForSelector(value, { timeout });
@@ -373,21 +284,21 @@ export async function handleAjaxContentWaiter(args: any) {
         };
       }
     }
-    
+
     if (waitFor === 'xhr') {
       const duration = parseInt(value) || 5000;
       let xhrCount = 0;
-      
+
       const requestHandler = (request: any) => {
         if (request.resourceType() === 'xhr' || request.resourceType() === 'fetch') {
           xhrCount++;
         }
       };
-      
+
       page.on('request', requestHandler);
       await sleep(duration);
       page.off('request', requestHandler);
-      
+
       if (xhrCount === 0) {
         return {
           content: [{
@@ -396,7 +307,7 @@ export async function handleAjaxContentWaiter(args: any) {
           }],
         };
       }
-      
+
       return {
         content: [{
           type: 'text' as const,
@@ -404,7 +315,7 @@ export async function handleAjaxContentWaiter(args: any) {
         }],
       };
     }
-    
+
     if (waitFor === 'timeout') {
       const duration = parseInt(value) || 3000;
       await sleep(duration);
@@ -437,153 +348,9 @@ export async function handleAjaxContentWaiter(args: any) {
 /**
  * Modal Popup Handler - Handle modal popups
  */
-export async function handleModalPopupHandler(args: any) {
-  return await withErrorHandling(async () => {
-    validateWorkflow('modal_popup_handler', {
-      requireBrowser: true,
-      requirePage: true,
-    });
 
-    const page = getCurrentPage();
-    const action = args.action || 'detect'; // detect, close, interact
-    
-    if (action === 'detect') {
-      const modals = await page.evaluate(() => {
-        const results: any[] = [];
-        const modalSelectors = [
-          '.modal',
-          '[role="dialog"]',
-          '[class*="popup"]',
-          '[class*="overlay"]',
-          '.dialog',
-        ];
-        
-        modalSelectors.forEach(selector => {
-          const elements = document.querySelectorAll(selector);
-          elements.forEach((el: any) => {
-            const isVisible = el.offsetWidth > 0 && el.offsetHeight > 0;
-            if (isVisible) {
-              results.push({
-                selector,
-                id: el.id || null,
-                className: el.className,
-                text: el.textContent?.trim().substring(0, 200) || '',
-              });
-            }
-          });
-        });
-        
-        return results;
-      });
-      
-      return {
-        content: [{
-          type: 'text' as const,
-          text: `✅ Found ${modals.length} visible modals\n\n${JSON.stringify(modals, null, 2)}`,
-        }],
-      };
-    }
-    
-    if (action === 'close') {
-      const closeSelector = args.closeSelector || '.close, [aria-label="Close"], button[class*="close"]';
-      
-      try {
-        await page.click(closeSelector);
-        return {
-          content: [{
-            type: 'text' as const,
-            text: `✅ Modal closed`,
-          }],
-        };
-      } catch (e) {
-        // Try pressing Escape
-        await page.keyboard.press('Escape');
-        return {
-          content: [{
-            type: 'text' as const,
-            text: `✅ Pressed Escape key to close modal`,
-          }],
-        };
-      }
-    }
-
-    throw new Error(`Unknown action: ${action}`);
-  }, 'Failed modal popup handler');
-}
 
 /**
  * Login Session Manager - Manage login sessions
  */
-export async function handleLoginSessionManager(args: any) {
-  return await withErrorHandling(async () => {
-    validateWorkflow('login_session_manager', {
-      requireBrowser: true,
-      requirePage: true,
-    });
 
-    const page = getCurrentPage();
-    const action = args.action || 'check'; // check, login, logout
-    
-    if (action === 'check') {
-      const isLoggedIn = await page.evaluate(() => {
-        // Check common indicators of logged-in state
-        const indicators = [
-          document.querySelector('[class*="logout"]'),
-          document.querySelector('[class*="profile"]'),
-          document.querySelector('[class*="account"]'),
-          document.cookie.includes('session') || document.cookie.includes('token'),
-          localStorage.getItem('token') !== null,
-        ];
-        
-        return indicators.some(indicator => Boolean(indicator));
-      });
-      
-      const cookies = await page.cookies();
-      const sessionCookies = cookies.filter(c => 
-        c.name.toLowerCase().includes('session') || 
-        c.name.toLowerCase().includes('token') ||
-        c.name.toLowerCase().includes('auth')
-      );
-      
-      return {
-        content: [{
-          type: 'text' as const,
-          text: `✅ Login Status Check\n\nLikely Logged In: ${isLoggedIn}\nSession Cookies: ${sessionCookies.length}\n\n${JSON.stringify(sessionCookies.map(c => ({ name: c.name, domain: c.domain })), null, 2)}`,
-        }],
-      };
-    }
-    
-    if (action === 'login') {
-      const username = args.username;
-      const password = args.password;
-      const usernameSelector = args.usernameSelector || 'input[type="email"], input[type="text"], input[name*="user"], input[name*="email"]';
-      const passwordSelector = args.passwordSelector || 'input[type="password"]';
-      const submitSelector = args.submitSelector || 'button[type="submit"], input[type="submit"]';
-      
-      if (!username || !password) {
-        throw new Error('Username and password are required');
-      }
-      
-      // Fill username
-      await page.waitForSelector(usernameSelector, { timeout: 5000 });
-      await page.type(usernameSelector, username);
-      
-      // Fill password
-      await page.waitForSelector(passwordSelector, { timeout: 5000 });
-      await page.type(passwordSelector, password);
-      
-      // Submit
-      await page.click(submitSelector);
-      await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 10000 }).catch(() => {});
-      
-      return {
-        content: [{
-          type: 'text' as const,
-          text: `✅ Login attempted\n\nUsername: ${username}\nCurrent URL: ${page.url()}`,
-        }],
-      };
-    }
-
-    throw new Error(`Unknown action: ${action}`);
-  }, 'Failed login session manager');
-}

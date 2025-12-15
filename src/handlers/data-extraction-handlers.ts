@@ -50,129 +50,7 @@ export interface SchemaData {
   data: any;
 }
 
-// Table Scraper Arguments
-export interface ScrapeTableArgs {
-  selector?: string;
-  includeHeaders?: boolean;
-  cleanData?: boolean;
-  maxRows?: number;
-}
 
-/**
- * HTML Tables से structured data extract करता है
- */
-export async function handleScrapeTable(args: ScrapeTableArgs) {
-  return await withErrorHandling(async () => {
-    // Workflow validation
-    validateWorkflow('scrape_table', {
-      requireBrowser: true,
-      requirePage: true,
-    });
-
-    const page = getCurrentPage();
-    const selector = args.selector || 'table';
-    const includeHeaders = args.includeHeaders !== false;
-    const cleanData = args.cleanData !== false;
-    const maxRows = args.maxRows || 1000;
-
-    // Extract table data from page
-    const tableData = await page.evaluate(
-      ({ selector, includeHeaders, cleanData, maxRows }) => {
-        const tables = document.querySelectorAll(selector);
-        const results: TableData[] = [];
-
-        tables.forEach((table) => {
-          const headers: string[] = [];
-          const rows: Array<Record<string, string | number>> = [];
-
-          // Extract headers
-          if (includeHeaders) {
-            const headerCells = table.querySelectorAll('thead th, thead td');
-            headerCells.forEach((cell) => {
-              const text = cell.textContent?.trim() || '';
-              headers.push(cleanData ? text.replace(/\s+/g, ' ') : text);
-            });
-          }
-
-          // If no headers found in thead, try first row
-          if (headers.length === 0) {
-            const firstRow = table.querySelector('tr');
-            if (firstRow) {
-              const cells = firstRow.querySelectorAll('th, td');
-              cells.forEach((cell) => {
-                const text = cell.textContent?.trim() || '';
-                headers.push(cleanData ? text.replace(/\s+/g, ' ') : text);
-              });
-            }
-          }
-
-          // Extract rows
-          const bodyRows = table.querySelectorAll('tbody tr, tr');
-          let rowCount = 0;
-
-          bodyRows.forEach((row) => {
-            if (rowCount >= maxRows) return;
-
-            const cells = row.querySelectorAll('td, th');
-            if (cells.length === 0) return;
-
-            const rowData: Record<string, string | number> = {};
-            
-            cells.forEach((cell, index) => {
-              const text = cell.textContent?.trim() || '';
-              const cleanedText = cleanData ? text.replace(/\s+/g, ' ') : text;
-              const header = headers[index] || `column_${index}`;
-              
-              // Try to parse as number
-              const numValue = parseFloat(cleanedText);
-              rowData[header] = isNaN(numValue) ? cleanedText : numValue;
-            });
-
-            if (Object.keys(rowData).length > 0) {
-              rows.push(rowData);
-              rowCount++;
-            }
-          });
-
-          if (rows.length > 0) {
-            results.push({
-              headers,
-              rows,
-              summary: {
-                totalRows: rows.length,
-                totalColumns: headers.length,
-                extractedAt: new Date().toISOString(),
-              },
-            });
-          }
-        });
-
-        return results;
-      },
-      { selector, includeHeaders, cleanData, maxRows }
-    );
-
-    if (tableData.length === 0) {
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: `❌ No tables found with selector "${selector}"`,
-          },
-        ],
-      };
-    }
-
-    return {
-      content: [
-        {
-          type: 'text' as const,
-          text: `✅ Extracted ${tableData.length} table(s)\n\n${JSON.stringify(tableData, null, 2)}`,
-        },
-      ],
-    };
-  }, 'Failed to scrape table');
-}
 
 // List Extractor Arguments
 export interface ExtractListArgs {
@@ -210,7 +88,7 @@ export async function handleExtractList(args: ExtractListArgs) {
             if (items.length >= maxItems) return;
 
             const children = Array.from(element.children);
-            
+
             children.forEach((child) => {
               if (child.tagName.toLowerCase() === 'li') {
                 const text = Array.from(child.childNodes)
@@ -308,7 +186,7 @@ export async function handleExtractJSON(args: ExtractJSONArgs) {
             try {
               const content = script.textContent || '';
               const data = JSON.parse(content);
-              
+
               if (filter) {
                 // Simple filter check
                 const filterLower = filter.toLowerCase();
@@ -330,7 +208,7 @@ export async function handleExtractJSON(args: ExtractJSONArgs) {
         // Extract JSON from data attributes
         if (source === 'all' && selector) {
           const elements = document.querySelectorAll(selector);
-          
+
           elements.forEach((element, index) => {
             // Check all data-* attributes
             Array.from(element.attributes).forEach((attr) => {
@@ -492,11 +370,11 @@ export async function handleExtractSchema(args: ExtractSchemaArgs) {
         // Extract JSON-LD
         if (format === 'json-ld' || format === 'all') {
           const scripts = document.querySelectorAll('script[type="application/ld+json"]');
-          
+
           scripts.forEach((script) => {
             try {
               const data = JSON.parse(script.textContent || '');
-              
+
               // Filter by schema type if specified
               if (schemaType) {
                 const type = data['@type'] || '';
@@ -521,10 +399,10 @@ export async function handleExtractSchema(args: ExtractSchemaArgs) {
         // Extract Microdata (basic implementation)
         if (format === 'microdata' || format === 'all') {
           const items = document.querySelectorAll('[itemscope]');
-          
+
           items.forEach((item) => {
             const itemType = item.getAttribute('itemtype') || '';
-            
+
             if (schemaType) {
               const types = Array.isArray(schemaType) ? schemaType : [schemaType];
               const typeMatch = types.some(t => itemType.toLowerCase().includes(t.toLowerCase()));
@@ -535,7 +413,7 @@ export async function handleExtractSchema(args: ExtractSchemaArgs) {
 
             const properties: Record<string, any> = {};
             const props = item.querySelectorAll('[itemprop]');
-            
+
             props.forEach((prop) => {
               const name = prop.getAttribute('itemprop') || '';
               const content = prop.getAttribute('content') || prop.textContent?.trim() || '';
