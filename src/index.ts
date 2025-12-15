@@ -81,7 +81,7 @@ import {
   handleImageScraper,
   handleLinkHarvester,
   handleMediaExtractor,
-  handlePDFLinkFinder,
+
 } from "./handlers/multi-element-handlers.js";
 // Import pagination handlers
 import {
@@ -95,8 +95,7 @@ import {
 import {
   handleSmartTextCleaner,
   handleHTMLToText,
-  handlePriceParser,
-  handleDateNormalizer,
+
   handleContactExtractor,
   handleSchemaValidator,
   handleRequiredFieldsChecker,
@@ -136,7 +135,7 @@ import {
 import {
   handleFullPageScreenshot,
   handleElementScreenshot,
-  handlePDFGeneration,
+
   handleVideoRecording,
   handleVisualComparison,
 } from "./handlers/visual-tools-handlers.js";
@@ -173,11 +172,10 @@ import {
 // Import monitoring & reporting handlers
 import {
   handleProgressTracker,
-  handleErrorLogger,
-  handleSuccessRateReporter,
+
+
   handleDataQualityMetrics,
-  handlePerformanceMonitor,
-  handleGetMonitoringSummary,
+
 } from "./handlers/monitoring-reporting-handlers.js";
 // Import advanced video & media handlers
 import {
@@ -367,9 +365,7 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
         result = await handleMediaExtractor(args || {});
         break;
 
-      case TOOL_NAMES.PDF_LINK_FINDER:
-        result = await handlePDFLinkFinder(args || {});
-        break;
+
 
       // Pagination Tools
       case TOOL_NAMES.AUTO_PAGINATION:
@@ -401,13 +397,9 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
         result = await handleHTMLToText(args as any);
         break;
 
-      case TOOL_NAMES.PRICE_PARSER:
-        result = await handlePriceParser(args as any);
-        break;
 
-      case TOOL_NAMES.DATE_NORMALIZER:
-        result = await handleDateNormalizer(args as any);
-        break;
+
+
 
       case TOOL_NAMES.CONTACT_EXTRACTOR:
         result = await handleContactExtractor(args as any);
@@ -511,9 +503,7 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
         result = await handleElementScreenshot(args as any);
         break;
 
-      case TOOL_NAMES.PDF_GENERATION:
-        result = await handlePDFGeneration(args as any);
-        break;
+
 
       case TOOL_NAMES.VIDEO_RECORDING:
         result = await handleVideoRecording(args as any);
@@ -628,25 +618,17 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
         result = await handleProgressTracker(args || {});
         break;
 
-      case "error_logger":
-        result = await handleErrorLogger(args || {});
-        break;
 
-      case "success_rate_reporter":
-        result = await handleSuccessRateReporter(args || {});
-        break;
+
+
 
       case "data_quality_metrics":
         result = await handleDataQualityMetrics(args || {});
         break;
 
-      case "performance_monitor":
-        result = await handlePerformanceMonitor(args || {});
-        break;
 
-      case "monitoring_summary":
-        result = await handleGetMonitoringSummary(args || {});
-        break;
+
+
 
       // Advanced Video & Media Download Tools
       case "video_link_finder":

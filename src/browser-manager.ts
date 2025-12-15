@@ -6,7 +6,12 @@ import { execSync, spawn } from 'child_process';
 import { config as dotenvConfig } from 'dotenv';
 
 // Load environment variables from .env file
+// Silence dotenv output
+const originalWrite = process.stdout.write;
+// @ts-ignore
+process.stdout.write = () => true;
 dotenvConfig();
+process.stdout.write = originalWrite;
 
 // Content prioritization configuration
 export interface ContentPriorityConfig {
@@ -69,14 +74,14 @@ export function resetBrowserInitDepth() {
 export async function initializeBrowserForTesting(options?: any) {
   // Reset depth counter for testing
   browserInitDepth = 0;
-  
+
   // Force close any existing browser first
   try {
     await closeBrowser();
   } catch (error) {
     // Ignore close errors
   }
-  
+
   // Now initialize normally
   return await initializeBrowser(options);
 }
@@ -136,14 +141,14 @@ export async function withTimeout<T>(
 export async function isPortAvailable(port: number, host: string = '127.0.0.1'): Promise<boolean> {
   return new Promise((resolve) => {
     const server = net.createServer();
-    
+
     server.listen(port, host, () => {
       server.once('close', () => {
         resolve(true);
       });
       server.close();
     });
-    
+
     server.on('error', () => {
       resolve(false);
     });
@@ -153,11 +158,11 @@ export async function isPortAvailable(port: number, host: string = '127.0.0.1'):
 // Test localhost resolution and connectivity
 export async function testHostConnectivity(): Promise<{ localhost: boolean; ipv4: boolean; recommendedHost: string }> {
   const testPort = 19222;
-  
+
   try {
     const localhostAvailable = await isPortAvailable(testPort, 'localhost');
     const ipv4Available = await isPortAvailable(testPort, '127.0.0.1');
-    
+
     return {
       localhost: localhostAvailable,
       ipv4: ipv4Available,
@@ -187,7 +192,7 @@ export async function findAvailablePort(startPort: number = 9222, endPort: numbe
 export function updateCircuitBreakerOnFailure(): void {
   browserCircuitBreaker.failureCount++;
   browserCircuitBreaker.lastFailureTime = Date.now();
-  
+
   if (browserCircuitBreaker.failureCount >= CIRCUIT_BREAKER_THRESHOLD) {
     browserCircuitBreaker.state = 'open';
     console.error(`Circuit breaker opened after ${browserCircuitBreaker.failureCount} failures`);
@@ -203,7 +208,7 @@ export function isCircuitBreakerOpen(): boolean {
   if (browserCircuitBreaker.state === 'closed') {
     return false;
   }
-  
+
   if (browserCircuitBreaker.state === 'open') {
     const timeSinceLastFailure = Date.now() - browserCircuitBreaker.lastFailureTime;
     if (timeSinceLastFailure > CIRCUIT_BREAKER_TIMEOUT) {
@@ -213,16 +218,16 @@ export function isCircuitBreakerOpen(): boolean {
     }
     return true;
   }
-  
+
   return false;
 }
 
 // Windows Registry Brave detection
 function getWindowsBraveFromRegistry(): string | null {
   if (process.platform !== 'win32') return null;
-  
+
   try {
-    
+
     // First try App Paths registry - most reliable method
     try {
       const appPathsQuery = 'reg query "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\App Paths\\brave.exe" /ve 2>nul';
@@ -238,14 +243,14 @@ function getWindowsBraveFromRegistry(): string | null {
     } catch (error) {
       // Continue to other detection methods
     }
-    
+
     // Try BLBeacon registry keys for version info, then check standard paths
     const registryQueries = [
       'reg query "HKEY_CURRENT_USER\\Software\\BraveSoftware\\Brave-Browser\\BLBeacon" /v version 2>nul',
       'reg query "HKEY_LOCAL_MACHINE\\Software\\BraveSoftware\\Brave-Browser\\BLBeacon" /v version 2>nul',
       'reg query "HKEY_LOCAL_MACHINE\\Software\\WOW6432Node\\BraveSoftware\\Brave-Browser\\BLBeacon" /v version 2>nul',
     ];
-    
+
     for (const query of registryQueries) {
       try {
         const result = execSync(query, { encoding: 'utf8', timeout: 5000 });
@@ -255,7 +260,7 @@ function getWindowsBraveFromRegistry(): string | null {
             'C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe',
             'C:\\Program Files (x86)\\BraveSoftware\\Brave-Browser\\Application\\brave.exe'
           ];
-          
+
           for (const standardPath of standardPaths) {
             if (fs.existsSync(standardPath)) {
               console.error(`✓ Found Brave via Registry BLBeacon detection: ${standardPath}`);
@@ -267,7 +272,7 @@ function getWindowsBraveFromRegistry(): string | null {
         // Continue to next registry query
       }
     }
-    
+
     // Try to find Brave installation path from Uninstall registry
     try {
       const uninstallQuery = 'reg query "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\BraveSoftware Brave-Browser" /v InstallLocation 2>nul';
@@ -284,11 +289,11 @@ function getWindowsBraveFromRegistry(): string | null {
     } catch (error) {
       // Continue with other methods
     }
-    
+
   } catch (error) {
     console.error('Windows Registry Brave detection failed:', error instanceof Error ? error.message : String(error));
   }
-  
+
   return null;
 }
 
@@ -333,7 +338,7 @@ export function detectBravePath(): string | null {
         console.error('Registry detection failed, continuing with file system search...');
       }
       break;
-      
+
     case 'darwin':
       possiblePaths = [
         '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser',
@@ -342,7 +347,7 @@ export function detectBravePath(): string | null {
         path.join(process.env.HOME || '', 'Applications/Brave Browser.app/Contents/MacOS/Brave Browser')
       ];
       break;
-      
+
     case 'linux':
       possiblePaths = [
         '/usr/bin/brave-browser',
@@ -356,7 +361,7 @@ export function detectBravePath(): string | null {
         '/opt/brave/brave'
       ];
       break;
-      
+
     default:
       console.error(`Platform ${platform} not explicitly supported for Brave path detection`);
       return null;
@@ -401,7 +406,7 @@ export function detectBravePath(): string | null {
     console.error(`   Searched locations:`);
     possiblePaths.forEach(path => console.error(`   - ${path}`));
   }
-  
+
   return null;
 }
 
@@ -438,28 +443,28 @@ export async function validateSession(): Promise<boolean> {
 export async function findAuthElements(pageInstance: any): Promise<string[]> {
   return await pageInstance.evaluate(() => {
     const authSelectors: string[] = [];
-    
+
     const authPatterns = [
       /^(log\s*in|sign\s*in|log\s*on|sign\s*on)$/i,
       /^(login|signin|authenticate|enter)$/i,
       /continue with (google|github|facebook|twitter|microsoft)/i,
       /sign in with/i
     ];
-    
+
     const clickableElements = document.querySelectorAll('a, button, [role="button"], input[type="submit"], input[type="button"]');
-    
+
     clickableElements.forEach(el => {
       const text = (el.textContent || '').trim();
       const ariaLabel = el.getAttribute('aria-label') || '';
       const href = (el as HTMLAnchorElement).href || '';
-      
-      const matchesPattern = authPatterns.some(pattern => 
+
+      const matchesPattern = authPatterns.some(pattern =>
         pattern.test(text) || pattern.test(ariaLabel)
       );
-      
-      const hasAuthRoute = href.includes('login') || href.includes('signin') || 
-                          href.includes('auth') || href.includes('oauth');
-      
+
+      const hasAuthRoute = href.includes('login') || href.includes('signin') ||
+        href.includes('auth') || href.includes('oauth');
+
       if (matchesPattern || hasAuthRoute) {
         if (el.id) {
           authSelectors.push(`#${CSS.escape(el.id)}`);
@@ -473,7 +478,7 @@ export async function findAuthElements(pageInstance: any): Promise<string[]> {
         }
       }
     });
-    
+
     return [...new Set(authSelectors)];
   });
 }
@@ -489,7 +494,7 @@ export async function initializeBrowser(options?: any) {
   }
 
   browserInitDepth++;
-  
+
   try {
     if (browserInstance && pageInstance) {
       const isValid = await validateSession();
@@ -510,7 +515,7 @@ export async function initializeBrowser(options?: any) {
       // 2025 best practices: Minimal, secure, performance-focused flags
       const baseFlags = [
         '--no-first-run',
-        '--no-default-browser-check', 
+        '--no-default-browser-check',
         '--disable-default-apps',
         '--disable-blink-features=AutomationControlled', // Essential for stealth
         '--start-maximized', // UI convenience, minimal performance impact
@@ -518,7 +523,7 @@ export async function initializeBrowser(options?: any) {
 
       // Add platform-specific flags only when absolutely necessary
       const platformFlags: string[] = [];
-      
+
       if (isWindows) {
         // Only add Windows-specific flags if there are compatibility issues
         // Note: --no-sandbox removed for security (not needed for desktop automation)
@@ -601,7 +606,7 @@ export async function initializeBrowser(options?: any) {
           ]
         }
       };
-      
+
       return { strategyName, strategy };
     };
 
@@ -627,7 +632,7 @@ export async function initializeBrowser(options?: any) {
 
     const connectionStrategies = [
       primaryStrategy,
-      
+
       // Fallback strategies only if primary fails
       createConnectionStrategy('Minimal Configuration', {
         customConfig: {
@@ -641,7 +646,7 @@ export async function initializeBrowser(options?: any) {
           ]
         }
       }),
-      
+
       createConnectionStrategy('Optimal Configuration', {
         customConfig: {
           ignoreDefaultFlags: false,
@@ -654,7 +659,7 @@ export async function initializeBrowser(options?: any) {
           ]
         }
       }),
-      
+
       createConnectionStrategy('Network Fallback', {
         customConfig: {
           ignoreDefaultFlags: false,
@@ -676,10 +681,10 @@ export async function initializeBrowser(options?: any) {
 
     for (let strategyIndex = 0; strategyIndex < connectionStrategies.length; strategyIndex++) {
       const { strategyName, strategy } = connectionStrategies[strategyIndex];
-      
+
       try {
         console.error(`🔄 Attempting browser connection using ${strategyName}...`);
-        
+
         const result = await withTimeout(async () => {
           try {
             console.error(`   Strategy config: ${JSON.stringify({
@@ -688,18 +693,18 @@ export async function initializeBrowser(options?: any) {
               chromeFlags: strategy.customConfig?.chromeFlags || 'none',
               chromePath: strategy.customConfig?.chromePath || 'default'
             })}`);
-            
+
             const connectResult = await connect(strategy);
             console.error(`   ✅ Connection successful with ${strategyName}`);
             return connectResult;
           } catch (connectionError) {
             console.error(`   ❌ Connection failed: ${connectionError instanceof Error ? connectionError.message : String(connectionError)}`);
-            
+
             const errorMsg = connectionError instanceof Error ? connectionError.message : String(connectionError);
-            
+
             if (errorMsg.includes('ECONNREFUSED') || errorMsg.includes('localhost') || errorMsg.includes('127.0.0.1')) {
               console.error(`   Connection error detected, trying host fallback...`);
-              
+
               const fallbackHost = hostTest.recommendedHost === '127.0.0.1' ? 'localhost' : '127.0.0.1';
               const fallbackStrategy = {
                 ...strategy,
@@ -711,15 +716,15 @@ export async function initializeBrowser(options?: any) {
                   ] : [`--remote-debugging-address=${fallbackHost}`]
                 }
               };
-              
+
               console.error(`   Trying fallback with --remote-debugging-address=${fallbackHost}...`);
               return await connect(fallbackStrategy);
             }
-            
+
             throw connectionError;
           }
         }, platform === 'win32' ? 180000 : 150000, `browser-connection-${strategyName.toLowerCase().replace(/\s+/g, '-')}`);
-        
+
         const { browser, page } = result;
 
         browserInstance = browser;
@@ -729,11 +734,11 @@ export async function initializeBrowser(options?: any) {
         console.error(`✅ Browser initialized successfully using ${strategyName}`);
         updateCircuitBreakerOnSuccess();
         return { browser, page };
-        
+
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
         console.error(`❌ ${strategyName} failed:`, lastError.message);
-        
+
         if (lastError.message.includes('ECONNREFUSED')) {
           console.error(`   🔍 ECONNREFUSED detected - likely Brave connection/port issue`);
         } else if (lastError.message.includes('ENOENT') || lastError.message.includes('spawn')) {
@@ -741,25 +746,25 @@ export async function initializeBrowser(options?: any) {
         } else if (lastError.message.includes('timeout')) {
           console.error(`   🔍 Connection timeout - Brave may be slow to start`);
         }
-        
+
         if (strategyIndex < connectionStrategies.length - 1) {
           const delayMs = 2000 + (strategyIndex * 1000);
-          console.error(`⏳ Waiting ${delayMs/1000} seconds before trying next strategy...`);
+          console.error(`⏳ Waiting ${delayMs / 1000} seconds before trying next strategy...`);
           await new Promise(resolve => setTimeout(resolve, delayMs));
         }
       }
     }
 
     updateCircuitBreakerOnFailure();
-    
+
     const errorMessage = lastError ? lastError.message : 'Unknown connection error';
-    
+
     if (errorMessage.includes('ENOENT') || errorMessage.includes('spawn') || errorMessage.includes('brave') || errorMessage.includes('ECONNREFUSED')) {
       if (platform === 'win32') {
         console.error(`❌ All browser connection strategies failed on Windows:`);
         console.error(`   Final Error: ${errorMessage}`);
         console.error(`\n   🔧 Enhanced Windows Troubleshooting Solutions:`);
-        
+
         if (errorMessage.includes('ECONNREFUSED')) {
           console.error(`\n   🚨 ECONNREFUSED Error Specific Solutions:`);
           console.error(`   1. Port/Connection Issues:`);
@@ -776,7 +781,7 @@ export async function initializeBrowser(options?: any) {
           console.error(`      - Clear Brave user data: %LOCALAPPDATA%\\BraveSoftware\\Brave-Browser\\User Data`);
           console.error(`      - Try running Brave manually to test: brave.exe --remote-debugging-port=9222`);
         }
-        
+
         console.error(`\n   🔧 General Solutions:`);
         console.error(`   1. Environment Variables (Recommended):`);
         console.error(`      - Set BRAVE_PATH environment variable`);
@@ -796,10 +801,10 @@ export async function initializeBrowser(options?: any) {
         console.error(`❌ Browser launch failed on ${platform}:`);
         console.error(`   Error: ${errorMessage}`);
       }
-      
+
       throw new Error(`Browser initialization failed after trying all strategies: ${errorMessage}. See console for platform-specific troubleshooting steps.`);
     }
-    
+
     throw lastError || new Error('Unknown browser initialization error');
   } finally {
     browserInitDepth--;
@@ -818,14 +823,14 @@ export async function closeBrowser() {
           console.error('Error closing page:', error);
         }
       }
-      
+
       await browserInstance.close();
-      
+
       if (browserInstance.process() != null) {
         try {
           browserInstance.process().kill('SIGTERM');
           await new Promise(resolve => setTimeout(resolve, 1000));
-          
+
           if (browserInstance.process() != null && !browserInstance.process().killed) {
             browserInstance.process().kill('SIGKILL');
           }
@@ -835,7 +840,7 @@ export async function closeBrowser() {
       }
     } catch (error) {
       console.error('Error closing browser:', error);
-      
+
       if (browserInstance && browserInstance.process() != null) {
         try {
           browserInstance.process().kill('SIGKILL');

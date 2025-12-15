@@ -119,130 +119,9 @@ export async function handleHTMLToText(args: HTMLToTextArgs) {
   }, 'Failed to convert HTML to text');
 }
 
-// Price Parser Arguments
-export interface PriceParserArgs {
-  text: string;
-  currency?: string;
-}
 
-/**
- * Currency symbols और formatting से actual numbers निकालता है
- */
-export async function handlePriceParser(args: PriceParserArgs) {
-  return await withErrorHandling(async () => {
-    const text = args.text;
-    const currency = args.currency;
 
-    // Regular expressions for price patterns
-    const pricePatterns = [
-      /\$\s?(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)/g, // $1,234.56
-      /(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)\s?USD/gi, // 1234.56 USD
-      /€\s?(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)/g, // €1,234.56
-      /£\s?(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)/g, // £1,234.56
-      /₹\s?(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)/g, // ₹1,234.56
-      /(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)/g, // 1,234.56
-    ];
 
-    const prices: any[] = [];
-
-    pricePatterns.forEach((pattern) => {
-      let match;
-      while ((match = pattern.exec(text)) !== null) {
-        const priceStr = match[1] || match[0];
-        const numericValue = parseFloat(priceStr.replace(/,/g, ''));
-
-        if (!isNaN(numericValue)) {
-          // Detect currency symbol
-          let detectedCurrency = currency || 'Unknown';
-          if (match[0].includes('$')) detectedCurrency = 'USD';
-          else if (match[0].includes('€')) detectedCurrency = 'EUR';
-          else if (match[0].includes('£')) detectedCurrency = 'GBP';
-          else if (match[0].includes('₹')) detectedCurrency = 'INR';
-
-          prices.push({
-            original: match[0],
-            value: numericValue,
-            currency: detectedCurrency,
-            formatted: `${detectedCurrency} ${numericValue.toFixed(2)}`,
-          });
-        }
-      }
-    });
-
-    // Remove duplicates
-    const uniquePrices = prices.filter(
-      (price, index, self) =>
-        index === self.findIndex((p) => p.value === price.value && p.currency === price.currency)
-    );
-
-    return {
-      content: [
-        {
-          type: 'text' as const,
-          text: `✅ Parsed ${uniquePrices.length} price(s)\n\n${JSON.stringify(uniquePrices, null, 2)}`,
-        },
-      ],
-    };
-  }, 'Failed to parse prices');
-}
-
-// Date Normalizer Arguments
-export interface DateNormalizerArgs {
-  text: string;
-  outputFormat?: 'iso' | 'locale' | 'unix';
-  timezone?: string;
-}
-
-/**
- * Different date formats को standard format में convert करता है
- */
-export async function handleDateNormalizer(args: DateNormalizerArgs) {
-  return await withErrorHandling(async () => {
-    const text = args.text;
-    const outputFormat = args.outputFormat || 'iso';
-
-    // Parse dates using chrono-node
-    const parsedDates = chrono.parse(text);
-
-    const dates: any[] = [];
-
-    parsedDates.forEach((parsed) => {
-      const date = parsed.start.date();
-      
-      let formatted: string | number;
-      if (outputFormat === 'iso') {
-        formatted = date.toISOString();
-      } else if (outputFormat === 'locale') {
-        formatted = date.toLocaleString();
-      } else if (outputFormat === 'unix') {
-        formatted = Math.floor(date.getTime() / 1000);
-      } else {
-        formatted = date.toISOString();
-      }
-
-      dates.push({
-        original: parsed.text,
-        parsed: formatted,
-        components: {
-          year: date.getFullYear(),
-          month: date.getMonth() + 1,
-          day: date.getDate(),
-          hour: date.getHours(),
-          minute: date.getMinutes(),
-        },
-      });
-    });
-
-    return {
-      content: [
-        {
-          type: 'text' as const,
-          text: `✅ Normalized ${dates.length} date(s)\n\n${JSON.stringify(dates, null, 2)}`,
-        },
-      ],
-    };
-  }, 'Failed to normalize dates');
-}
 
 // Phone/Email Extractor Arguments
 export interface ContactExtractorArgs {
@@ -269,7 +148,7 @@ export async function handleContactExtractor(args: ContactExtractorArgs) {
     if (types.includes('email')) {
       const emailPattern = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g;
       const emails = text.match(emailPattern) || [];
-      
+
       results.emails = [...new Set(emails)].map((email) => ({
         value: email,
         domain: email.split('@')[1],
@@ -392,7 +271,7 @@ export async function handleRequiredFieldsChecker(args: RequiredFieldsCheckerArg
     requiredFields.forEach((field) => {
       // Support nested fields with dot notation
       const value = field.split('.').reduce((obj, key) => obj?.[key], data);
-      
+
       if (value === undefined || value === null || value === '') {
         missing.push(field);
       } else {

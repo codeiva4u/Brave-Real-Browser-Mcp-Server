@@ -482,17 +482,7 @@ export const TOOLS = [
       },
     },
   },
-  {
-    name: 'pdf_link_finder',
-    description: 'Downloadable files (PDF, DOC, etc.) detect करता है',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        selector: { type: 'string', default: 'a[href]' },
-        includeOtherFiles: { type: 'boolean', default: true },
-      },
-    },
-  },
+
   // Pagination Tools
   {
     name: 'auto_pagination',
@@ -584,31 +574,8 @@ export const TOOLS = [
       required: ['html'],
     },
   },
-  {
-    name: 'price_parser',
-    description: 'Currency symbols से actual numbers extract करता है',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        text: { type: 'string' },
-        currency: { type: 'string' },
-      },
-      required: ['text'],
-    },
-  },
-  {
-    name: 'date_normalizer',
-    description: 'Different date formats को standard format में convert करता है',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        text: { type: 'string' },
-        outputFormat: { type: 'string', enum: ['iso', 'locale', 'unix'], default: 'iso' },
-        timezone: { type: 'string' },
-      },
-      required: ['text'],
-    },
-  },
+
+
   {
     name: 'contact_extractor',
     description: 'Phone numbers और email addresses automatically detect करता है',
@@ -931,22 +898,7 @@ export const TOOLS = [
       required: ['selector', 'outputPath'],
     },
   },
-  {
-    name: 'pdf_generation',
-    description: 'Convert page to PDF',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        url: { type: 'string' },
-        outputPath: { type: 'string' },
-        format: { type: 'string', default: 'A4' },
-        landscape: { type: 'boolean', default: false },
-        printBackground: { type: 'boolean', default: true },
-        margin: { type: 'object' },
-      },
-      required: ['outputPath'],
-    },
-  },
+
   {
     name: 'video_recording',
     description: 'Record browser session',
@@ -1249,31 +1201,8 @@ export const TOOLS = [
       },
     },
   },
-  {
-    name: 'error_logger',
-    description: 'Log and track errors',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        action: { type: 'string', enum: ['log', 'get', 'clear'], default: 'log' },
-        message: { type: 'string' },
-        type: { type: 'string' },
-        context: { type: 'object' },
-        stackTrace: { type: 'string' },
-        limit: { type: 'number', default: 10 },
-      },
-    },
-  },
-  {
-    name: 'success_rate_reporter',
-    description: 'Report success metrics',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        timeRange: { type: 'string', enum: ['all', 'last_hour', 'last_day'], default: 'all' },
-      },
-    },
-  },
+
+
   {
     name: 'data_quality_metrics',
     description: 'Report data quality metrics',
@@ -1284,22 +1213,8 @@ export const TOOLS = [
       },
     },
   },
-  {
-    name: 'performance_monitor',
-    description: 'Monitor browser and page performance',
-    inputSchema: {
-      type: 'object',
-      properties: {},
-    },
-  },
-  {
-    name: 'monitoring_summary',
-    description: 'Get overall monitoring summary',
-    inputSchema: {
-      type: 'object',
-      properties: {},
-    },
-  },
+
+
   // Advanced Video & Media Download Tools
   {
     name: 'video_link_finder',
@@ -1429,8 +1344,8 @@ export const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        waitTime: { 
-          type: 'number', 
+        waitTime: {
+          type: 'number',
           default: 10000,
           description: 'Time to wait (in ms) for dynamic content and video sources to load'
         },
@@ -1452,12 +1367,12 @@ export const TOOLS = [
       type: 'object',
       required: ['url'],
       properties: {
-        url: { 
+        url: {
           type: 'string',
           description: 'Starting URL to trace redirects from'
         },
-        maxDepth: { 
-          type: 'number', 
+        maxDepth: {
+          type: 'number',
           default: 5,
           description: 'Maximum redirect depth to follow'
         },
@@ -1502,7 +1417,7 @@ export const TOOL_NAMES = {
   IMAGE_SCRAPER: 'image_scraper',
   LINK_HARVESTER: 'link_harvester',
   MEDIA_EXTRACTOR: 'media_extractor',
-  PDF_LINK_FINDER: 'pdf_link_finder',
+
   // Pagination Tools
   AUTO_PAGINATION: 'auto_pagination',
   INFINITE_SCROLL: 'infinite_scroll',
@@ -1512,8 +1427,8 @@ export const TOOL_NAMES = {
   // Data Processing
   SMART_TEXT_CLEANER: 'smart_text_cleaner',
   HTML_TO_TEXT: 'html_to_text',
-  PRICE_PARSER: 'price_parser',
-  DATE_NORMALIZER: 'date_normalizer',
+
+
   CONTACT_EXTRACTOR: 'contact_extractor',
   // Data Validation
   SCHEMA_VALIDATOR: 'schema_validator',
@@ -1544,7 +1459,7 @@ export const TOOL_NAMES = {
   // Screenshot & Visual Tools
   FULL_PAGE_SCREENSHOT: 'full_page_screenshot',
   ELEMENT_SCREENSHOT: 'element_screenshot',
-  PDF_GENERATION: 'pdf_generation',
+
   VIDEO_RECORDING: 'video_recording',
   VISUAL_COMPARISON: 'visual_comparison',
 } as const;
@@ -1620,7 +1535,7 @@ export interface SaveContentAsMarkdownArgs {
 }
 
 // Union type for all tool arguments
-export type ToolArgs = 
+export type ToolArgs =
   | BrowserInitArgs
   | NavigateArgs
   | GetContentArgs

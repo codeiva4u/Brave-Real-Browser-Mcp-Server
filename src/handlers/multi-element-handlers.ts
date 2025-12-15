@@ -317,7 +317,7 @@ export async function handleImageScraper(args: ImageScraperArgs) {
 
         images.forEach((img: any, index) => {
           const src = img.src || img.getAttribute('data-src') || '';
-          
+
           // Skip data URLs if not included
           if (!includeDataUrls && src.startsWith('data:')) {
             return;
@@ -395,7 +395,7 @@ export async function handleLinkHarvester(args: LinkHarvesterArgs) {
 
         links.forEach((link: any, index) => {
           const href = link.href;
-          
+
           // Skip anchors if not included
           if (!includeAnchors && href.startsWith('#')) {
             return;
@@ -419,12 +419,12 @@ export async function handleLinkHarvester(args: LinkHarvesterArgs) {
               linkInfo.type = isAnchor
                 ? 'anchor'
                 : isMailto
-                ? 'email'
-                : isTel
-                ? 'phone'
-                : isInternal
-                ? 'internal'
-                : 'external';
+                  ? 'email'
+                  : isTel
+                    ? 'phone'
+                    : isInternal
+                      ? 'internal'
+                      : 'external';
 
               linkInfo.domain = url.hostname;
               linkInfo.protocol = url.protocol;
@@ -601,111 +601,4 @@ export async function handleMediaExtractor(args: MediaExtractorArgs) {
   }, 'Failed to extract media');
 }
 
-// PDF Link Finder Arguments
-export interface PDFLinkFinderArgs {
-  selector?: string;
-  includeOtherFiles?: boolean;
-}
 
-/**
- * Downloadable files (PDF, DOC, etc.) detect करता है
- */
-export async function handlePDFLinkFinder(args: PDFLinkFinderArgs) {
-  return await withErrorHandling(async () => {
-    validateWorkflow('pdf_link_finder', {
-      requireBrowser: true,
-      requirePage: true,
-    });
-
-    const page = getCurrentPage();
-    const selector = args.selector || 'a[href]';
-    const includeOtherFiles = args.includeOtherFiles !== false;
-
-    const fileData = await page.evaluate(
-      ({ selector, includeOtherFiles }) => {
-        const links = document.querySelectorAll(selector);
-        const results: any = {
-          pdfs: [],
-          documents: [],
-          archives: [],
-          others: [],
-        };
-
-        const fileExtensions = {
-          pdf: ['pdf'],
-          documents: ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'ods', 'odp'],
-          archives: ['zip', 'rar', '7z', 'tar', 'gz', 'bz2'],
-          others: ['txt', 'csv', 'json', 'xml'],
-        };
-
-        links.forEach((link: any, index) => {
-          const href = link.href;
-          const text = link.textContent?.trim() || '';
-
-          // Check file extension
-          const url = href.toLowerCase();
-          let fileType = '';
-          let category = '';
-
-          for (const [cat, exts] of Object.entries(fileExtensions)) {
-            for (const ext of exts) {
-              if (url.endsWith(`.${ext}`) || url.includes(`.${ext}?`) || url.includes(`.${ext}#`)) {
-                fileType = ext;
-                category = cat;
-                break;
-              }
-            }
-            if (fileType) break;
-          }
-
-          if (!fileType && !includeOtherFiles) {
-            return;
-          }
-
-          const fileInfo: any = {
-            index,
-            href,
-            text,
-            fileType,
-            fileName: href.split('/').pop()?.split('?')[0] || '',
-          };
-
-          // Get file size if available
-          const sizeAttr = link.getAttribute('data-size') || link.getAttribute('title');
-          if (sizeAttr) {
-            fileInfo.size = sizeAttr;
-          }
-
-          // Categorize
-          if (category === 'pdf') {
-            results.pdfs.push(fileInfo);
-          } else if (category === 'documents') {
-            results.documents.push(fileInfo);
-          } else if (category === 'archives') {
-            results.archives.push(fileInfo);
-          } else if (includeOtherFiles) {
-            results.others.push(fileInfo);
-          }
-        });
-
-        return results;
-      },
-      { selector, includeOtherFiles }
-    );
-
-    const totalFiles =
-      fileData.pdfs.length +
-      fileData.documents.length +
-      fileData.archives.length +
-      fileData.others.length;
-
-    return {
-      content: [
-        {
-          type: 'text' as const,
-          text: `✅ Found ${totalFiles} downloadable files\n\n${JSON.stringify(fileData, null, 2)}`,
-        },
-      ],
-    };
-  }, 'Failed to find PDF links');
-}

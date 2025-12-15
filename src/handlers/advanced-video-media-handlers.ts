@@ -81,11 +81,11 @@ export async function handleVideoLinkFinder(args: any) {
         const url = response.url();
         const ct = (response.headers()['content-type'] || '').toLowerCase();
         const isStream = /\.m3u8(\?|$)|\.mpd(\?|$)|\.ts(\?|$)|\.vtt(\?|$)/i.test(url) ||
-                         ct.includes('application/vnd.apple.mpegurl') || ct.includes('application/x-mpegurl');
+          ct.includes('application/vnd.apple.mpegurl') || ct.includes('application/x-mpegurl');
         if (isStream) {
           streamingLinks.push({ url, contentType: ct, status: response.status() });
         }
-      } catch {}
+      } catch { }
     };
     page.on('response', respHandler);
 
@@ -100,7 +100,7 @@ export async function handleVideoLinkFinder(args: any) {
       if (clickPoint && typeof clickPoint.x === 'number') {
         await page.mouse.click(clickPoint.x, clickPoint.y, { clickCount: 1 });
       }
-    } catch {}
+    } catch { }
 
     await sleep(captureDuration);
     page.off('response', respHandler);
@@ -134,7 +134,7 @@ export async function handleVideoDownloadPage(args: any) {
     });
 
     const page = getCurrentPage();
-    
+
     const downloadPageInfo = await page.evaluate(() => {
       const indicators = {
         hasVideoElement: !!document.querySelector('video'),
@@ -143,7 +143,7 @@ export async function handleVideoDownloadPage(args: any) {
         videoSources: [] as any[],
         downloadLinks: [] as any[],
       };
-      
+
       // Get video sources
       document.querySelectorAll('video').forEach((video: any) => {
         if (video.src) {
@@ -152,7 +152,7 @@ export async function handleVideoDownloadPage(args: any) {
             type: 'direct',
           });
         }
-        
+
         video.querySelectorAll('source').forEach((source: any) => {
           indicators.videoSources.push({
             src: source.src,
@@ -161,7 +161,7 @@ export async function handleVideoDownloadPage(args: any) {
           });
         });
       });
-      
+
       // Find download buttons/links
       const downloadSelectors = [
         'a[download]',
@@ -171,7 +171,7 @@ export async function handleVideoDownloadPage(args: any) {
         'a[class*="download"]',
         'button[class*="download"]',
       ];
-      
+
       downloadSelectors.forEach(selector => {
         document.querySelectorAll(selector).forEach((el: any) => {
           indicators.downloadLinks.push({
@@ -181,7 +181,7 @@ export async function handleVideoDownloadPage(args: any) {
           });
         });
       });
-      
+
       return indicators;
     });
 
@@ -207,7 +207,7 @@ export async function handleVideoDownloadButton(args: any) {
     const page = getCurrentPage();
     const action = args.action || 'find'; // find, click
     const customSelector = args.selector;
-    
+
     if (action === 'find') {
       const buttons = await page.evaluate(() => {
         const results: any[] = [];
@@ -221,7 +221,7 @@ export async function handleVideoDownloadButton(args: any) {
           '[data-download]',
           '[onclick*="download"]',
         ];
-        
+
         selectors.forEach(selector => {
           try {
             document.querySelectorAll(selector).forEach((el: any, idx) => {
@@ -238,10 +238,10 @@ export async function handleVideoDownloadButton(args: any) {
             // Selector not supported
           }
         });
-        
+
         return results;
       });
-      
+
       return {
         content: [{
           type: 'text' as const,
@@ -249,14 +249,14 @@ export async function handleVideoDownloadButton(args: any) {
         }],
       };
     }
-    
+
     if (action === 'click') {
       const selector = customSelector || 'a[download], button[download]';
-      
+
       try {
         await page.click(selector);
         await sleep(2000);
-        
+
         return {
           content: [{
             type: 'text' as const,
@@ -288,19 +288,19 @@ export async function handleVideoPlayPushSource(args: any) {
     });
 
     const page = getCurrentPage();
-    
+
     // Monitor network for video sources when play is clicked
     const videoSources: any[] = [];
-    
+
     const responseHandler = async (response: any) => {
       const url = response.url();
       const contentType = response.headers()['content-type'] || '';
-      
-      if (contentType.includes('video') || 
-          url.includes('.m3u8') || 
-          url.includes('.mpd') ||
-          url.includes('.mp4') ||
-          url.includes('.webm')) {
+
+      if (contentType.includes('video') ||
+        url.includes('.m3u8') ||
+        url.includes('.mpd') ||
+        url.includes('.mp4') ||
+        url.includes('.webm')) {
         videoSources.push({
           url,
           contentType,
@@ -308,9 +308,9 @@ export async function handleVideoPlayPushSource(args: any) {
         });
       }
     };
-    
+
     page.on('response', responseHandler);
-    
+
     // Enhanced play button selectors
     const playSelectors = [
       'button[class*="play"]',
@@ -330,10 +330,10 @@ export async function handleVideoPlayPushSource(args: any) {
       '[class*="icon-play"]',
       'i[class*="play"]',
     ];
-    
+
     let clicked = false;
     let clickMethod = 'none';
-    
+
     // Try clicking play buttons
     for (const selector of playSelectors) {
       try {
@@ -346,7 +346,7 @@ export async function handleVideoPlayPushSource(args: any) {
               try {
                 video.play();
                 success = true;
-              } catch (e) {}
+              } catch (e) { }
             });
             return success;
           });
@@ -368,7 +368,7 @@ export async function handleVideoPlayPushSource(args: any) {
         // Try next selector
       }
     }
-    
+
     // If no play button found, try clicking center of iframe
     if (!clicked) {
       try {
@@ -388,14 +388,14 @@ export async function handleVideoPlayPushSource(args: any) {
           }
           return false;
         });
-        
+
         if (iframeClicked) {
           clicked = true;
           clickMethod = 'iframe-click';
         }
-      } catch (e) {}
+      } catch (e) { }
     }
-    
+
     // Wait for sources to load (longer wait for iframe-based)
     await sleep(5000);
     page.off('response', responseHandler);
@@ -421,7 +421,7 @@ export async function handleVideoPlayButtonClick(args: any) {
 
     const page = getCurrentPage();
     const customSelector = args.selector;
-    
+
     // Enhanced play button selectors
     const defaultSelectors = [
       'button[class*="play"]',
@@ -443,16 +443,16 @@ export async function handleVideoPlayButtonClick(args: any) {
       // Video element
       'video',
     ];
-    
+
     const playSelectors = customSelector ? [customSelector] : defaultSelectors;
-    
+
     const results: any = {
       attempted: [],
       clicked: false,
       method: 'none',
       selector: null
     };
-    
+
     for (const selector of playSelectors) {
       try {
         if (selector === 'video') {
@@ -464,18 +464,18 @@ export async function handleVideoPlayButtonClick(args: any) {
               try {
                 video.play();
                 success = true;
-              } catch (e) {}
+              } catch (e) { }
             });
             return success;
           });
-          
+
           results.attempted.push({ selector, found: played });
-          
+
           if (played) {
             results.clicked = true;
             results.method = 'video.play()';
             results.selector = selector;
-            
+
             return {
               content: [{
                 type: 'text' as const,
@@ -486,13 +486,13 @@ export async function handleVideoPlayButtonClick(args: any) {
         } else {
           const element = await page.$(selector);
           results.attempted.push({ selector, found: !!element });
-          
+
           if (element) {
             await element.click();
             results.clicked = true;
             results.method = 'element.click()';
             results.selector = selector;
-            
+
             return {
               content: [{
                 type: 'text' as const,
@@ -505,7 +505,7 @@ export async function handleVideoPlayButtonClick(args: any) {
         results.attempted.push({ selector, error: String(e) });
       }
     }
-    
+
     // Fallback: Try clicking iframe center
     try {
       const iframeInfo = await page.evaluate(() => {
@@ -521,13 +521,13 @@ export async function handleVideoPlayButtonClick(args: any) {
         }
         return { found: false };
       });
-      
+
       if (iframeInfo.found) {
         await page.mouse.click(iframeInfo.x, iframeInfo.y);
         results.clicked = true;
         results.method = 'iframe-click';
         results.selector = 'iframe (center)';
-        
+
         return {
           content: [{
             type: 'text' as const,
@@ -560,18 +560,18 @@ export async function handleUrlRedirectTraceEndpoints(args: any) {
 
     const page = getCurrentPage();
     const url = args.url;
-    
+
     if (!url) {
       throw new Error('URL is required');
     }
-    
+
     const redirectChain: any[] = [];
     const endpoints: any[] = [];
-    
+
     const responseHandler = (response: any) => {
       const status = response.status();
       const respUrl = response.url();
-      
+
       redirectChain.push({
         url: respUrl,
         status,
@@ -579,7 +579,7 @@ export async function handleUrlRedirectTraceEndpoints(args: any) {
         headers: response.headers(),
         isRedirect: status >= 300 && status < 400,
       });
-      
+
       if (status >= 300 && status < 400) {
         const location = response.headers()['location'];
         if (location) {
@@ -591,11 +591,11 @@ export async function handleUrlRedirectTraceEndpoints(args: any) {
         }
       }
     };
-    
+
     page.on('response', responseHandler);
     await page.goto(url, { waitUntil: 'networkidle2' });
     page.off('response', responseHandler);
-    
+
     const finalUrl = page.url();
 
     return {
@@ -616,7 +616,7 @@ export async function handleNetworkRecordingFinder(args: any) {
       requireBrowser: true,
       requirePage: true,
     });
-    
+
     if (!validation.isValid) {
       return {
         content: [{
@@ -632,33 +632,33 @@ export async function handleNetworkRecordingFinder(args: any) {
     const filterType = args.filterType || 'video'; // video, audio, media
     const navigateTo = args.navigateTo; // Optional URL to navigate to
     const verbose = args.verbose !== false; // Default true for detailed logging
-    
+
     const recordings: any[] = [];
     let totalResponses = 0;
     let matchedResponses = 0;
-    
+
     const responseHandler = async (response: any) => {
       try {
         totalResponses++;
         const url = response.url();
         const contentType = response.headers()['content-type'] || '';
         const resourceType = response.request().resourceType();
-        
+
         if (verbose && totalResponses % 10 === 0) {
-          console.log(`[Network Recording] Processed ${totalResponses} responses, ${matchedResponses} matched`);
+          console.error(`[Network Recording] Processed ${totalResponses} responses, ${matchedResponses} matched`);
         }
-        
+
         let shouldRecord = false;
 
         const urlLower = url.toLowerCase();
         const isStreamAsset = /\.m3u8(\?|$)|\.mpd(\?|$)|\.ts(\?|$)|\.vtt(\?|$)|\.mp4(\?|$)|\.webm(\?|$)/i.test(urlLower) ||
-                              contentType.includes('application/vnd.apple.mpegurl') ||
-                              contentType.includes('application/x-mpegurl');
-        
+          contentType.includes('application/vnd.apple.mpegurl') ||
+          contentType.includes('application/x-mpegurl');
+
         // Video API detection (like /api/v1/video, /stream, etc.)
-        const isVideoAPI = urlLower.includes('/video') || 
-                          urlLower.includes('/stream') ||
-                          (contentType.includes('application/octet-stream') && urlLower.includes('video'));
+        const isVideoAPI = urlLower.includes('/video') ||
+          urlLower.includes('/stream') ||
+          (contentType.includes('application/octet-stream') && urlLower.includes('video'));
 
         if (filterType === 'video' && (contentType.includes('video') || resourceType === 'media' || isStreamAsset || isVideoAPI)) {
           shouldRecord = true;
@@ -671,7 +671,7 @@ export async function handleNetworkRecordingFinder(args: any) {
         if (shouldRecord) {
           matchedResponses++;
           if (verbose) {
-            console.log(`[Network Recording] ✅ Matched ${filterType}: ${url.substring(0, 100)}`);
+            console.error(`[Network Recording] ✅ Matched ${filterType}: ${url.substring(0, 100)}`);
           }
           try {
             const buffer = await response.buffer();
@@ -695,23 +695,23 @@ export async function handleNetworkRecordingFinder(args: any) {
         // Ignore individual response errors
       }
     };
-    
-    console.log(`[Network Recording] 🎬 Starting monitoring for ${filterType} (${duration}ms)${navigateTo ? ` + navigating to ${navigateTo}` : ''}`);
+
+    console.error(`[Network Recording] 🎬 Starting monitoring for ${filterType} (${duration}ms)${navigateTo ? ` + navigating to ${navigateTo}` : ''}`);
     page.on('response', responseHandler);
-    
+
     // If navigateTo is provided, navigate first, then wait
     if (navigateTo) {
       try {
         await page.goto(navigateTo, { waitUntil: 'networkidle2', timeout: 30000 });
-        console.log(`[Network Recording] ✅ Navigation complete, continuing monitoring...`);
+        console.error(`[Network Recording] ✅ Navigation complete, continuing monitoring...`);
       } catch (e) {
-        console.log(`[Network Recording] ⚠️ Navigation error (continuing anyway): ${e}`);
+        console.error(`[Network Recording] ⚠️ Navigation error (continuing anyway): ${e}`);
       }
     }
-    
+
     await sleep(duration);
     page.off('response', responseHandler);
-    console.log(`[Network Recording] 🛑 Monitoring stopped. Total: ${totalResponses}, Matched: ${matchedResponses}, Recorded: ${recordings.length}`);
+    console.error(`[Network Recording] 🛑 Monitoring stopped. Total: ${totalResponses}, Matched: ${matchedResponses}, Recorded: ${recordings.length}`);
 
     if (recordings.length === 0) {
       return {
@@ -748,7 +748,7 @@ export async function handleNetworkRecordingExtractors(args: any) {
       requireBrowser: true,
       requirePage: true,
     });
-    
+
     if (!validation.isValid) {
       return {
         content: [{
@@ -763,7 +763,7 @@ export async function handleNetworkRecordingExtractors(args: any) {
     const duration = args.duration || 10000;
     const navigateTo = args.navigateTo; // Optional URL to navigate to
     const verbose = args.verbose !== false; // Default true
-    
+
     const extractedData: any = {
       videos: [],
       audio: [],
@@ -771,29 +771,29 @@ export async function handleNetworkRecordingExtractors(args: any) {
       apis: [],
     };
     let totalResponses = 0;
-    
+
     const responseHandler = (response: any) => {
       try {
         totalResponses++;
         const url = response.url();
         const contentType = response.headers()['content-type'] || '';
-        
+
         // Video files (includes API video requests)
-        const isVideoFile = contentType.includes('video') || 
-                           url.includes('.mp4') || 
-                           url.includes('.webm') ||
-                           url.includes('.mov') ||
-                           url.includes('.avi') ||
-                           url.includes('.mkv');
-        
+        const isVideoFile = contentType.includes('video') ||
+          url.includes('.mp4') ||
+          url.includes('.webm') ||
+          url.includes('.mov') ||
+          url.includes('.avi') ||
+          url.includes('.mkv');
+
         // Video API patterns (like cherry.upns.online/api/v1/video)
-        const isVideoAPI = url.toLowerCase().includes('/video') || 
-                          url.toLowerCase().includes('/stream') ||
-                          url.toLowerCase().includes('/api') ||
-                          (contentType.includes('application/octet-stream') && url.includes('video'));
-        
+        const isVideoAPI = url.toLowerCase().includes('/video') ||
+          url.toLowerCase().includes('/stream') ||
+          url.toLowerCase().includes('/api') ||
+          (contentType.includes('application/octet-stream') && url.includes('video'));
+
         if (isVideoFile || isVideoAPI) {
-          if (verbose) console.log(`[Extractor] 🎥 Video found: ${url.substring(0, 80)}`);
+          if (verbose) console.error(`[Extractor] 🎥 Video found: ${url.substring(0, 80)}`);
           extractedData.videos.push({
             url,
             contentType,
@@ -802,7 +802,7 @@ export async function handleNetworkRecordingExtractors(args: any) {
             type: isVideoAPI ? 'api' : 'direct',
           });
         }
-        
+
         // Audio files
         if (contentType.includes('audio') || url.includes('.mp3') || url.includes('.m4a')) {
           if (verbose) console.log(`[Extractor] 🎵 Audio found: ${url.substring(0, 80)}`);
@@ -811,7 +811,7 @@ export async function handleNetworkRecordingExtractors(args: any) {
             contentType,
           });
         }
-        
+
         // Manifest files (HLS, DASH) - Don't try to read content in handler
         if (url.includes('.m3u8') || url.includes('.mpd')) {
           if (verbose) console.log(`[Extractor] 📜 Manifest found: ${url.substring(0, 80)}`);
@@ -822,7 +822,7 @@ export async function handleNetworkRecordingExtractors(args: any) {
             status: response.status(),
           });
         }
-        
+
         // API responses with video data - Don't try to parse in handler
         if (contentType.includes('json') && (url.includes('video') || url.includes('media') || url.includes('api') || url.includes('player'))) {
           if (verbose) console.log(`[Extractor] 📡 API found: ${url.substring(0, 80)}`);
@@ -836,10 +836,10 @@ export async function handleNetworkRecordingExtractors(args: any) {
         if (verbose) console.log(`[Extractor] ⚠️ Error processing response: ${e}`);
       }
     };
-    
+
     console.log(`[Extractor] 🎬 Starting extraction (${duration}ms)${navigateTo ? ` + navigating to ${navigateTo}` : ''}`);
     page.on('response', responseHandler);
-    
+
     // If navigateTo is provided, navigate first, then wait
     if (navigateTo) {
       try {
@@ -849,12 +849,12 @@ export async function handleNetworkRecordingExtractors(args: any) {
         console.log(`[Extractor] ⚠️ Navigation error (continuing): ${e}`);
       }
     }
-    
+
     await sleep(duration);
     page.off('response', responseHandler);
 
-    const totalFound = extractedData.videos.length + extractedData.audio.length + 
-                       extractedData.manifests.length + extractedData.apis.length;
+    const totalFound = extractedData.videos.length + extractedData.audio.length +
+      extractedData.manifests.length + extractedData.apis.length;
     console.log(`[Extractor] 🛑 Extraction complete. Total responses: ${totalResponses}, Extracted: ${totalFound}`);
 
     if (totalFound === 0) {
@@ -962,11 +962,11 @@ export async function handleVideoLinksFinders(args: any) {
         const url = response.url();
         const ct = (response.headers()['content-type'] || '').toLowerCase();
         if (/\.m3u8(\?|$)|\.mpd(\?|$)|\.ts(\?|$)|\.vtt(\?|$)/i.test(url) ||
-            ct.includes('application/vnd.apple.mpegurl') || ct.includes('application/x-mpegurl')) {
+          ct.includes('application/vnd.apple.mpegurl') || ct.includes('application/x-mpegurl')) {
           const type = url.includes('.mpd') ? 'DASH' : url.includes('.m3u8') ? 'HLS' : 'segment';
           networkStreams.push({ url, type, contentType: ct, status: response.status(), source: 'network' });
         }
-      } catch {}
+      } catch { }
     };
     page.on('response', respHandler);
 
@@ -981,7 +981,7 @@ export async function handleVideoLinksFinders(args: any) {
       if (clickPoint && typeof clickPoint.x === 'number') {
         await page.mouse.click(clickPoint.x, clickPoint.y, { clickCount: 1 });
       }
-    } catch {}
+    } catch { }
 
     await sleep(captureDuration);
     page.off('response', respHandler);
@@ -1012,7 +1012,7 @@ export async function handleVideosSelectors(args: any) {
     });
 
     const page = getCurrentPage();
-    
+
     const selectors = await page.evaluate(() => {
       const results: any = {
         videoElements: [],
@@ -1021,13 +1021,13 @@ export async function handleVideosSelectors(args: any) {
         controlButtons: [],
         sources: [],
       };
-      
+
       // Video elements
       document.querySelectorAll('video').forEach((video: any, idx) => {
-        const selector = video.id ? `#${video.id}` : 
-                        video.className ? `.${video.className.split(' ')[0]}` :
-                        `video:nth-of-type(${idx + 1})`;
-        
+        const selector = video.id ? `#${video.id}` :
+          video.className ? `.${video.className.split(' ')[0]}` :
+            `video:nth-of-type(${idx + 1})`;
+
         results.videoElements.push({
           selector,
           src: video.src,
@@ -1035,13 +1035,13 @@ export async function handleVideosSelectors(args: any) {
           type: 'direct_video'
         });
       });
-      
+
       // Iframe elements (video sources)
       document.querySelectorAll('iframe').forEach((iframe: any, idx) => {
-        const selector = iframe.id ? `#${iframe.id}` : 
-                        iframe.className ? `.${iframe.className.split(' ')[0]}` :
-                        `iframe:nth-of-type(${idx + 1})`;
-        
+        const selector = iframe.id ? `#${iframe.id}` :
+          iframe.className ? `.${iframe.className.split(' ')[0]}` :
+            `iframe:nth-of-type(${idx + 1})`;
+
         if (iframe.src) {
           results.iframeElements.push({
             selector,
@@ -1052,13 +1052,13 @@ export async function handleVideosSelectors(args: any) {
           });
         }
       });
-      
+
       // Player containers (check for both video and iframe)
       ['[class*="player"]', '[id*="player"]', '[data-player]'].forEach(sel => {
         document.querySelectorAll(sel).forEach((el: any) => {
           const hasVideo = !!el.querySelector('video');
           const hasIframe = !!el.querySelector('iframe');
-          
+
           results.playerContainers.push({
             selector: sel,
             id: el.id,
@@ -1069,7 +1069,7 @@ export async function handleVideosSelectors(args: any) {
           });
         });
       });
-      
+
       // Control buttons
       ['[class*="play"]', '[class*="pause"]', '[aria-label*="Play"]'].forEach(sel => {
         document.querySelectorAll(sel).forEach((el: any) => {
@@ -1080,7 +1080,7 @@ export async function handleVideosSelectors(args: any) {
           });
         });
       });
-      
+
       return results;
     });
 
@@ -1105,7 +1105,7 @@ export async function handleLinkProcessExtracts(args: any) {
 
     const page = getCurrentPage();
     const processType = args.processType || 'all'; // all, video, download, external
-    
+
     const processedLinks = await page.evaluate((type) => {
       const results: any = {
         processed: [],
@@ -1116,20 +1116,20 @@ export async function handleLinkProcessExtracts(args: any) {
           internal: [],
         },
       };
-      
+
       const currentDomain = window.location.hostname;
-      
+
       document.querySelectorAll('a[href]').forEach((link: any, idx) => {
         const href = link.href;
         const text = link.textContent?.trim() || '';
-        
+
         const linkData: any = {
           index: idx,
           url: href,
           text,
           processed: true,
         };
-        
+
         // Categorize
         if (href.includes('.mp4') || href.includes('.webm') || href.includes('video')) {
           linkData.category = 'video';
@@ -1151,10 +1151,10 @@ export async function handleLinkProcessExtracts(args: any) {
             linkData.category = 'invalid';
           }
         }
-        
+
         results.processed.push(linkData);
       });
-      
+
       return results;
     }, processType);
 
@@ -1178,10 +1178,10 @@ export async function handleVideoLinkFindersExtracts(args: any) {
     });
 
     const page = getCurrentPage();
-    
+
     const extracted = await page.evaluate(() => {
       const results: any[] = [];
-      
+
       // Method 1: Direct video links
       document.querySelectorAll('a[href]').forEach((link: any) => {
         const href = link.href.toLowerCase();
@@ -1194,7 +1194,7 @@ export async function handleVideoLinkFindersExtracts(args: any) {
           });
         }
       });
-      
+
       // Method 2: Video elements
       document.querySelectorAll('video').forEach((video: any) => {
         if (video.src) {
@@ -1205,7 +1205,7 @@ export async function handleVideoLinkFindersExtracts(args: any) {
             duration: video.duration,
           });
         }
-        
+
         video.querySelectorAll('source').forEach((source: any) => {
           results.push({
             method: 'source_element',
@@ -1215,7 +1215,7 @@ export async function handleVideoLinkFindersExtracts(args: any) {
           });
         });
       });
-      
+
       // Method 3: Data attributes
       document.querySelectorAll('[data-video], [data-src]').forEach((el: any) => {
         const videoUrl = el.dataset.video || el.dataset.src;
@@ -1227,7 +1227,7 @@ export async function handleVideoLinkFindersExtracts(args: any) {
           });
         }
       });
-      
+
       return results;
     });
 
@@ -1251,11 +1251,11 @@ export async function handleVideoDownloadButtonFinders(args: any) {
     });
 
     const page = getCurrentPage();
-    
+
     const downloadButtons = await page.evaluate(() => {
       const results: any[] = [];
       const foundElements = new Set(); // Avoid duplicates
-      
+
       // Enhanced patterns for download buttons
       const buttonPatterns = [
         // Direct download attributes
@@ -1265,7 +1265,7 @@ export async function handleVideoDownloadButtonFinders(args: any) {
         '[data-download-url]',
         '[data-file]',
         '[data-link]',
-        
+
         // Class-based
         'a[class*="download"]',
         'button[class*="download"]',
@@ -1275,13 +1275,13 @@ export async function handleVideoDownloadButtonFinders(args: any) {
         '[class*="dlvideoLinks"]',
         '[class*="btn-info"]',
         '[class*="btn-primary"]',
-        
+
         // ID-based
         '[id*="download"]',
         '[id*="btn-download"]',
         '[id*="downloadButton"]',
         '[id*="Download"]',
-        
+
         // Href patterns
         'a[href*="download"]',
         'a[href*=".mp4"]',
@@ -1292,42 +1292,42 @@ export async function handleVideoDownloadButtonFinders(args: any) {
         'a[href*="/stream/"]',
         'a[href*="ddn."]',
         'a[href*="igx."]',
-        
+
         // Onclick patterns
         '[onclick*="download"]',
         '[onclick*="Download"]',
         '[onclick*="window.open"]',
-        
+
         // Icon-based (common patterns)
         'a i[class*="download"]',
         'button i[class*="download"]',
         '.fa-download',
         '.icon-download',
-        
+
         // Form submit buttons
         'input[type="submit"][value*="Download"]',
         'input[type="submit"][value*="Stream"]',
         'button[type="submit"]',
       ];
-      
+
       // Text-based search (case insensitive) - ENHANCED with GDL patterns
       const searchTexts = [
         'download', 'descargar', 'télécharger', 'baixar', 'скачать', 'save', 'get',
         'gdl', '5gdl', '4gdl', '3gdl', '2gdl', '1gdl', '⚡5gdl', // GDL variations with lightning
         'dl', 'down', 'grab', 'fetch', 'stream', 'watch', 'play', 'click'
       ];
-      
+
       buttonPatterns.forEach(pattern => {
         try {
           document.querySelectorAll(pattern).forEach((btn: any) => {
             // Avoid duplicates
             if (foundElements.has(btn)) return;
             foundElements.add(btn);
-            
+
             const isVisible = btn.offsetWidth > 0 && btn.offsetHeight > 0;
             const text = btn.textContent?.trim() || '';
             const href = btn.href || btn.getAttribute('href') || '';
-            
+
             results.push({
               pattern,
               text,
@@ -1345,18 +1345,18 @@ export async function handleVideoDownloadButtonFinders(args: any) {
           // Pattern not supported or error
         }
       });
-      
+
       // Additional: Search for buttons/links with download-related text
       document.querySelectorAll('a, button').forEach((el: any) => {
         if (foundElements.has(el)) return;
-        
+
         const text = el.textContent?.toLowerCase() || '';
         const hasDownloadText = searchTexts.some(term => text.includes(term));
-        
+
         if (hasDownloadText) {
           foundElements.add(el);
           const isVisible = el.offsetWidth > 0 && el.offsetHeight > 0;
-          
+
           results.push({
             pattern: 'text-based-search',
             text: el.textContent?.trim() || '',
@@ -1370,7 +1370,7 @@ export async function handleVideoDownloadButtonFinders(args: any) {
           });
         }
       });
-      
+
       return results;
     });
 
@@ -1385,7 +1385,7 @@ export async function handleVideoDownloadButtonFinders(args: any) {
         const allButtons = document.querySelectorAll('button, input[type="submit"], [role="button"]');
         const allLinks = document.querySelectorAll('a[href]');
         const allForms = document.querySelectorAll('form');
-        
+
         return {
           totalButtons: allButtons.length,
           totalLinks: allLinks.length,
@@ -1401,7 +1401,7 @@ export async function handleVideoDownloadButtonFinders(args: any) {
           }))
         };
       });
-      
+
       additionalInfo = `\n\n💡 No download buttons found. Page has:\n  • ${pageContext.totalButtons} buttons\n  • ${pageContext.totalLinks} links\n  • ${pageContext.totalForms} forms\n\nSample elements:\n${JSON.stringify(pageContext, null, 2)}`;
     }
 

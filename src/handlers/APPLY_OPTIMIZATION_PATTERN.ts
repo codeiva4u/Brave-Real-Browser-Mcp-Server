@@ -50,7 +50,7 @@ export async function handleUNIVERSAL_TOOL_TEMPLATE(args: any) {
     if (shouldCache) {
       const cached = globalCache.get(cacheKey);
       if (cached) {
-        console.log(`[${toolName}] Cache hit for key: ${cacheKey}`);
+        console.error(`[${toolName}] Cache hit for key: ${cacheKey}`);
         return {
           content: [
             {
@@ -65,7 +65,7 @@ export async function handleUNIVERSAL_TOOL_TEMPLATE(args: any) {
     // ======================================================
     // YOUR ORIGINAL TOOL LOGIC GOES HERE
     // ======================================================
-    
+
     const page = getCurrentPage();
     let results: any = [];
 
@@ -112,7 +112,7 @@ export async function handleUNIVERSAL_TOOL_TEMPLATE(args: any) {
     // Cleanup and metrics
     const duration = globalMetrics.end(toolName);
     globalToolStatus.recordExecution(toolName, duration);
-    console.log(`[${toolName}] Execution time: ${duration}ms`);
+    console.error(`[${toolName}] Execution time: ${duration}ms`);
   }
 }
 

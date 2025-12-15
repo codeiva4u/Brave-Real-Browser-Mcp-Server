@@ -253,7 +253,7 @@ export async function executeToolWithOptimizations<T>(
   if (cacheKey && shouldCache) {
     const cached = globalCache.get(cacheKey);
     if (cached) {
-      console.log(`[${toolName}] Cache hit for key: ${cacheKey}`);
+      console.error(`[${toolName}] Cache hit for key: ${cacheKey}`);
       return cached;
     }
   }
@@ -276,7 +276,7 @@ export async function executeToolWithOptimizations<T>(
   } catch (error) {
     // Retry on failure for network tools
     if (retryAttempts > 0) {
-      console.log(
+      console.error(
         `[${toolName}] Retrying after error: ${error instanceof Error ? error.message : String(error)}`
       );
       return retryWithBackoff(toolFn, retryAttempts, retryDelay);
@@ -309,7 +309,7 @@ export async function cleanupToolResources(page: any, context: any): Promise<voi
     // Clear cache periodically
     const cacheStats = globalCache.getStats();
     if (cacheStats.size > 100) {
-      console.log('[Cleanup] Clearing cache - size exceeded 100 items');
+      console.error('[Cleanup] Clearing cache - size exceeded 100 items');
       globalCache.clear();
     }
   } catch (error) {

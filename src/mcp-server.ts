@@ -16,12 +16,12 @@ import { handleNavigate, handleWait } from './handlers/navigation-handlers.js';
 import { handleClick, handleType, handlePressKey, handleSolveCaptcha, handleRandomScroll } from './handlers/interaction-handlers.js';
 import { handleGetContent, handleFindSelector } from './handlers/content-handlers.js';
 import { handleSaveContentAsMarkdown } from './handlers/file-handlers.js';
-import { 
-  handleScrapeTable, 
-  handleExtractList, 
-  handleExtractJSON, 
-  handleScrapeMetaTags, 
-  handleExtractSchema 
+import {
+  handleScrapeTable,
+  handleExtractList,
+  handleExtractJSON,
+  handleScrapeMetaTags,
+  handleExtractSchema
 } from './handlers/data-extraction-handlers.js';
 import {
   handleBatchElementScraper,
@@ -30,7 +30,7 @@ import {
   handleImageScraper,
   handleLinkHarvester,
   handleMediaExtractor,
-  handlePDFLinkFinder
+
 } from './handlers/multi-element-handlers.js';
 
 export async function createMcpServer(): Promise<Server> {
@@ -163,9 +163,7 @@ export async function createMcpServer(): Promise<Server> {
           result = await handleMediaExtractor(args || {});
           break;
 
-        case TOOL_NAMES.PDF_LINK_FINDER:
-          result = await handlePDFLinkFinder(args || {});
-          break;
+
 
         default:
           throw new Error(`Unknown tool: ${name}`);
@@ -175,14 +173,14 @@ export async function createMcpServer(): Promise<Server> {
       return validateMCPResponse(result, name) as any;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      
+
       // For workflow validation errors, throw them so MCP SDK handles them properly
-      if (errorMessage.includes('cannot be executed in current state') || 
-          errorMessage.includes('Cannot search for selectors') ||
-          errorMessage.includes('Next Steps:')) {
+      if (errorMessage.includes('cannot be executed in current state') ||
+        errorMessage.includes('Cannot search for selectors') ||
+        errorMessage.includes('Next Steps:')) {
         throw error;
       }
-      
+
       // For other errors, return formatted response
       return {
         content: [
