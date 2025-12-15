@@ -59,16 +59,19 @@ npx brave-real-browser-mcp-server@latest
 ### Installation
 
 ```bash
-# Install globally
-npm install -g brave-real-browser-mcp-server@latest
-
-# Or use with npx (no installation needed)
+# Recommended: Use directly with npx (No install needed)
 npx brave-real-browser-mcp-server@latest
+
+# Alternative: Install globally
+npm install -g brave-real-browser-mcp-server@latest
 ```
 
-### For MCP IDEs (Claude, Cursor, Windsurf)
+---
 
-**Add to your IDE config file:**
+## 🎨 IDE Configurations
+
+### 1. Claude Desktop
+**File:** `%APPDATA%\Claude\claude_desktop_config.json` (Windows) or `~/Library/Application Support/Claude/claude_desktop_config.json` (Mac)
 
 ```json
 {
@@ -81,55 +84,95 @@ npx brave-real-browser-mcp-server@latest
 }
 ```
 
-**Config file locations:**
+### 2. Cursor AI
+**File:** `%APPDATA%\Cursor\User\globalStorage\saoudrizwan.claude-dev\settings\mcp_settings.json`
 
-- **Claude Desktop:** `%APPDATA%\Claude\claude_desktop_config.json` (Windows) or `~/Library/Application Support/Claude/claude_desktop_config.json` (Mac)
-- **Cursor:** `%APPDATA%\Cursor\User\globalStorage\saoudrizwan.claude-dev\settings<tool_call>_mcp_settings.json`
-- **Windsurf:** `%APPDATA%\Windsurf\mcp.json`
-
-### For Qoder AI
-
-**Qoder AI supports MCP servers through **STDIO** (Standard Input/Output).
-
-**Complete step-by-step guide:** [See Qoder AI Integration Guide](#-qoder-ai---complete-integration-guide)
-
-**Quick setup (STDIO):**
-1. Add to config: `{"command": "npx", "args": ["-y", "brave-real-browser-mcp-server@latest"]}`
-2. Restart Qoder AI
-3. Use 108 browser automation tools!
-
----
-
-## 🤖 Qoder AI - Complete Integration Guide
-
-**Qoder AI** supports MCP servers through **STDIO** (Standard Input/Output).
-
-[Official Documentation](https://docs.qoder.com/user-guide/chat/model-context-protocol)
-
----
-
-### 🟢 Method 1: STDIO Transport (Recommended for Local)
-
-**STDIO** uses stdin/stdout streams for communication. Perfect for local MCP servers.
-
-#### Step 1: Find Qoder AI MCP Config File
-
-**Config file locations:**
-
-```bash
-# Windows
-%APPDATA%\Qoder\mcp_settings.json
-
-# Mac
-~/Library/Application Support/Qoder/mcp_settings.json
-
-# Linux
-~/.config/Qoder/mcp_settings.json
+```json
+{
+  "mcpServers": {
+    "brave-real-browser": {
+      "command": "npx",
+      "args": ["-y", "brave-real-browser-mcp-server@latest"]
+    }
+  }
+}
 ```
 
-#### Step 2: Add STDIO Configuration
+### 3. Windsurf
+**File:** `%APPDATA%\Windsurf\mcp.json` (Windows) or `~/.windsurf/mcp.json` (Mac)
 
-**Windows Configuration:**
+```json
+{
+  "mcpServers": {
+    "brave-real-browser": {
+      "command": "npx",
+      "args": ["-y", "brave-real-browser-mcp-server@latest"]
+    }
+  }
+}
+```
+
+### 4. Antigravity IDE
+**Auto-Detection:** Automatically detects installed MCP servers.
+**Manual Config:** Add to project config if needed:
+
+```json
+{
+  "mcpServers": {
+    "brave-real-browser": {
+      "command": "npx",
+      "args": ["-y", "brave-real-browser-mcp-server@latest"]
+    }
+  }
+}
+```
+
+### 5. Warp AI
+**File:** `~/.warp/mcp_config.json`
+
+```json
+{
+  "mcpServers": {
+    "brave-real-browser": {
+      "command": "npx",
+      "args": ["-y", "brave-real-browser-mcp-server@latest"]
+    }
+  }
+}
+```
+
+### 6. Zed AI
+**File:** `.zed/settings.json`
+
+```json
+{
+  "mcp_servers": {
+    "brave-real-browser": {
+      "command": "npx",
+      "args": ["-y", "brave-real-browser-mcp-server@latest"]
+    }
+  }
+}
+```
+
+### 7. Cline (VSCode Extension)
+**File:** `cline_mcp_settings.json`
+
+```json
+{
+  "mcpServers": {
+    "brave-real-browser": {
+      "command": "npx",
+      "args": ["-y", "brave-real-browser-mcp-server@latest"]
+    }
+  }
+}
+```
+
+### 8. Qoder AI
+**File:** `%APPDATA%\Qoder\mcp_settings.json` (Windows) or `~/.config/Qoder/mcp_settings.json` (Linux)
+**Note:** Qoder AI uses STDIO.
+
 ```json
 {
   "mcpServers": {
@@ -144,293 +187,7 @@ npx brave-real-browser-mcp-server@latest
 }
 ```
 
-**Mac Configuration:**
-```json
-{
-  "mcpServers": {
-    "brave-real-browser": {
-      "command": "npx",
-      "args": ["-y", "brave-real-browser-mcp-server@latest"],
-      "env": {
-        "BRAVE_PATH": "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"
-      }
-    }
-  }
-}
-```
-
-**Linux Configuration:**
-```json
-{
-  "mcpServers": {
-    "brave-real-browser": {
-      "command": "npx",
-      "args": ["-y", "brave-real-browser-mcp-server@latest"],
-      "env": {
-        "BRAVE_PATH": "/usr/bin/brave-browser"
-      }
-    }
-  }
-}
-```
-
-#### Step 3: Restart Qoder AI
-
-Close and reopen Qoder AI completely.
-
-#### Step 4: Verify Integration
-
-In Qoder AI, test:
-
-```
-"List all available MCP tools"
-→ Expected: 108 tools from Brave Real Browser
-
-"Use browser_init to start the browser"
-→ Expected: Browser opens
-
-"Navigate to https://example.com and get content"
-→ Expected: Page content extracted
-```
-
 ---
-
-### ⚡ Quick Troubleshooting for Qoder AI
-
-**Problem 1: "MCP Server timeout" or "Connection failed"**
-
-**Solution:**
-```bash
-# Install globally for faster startup
-npm install -g brave-real-browser-mcp-server@latest
-```
-
-Then update config to:
-```json
-{
-  "mcpServers": {
-    "brave-real-browser": {
-      "command": "brave-real-browser-mcp-server",
-      "args": []
-    }
-  }
-}
-```
-
-**Problem 2: "Tools not showing in Qoder AI"**
-
-**Solution:**
-1. Check config file path is correct
-2. Verify JSON format is valid
-3. Restart Qoder AI completely
-4. Check Qoder AI logs for errors
-
-**Problem 3: "Browser not opening"**
-
-**Solution:**
-```bash
-# Set Brave path explicitly in config
-"env": {
-  "BRAVE_PATH": "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe"
-}
-```
-
----
-
-### 📊 Available Tools in Qoder AI
-
-All **108 tools** are available:
-
-✅ **Browser Management:** `browser_init`, `browser_close`  
-✅ **Navigation:** `navigate`, `wait`, `click`, `type`  
-✅ **Content Extraction:** `get_content`, `scrape_table`, `extract_json`, `scrape_meta_tags`  
-✅ **Media Tools:** `video_link_finder`, `image_scraper`, `media_extractor`  
-✅ **CAPTCHA Solving:** `solve_captcha`, `ocr_engine`  
-✅ **Data Processing:** `price_parser`, `date_normalizer`, `contact_extractor`  
-✅ **Visual Tools:** `full_page_screenshot`, `pdf_generation`  
-✅ **And 87+ more tools!**
-
----
-
-## 🎨 IDE Configurations
-
-### Claude Desktop
-
-**Step 2: Add Configuration**
-
-Copy and paste this configuration:
-
-```json
-{
-  "mcpServers": {
-    "brave-real-browser": {
-      "command": "npx",
-      "args": ["-y", "brave-real-browser-mcp-server@latest"]
-    }
-  }
-}
-```
-
-**Advanced Configuration (Optional):**
-
-```json
-{
-  "mcpServers": {
-    "brave-real-browser": {
-      "command": "npx",
-      "args": ["-y", "brave-real-browser-mcp-server@latest"],
-      "env": {
-        "BRAVE_PATH": "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe",
-        "HEADLESS": "false"
-      }
-    }
-  }
-}
-```
-
-**Configuration Locations:**
-- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
-- Mac: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- Linux: `~/.config/Claude/claude_desktop_config.json`
-
-### Cursor AI
-
-**Step 3: Add Configuration**
-
-**Basic Configuration:**
-```json
-{
-  "mcpServers": {
-    "brave-real-browser": {
-      "command": "npx",
-      "args": ["-y", "brave-real-browser-mcp-server@latest"]
-    }
-  }
-}
-```
-
-**Advanced Configuration (with Brave path):**
-```json
-{
-  "mcpServers": {
-    "brave-real-browser": {
-      "command": "npx",
-      "args": ["-y", "brave-real-browser-mcp-server@latest"],
-      "env": {
-        "BRAVE_PATH": "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe",
-        "HEADLESS": "false"
-      }
-    }
-  }
-}
-```
-
-**For Mac:**
-```json
-{
-  "mcpServers": {
-    "brave-real-browser": {
-      "command": "npx",
-      "args": ["-y", "brave-real-browser-mcp-server@latest"],
-      "env": {
-        "BRAVE_PATH": "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"
-      }
-    }
-  }
-}
-```
-
-### Windsurf
-
-**File:** `mcp.json`
-
-**Location:**
-
-- Windows: `%APPDATA%\Windsurf\mcp.json`
-- Mac: `~/.windsurf/mcp.json`
-
-```json
-{
-  "mcpServers": {
-    "brave-real-browser": {
-      "command": "npx",
-      "args": ["-y", "brave-real-browser-mcp-server@latest"]
-    }
-  }
-}
-```
-
-}
-}
-
-### Antigravity IDE
-
-**Auto-Detection:**
-Antigravity IDE automatically detects installed MCP servers.
-
-**Manual Configuration:**
-If auto-detection fails, add this to your project config:
-
-```json
-{
-  "mcpServers": {
-    "brave-real-browser": {
-      "command": "npx",
-      "args": ["-y", "brave-real-browser-mcp-server@latest"]
-    }
-  }
-}
-```
-
-### Warp AI
-
-**File:** `~/.warp/mcp_config.json`
-
-```json
-{
-  "mcpServers": {
-    "brave-real-browser": {
-      "command": "npx",
-      "args": ["-y", "brave-real-browser-mcp-server@latest"]
-    }
-  }
-}
-```
-
-### Zed AI
-
-**File:** `.zed/settings.json` (Project specific) or Global Settings
-
-```json
-{
-  "mcp_servers": {
-    "brave-real-browser": {
-      "command": "npx",
-      "args": ["-y", "brave-real-browser-mcp-server@latest"]
-    }
-  }
-}
-```
-
-### Cline (VSCode Extension)
-
-**File:** `cline_mcp_settings.json`
-
-**Location:**
-
-- Windows: `%APPDATA%\Code\User\globalStorage\saoudrizwan.claude-dev\settings<tool_call>_mcp_settings.json`
-- Mac: `~/Library/Application Support/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json`
-
-```json
-{
-  "mcpServers": {
-    "brave-real-browser": {
-      "command": "npx",
-      "args": ["-y", "brave-real-browser-mcp-server@latest"]
-    }
-  }
-}
-```
 
 ## 🛠️ Available Tools (108)
 
@@ -612,7 +369,6 @@ If auto-detection fails, add this to your project config:
 | Tool                    | Description               |
 | ----------------------- | ------------------------- |
 | `progress_tracker`      | Track automation progress |
-
 | `success_rate_reporter` | Report success rates      |
 | `data_quality_metrics`  | Data quality metrics      |
 | `performance_monitor`   | Monitor performance       |
