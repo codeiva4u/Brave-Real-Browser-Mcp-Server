@@ -386,13 +386,11 @@ npm install -g brave-real-browser-mcp-server@latest
 
 ## 🔧 Environment Variables
 
-You can configure the server using a local `.env` file (recommended for development) or by passing variables in your IDE config.
+## 🔧 Environment Variables
 
-1. Copy `.env.example` to `.env`:
-   ```bash
-   cp .env.example .env
-   ```
-2. Edit `.env` to set your preferences:
+You can configure the server using the local `.env` file directly.
+
+Edit `.env` to set your preferences:
 
 ```bash
 # Optional: Specify Brave browser path
