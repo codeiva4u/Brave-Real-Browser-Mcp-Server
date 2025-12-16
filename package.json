@@ -10,7 +10,7 @@
     "clean": "rimraf dist",
     "clean:cache": "npm cache clean --force",
     "fix-cache-permissions": "echo 'Run: sudo chown -R $(whoami):$(id -gn) ~/.npm' && echo 'This fixes npm cache permission issues'",
-    "clean:modules": "rm -rf node_modules",
+    "clean:modules": "rimraf node_modules",
     "clean:all": "npm run clean:modules && npm run clean:cache && npm run clean",
     "fresh-install": "npm run clean:all && npm install",
     "fresh-start": "npm run fresh-install && npm run build && npm start",
