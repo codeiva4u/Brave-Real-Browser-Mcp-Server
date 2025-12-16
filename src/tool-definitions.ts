@@ -1041,14 +1041,7 @@ export const TOOLS = [
       },
     },
   },
-  {
-    name: 'video_download_page',
-    description: 'Detect and analyze video download pages',
-    inputSchema: {
-      type: 'object',
-      properties: {},
-    },
-  },
+
   {
     name: 'video_download_button',
     description: 'Find and interact with video download buttons',
@@ -1078,80 +1071,13 @@ export const TOOLS = [
       },
     },
   },
-  {
-    name: 'url_redirect_trace_endpoints',
-    description: 'Trace all URL redirect endpoints',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        url: { type: 'string' },
-      },
-      required: ['url'],
-    },
-  },
-  {
-    name: 'network_recording_finder',
-    description: 'Find and analyze network recordings',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        duration: { type: 'number', default: 10000 },
-        filterType: { type: 'string', enum: ['video', 'audio', 'media'], default: 'video' },
-      },
-    },
-  },
-  {
-    name: 'network_recording_extractors',
-    description: 'Extract data from network recordings',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        duration: { type: 'number', default: 10000 },
-      },
-    },
-  },
-  {
-    name: 'video_links_finders',
-    description: 'Advanced video link detection',
-    inputSchema: {
-      type: 'object',
-      properties: {},
-    },
-  },
-  {
-    name: 'videos_selectors',
-    description: 'Get all video-related selectors',
-    inputSchema: {
-      type: 'object',
-      properties: {},
-    },
-  },
-  {
-    name: 'link_process_extracts',
-    description: 'Process and extract links with categorization',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        processType: { type: 'string', enum: ['all', 'video', 'download', 'external'], default: 'all' },
-      },
-    },
-  },
-  {
-    name: 'video_link_finders_extracts',
-    description: 'Extract video links with complete metadata',
-    inputSchema: {
-      type: 'object',
-      properties: {},
-    },
-  },
-  {
-    name: 'video_download_button_finders',
-    description: 'Find all video download buttons on page',
-    inputSchema: {
-      type: 'object',
-      properties: {},
-    },
-  },
+
+
+
+
+
+
+
   // Advanced Extraction Tools (Ad-Bypass & Obfuscation)
   {
     name: 'advanced_video_extraction',
@@ -1359,7 +1285,7 @@ export const TOOL_NAMES = {
   VIDEO_PLAYER_FINDER: 'video_player_finder',
   STREAM_DETECTOR: 'stream_detector',
   REDIRECT_TRACER: 'redirect_tracer',
-  VIDEO_DOWNLOAD_LINK_FINDER: 'video_download_link_finder',
+
 
   // Search & Filter Tools
   KEYWORD_SEARCH: 'keyword_search',

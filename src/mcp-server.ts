@@ -359,9 +359,7 @@ export async function createMcpServer(): Promise<Server> {
         case TOOL_NAMES.REDIRECT_TRACER:
           result = await handleRedirectTracer(args as unknown as RedirectTracerArgs);
           break;
-        case TOOL_NAMES.VIDEO_DOWNLOAD_LINK_FINDER:
-          result = await handleVideoDownloadLinkFinder(args as unknown as VideoDownloadLinkFinderArgs);
-          break;
+
 
         // Phase 4: Captcha & Security
         case TOOL_NAMES.OCR_ENGINE:

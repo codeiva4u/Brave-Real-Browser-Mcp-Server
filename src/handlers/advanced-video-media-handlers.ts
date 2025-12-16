@@ -124,7 +124,7 @@ export async function handleVideoDownloadLinkFinder(args: VideoDownloadLinkFinde
 // Aliases or specific implementations
 export const handleVideoLinkFinder = handleVideoDownloadLinkFinder;
 
-export async function handleVideoDownloadPage(args: GenericVideoArgs) {
+export async function handleVideoDownloadButton(args: GenericVideoArgs) {
   // Basic implementation trying to find "Download" buttons contextually
   const page = getPageInstance();
   if (!page) throw new Error('Browser not initialized');
@@ -137,10 +137,6 @@ export async function handleVideoDownloadPage(args: GenericVideoArgs) {
     }));
   });
   return { content: [{ type: 'text', text: JSON.stringify(downloadProbability, null, 2) }] };
-}
-
-export async function handleVideoDownloadButton(args: GenericVideoArgs) {
-  return handleVideoDownloadPage(args);
 }
 
 export async function handleVideoPlayPushSource(args: GenericVideoArgs) {
@@ -163,34 +159,8 @@ export async function handleVideoPlayButtonClick(args: GenericVideoArgs) {
   return { content: [{ type: 'text', text: clicked ? "Clicked Play Button" : "No Play Button Found" }] };
 }
 
-export async function handleUrlRedirectTraceEndpoints(args: RedirectTracerArgs) {
-  return handleRedirectTracer(args);
-}
 
-export async function handleNetworkRecordingFinder(args: StreamDetectorArgs) {
-  return handleStreamDetector(args);
-}
 
-export async function handleNetworkRecordingExtractors(args: StreamDetectorArgs) {
-  return handleStreamDetector(args);
-}
 
-export async function handleVideoLinksFinders(args: VideoDownloadLinkFinderArgs) {
-  return handleVideoDownloadLinkFinder(args);
-}
 
-export async function handleVideosSelectors(args: GenericVideoArgs) {
-  return handleVideoSourceExtractor(args);
-}
 
-export async function handleLinkProcessExtracts(args: GenericVideoArgs) {
-  return { content: [{ type: 'text', text: "Link Process Extracts (Stub)" }] };
-}
-
-export async function handleVideoLinkFindersExtracts(args: VideoDownloadLinkFinderArgs) {
-  return handleVideoDownloadLinkFinder(args);
-}
-
-export async function handleVideoDownloadButtonFinders(args: GenericVideoArgs) {
-  return handleVideoDownloadPage(args);
-}

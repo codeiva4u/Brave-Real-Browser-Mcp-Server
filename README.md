@@ -6,13 +6,13 @@
 
 ![Version](https://img.shields.io/badge/version-2.14.0-blue.svg)
 ![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-green.svg)
-![Tools](https://img.shields.io/badge/tools-108-purple.svg)
+![Tools](https://img.shields.io/badge/tools-78-purple.svg)
 ![IDEs](https://img.shields.io/badge/AI_IDEs-15+-orange.svg)
 ![License](https://img.shields.io/badge/license-MIT-red.svg)
 
-**सभी AI IDEs के लिए Universal MCP Server | 108+ Tools | Browser Automation | Web Scraping | CAPTCHA Solving**
+**सभी AI IDEs के लिए Universal MCP Server | 78+ Tools | Browser Automation | Web Scraping | CAPTCHA Solving**
 
-[Installation](#-installation) | [Quick Start](#-quick-start) | [Qoder AI Setup](#-qoder-ai---complete-integration-guide) | [Tools](#-available-tools-108) | [IDE Configurations](#-ide-configurations)
+[Installation](#-installation) | [Quick Start](#-quick-start) | [Qoder AI Setup](#-qoder-ai---complete-integration-guide) | [Tools](#-available-tools-78) | [IDE Configurations](#-ide-configurations)
 
 </div>
 
@@ -23,7 +23,7 @@
 **Brave Real Browser MCP Server** एक powerful automation tool है जो:
 
 - ✅ **20+ AI IDEs में काम करता है** (Antigravity, Warp AI, Zed, Cursor, Claude, Windsurf, Cline, Qoder AI, etc.)
-- ✅ **108+ Automation Tools** - Browser control, scraping, CAPTCHA solving, video extraction
+- ✅ **78+ Automation Tools** - Browser control, scraping, CAPTCHA solving, video extraction
 - ✅ **MCP Protocol (STDIO)** - Fast and secure local communication
 - ✅ **Auto-Detection** - Automatically detects your IDE
 - ✅ **Real Brave Browser** - Anti-detection features, bypass Cloudflare
@@ -189,7 +189,7 @@ npm install -g brave-real-browser-mcp-server@latest
 
 ---
 
-## 🛠️ Available Tools (108)
+## 🛠️ Available Tools (78)
 
 ### 🌐 Browser Management (2 tools)
 
@@ -262,24 +262,18 @@ npm install -g brave-real-browser-mcp-server@latest
 | Tool                            | Description                              |
 | ------------------------------- | ---------------------------------------- |
 | `video_link_finder`             | Find video URLs                          |
-| `video_download_page`           | Navigate to video download page          |
 | `video_download_button`         | Find video download buttons              |
 | `video_play_push_source`        | Get video play sources                   |
 | `video_play_button_click`       | Click video play button                  |
-| `url_redirect_trace_endpoints`  | Trace URL redirects                      |
-| `network_recording_finder`      | Find network recordings                  |
-| `network_recording_extractors`  | Extract network data                     |
-| `video_links_finders`           | Multiple video link finders              |
-| `videos_selectors`              | Video element selectors                  |
-| `link_process_extracts`         | Process and extract links                |
-| `video_link_finders_extracts`   | Advanced video link extraction           |
-| `video_download_button_finders` | Find all download buttons                |
 | `advanced_video_extraction`     | Advanced video extraction with ad-bypass |
 | `image_extractor_advanced`      | Advanced image extraction                |
 | `video_source_extractor`        | Extract video source URLs                |
 | `video_player_extractor`        | Extract video player info                |
 | `video_player_hoster_finder`    | Find video hosting platform              |
 | `original_video_hoster_finder`  | Find original video source               |
+| `stream_detector`               | Detect HLS/DASH streams                  |
+| `redirect_tracer`               | Trace URL redirects                      |
+| `video_download_link_finder`    | Find direct download links               |
 
 ### 🔐 CAPTCHA & Security (4 tools)
 
@@ -381,12 +375,11 @@ npm install -g brave-real-browser-mcp-server@latest
 | `deobfuscate_js`             | Deobfuscate JavaScript      |
 | `multi_layer_redirect_trace` | Trace multi-layer redirects |
 | `ad_protection_detector`     | Detect ad protection        |
-| `url_redirect_tracer`        | Trace URL redirects         |
 
 
 ## 🔧 Environment Variables
 
-## 🔧 Environment Variables
+
 
 You can configure the server using the local `.env` file directly.
 
@@ -428,6 +421,6 @@ MIT License - See LICENSE file for details.
 
 <div align="center">
 
-**🌟 108 Tools | 15+ AI IDEs | MCP Protocol | Universal Support 🌟**
+**🌟 78 Tools | 15+ AI IDEs | MCP Protocol | Universal Support 🌟**
 
 **Made with ❤️ for the AI Development Community**

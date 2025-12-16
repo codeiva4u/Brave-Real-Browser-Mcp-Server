@@ -165,18 +165,9 @@ import {
 // Import advanced video & media handlers
 import {
   handleVideoLinkFinder,
-  handleVideoDownloadPage,
   handleVideoDownloadButton,
   handleVideoPlayPushSource,
   handleVideoPlayButtonClick,
-  handleUrlRedirectTraceEndpoints,
-  handleNetworkRecordingFinder,
-  handleNetworkRecordingExtractors,
-  handleVideoLinksFinders,
-  handleVideosSelectors,
-  handleLinkProcessExtracts,
-  handleVideoLinkFindersExtracts,
-  handleVideoDownloadButtonFinders,
 } from "./handlers/advanced-video-media-handlers.js";
 // Import advanced extraction handlers (Ad-bypass & Obfuscation)
 import {
@@ -578,9 +569,7 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
         result = await handleVideoLinkFinder(args || {});
         break;
 
-      case "video_download_page":
-        result = await handleVideoDownloadPage(args || {});
-        break;
+
 
       case "video_download_button":
         result = await handleVideoDownloadButton(args as any);
@@ -594,37 +583,11 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
         result = await handleVideoPlayButtonClick(args || {});
         break;
 
-      case "url_redirect_trace_endpoints":
-        result = await handleUrlRedirectTraceEndpoints(args as any);
-        break;
 
-      case "network_recording_finder":
-        result = await handleNetworkRecordingFinder(args || {});
-        break;
 
-      case "network_recording_extractors":
-        result = await handleNetworkRecordingExtractors(args || {});
-        break;
 
-      case "video_links_finders":
-        result = await handleVideoLinksFinders(args || {});
-        break;
 
-      case "videos_selectors":
-        result = await handleVideosSelectors(args || {});
-        break;
 
-      case "link_process_extracts":
-        result = await handleLinkProcessExtracts(args || {});
-        break;
-
-      case "video_link_finders_extracts":
-        result = await handleVideoLinkFindersExtracts(args || {});
-        break;
-
-      case "video_download_button_finders":
-        result = await handleVideoDownloadButtonFinders(args || {});
-        break;
 
       // Advanced Extraction Tools (Ad-Bypass & Obfuscation)
       case "advanced_video_extraction":
