@@ -141,9 +141,7 @@ import {
   handleEmbedPageExtractor,
   handleImageExtractorAdvanced,
   handleVideoSourceExtractor,
-  handleVideoPlayerExtractor,
-  handleVideoPlayerHosterFinder,
-  handleOriginalVideoHosterFinder,
+
   handleUrlRedirectTracer,
   handleUserAgentExtractor,
 } from "./handlers/smart-data-extractors.js";
@@ -504,17 +502,7 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
         result = await handleVideoSourceExtractor(args || {});
         break;
 
-      case "video_player_extractor":
-        result = await handleVideoPlayerExtractor(args || {});
-        break;
 
-      case "video_player_hoster_finder":
-        result = await handleVideoPlayerHosterFinder(args || {});
-        break;
-
-      case "original_video_hoster_finder":
-        result = await handleOriginalVideoHosterFinder(args || {});
-        break;
 
       case "url_redirect_tracer":
         result = await handleUrlRedirectTracer(args as any);

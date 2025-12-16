@@ -899,38 +899,7 @@ export const TOOLS = [
       },
     },
   },
-  {
-    name: 'video_source_extractor',
-    description: 'Extract video sources from video elements',
-    inputSchema: {
-      type: 'object',
-      properties: {},
-    },
-  },
-  {
-    name: 'video_player_extractor',
-    description: 'Extract video player information',
-    inputSchema: {
-      type: 'object',
-      properties: {},
-    },
-  },
-  {
-    name: 'video_player_hoster_finder',
-    description: 'Detect video hosting platform (YouTube, Vimeo, etc.)',
-    inputSchema: {
-      type: 'object',
-      properties: {},
-    },
-  },
-  {
-    name: 'original_video_hoster_finder',
-    description: 'Find original video source',
-    inputSchema: {
-      type: 'object',
-      properties: {},
-    },
-  },
+
   {
     name: 'url_redirect_tracer',
     description: 'Trace URL redirects',
@@ -1201,16 +1170,7 @@ export const TOOLS = [
       }
     }
   },
-  {
-    name: 'redirect_tracer',
-    description: 'Trace URL redirects to find final destination',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        url: { type: 'string' }
-      }
-    }
-  },
+
   {
     name: 'video_download_link_finder',
     description: 'Find direct download links for video files',
@@ -1284,7 +1244,7 @@ export const TOOL_NAMES = {
   VIDEO_SOURCE_EXTRACTOR: 'video_source_extractor',
   VIDEO_PLAYER_FINDER: 'video_player_finder',
   STREAM_DETECTOR: 'stream_detector',
-  REDIRECT_TRACER: 'redirect_tracer',
+
 
 
   // Search & Filter Tools
