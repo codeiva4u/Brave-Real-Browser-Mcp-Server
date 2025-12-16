@@ -649,20 +649,7 @@ export const TOOLS = [
       required: ['data', 'schema'],
     },
   },
-  {
-    name: 'outlier_detection',
-    description: 'Detect outliers in numerical data',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        data: { type: 'array' },
-        field: { type: 'string', description: 'Field to analyze' },
-        method: { type: 'string', enum: ['iqr', 'zscore'], default: 'iqr' },
-        threshold: { type: 'number', default: 1.5 },
-      },
-      required: ['data'],
-    },
-  },
+
   {
     name: 'consistency_checker',
     description: 'Check data consistency across fields',
@@ -761,20 +748,7 @@ export const TOOLS = [
       required: ['outputPath'],
     },
   },
-  {
-    name: 'visual_comparison',
-    description: 'Compare two screenshots',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        image1Path: { type: 'string' },
-        image2Path: { type: 'string' },
-        diffOutputPath: { type: 'string' },
-        threshold: { type: 'number', default: 0.1 },
-      },
-      required: ['image1Path', 'image2Path'],
-    },
-  },
+
   // Smart Data Extractors (Advanced)
   {
     name: 'html_elements_extractor',
@@ -1102,43 +1076,7 @@ export const TOOLS = [
       },
     },
   },
-  {
-    name: 'sentiment_analysis',
-    description: 'Analyze the sentiment of text or page content',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        text: { type: 'string', description: 'Text to analyze' },
-        url: { type: 'string', description: 'URL to analyze' },
-        selector: { type: 'string', description: 'Selector to extract text from' }
-      }
-    }
-  },
-  {
-    name: 'summary_generator',
-    description: 'Generate a summary of text or page content',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        text: { type: 'string', description: 'Text to summarize' },
-        url: { type: 'string', description: 'URL to summarize' },
-        selector: { type: 'string', description: 'Selector to extract text from' },
-        maxLength: { type: 'number', description: 'Maximum length of summary' }
-      }
-    }
-  },
-  {
-    name: 'translation_support',
-    description: 'Detect language and translate text',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        text: { type: 'string', description: 'Text to translate' },
-        url: { type: 'string', description: 'URL to translate content from' },
-        targetLanguage: { type: 'string', description: 'Target language code (e.g. "es", "fr")' }
-      }
-    }
-  },
+
   // Phase 3: Media & Video Tools
   {
     name: 'video_source_extractor',
@@ -1236,9 +1174,7 @@ export const TOOL_NAMES = {
   // AI-Powered Features
   SMART_SELECTOR_GENERATOR: 'smart_selector_generator',
   CONTENT_CLASSIFICATION: 'content_classification',
-  SENTIMENT_ANALYSIS: 'sentiment_analysis',
-  SUMMARY_GENERATOR: 'summary_generator',
-  TRANSLATION_SUPPORT: 'translation_support',
+
 
   // Phase 3: Media & Video
   VIDEO_SOURCE_EXTRACTOR: 'video_source_extractor',
@@ -1256,7 +1192,7 @@ export const TOOL_NAMES = {
   // Data Quality & Validation
   DATA_DEDUPLICATION: 'data_deduplication',
   DATA_TYPE_VALIDATOR: 'data_type_validator',
-  OUTLIER_DETECTION: 'outlier_detection',
+
 
   // Advanced Captcha Handling
   OCR_ENGINE: 'ocr_engine',
@@ -1267,7 +1203,7 @@ export const TOOL_NAMES = {
   ELEMENT_SCREENSHOT: 'element_screenshot',
 
   VIDEO_RECORDING: 'video_recording',
-  VISUAL_COMPARISON: 'visual_comparison',
+
 } as const;
 
 // Type definitions for tool inputs

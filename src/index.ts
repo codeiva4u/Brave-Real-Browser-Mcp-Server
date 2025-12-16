@@ -98,6 +98,7 @@ import {
   handleSmartSelectorGenerator,
   handleContentClassification,
 
+
 } from "./handlers/ai-powered-handlers.js";
 // Import search & filter handlers
 import {
@@ -111,7 +112,7 @@ import {
 import {
   handleDataDeduplication,
   handleDataTypeValidator,
-  handleOutlierDetection,
+
 } from "./handlers/data-quality-handlers.js";
 // Import captcha handlers
 import {
@@ -125,7 +126,7 @@ import {
   handleElementScreenshot,
 
   handleVideoRecording,
-  handleVisualComparison,
+
 } from "./handlers/visual-tools-handlers.js";
 // Import smart data extractors
 import {
@@ -413,9 +414,7 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
         result = await handleDataTypeValidator(args as any);
         break;
 
-      case TOOL_NAMES.OUTLIER_DETECTION:
-        result = await handleOutlierDetection(args as any);
-        break;
+
 
 
 
@@ -447,9 +446,7 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
         result = await handleVideoRecording(args as any);
         break;
 
-      case TOOL_NAMES.VISUAL_COMPARISON:
-        result = await handleVisualComparison(args as any);
-        break;
+
 
 
       // Smart Data Extractors (Advanced)
