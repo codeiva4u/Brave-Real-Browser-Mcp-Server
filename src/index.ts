@@ -75,28 +75,18 @@ import {
 // Import multi-element handlers
 import {
   handleBatchElementScraper,
-  handleNestedDataExtraction,
   handleAttributeHarvester,
   handleLinkHarvester,
   handleMediaExtractor,
-
 } from "./handlers/multi-element-handlers.js";
 // Import pagination handlers
 import {
-
-  handleMultiPageScraper,
   handleBreadcrumbNavigator,
-} from "./handlers/pagination-handlers.js";
-// Import data processing handlers
-import {
-  handleHTMLToText,
-} from "./handlers/data-processing-handlers.js";
+} from "./handlers/navigation-handlers.js";
 // Import AI-powered handlers
 import {
   handleSmartSelectorGenerator,
   handleContentClassification,
-
-
 } from "./handlers/ai-powered-handlers.js";
 // Import search & filter handlers
 import {
@@ -104,7 +94,6 @@ import {
   handleRegexPatternMatcher,
   handleXPathSupport,
   handleAdvancedCSSSelectors,
-  handleVisualElementFinder,
 } from "./handlers/search-filter-handlers.js";
 // Import data quality handlers
 import {
@@ -307,9 +296,7 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
         result = await handleBatchElementScraper(args as any);
         break;
 
-      case TOOL_NAMES.NESTED_DATA_EXTRACTION:
-        result = await handleNestedDataExtraction(args as any);
-        break;
+
 
       case TOOL_NAMES.ATTRIBUTE_HARVESTER:
         result = await handleAttributeHarvester(args as any);
@@ -332,9 +319,7 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
 
 
       // Pagination Tools
-      case TOOL_NAMES.MULTI_PAGE_SCRAPER:
-        result = await handleMultiPageScraper(args as any);
-        break;
+      // Pagination Tools
 
 
 
@@ -345,9 +330,7 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
       // Data Processing Tools
 
 
-      case TOOL_NAMES.HTML_TO_TEXT:
-        result = await handleHTMLToText(args as any);
-        break;
+      // Data Processing Tools
 
 
 
@@ -389,9 +372,7 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
         result = await handleAdvancedCSSSelectors(args as any);
         break;
 
-      case TOOL_NAMES.VISUAL_ELEMENT_FINDER:
-        result = await handleVisualElementFinder(args as any);
-        break;
+
 
       // Data Quality & Validation
 

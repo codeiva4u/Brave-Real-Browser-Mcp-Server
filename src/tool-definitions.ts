@@ -398,19 +398,6 @@ export const TOOLS = [
     },
   },
   {
-    name: 'nested_data_extraction',
-    description: 'Extract data maintaining parent-child relationships',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        parentSelector: { type: 'string' },
-        childSelector: { type: 'string' },
-        maxParents: { type: 'number', default: 50 },
-      },
-      required: ['parentSelector', 'childSelector'],
-    },
-  },
-  {
     name: 'attribute_harvester',
     description: 'Collect attributes (href, src, data-*) from elements',
     inputSchema: {
@@ -452,19 +439,6 @@ export const TOOLS = [
   // Pagination Tools
 
 
-  {
-    name: 'multi_page_scraper',
-    description: 'Collect and merge data from multiple pages',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        urls: { type: 'array', items: { type: 'string' } },
-        dataSelector: { type: 'string' },
-        waitBetweenPages: { type: 'number', default: 1000 },
-      },
-      required: ['urls', 'dataSelector'],
-    },
-  },
 
   {
     name: 'breadcrumb_navigator',
@@ -479,19 +453,7 @@ export const TOOLS = [
   },
   // Data Processing Tools
 
-  {
-    name: 'html_to_text',
-    description: 'Convert HTML content to clean text',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        html: { type: 'string' },
-        preserveLinks: { type: 'boolean', default: false },
-        preserveFormatting: { type: 'boolean', default: false },
-      },
-      required: ['html'],
-    },
-  },
+  // Data Validation Tools
 
 
 
@@ -584,21 +546,7 @@ export const TOOLS = [
       required: ['selector'],
     },
   },
-  {
-    name: 'visual_element_finder',
-    description: 'Find elements by visual properties',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        url: { type: 'string' },
-        criteria: {
-          type: 'object',
-          description: 'Visual criteria (color, size, position, etc.)'
-        },
-      },
-      required: ['criteria'],
-    },
-  },
+
   // Data Quality & Validation (5 tools)
 
 
@@ -1061,7 +1009,6 @@ export const TOOL_NAMES = {
   EXTRACT_SCHEMA: 'extract_schema',
   // Multi-Element Extractors
   BATCH_ELEMENT_SCRAPER: 'batch_element_scraper',
-  NESTED_DATA_EXTRACTION: 'nested_data_extraction',
   ATTRIBUTE_HARVESTER: 'attribute_harvester',
   // Content Type Specific
   LINK_HARVESTER: 'link_harvester',
@@ -1083,11 +1030,9 @@ export const TOOL_NAMES = {
   API_FINDER: 'api_finder',
 
   // Pagination Tools
-  MULTI_PAGE_SCRAPER: 'multi_page_scraper',
   BREADCRUMB_NAVIGATOR: 'breadcrumb_navigator',
 
   // Data Processing
-  HTML_TO_TEXT: 'html_to_text',
 
 
   // AI-Powered Features
@@ -1107,7 +1052,6 @@ export const TOOL_NAMES = {
   REGEX_PATTERN_MATCHER: 'regex_pattern_matcher',
   XPATH_SUPPORT: 'xpath_support',
   ADVANCED_CSS_SELECTORS: 'advanced_css_selectors',
-  VISUAL_ELEMENT_FINDER: 'visual_element_finder',
   // Data Quality & Validation
 
   DATA_TYPE_VALIDATOR: 'data_type_validator',
