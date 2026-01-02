@@ -1,14 +1,6 @@
 #!/usr/bin/env node
 
-// Debug logging setup - Log process start
 import 'dotenv/config';
-console.error(
-  `🔍 [DEBUG] Process starting - PID: ${process.pid}, Node: ${process.version}, Platform: ${process.platform}`,
-);
-console.error(`🔍 [DEBUG] Working directory: ${process.cwd()}`);
-console.error(`🔍 [DEBUG] Command args: ${process.argv.join(" ")}`);
-
-
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
@@ -19,10 +11,8 @@ import {
   InitializeRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 
-console.error("🔍 [DEBUG] MCP SDK imports completed successfully");
 
-// Import extracted modules
-console.error("🔍 [DEBUG] Loading tool definitions...");
+
 import {
   TOOLS,
   SERVER_INFO,
@@ -36,12 +26,9 @@ import {
   FindSelectorArgs,
   SaveContentAsMarkdownArgs,
 } from "./tool-definitions.js";
-console.error("🔍 [DEBUG] Loading system utils...");
 import { withErrorHandling } from "./system-utils.js";
 import { validateMCPResponse } from "./mcp-response-validator.js";
-console.error("🔍 [DEBUG] Loading browser manager...");
 import { closeBrowser, forceKillAllBraveProcesses } from "./browser-manager.js";
-console.error("🔍 [DEBUG] Loading core infrastructure...");
 import {
   setupProcessCleanup,
   MCP_SERVER_CONFIG,
@@ -49,7 +36,6 @@ import {
 
 
 // Import handlers
-console.error("🔍 [DEBUG] Loading handlers...");
 import {
   handleBrowserInit,
   handleBrowserClose,
@@ -152,7 +138,7 @@ import {
 
 console.error("🔍 [DEBUG] All modules loaded successfully");
 console.error(`🔍 [DEBUG] Server info: ${JSON.stringify(SERVER_INFO)}`);
-console.error(`🔍 [DEBUG] Available tools: ${TOOLS.length} tools loaded`);
+
 
 // Initialize MCP server
 console.error("🔍 [DEBUG] Creating MCP server instance...");
