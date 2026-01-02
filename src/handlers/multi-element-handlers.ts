@@ -232,7 +232,12 @@ export async function handleLinkHarvester(args: LinkHarvesterArgs) {
         const results: any[] = [];
 
         links.forEach((link: any, index) => {
-          const href = link.href;
+          const href = (link as any).href;
+
+          // Skip if no href (e.g. button without href)
+          if (!href) {
+            return;
+          }
 
           // Skip anchors if not included
           if (!includeAnchors && href.startsWith('#')) {
@@ -268,6 +273,7 @@ export async function handleLinkHarvester(args: LinkHarvesterArgs) {
               linkInfo.protocol = url.protocol;
             } catch (e) {
               linkInfo.type = 'invalid';
+              linkInfo.domain = 'unknown'; // Ensure domain exists even if invalid
             }
           }
 

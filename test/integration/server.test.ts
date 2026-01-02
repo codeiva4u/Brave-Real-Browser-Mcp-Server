@@ -180,13 +180,13 @@ describe('MCP Server Integration Tests', () => {
       'save_content_as_markdown'
     ];
 
-    test('should have 78 tools available (Verified Clean)', async () => {
+    test('should have 48 tools available (Optimized for Gemini)', async () => {
       try {
         const request = createMCPRequest.toolsList(10);
         const response = await sendMCPRequest(serverProcess, request, 45000);
 
         const tools = response.result.tools;
-        expect(tools).toHaveLength(66);
+        expect(tools).toHaveLength(48);
 
         // Verify all core tools are present
         const toolNames = tools.map((t: any) => t.name);

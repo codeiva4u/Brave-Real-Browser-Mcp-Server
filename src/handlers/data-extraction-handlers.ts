@@ -87,12 +87,12 @@ export async function handleExtractJSON(args: ExtractJSONArgs) {
           const scripts = document.querySelectorAll(defaultSelector);
 
           scripts.forEach((script, index) => {
+            const content = script.textContent || '';
             try {
-              const content = script.textContent || '';
+              // 1. Try direct parsing first
               const data = JSON.parse(content);
 
               if (filter) {
-                // Simple filter check
                 const filterLower = filter.toLowerCase();
                 const dataStr = JSON.stringify(data).toLowerCase();
                 if (!dataStr.includes(filterLower)) return;
@@ -104,7 +104,35 @@ export async function handleExtractJSON(args: ExtractJSONArgs) {
                 path: `script[${index}]`,
               });
             } catch (e) {
-              // Invalid JSON, skip
+              // 2. Fallback: Try to find JSON objects using regex
+              // Matches { "key": ... } or [ ... ] structures
+              const jsonRegex = /({[\s\S]*?}|\[[\s\S]*?\])/g;
+              let match;
+              while ((match = jsonRegex.exec(content)) !== null) {
+                const potentialJson = match[0];
+                // Basic heuristic to avoid trying to parse tiny fragments
+                if (potentialJson.length < 20) continue;
+
+                try {
+                  const data = JSON.parse(potentialJson);
+                  // Check filter
+                  if (filter) {
+                    const filterLower = filter.toLowerCase();
+                    const dataStr = JSON.stringify(data).toLowerCase();
+                    if (!dataStr.includes(filterLower)) continue;
+                  }
+                  // Basic check to ensure it's a nontrivial object/array
+                  if ((Array.isArray(data) && data.length > 0) || (typeof data === 'object' && data !== null && Object.keys(data).length > 0)) {
+                    results.push({
+                      data,
+                      source: 'script' as const,
+                      path: `script[${index}]_regex_match`,
+                    });
+                  }
+                } catch (e2) {
+                  // Not valid JSON
+                }
+              }
             }
           });
         }

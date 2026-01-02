@@ -60,6 +60,7 @@ import {
   handleType,
   handleSolveCaptcha,
   handleRandomScroll,
+  handlePressKey,
 } from "./handlers/interaction-handlers.js";
 import {
   handleGetContent,
@@ -115,25 +116,16 @@ import {
 // Import smart data extractors
 import {
   handleHtmlElementsExtractor,
-  handleTagsFinder,
-  handleLinksFinder,
-  handleXpathLinks,
-  handleAjaxExtractor,
   handleFetchXHR,
   handleNetworkRecorder,
-  handleRegexPatternFinder,
-  handleIframeExtractor,
-  handleEmbedPageExtractor,
   handleImageExtractorAdvanced,
   handleVideoSourceExtractor,
 
   handleUrlRedirectTracer,
-  handleUserAgentExtractor,
+  handleApiFinder,
 } from "./handlers/smart-data-extractors.js";
 // Import dynamic session handlers
 import {
-  handleShadowDOMExtractor,
-  handleFormAutoFill,
   handleAjaxContentWaiter,
 } from "./handlers/dynamic-session-handlers.js";
 // Import monitoring & reporting handlers
@@ -146,10 +138,9 @@ import {
 } from "./handlers/monitoring-reporting-handlers.js";
 // Import advanced video & media handlers
 import {
-  handleVideoLinkFinder,
-  handleVideoDownloadButton,
-  handleVideoPlayPushSource,
-  handleVideoPlayButtonClick,
+  handleVideoPlayerFinder,
+  handleStreamDetector,
+  handleVideoDownloadLinkFinder,
 } from "./handlers/advanced-video-media-handlers.js";
 // Import advanced extraction handlers (Ad-bypass & Obfuscation)
 import {
@@ -264,6 +255,10 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
 
       case TOOL_NAMES.RANDOM_SCROLL:
         result = await handleRandomScroll();
+        break;
+
+      case TOOL_NAMES.PRESS_KEY:
+        result = await handlePressKey(args as any);
         break;
 
       case TOOL_NAMES.FIND_SELECTOR:
@@ -417,25 +412,9 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
 
 
       // Smart Data Extractors (Advanced)
-      case "html_elements_extractor":
-        result = await handleHtmlElementsExtractor(args || {});
-        break;
 
-      case "tags_finder":
-        result = await handleTagsFinder(args || {});
-        break;
 
-      case "links_finder":
-        result = await handleLinksFinder(args || {});
-        break;
 
-      case "xpath_links":
-        result = await handleXpathLinks(args || {});
-        break;
-
-      case "ajax_extractor":
-        result = await handleAjaxExtractor(args || {});
-        break;
 
       case "fetch_xhr":
         result = await handleFetchXHR(args || {});
@@ -445,18 +424,14 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
         result = await handleNetworkRecorder(args || {});
         break;
 
-
-      case "regex_pattern_finder":
-        result = await handleRegexPatternFinder(args as any);
+      case "api_finder":
+        result = await handleApiFinder(args || {});
         break;
 
-      case "iframe_extractor":
-        result = await handleIframeExtractor(args || {});
-        break;
 
-      case "embed_page_extractor":
-        result = await handleEmbedPageExtractor(args || {});
-        break;
+
+
+
 
       case "image_extractor_advanced":
         result = await handleImageExtractorAdvanced(args || {});
@@ -472,22 +447,16 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
         result = await handleUrlRedirectTracer(args as any);
         break;
 
-      case "user_agent_extractor":
-        result = await handleUserAgentExtractor(args || {});
-        break;
+
 
       // Dynamic Content & Session Handling
-      case "shadow_dom_extractor":
-        result = await handleShadowDOMExtractor(args || {});
-        break;
 
 
 
 
 
-      case "form_auto_fill":
-        result = await handleFormAutoFill(args as any);
-        break;
+
+
 
       case "ajax_content_waiter":
         result = await handleAjaxContentWaiter(args as any);
@@ -513,22 +482,18 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
 
 
       // Advanced Video & Media Download Tools
-      case "video_link_finder":
-        result = await handleVideoLinkFinder(args || {});
+
+
+      case "video_player_finder":
+        result = await handleVideoPlayerFinder(args || {});
         break;
 
-
-
-      case "video_download_button":
-        result = await handleVideoDownloadButton(args as any);
+      case "stream_detector":
+        result = await handleStreamDetector(args || {});
         break;
 
-      case "video_play_push_source":
-        result = await handleVideoPlayPushSource(args || {});
-        break;
-
-      case "video_play_button_click":
-        result = await handleVideoPlayButtonClick(args || {});
+      case "video_download_link_finder":
+        result = await handleVideoDownloadLinkFinder(args || {});
         break;
 
 

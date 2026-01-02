@@ -33,11 +33,11 @@ export async function handleHtmlElementsExtractor(args: any) {
     const elements = await page.evaluate(({ selector, maxElements, includeStyles }) => {
       const nodes = document.querySelectorAll(selector);
       const results: any[] = [];
-      
+
       let count = 0;
       nodes.forEach((el: any, index) => {
         if (count >= maxElements) return;
-        
+
         const elementData: any = {
           index,
           tagName: el.tagName,
@@ -47,19 +47,19 @@ export async function handleHtmlElementsExtractor(args: any) {
           innerHTML: el.innerHTML?.substring(0, 200) || '',
           attributes: {},
         };
-        
+
         Array.from(el.attributes).forEach((attr: any) => {
           elementData.attributes[attr.name] = attr.value;
         });
-        
+
         if (includeStyles && el.style) {
           elementData.styles = el.style.cssText;
         }
-        
+
         results.push(elementData);
         count++;
       });
-      
+
       return results;
     }, { selector, maxElements, includeStyles });
 
@@ -84,10 +84,10 @@ export async function handleTagsFinder(args: any) {
 
     const page = getCurrentPage();
     const tags = args.tags || ['div', 'span', 'p', 'a', 'img'];
-    
+
     const tagData = await page.evaluate((tags) => {
       const results: any = {};
-      
+
       tags.forEach((tag: string) => {
         const elements = document.querySelectorAll(tag);
         results[tag] = {
@@ -101,7 +101,7 @@ export async function handleTagsFinder(args: any) {
           }))
         };
       });
-      
+
       return results;
     }, tags);
 
@@ -127,23 +127,23 @@ export async function handleLinksFinder(args: any) {
     const page = getCurrentPage();
     const includeExternal = args.includeExternal !== false;
     const maxLinks = args.maxLinks || 200;
-    
+
     const links = await page.evaluate(({ includeExternal, maxLinks }) => {
       const anchors = document.querySelectorAll('a[href]');
       const currentDomain = window.location.hostname;
       const results: any[] = [];
-      
+
       let count = 0;
       anchors.forEach((a: any) => {
         if (count >= maxLinks) return;
-        
+
         const href = a.href;
         try {
           const url = new URL(href);
           const isExternal = url.hostname !== currentDomain;
-          
+
           if (!includeExternal && isExternal) return;
-          
+
           results.push({
             href,
             text: a.textContent?.trim() || '',
@@ -156,7 +156,7 @@ export async function handleLinksFinder(args: any) {
           // Invalid URL
         }
       });
-      
+
       return results;
     }, { includeExternal, maxLinks });
 
@@ -181,7 +181,7 @@ export async function handleXpathLinks(args: any) {
 
     const page = getCurrentPage();
     const xpath = args.xpath || '//a[@href]';
-    
+
     const links = await page.evaluate((xpath) => {
       const iterator = document.evaluate(
         xpath,
@@ -190,11 +190,11 @@ export async function handleXpathLinks(args: any) {
         XPathResult.ORDERED_NODE_ITERATOR_TYPE,
         null
       );
-      
+
       const results: any[] = [];
       let node = iterator.iterateNext();
       let count = 0;
-      
+
       while (node && count < 100) {
         const element = node as HTMLElement;
         results.push({
@@ -206,7 +206,7 @@ export async function handleXpathLinks(args: any) {
         node = iterator.iterateNext();
         count++;
       }
-      
+
       return results;
     }, xpath);
 
@@ -234,10 +234,10 @@ export async function handleAjaxExtractor(args: any) {
     const url = args.url;
     const forceReload = args.forceReload !== false; // Force reload by default
     const includeResponses = args.includeResponses !== false;
-    
+
     const requests: any[] = [];
     const responses: any[] = [];
-    
+
     const requestHandler = (request: any) => {
       try {
         const resourceType = request.resourceType();
@@ -255,7 +255,7 @@ export async function handleAjaxExtractor(args: any) {
         // Ignore errors
       }
     };
-    
+
     const responseHandler = async (response: any) => {
       try {
         const resourceType = response.request().resourceType();
@@ -270,9 +270,9 @@ export async function handleAjaxExtractor(args: any) {
               } catch {
                 body = text.substring(0, 500); // First 500 chars if not JSON
               }
-            } catch {}
+            } catch { }
           }
-          
+
           responses.push({
             url: response.url(),
             status: response.status(),
@@ -286,28 +286,28 @@ export async function handleAjaxExtractor(args: any) {
         // Ignore errors
       }
     };
-    
+
     page.on('request', requestHandler);
     if (includeResponses) {
       page.on('response', responseHandler);
     }
-    
+
     if (url && page.url() !== url) {
       await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
     } else if (forceReload && !url) {
       // Force reload current page to capture AJAX requests
       try {
         await page.reload({ waitUntil: 'networkidle2', timeout: 30000 });
-      } catch {}
+      } catch { }
     }
-    
+
     // Trigger interactions to generate AJAX requests
     try {
       await page.evaluate(() => {
         // Scroll to trigger lazy loading
         window.scrollTo(0, document.body.scrollHeight / 2);
         window.scrollTo(0, document.body.scrollHeight);
-        
+
         // Click visible buttons that might trigger AJAX
         const clickableElements = document.querySelectorAll('button, [role="button"], .btn, [onclick]');
         clickableElements.forEach((el: any) => {
@@ -317,15 +317,15 @@ export async function handleAjaxExtractor(args: any) {
             if (text.includes('load') || text.includes('more') || text.includes('show')) {
               try {
                 el.click();
-              } catch {}
+              } catch { }
             }
           }
         });
       });
-    } catch {}
-    
+    } catch { }
+
     await sleep(duration);
-    
+
     page.off('request', requestHandler);
     if (includeResponses) {
       page.off('response', responseHandler);
@@ -359,12 +359,24 @@ export async function handleFetchXHR(args: any) {
 
     const page = getCurrentPage();
     const duration = args.duration || 15000;
-    
+    const forceReload = args.forceReload !== false; // Default true to capture initial requests
+
     const xhrData: any[] = [];
+
+    // Capture requests too for completeness
+    const requestHandler = (request: any) => {
+      try {
+        const resourceType = request.resourceType();
+        if (resourceType === 'xhr' || resourceType === 'fetch') {
+          // Optional: Log request if needed, but for now we focus on responses with bodies
+        }
+      } catch (e) { }
+    };
+
     const responseHandler = async (response: any) => {
       const request = response.request();
       const resourceType = request.resourceType();
-      
+
       if (resourceType === 'xhr' || resourceType === 'fetch') {
         try {
           const body = await response.text();
@@ -374,7 +386,8 @@ export async function handleFetchXHR(args: any) {
             statusText: response.statusText(),
             headers: response.headers(),
             method: request.method(),
-            body: body.substring(0, 1000), // First 1000 chars
+            postData: request.postData(),
+            body: body.substring(0, 5000), // Increased limit
             timestamp: new Date().toISOString(),
           });
         } catch (e) {
@@ -382,8 +395,17 @@ export async function handleFetchXHR(args: any) {
         }
       }
     };
-    
+
     page.on('response', responseHandler);
+
+    if (forceReload) {
+      try {
+        await page.reload({ waitUntil: 'networkidle2', timeout: 30000 });
+      } catch (e) {
+        // Continue even if reload times out
+      }
+    }
+
     await sleep(duration);
     page.off('response', responseHandler);
 
@@ -412,9 +434,9 @@ export async function handleNetworkRecorder(args: any) {
     const navigateUrl = args.navigateUrl; // Optional: Navigate to URL to capture from start
     const clearCache = args.clearCache || false;
     const forceReload = args.forceReload !== false; // Force reload by default to capture events
-    
+
     const networkActivity: any[] = [];
-    
+
     const requestHandler = (request: any) => {
       try {
         const resourceType = request.resourceType();
@@ -433,7 +455,7 @@ export async function handleNetworkRecorder(args: any) {
         // Ignore request errors
       }
     };
-    
+
     const responseHandler = async (response: any) => {
       try {
         const resourceType = response.request().resourceType();
@@ -454,20 +476,20 @@ export async function handleNetworkRecorder(args: any) {
         // Ignore response errors
       }
     };
-    
+
     // Start monitoring FIRST
     page.on('request', requestHandler);
     page.on('response', responseHandler);
-    
+
     // Optional: Clear cache for fresh load
     if (clearCache) {
       try {
         const client = await page.target().createCDPSession();
         await client.send('Network.clearBrowserCache');
         await client.detach();
-      } catch {}
+      } catch { }
     }
-    
+
     // Optional: Navigate to URL (capturing from start)
     if (navigateUrl) {
       try {
@@ -484,7 +506,7 @@ export async function handleNetworkRecorder(args: any) {
         // Continue monitoring even if reload fails
       }
     }
-    
+
     // Also trigger any lazy-loaded content by scrolling
     try {
       await page.evaluate(() => {
@@ -492,10 +514,10 @@ export async function handleNetworkRecorder(args: any) {
         window.scrollTo(0, document.body.scrollHeight);
         window.scrollTo(0, 0);
       });
-    } catch {}
-    
+    } catch { }
+
     await sleep(duration);
-    
+
     page.off('request', requestHandler);
     page.off('response', responseHandler);
 
@@ -508,8 +530,8 @@ export async function handleNetworkRecorder(args: any) {
         return acc;
       }, {})
     };
-    
-    const tipMessage = networkActivity.length === 0 ? 
+
+    const tipMessage = networkActivity.length === 0 ?
       `\n\n💡 Tips:\n  • Page was already loaded. Use {"navigateUrl": "https://example.com"} to capture from start\n  • Use {"filterTypes": ["all"]} to capture all network activity\n  • Use {"clearCache": true} for fresh page load` :
       '';
 
@@ -539,7 +561,7 @@ export async function handleApiFinder(args: any) {
     const scriptApis = await page.evaluate(() => {
       const results: any[] = [];
       const scripts = Array.from(document.querySelectorAll('script'));
-      
+
       const apiPatterns = [
         /https?:\/\/[^"'\s]+\/api\/[^"'\s]*/gi,
         /https?:\/\/api\.[^"'\s]+/gi,
@@ -547,7 +569,7 @@ export async function handleApiFinder(args: any) {
         /graphql/gi,
         /rest\/v?\d*/gi,
       ];
-      
+
       scripts.forEach(script => {
         const content = script.textContent || '';
         apiPatterns.forEach(pattern => {
@@ -557,7 +579,7 @@ export async function handleApiFinder(args: any) {
           }
         });
       });
-      
+
       return results;
     });
 
@@ -572,7 +594,7 @@ export async function handleApiFinder(args: any) {
         if ((rt === 'xhr' || rt === 'fetch') && (ct.includes('json') || /\/api\//.test(url))) {
           networkApis.push({ url, status: response.status(), method: req.method(), source: 'network' });
         }
-      } catch {}
+      } catch { }
     };
     page.on('response', respHandler);
     await sleep(captureDuration);
@@ -603,15 +625,15 @@ export async function handleRegexPatternFinder(args: any) {
     const page = getCurrentPage();
     const pattern = args.pattern;
     const flags = args.flags || 'gi';
-    
+
     if (!pattern) {
       throw new Error('Pattern is required');
     }
-    
+
     const matches = await page.evaluate(({ pattern, flags }) => {
       const regex = new RegExp(pattern, flags);
       const results: any[] = [];
-      
+
       // 1. Search in body HTML
       const html = document.body.innerHTML;
       Array.from(html.matchAll(regex)).forEach(match => {
@@ -622,7 +644,7 @@ export async function handleRegexPatternFinder(args: any) {
           index: match.index
         });
       });
-      
+
       // 2. Search in script tags
       document.querySelectorAll('script').forEach((script: any, scriptIdx) => {
         const content = script.textContent || '';
@@ -636,7 +658,7 @@ export async function handleRegexPatternFinder(args: any) {
           });
         });
       });
-      
+
       // 3. Search in element attributes (href, src, data-* etc.)
       document.querySelectorAll('*').forEach((el: any) => {
         ['href', 'src', 'data-video', 'data-src', 'data-url'].forEach(attr => {
@@ -655,7 +677,7 @@ export async function handleRegexPatternFinder(args: any) {
           }
         });
       });
-      
+
       // Dedupe and limit
       const seen = new Set();
       const unique = results.filter(r => {
@@ -664,7 +686,7 @@ export async function handleRegexPatternFinder(args: any) {
         seen.add(key);
         return true;
       });
-      
+
       return unique.slice(0, 100);
     }, { pattern, flags });
 
@@ -688,7 +710,7 @@ export async function handleIframeExtractor(args: any) {
     });
 
     const page = getCurrentPage();
-    
+
     const iframes = await page.evaluate(() => {
       const frames = document.querySelectorAll('iframe');
       return Array.from(frames).map((iframe: any, idx) => ({
@@ -722,14 +744,14 @@ export async function handleEmbedPageExtractor(args: any) {
     });
 
     const page = getCurrentPage();
-    
+
     const embeds = await page.evaluate(() => {
       const results: any = {
         iframes: [],
         objects: [],
         embeds: [],
       };
-      
+
       document.querySelectorAll('iframe').forEach((el: any, idx) => {
         results.iframes.push({
           index: idx,
@@ -737,7 +759,7 @@ export async function handleEmbedPageExtractor(args: any) {
           title: el.title,
         });
       });
-      
+
       document.querySelectorAll('object').forEach((el: any, idx) => {
         results.objects.push({
           index: idx,
@@ -745,7 +767,7 @@ export async function handleEmbedPageExtractor(args: any) {
           type: el.type,
         });
       });
-      
+
       document.querySelectorAll('embed').forEach((el: any, idx) => {
         results.embeds.push({
           index: idx,
@@ -753,7 +775,7 @@ export async function handleEmbedPageExtractor(args: any) {
           type: el.type,
         });
       });
-      
+
       return results;
     });
 
@@ -778,13 +800,13 @@ export async function handleImageExtractorAdvanced(args: any) {
 
     const page = getCurrentPage();
     const includeDataUrls = args.includeDataUrls || false;
-    
+
     const images = await page.evaluate((includeDataUrls) => {
       const imgs = document.querySelectorAll('img');
       return Array.from(imgs).map((img: any, idx) => {
         const src = img.src || img.dataset.src || '';
         if (!includeDataUrls && src.startsWith('data:')) return null;
-        
+
         return {
           index: idx,
           src,
@@ -825,17 +847,17 @@ export async function handleVideoSourceExtractor(args: any) {
         iframes: [],
         embeddedPlayers: []
       };
-      
+
       // 1. Direct video elements
       const videoElements = document.querySelectorAll('video');
       videoElements.forEach((video: any, idx) => {
         const sources: any[] = [];
-        
+
         // Direct src
         if (video.src) {
           sources.push({ src: video.src, type: video.type || 'unknown' });
         }
-        
+
         // Source elements
         video.querySelectorAll('source').forEach((source: any) => {
           sources.push({
@@ -843,7 +865,7 @@ export async function handleVideoSourceExtractor(args: any) {
             type: source.type || 'unknown',
           });
         });
-        
+
         results.videos.push({
           index: idx,
           poster: video.poster || '',
@@ -854,7 +876,7 @@ export async function handleVideoSourceExtractor(args: any) {
           type: 'direct_video'
         });
       });
-      
+
       // 2. Iframe video sources
       const iframes = document.querySelectorAll('iframe');
       iframes.forEach((iframe: any, idx) => {
@@ -871,13 +893,13 @@ export async function handleVideoSourceExtractor(args: any) {
           });
         }
       });
-      
+
       // 3. Video players with iframes inside
       const playerContainers = document.querySelectorAll('[class*="player"], [id*="player"], [data-player]');
       playerContainers.forEach((container: any, idx) => {
         const iframe = container.querySelector('iframe');
         const video = container.querySelector('video');
-        
+
         if (iframe || video) {
           results.embeddedPlayers.push({
             index: idx,
@@ -890,7 +912,7 @@ export async function handleVideoSourceExtractor(args: any) {
           });
         }
       });
-      
+
       return results;
     });
 
@@ -907,7 +929,7 @@ export async function handleVideoSourceExtractor(args: any) {
         } else if (/\.ts(\?|$)|\.m4s(\?|$)|\.mp4(\?|$)/i.test(url)) {
           segments.push({ url, status: response.status(), size: response.headers()['content-length'] });
         }
-      } catch {}
+      } catch { }
     };
     page.on('response', respHandler);
 
@@ -920,14 +942,14 @@ export async function handleVideoSourceExtractor(args: any) {
         return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
       });
       if (pt) await page.mouse.click(pt.x, pt.y);
-    } catch {}
+    } catch { }
 
     await sleep(captureDuration);
     page.off('response', respHandler);
 
-    const result = { 
+    const result = {
       ...videoData,
-      manifests, 
+      manifests,
       segments,
       summary: {
         totalVideos: videoData.videos.length,
@@ -958,10 +980,10 @@ export async function handleVideoPlayerExtractor(args: any) {
     });
 
     const page = getCurrentPage();
-    
+
     const players = await page.evaluate(() => {
       const results: any[] = [];
-      
+
       // Common video player classes/IDs
       const playerSelectors = [
         '[class*="video-player"]',
@@ -969,12 +991,12 @@ export async function handleVideoPlayerExtractor(args: any) {
         '[id*="player"]',
         '[data-player]',
       ];
-      
+
       playerSelectors.forEach(selector => {
         document.querySelectorAll(selector).forEach((el: any, idx) => {
           const videoEl = el.querySelector('video');
           const iframeEl = el.querySelector('iframe');
-          
+
           if (videoEl || iframeEl) {
             const playerInfo: any = {
               selector,
@@ -984,14 +1006,14 @@ export async function handleVideoPlayerExtractor(args: any) {
               className: el.className,
               id: el.id,
             };
-            
+
             // Video element info
             if (videoEl) {
               playerInfo.videoSrc = videoEl.src || videoEl.currentSrc || '';
               playerInfo.videoPoster = videoEl.poster || '';
               playerInfo.videoType = 'direct';
             }
-            
+
             // Iframe element info
             if (iframeEl) {
               playerInfo.iframeSrc = iframeEl.src || '';
@@ -999,24 +1021,24 @@ export async function handleVideoPlayerExtractor(args: any) {
               playerInfo.iframeAllow = iframeEl.getAttribute('allow') || '';
               playerInfo.videoType = videoEl ? 'hybrid' : 'iframe';
             }
-            
+
             results.push(playerInfo);
           }
         });
       });
-      
+
       // Also check standalone iframes (ALL iframes that might be video players)
       document.querySelectorAll('iframe').forEach((iframe: any, idx) => {
         const src = (iframe.src || '').toLowerCase();
-        
+
         // Check if iframe is likely a video player
-        const isLikelyVideoIframe = src.includes('embed') || 
-                                    src.includes('player') || 
-                                    src.includes('video') ||
-                                    src.includes('stream') ||
-                                    iframe.allow?.includes('autoplay') ||
-                                    iframe.allow?.includes('encrypted-media');
-        
+        const isLikelyVideoIframe = src.includes('embed') ||
+          src.includes('player') ||
+          src.includes('video') ||
+          src.includes('stream') ||
+          iframe.allow?.includes('autoplay') ||
+          iframe.allow?.includes('encrypted-media');
+
         // Include ALL iframes if they have src and are likely video players
         if (iframe.src && isLikelyVideoIframe) {
           // Check if already added
@@ -1038,7 +1060,7 @@ export async function handleVideoPlayerExtractor(args: any) {
           }
         }
       });
-      
+
       return results;
     });
 
@@ -1062,11 +1084,11 @@ export async function handleVideoPlayerHosterFinder(args: any) {
     });
 
     const page = getCurrentPage();
-    
+
     const hosters = await page.evaluate(() => {
       const results: any[] = [];
       const iframes = document.querySelectorAll('iframe');
-      
+
       const platforms: any = {
         // Popular platforms
         'youtube.com': 'YouTube',
@@ -1077,7 +1099,7 @@ export async function handleVideoPlayerHosterFinder(args: any) {
         'twitter.com': 'Twitter',
         'twitch.tv': 'Twitch',
         'streamable.com': 'Streamable',
-        
+
         // Custom video hosting platforms
         'gdmirrorbot': 'GD Mirror Bot',
         'multimoviesshg.com': 'MultiMovies StreamHG',
@@ -1096,10 +1118,10 @@ export async function handleVideoPlayerHosterFinder(args: any) {
         'fembed': 'Fembed',
         'mp4upload': 'MP4Upload',
       };
-      
+
       iframes.forEach((iframe: any, idx) => {
         const src = iframe.src.toLowerCase();
-        
+
         for (const [domain, platform] of Object.entries(platforms)) {
           if (src.includes(domain)) {
             results.push({
@@ -1112,7 +1134,7 @@ export async function handleVideoPlayerHosterFinder(args: any) {
           }
         }
       });
-      
+
       return results;
     });
 
@@ -1137,35 +1159,35 @@ export async function handleOriginalVideoHosterFinder(args: any) {
 
     const page = getCurrentPage();
     const captureDuration = typeof args.captureDuration === 'number' ? args.captureDuration : 6000;
-    
+
     const videoData = await page.evaluate(() => {
       const results: any = {
         directVideos: [],
         iframeVideos: [],
         possibleSources: [],
       };
-      
+
       // Direct video elements
       document.querySelectorAll('video').forEach((video: any) => {
         const src = video.src || video.currentSrc;
         if (src) {
           results.directVideos.push({ src, type: 'direct', poster: video.poster });
         }
-        
+
         video.querySelectorAll('source').forEach((source: any) => {
           if (source.src) {
             results.directVideos.push({ src: source.src, type: source.type, quality: source.dataset.quality || 'unknown' });
           }
         });
       });
-      
+
       // Iframe videos
       document.querySelectorAll('iframe').forEach((iframe: any) => {
         if (iframe.src) {
           results.iframeVideos.push({ src: iframe.src, type: 'iframe' });
         }
       });
-      
+
       return results;
     });
 
@@ -1175,9 +1197,9 @@ export async function handleOriginalVideoHosterFinder(args: any) {
       try {
         const url = response.url();
         if (/\.m3u8(\?|$)|\.mpd(\?|$)/i.test(url)) {
-          try { hosts.add(new URL(url).hostname); } catch {}
+          try { hosts.add(new URL(url).hostname); } catch { }
         }
-      } catch {}
+      } catch { }
     };
     page.on('response', respHandler);
 
@@ -1190,7 +1212,7 @@ export async function handleOriginalVideoHosterFinder(args: any) {
         return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
       });
       if (pt) await page.mouse.click(pt.x, pt.y);
-    } catch {}
+    } catch { }
 
     await sleep(captureDuration);
     page.off('response', respHandler);
@@ -1219,13 +1241,13 @@ export async function handleUrlRedirectTracer(args: any) {
 
     const page = getCurrentPage();
     const url = args.url;
-    
+
     if (!url) {
       throw new Error('URL is required');
     }
-    
+
     const redirectChain: any[] = [];
-    
+
     const responseHandler = (response: any) => {
       redirectChain.push({
         url: response.url(),
@@ -1234,11 +1256,11 @@ export async function handleUrlRedirectTracer(args: any) {
         fromCache: response.fromCache(),
       });
     };
-    
+
     page.on('response', responseHandler);
     await page.goto(url, { waitUntil: 'domcontentloaded' });
     page.off('response', responseHandler);
-    
+
     const finalUrl = page.url();
 
     return {
@@ -1261,7 +1283,7 @@ export async function handleUserAgentExtractor(args: any) {
     });
 
     const page = getCurrentPage();
-    
+
     const uaData = await page.evaluate(() => {
       return {
         userAgent: navigator.userAgent,

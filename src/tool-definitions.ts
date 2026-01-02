@@ -46,7 +46,11 @@ export const TOOLS = [
         headless: {
           type: 'boolean',
           description: 'Run browser in headless mode',
-          default: false,
+        },
+        autoInstall: {
+          type: 'boolean',
+          description: 'Automatically install Brave Browser if not found (Default: true)',
+          default: true,
         },
         disableXvfb: {
           type: 'boolean',
@@ -638,60 +642,9 @@ export const TOOLS = [
   },
 
   // Smart Data Extractors (Advanced)
-  {
-    name: 'html_elements_extractor',
-    description: 'Extract all HTML elements with complete details',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        selector: { type: 'string', default: '*' },
-        maxElements: { type: 'number', default: 100 },
-        includeStyles: { type: 'boolean', default: false },
-      },
-    },
-  },
-  {
-    name: 'tags_finder',
-    description: 'Find specific HTML tags',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        tags: { type: 'array', items: { type: 'string' }, default: ['div', 'span', 'p', 'a', 'img'] },
-      },
-    },
-  },
-  {
-    name: 'links_finder',
-    description: 'Extract all links from page',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        includeExternal: { type: 'boolean', default: true },
-        maxLinks: { type: 'number', default: 200 },
-      },
-    },
-  },
-  {
-    name: 'xpath_links',
-    description: 'Use XPath to find links',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        xpath: { type: 'string', default: '//a[@href]' },
-      },
-    },
-  },
-  {
-    name: 'ajax_extractor',
-    description: 'Extract AJAX/XHR request data',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        duration: { type: 'number', default: 15000 },
-        url: { type: 'string' },
-      },
-    },
-  },
+
+
+
   {
     name: 'fetch_xhr',
     description: 'Capture fetch and XHR requests with responses',
@@ -723,34 +676,8 @@ export const TOOLS = [
       },
     },
   },
-  {
-    name: 'regex_pattern_finder',
-    description: 'Find patterns using regex',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        pattern: { type: 'string' },
-        flags: { type: 'string', default: 'gi' },
-      },
-      required: ['pattern'],
-    },
-  },
-  {
-    name: 'iframe_extractor',
-    description: 'Extract all iframes and their content',
-    inputSchema: {
-      type: 'object',
-      properties: {},
-    },
-  },
-  {
-    name: 'embed_page_extractor',
-    description: 'Extract embedded content (iframes, objects, embeds)',
-    inputSchema: {
-      type: 'object',
-      properties: {},
-    },
-  },
+
+
   {
     name: 'image_extractor_advanced',
     description: 'Advanced image extraction with metadata',
@@ -773,39 +700,12 @@ export const TOOLS = [
       required: ['url'],
     },
   },
-  {
-    name: 'user_agent_extractor',
-    description: 'Extract user agent information',
-    inputSchema: {
-      type: 'object',
-      properties: {},
-    },
-  },
+
   // Dynamic Content & Session Handling
-  {
-    name: 'shadow_dom_extractor',
-    description: 'Extract content from Shadow DOM',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        selector: { type: 'string', default: '*' },
-      },
-    },
-  },
 
 
-  {
-    name: 'form_auto_fill',
-    description: 'Automatically fill form fields',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        formData: { type: 'object' },
-        submitAfterFill: { type: 'boolean', default: false },
-        submitButtonSelector: { type: 'string' },
-      },
-    },
-  },
+
+
   {
     name: 'ajax_content_waiter',
     description: 'Wait for dynamic content to load',
@@ -842,46 +742,9 @@ export const TOOLS = [
 
 
   // Advanced Video & Media Download Tools
-  {
-    name: 'video_link_finder',
-    description: 'Find all video links on page',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        includeEmbedded: { type: 'boolean', default: true },
-      },
-    },
-  },
 
-  {
-    name: 'video_download_button',
-    description: 'Find and interact with video download buttons',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        action: { type: 'string', enum: ['find', 'click'], default: 'find' },
-        selector: { type: 'string' },
-      },
-    },
-  },
-  {
-    name: 'video_play_push_source',
-    description: 'Capture video sources when play button is clicked',
-    inputSchema: {
-      type: 'object',
-      properties: {},
-    },
-  },
-  {
-    name: 'video_play_button_click',
-    description: 'Click video play button',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        selector: { type: 'string' },
-      },
-    },
-  },
+
+
 
 
 
@@ -1015,16 +878,10 @@ export const TOOL_NAMES = {
   MEDIA_EXTRACTOR: 'media_extractor',
 
   // DOM & HTML Extraction (Phase 1)
-  HTML_ELEMENTS_EXTRACTOR: 'html_elements_extractor',
-  TAGS_FINDER: 'tags_finder',
-  LINKS_FINDER: 'links_finder',
-  XPATH_LINKS: 'xpath_links',
-  SHADOW_DOM_EXTRACTOR: 'shadow_dom_extractor',
-  IFRAME_EXTRACTOR: 'iframe_extractor',
-  EMBED_PAGE_EXTRACTOR: 'embed_page_extractor',
+
 
   // Network Tools (Phase 1)
-  AJAX_EXTRACTOR: 'ajax_extractor',
+
   FETCH_XHR: 'fetch_xhr',
   NETWORK_RECORDER: 'network_recorder',
   API_FINDER: 'api_finder',

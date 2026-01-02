@@ -4,6 +4,7 @@ import * as path from 'path';
 import * as net from 'net';
 import { execSync, spawn } from 'child_process';
 import { config as dotenvConfig } from 'dotenv';
+import { BraveInstaller } from './brave-installer.js';
 
 // Load environment variables from .env file
 // Silence dotenv output
@@ -41,6 +42,16 @@ export enum BrowserErrorType {
 // Store browser instance
 let browserInstance: any = null;
 let pageInstance: any = null;
+
+export function setBrowser(browser: any) {
+  browserInstance = browser;
+}
+
+export function setPage(page: any) {
+  pageInstance = page;
+}
+
+
 
 // Check environment variable for testing override
 const disableContentPriority = process.env.DISABLE_CONTENT_PRIORITY === 'true' || process.env.NODE_ENV === 'test';
@@ -506,7 +517,24 @@ export async function initializeBrowser(options?: any) {
       }
     }
 
-    const detectedBravePath = detectBravePath();
+    let detectedBravePath = detectBravePath();
+    const autoInstall = options?.autoInstall ?? true;
+
+    if (!detectedBravePath && autoInstall) {
+      console.error('⚠️  Brave Browser not found. autoInstall is enabled.');
+      const installed = await BraveInstaller.install();
+      if (installed) {
+        console.error('✅ Installation triggered. Retrying detection...');
+        // Wait a bit to ensure it's registered
+        await new Promise(r => setTimeout(r, 2000));
+        detectedBravePath = detectBravePath();
+      }
+    }
+
+    if (!detectedBravePath && !options?.customConfig?.chromePath) {
+      throw new Error('Brave Browser not found and auto-install failed or disabled. Please install Brave Browser manually: https://brave.com/download/');
+    }
+
     const customConfig = options?.customConfig ?? {};
     const platform = process.platform;
 
