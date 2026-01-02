@@ -1,5 +1,6 @@
 import { connect } from 'brave-real-browser';
 import * as fs from 'fs';
+import { ExtensionManager } from './extension-manager.js';
 import * as path from 'path';
 import * as net from 'net';
 import { execSync, spawn } from 'child_process';
@@ -538,6 +539,17 @@ export async function initializeBrowser(options?: any) {
     const customConfig = options?.customConfig ?? {};
     const platform = process.platform;
 
+    // Auto-install/update uBlock Origin
+    const extensionPath = await ExtensionManager.ensureUBlockOrigin();
+    const uBlockArgs: string[] = [];
+    if (extensionPath) {
+      console.error(`🔌 Loading uBlock Origin from: ${extensionPath}`);
+      uBlockArgs.push(
+        `--disable-extensions-except=${extensionPath}`,
+        `--load-extension=${extensionPath}`
+      );
+    }
+
 
     const getOptimalBraveFlags = (isWindows: boolean, isRetry: boolean = false): string[] => {
       // 2025 best practices: Minimal, secure, performance-focused flags
@@ -646,7 +658,8 @@ export async function initializeBrowser(options?: any) {
         headless: options?.headless ?? (process.env.HEADLESS === 'true'),
         turnstile: true,
         args: [
-          "--start-maximized"
+          "--start-maximized",
+          ...uBlockArgs // Add uBlock args to primary strategy
         ],
         disableXvfb: true,
         // CRITICAL: Must be false to allow brave-real-browser to process DEFAULT_FLAGS
