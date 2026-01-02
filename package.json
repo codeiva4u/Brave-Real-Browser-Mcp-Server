@@ -6,7 +6,7 @@
   "main": "dist/index.js",
   "scripts": {
     "preinstall": "npm view brave-real-puppeteer-core version > .latest-version 2>&1 || echo 'Version check skipped'",
-    "postinstall": "node scripts/patch-puppeteer-screen-recorder.cjs && node scripts/update-to-latest.cjs || echo 'Auto-update skipped'",
+    "postinstall": "node scripts/patch-puppeteer-screen-recorder.cjs",
     "clean": "rimraf dist",
     "clean:cache": "npm cache clean --force",
     "fix-cache-permissions": "echo 'Run: sudo chown -R $(whoami):$(id -gn) ~/.npm' && echo 'This fixes npm cache permission issues'",
