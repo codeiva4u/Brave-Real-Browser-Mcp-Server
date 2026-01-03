@@ -351,6 +351,19 @@ export const TOOLS = [
   // Smart Data Extractors
 
 
+  // DOM & HTML Extraction (Phase 1)
+  {
+    name: 'html_elements_extractor',
+    description: 'Extract detailed information about HTML elements matching a selector',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        selector: { type: 'string', default: '*' },
+        maxElements: { type: 'number', default: 100 },
+        includeStyles: { type: 'boolean', default: false },
+      },
+    },
+  },
   {
     name: 'extract_json',
     description: 'Extract embedded JSON/API data from the page',
@@ -878,6 +891,7 @@ export const TOOL_NAMES = {
   MEDIA_EXTRACTOR: 'media_extractor',
 
   // DOM & HTML Extraction (Phase 1)
+  HTML_ELEMENTS_EXTRACTOR: 'html_elements_extractor',
 
 
   // Network Tools (Phase 1)

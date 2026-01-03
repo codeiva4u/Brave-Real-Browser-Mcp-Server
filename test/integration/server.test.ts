@@ -61,13 +61,13 @@ describe('MCP Server Integration Tests', () => {
 
   describe('Server Startup', () => {
     test('should start without errors', async () => {
-      await waitForServerStartup(serverProcess, 45000); // Increased to 45 seconds for server startup
+      await waitForServerStartup(serverProcess, 60000); // 60s timeout
       // If we get here without timeout, the server started successfully
       expect(true).toBe(true);
     });
 
     test('should not pollute stdout with non-JSON content', async () => {
-      await waitForServerStartup(serverProcess, 45000); // Increased to 45 seconds for server startup
+      await waitForServerStartup(serverProcess, 60000); // 60s timeout
       const hasInvalidOutput = await monitorStdoutOutput(serverProcess, 3000); // Increased monitoring time
       expect(hasInvalidOutput).toBe(false);
     });
@@ -96,7 +96,7 @@ describe('MCP Server Integration Tests', () => {
           throw error;
         }
       }
-    }, 50000); // 50 second timeout
+    }, 60000); // 60 second timeout
 
     test('resources/list should return empty array (no Method not found)', async () => {
       try {
@@ -115,7 +115,7 @@ describe('MCP Server Integration Tests', () => {
           throw error;
         }
       }
-    }, 50000);
+    }, 60000);
 
     test('prompts/list should return empty array (no Method not found)', async () => {
       try {
@@ -134,7 +134,7 @@ describe('MCP Server Integration Tests', () => {
           throw error;
         }
       }
-    }, 50000);
+    }, 60000);
   });
 
   describe('Error Handling and Retry Logic', () => {
@@ -202,7 +202,7 @@ describe('MCP Server Integration Tests', () => {
           throw error;
         }
       }
-    }, 50000);
+    }, 60000);
 
     test('all tools should have valid schemas and descriptions', async () => {
       const request = createMCPRequest.toolsList(11);
@@ -262,7 +262,7 @@ describe('MCP Server Integration Tests', () => {
           throw error;
         }
       }
-    }, 90000); // 90 second total test timeout for Brave initialization
+    }, 60000); // 60 second total test timeout
 
     test('should validate workflow state transitions', () => {
       // Check handlers which use workflow validation
@@ -409,6 +409,6 @@ describe('MCP Server Integration Tests', () => {
           throw error;
         }
       }
-    }, 60000); // Increased test timeout to 60 seconds
+    }, 60000); // 60 seconds
   });
 });

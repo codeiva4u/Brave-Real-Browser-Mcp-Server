@@ -61,8 +61,12 @@ describe('Navigation Handlers', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    setTimeoutMock.mockClear(); // Clear setTimeout mock calls between tests
-    
+    setTimeoutMock.mockClear();
+
+    // Explicitly restore default mock implementations
+    (systemUtils.withTimeout as any).mockImplementation((op: any) => op());
+    (systemUtils.withErrorHandling as any).mockImplementation((op: any) => op());
+
     // Setup mocks
     mockBrowserManager = browserManager;
     mockSystemUtils = systemUtils;
@@ -103,7 +107,7 @@ describe('Navigation Handlers', () => {
         );
         expect(mockWorkflowValidation.validateWorkflow).toHaveBeenCalledWith('navigate', args);
         expect(mockWorkflowValidation.recordExecution).toHaveBeenCalledWith('navigate', args, true);
-        
+
         expect(result).toHaveProperty('content');
         expect(result.content[0].type).toBe('text');
         expect(result.content[0].text).toContain(`Successfully navigated to ${TEST_URLS.BASIC}`);
@@ -171,7 +175,7 @@ describe('Navigation Handlers', () => {
 
         // Act & Assert: Should retry 3 times then fail
         await expect(handleNavigate(args)).rejects.toThrow('Persistent network error');
-        
+
         expect(mockPageInstance.goto).toHaveBeenCalledTimes(3);
         expect(mockWorkflowValidation.recordExecution).toHaveBeenCalledWith(
           'navigate',
@@ -261,7 +265,7 @@ describe('Navigation Handlers', () => {
         );
         expect(mockWorkflowValidation.validateWorkflow).toHaveBeenCalledWith('wait', args);
         expect(mockWorkflowValidation.recordExecution).toHaveBeenCalledWith('wait', args, true);
-        
+
         expect(result.content[0].text).toContain('Wait completed successfully for selector: .loading-complete');
         expect(result.content[0].text).toMatch(/\(\d+ms\)$/); // Should include duration
       });
@@ -350,7 +354,7 @@ describe('Navigation Handlers', () => {
 
         // Act & Assert: Should throw error for invalid value
         await expect(handleWait(args)).rejects.toThrow('Timeout value must be a number');
-        
+
         expect(mockWorkflowValidation.recordExecution).toHaveBeenCalledWith(
           'wait',
           args,
@@ -389,7 +393,7 @@ describe('Navigation Handlers', () => {
 
         // Act & Assert: Should handle timeout error
         await expect(handleWait(args)).rejects.toThrow('Timeout waiting for selector');
-        
+
         expect(mockWorkflowValidation.recordExecution).toHaveBeenCalledWith(
           'wait',
           args,

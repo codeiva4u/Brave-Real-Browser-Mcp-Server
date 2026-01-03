@@ -4,15 +4,15 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-2.15.4-blue.svg)
+![Version](https://img.shields.io/badge/version-2.15.5-blue.svg)
 ![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-green.svg)
-![Tools](https://img.shields.io/badge/tools-66-purple.svg)
+![Tools](https://img.shields.io/badge/tools-48-purple.svg)
 ![IDEs](https://img.shields.io/badge/AI_IDEs-15+-orange.svg)
 ![License](https://img.shields.io/badge/license-MIT-red.svg)
 
-**सभी AI IDEs के लिए Universal MCP Server | 66+ Tools | Browser Automation | Web Scraping | CAPTCHA Solving**
+**सभी AI IDEs के लिए Universal MCP Server | 48 Tools | Browser Automation | Web Scraping | CAPTCHA Solving**
 
-[Installation](#-installation) | [Quick Start](#-quick-start) | [Qoder AI Setup](#-qoder-ai---complete-integration-guide) | [Tools](#-available-tools-66) | [IDE Configurations](#-ide-configurations)
+[Installation](#-installation) | [Quick Start](#-quick-start) | [Features](#-key-features) | [Tools](#-available-tools-48) | [IDE Configurations](#-ide-configurations)
 
 </div>
 
@@ -20,59 +20,117 @@
 
 ## 🎯 What is This?
 
-**Brave Real Browser MCP Server** एक powerful automation tool है जो:
+**Brave Real Browser MCP Server** एक powerful automation tool है जो **Real Brave Browser** का उपयोग करता है। यह साधारण ऑटोमेशन नहीं है, इसमें **In-built Anti-Detection**, **Ad-Blocking**, और **Smart Auto-Install** फीचर्स हैं।
 
-- ✅ **20+ AI IDEs में काम करता है** (Antigravity, Warp AI, Zed, Cursor, Claude, Windsurf, Cline, Qoder AI, etc.)
-- ✅ **66+ Automation Tools** - Browser control, scraping, CAPTCHA solving, video extraction
-- ✅ **MCP Protocol (STDIO)** - Fast and secure local communication
-- ✅ **Auto-Detection** - Automatically detects your IDE
-- ✅ **Real Brave Browser** - Anti-detection features, bypass Cloudflare
-- ✅ **Universal API** - Works with any programming language (JS, Python, PHP, Go, etc.)
+### ✨ Key Features (मुख्य विशेषताएँ)
+
+- ✅ **Automatic Brave Installation**: यदि आपके Windows, Linux, या Mac पर Brave Browser नहीं है, तो यह इसे **अपने आप डाउनलोड और इंस्टॉल** कर लेता है।
+- ✅ **Built-in Ad-Blocker (uBlock Origin)**: इसमें **uBlock Origin** पहले से इंस्टॉल आता है जो सभी विज्ञापनों और ट्रैकर्स को ब्लॉक करता है, जिससे पेज तेज़ी से लोड होते हैं और डिटेक्शन का खतरा कम होता है।
+- ✅ **Universal Compatibility**: यह Windows, Mac, और Linux तीनों पर समान रूप से काम करता है।
+- ✅ **Advanced Video Extraction**: जटिल वीडियो और स्ट्रीमिंग साइटों से वीडियो लिंक निकालने के लिए विशेष टूल्स।
+- ✅ **Anti-Detection**: Cloudflare और अन्य सुरक्षा प्रणालियों को बायपास करने में सक्षम।
 
 ---
 
 ## 🚀 Quick Start
 
-### ⚡ Quick Setup Summary
-
-**Choose your setup based on your AI Editor:**
-
-| Editor | Setup Time | Protocol | Method |
-|--------|-----------|----------|--------|
-| **Claude Desktop** | 2 min | MCP | Add config → Restart | 
-| **Cursor AI** | 2 min | MCP | Add config → Restart |
-| **Windsurf** | 2 min | MCP | Add config → Restart |
-| **Antigravity IDE** | 1 min | MCP | Auto-Detect |
-| **Warp AI** | 2 min | MCP | Add config |
-| **Zed AI** | 2 min | MCP | Add config |
-| **Qoder AI** | 3 min | MCP (STDIO) | Add config → Restart |
-
-**Quick Commands:**
+### ⚡ Installation
 
 ```bash
-# Auto-detect environment
+# Recommended: Use directly with npx (No install needed)
 npx brave-real-browser-mcp-server@latest
 ```
 
 ---
 
-### Installation
+## 🛠️ Available Tools (48)
 
-```bash
-# Recommended: Use directly with npx (No install needed)
-npx brave-real-browser-mcp-server@latest
+### 🌐 Core Browser & Navigation (7 tools)
+| Tool | Description |
+|------|-------------|
+| `browser_init` | Initialize browser with auto-install & ad-blocking |
+| `browser_close` | Close the browser instance |
+| `navigate` | Navigate to a URL with smart wait |
+| `wait` | Wait for selectors, navigation, or time |
+| `breadcrumb_navigator` | Navigate using site breadcrumbs |
+| `url_redirect_tracer` | Trace standard URL redirects |
+| `multi_layer_redirect_trace` | Trace complex/hidden redirects |
 
-# Alternative: Install globally
-npm install -g brave-real-browser-mcp-server@latest
-```
+### 🖱️ Interaction & Input (5 tools)
+| Tool | Description |
+|------|-------------|
+| `click` | Smart click on elements |
+| `type` | Human-like typing with delays |
+| `press_key` | Simulate keyboard key presses |
+| `random_scroll` | Human-like random scrolling |
+| `progress_tracker` | Track automation progress |
+
+### 📄 Content Extraction (8 tools)
+| Tool | Description |
+|------|-------------|
+| `get_content` | **Primary Tool** for page content (HTML/Text) |
+| `save_content_as_markdown` | Save page as clean Markdown |
+| `find_selector` | Find elements containing text |
+| `html_elements_extractor` | Extract detailed element info |
+| `extract_json` | Extract embedded JSON/API data |
+| `scrape_meta_tags` | Extract SEO & Open Graph tags |
+| `extract_schema` | Extract Schema.org structured data |
+| `image_extractor_advanced` | Advanced image extraction |
+
+### 🔍 Search & Discovery (5 tools)
+| Tool | Description |
+|------|-------------|
+| `keyword_search` | Search for keywords in content |
+| `regex_pattern_matcher` | Find patterns using Regex |
+| `xpath_support` | Query elements using XPath |
+| `advanced_css_selectors` | Complex CSS selector support |
+| `api_finder` | Discover hidden API endpoints |
+
+### 🎬 Advanced Video & Media (8 tools)
+| Tool | Description |
+|------|-------------|
+| `advanced_video_extraction` | **Premium** video extractor with ad-bypass |
+| `video_source_extractor` | Extract direct video sources |
+| `video_player_finder` | Locate video players on page |
+| `stream_detector` | Detect HLS/m3u8/DASH streams |
+| `video_download_link_finder` | Find direct download buttons/links |
+| `media_extractor` | Extract generic media (audio/video) |
+| `fetch_xhr` | Capture background XHR requests |
+| `network_recorder` | Record full network traffic |
+
+### 🤖 Smart & AI Features (6 tools)
+| Tool | Description |
+|------|-------------|
+| `smart_selector_generator` | AI-powered selector generation |
+| `content_classification` | Classify page content type |
+| `deobfuscate_js` | Deobfuscate hidden JS code |
+| `ad_protection_detector` | Detect anti-adblock systems |
+| `batch_element_scraper` | Scrape lists of items efficiently |
+| `ajax_content_waiter` | Wait for dynamic AJAX loading |
+
+### 🔐 Captcha & Security (6 tools)
+| Tool | Description |
+|------|-------------|
+| `solve_captcha` | Universal CAPTCHA solver |
+| `ocr_engine` | Read text from images (OCR) |
+| `audio_captcha_solver` | Solve audio challenges |
+| `puzzle_captcha_handler` | Solve puzzle/slider CAPTCHAs |
+| `data_type_validator` | Validate extracted data |
+| `attribute_harvester` | Collect element attributes |
+
+### 📸 Visual Tools (3 tools)
+| Tool | Description |
+|------|-------------|
+| `element_screenshot` | Capture element screenshots |
+| `video_recording` | Record browser session |
+| `link_harvester` | Harvest all links from page |
 
 ---
 
 ## 🎨 IDE Configurations
 
 ### 1. Claude Desktop
-**File:** `%APPDATA%\Claude\claude_desktop_config.json` (Windows) or `~/Library/Application Support/Claude/claude_desktop_config.json` (Mac)
-
+**File:** `%APPDATA%\Claude\claude_desktop_config.json` (Windows)
 ```json
 {
   "mcpServers": {
@@ -84,105 +142,14 @@ npm install -g brave-real-browser-mcp-server@latest
 }
 ```
 
-### 2. Cursor AI
-**File:** `%APPDATA%\Cursor\User\globalStorage\saoudrizwan.claude-dev\settings\mcp_settings.json`
-
+### 2. Cursor AI, Windsurf, & Others
+Add this to your MCP settings:
 ```json
 {
   "mcpServers": {
     "brave-real-browser": {
       "command": "npx",
       "args": ["-y", "brave-real-browser-mcp-server@latest"]
-    }
-  }
-}
-```
-
-### 3. Windsurf
-**File:** `%APPDATA%\Windsurf\mcp.json` (Windows) or `~/.windsurf/mcp.json` (Mac)
-
-```json
-{
-  "mcpServers": {
-    "brave-real-browser": {
-      "command": "npx",
-      "args": ["-y", "brave-real-browser-mcp-server@latest"]
-    }
-  }
-}
-```
-
-### 4. Antigravity IDE
-**Auto-Detection:** Automatically detects installed MCP servers.
-**Manual Config:** Add to project config if needed:
-
-```json
-{
-  "mcpServers": {
-    "brave-real-browser": {
-      "command": "npx",
-      "args": ["-y", "brave-real-browser-mcp-server@latest"]
-    }
-  }
-}
-```
-
-### 5. Warp AI
-**File:** `~/.warp/mcp_config.json`
-
-```json
-{
-  "mcpServers": {
-    "brave-real-browser": {
-      "command": "npx",
-      "args": ["-y", "brave-real-browser-mcp-server@latest"]
-    }
-  }
-}
-```
-
-### 6. Zed AI
-**File:** `.zed/settings.json`
-
-```json
-{
-  "context_servers": {
-    "brave-real-browser": {
-      "command": "npx.cmd",
-      "args": ["-y", "brave-real-browser-mcp-server@latest"],
-      "env": {}
-    }
-  }
-}
-```
-
-### 7. Cline (VSCode Extension)
-**File:** `cline_mcp_settings.json`
-
-```json
-{
-  "mcpServers": {
-    "brave-real-browser": {
-      "command": "npx",
-      "args": ["-y", "brave-real-browser-mcp-server@latest"]
-    }
-  }
-}
-```
-
-### 8. Qoder AI
-**File:** `%APPDATA%\Qoder\mcp_settings.json` (Windows) or `~/.config/Qoder/mcp_settings.json` (Linux)
-**Note:** Qoder AI uses STDIO.
-
-```json
-{
-  "mcpServers": {
-    "brave-real-browser": {
-      "command": "npx",
-      "args": ["-y", "brave-real-browser-mcp-server@latest"],
-      "env": {
-        "BRAVE_PATH": "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe"
-      }
     }
   }
 }
@@ -190,218 +157,20 @@ npm install -g brave-real-browser-mcp-server@latest
 
 ---
 
-## 🛠️ Available Tools (66)
-
-### 🌐 Browser Management (2 tools)
-
-| Tool            | Description                                     |
-| --------------- | ----------------------------------------------- |
-| `browser_init`  | Initialize browser with anti-detection features |
-| `browser_close` | Close browser instance                          |
-
-### 🧭 Navigation (2 tools)
-
-| Tool       | Description                               |
-| ---------- | ----------------------------------------- |
-| `navigate` | Navigate to URL with wait conditions      |
-| `wait`     | Wait for selector, navigation, or timeout |
-
-### 🖱️ Interactions (4 tools)
-
-| Tool            | Description                                          |
-| --------------- | ---------------------------------------------------- |
-| `click`         | Click on elements                                    |
-| `type`          | Type text into inputs                                |
-| `random_scroll` | Human-like scrolling                                 |
-| `solve_captcha` | Solve CAPTCHA (reCAPTCHA, hCaptcha, Turnstile, etc.) |
-
-### 📄 Content Extraction (9 tools)
-
-| Tool                       | Description                               |
-| -------------------------- | ----------------------------------------- |
-| `get_content`              | Extract page content (HTML/Text/Markdown) |
-| `find_selector`            | Find CSS selectors for elements           |
-| `scrape_table`             | Extract table data with headers           |
-| `extract_json`             | Extract JSON data from page               |
-| `scrape_meta_tags`         | Extract meta tags and SEO info            |
-| `extract_schema`           | Extract schema.org structured data        |
-| `save_content_as_markdown` | Save page as markdown file                |
-| `html_to_text`             | Convert HTML to clean text                |
-| `smart_text_cleaner`       | Clean and normalize text                  |
-
-### 🔍 Multi-Element Extraction (8 tools)
-
-| Tool                      | Description                       |
-| ------------------------- | --------------------------------- |
-| `batch_element_scraper`   | Scrape multiple elements at once  |
-| `nested_data_extraction`  | Extract nested data structures    |
-| `attribute_harvester`     | Extract element attributes        |
-| `image_scraper`           | Extract all images with metadata  |
-| `link_harvester`          | Extract all links from page       |
-| `media_extractor`         | Extract media files (audio/video) |
-| `pdf_link_finder`         | Find PDF download links           |
-| `html_elements_extractor` | Extract specific HTML elements    |
-
-### 🎯 Advanced Extraction (10 tools)
-
-| Tool                   | Description                  |
-| ---------------------- | ---------------------------- |
-| `tags_finder`          | Find elements by tag name    |
-| `links_finder`         | Advanced link extraction     |
-| `xpath_links`          | Extract links using XPath    |
-| `ajax_extractor`       | Extract AJAX/dynamic content |
-| `fetch_xhr`            | Capture XHR/Fetch requests   |
-| `network_recorder`     | Record all network traffic   |
-| `regex_pattern_finder` | Find patterns using regex    |
-| `iframe_extractor`     | Extract iframe content       |
-| `embed_page_extractor` | Extract embedded pages       |
-| `user_agent_extractor` | Extract user agent info      |
-
-### 🎬 Video & Media Tools (19 tools)
-
-| Tool                            | Description                              |
-| ------------------------------- | ---------------------------------------- |
-| `video_link_finder`             | Find video URLs                          |
-| `video_download_button`         | Find video download buttons              |
-| `video_play_push_source`        | Get video play sources                   |
-| `video_play_button_click`       | Click video play button                  |
-| `advanced_video_extraction`     | Advanced video extraction with ad-bypass |
-| `image_extractor_advanced`      | Advanced image extraction                |
-| `video_source_extractor`        | Extract video source URLs                |
-| `video_player_extractor`        | Extract video player info                |
-| `video_player_hoster_finder`    | Find video hosting platform              |
-| `original_video_hoster_finder`  | Find original video source               |
-| `stream_detector`               | Detect HLS/DASH streams                  |
-| `redirect_tracer`               | Trace URL redirects                      |
-| `video_download_link_finder`    | Find direct download links               |
-
-### 🔐 CAPTCHA & Security (4 tools)
-
-| Tool                     | Description                                                         |
-| ------------------------ | ------------------------------------------------------------------- |
-| `solve_captcha`          | Multi-CAPTCHA solver (reCAPTCHA, hCaptcha, Turnstile, Arkose, etc.) |
-| `ocr_engine`             | OCR for text-based CAPTCHAs                                         |
-| `audio_captcha_solver`   | Solve audio CAPTCHAs                                                |
-| `puzzle_captcha_handler` | Handle puzzle CAPTCHAs                                              |
-
-### 🔧 Data Processing (5 tools)
-
-| Tool                      | Description                        |
-| ------------------------- | ---------------------------------- |
-| `price_parser`            | Extract and parse prices           |
-| `date_normalizer`         | Normalize dates to standard format |
-| `contact_extractor`       | Extract contact information        |
-| `schema_validator`        | Validate data against schema       |
-| `required_fields_checker` | Check for required fields          |
-
-### 📊 Data Quality (0 tools)
-
-*Advanced data quality tools removed for optimization.*
-
-### 🤖 AI-Powered Tools (2 tools)
-
-| Tool                       | Description                 |
-| -------------------------- | --------------------------- |
-| `smart_selector_generator` | Auto-generate CSS selectors |
-| `content_classification`   | Classify content type       |
-
-### 🔎 Search & Filter (5 tools)
-
-| Tool                     | Description                   |
-| ------------------------ | ----------------------------- |
-| `keyword_search`         | Search for keywords in page   |
-| `regex_pattern_matcher`  | Match regex patterns          |
-| `xpath_support`          | XPath query support           |
-| `advanced_css_selectors` | Advanced CSS selector queries |
-| `visual_element_finder`  | Find elements visually        |
-
-### 📑 Pagination & Navigation (5 tools)
-
-| Tool                   | Description                 |
-| ---------------------- | --------------------------- |
-| `auto_pagination`      | Auto-paginate through pages |
-| `infinite_scroll`      | Handle infinite scroll      |
-| `multi_page_scraper`   | Scrape multiple pages       |
-| `sitemap_parser`       | Parse and navigate sitemaps |
-| `breadcrumb_navigator` | Navigate using breadcrumbs  |
-
-### 🔒 Session Management (6 tools)
-
-| Tool                    | Description                |
-| ----------------------- | -------------------------- |
-| `session_persistence`   | Persist sessions           |
-| `form_auto_fill`        | Auto-fill forms            |
-| `ajax_content_waiter`   | Wait for AJAX content      |
-| `modal_popup_handler`   | Handle modal popups        |
-| `login_session_manager` | Manage login sessions      |
-| `shadow_dom_extractor`  | Extract Shadow DOM content |
-
-### 📸 Visual Tools (4 tools)
-
-| Tool                   | Description                 |
-| ---------------------- | --------------------------- |
-| `element_screenshot`   | Screenshot specific element |
-| `pdf_generation`       | Generate PDF from page      |
-| `video_recording`      | Record page as video        |
-
-### 📈 Monitoring & Reporting (3 tools)
-
-| Tool                    | Description               |
-| ----------------------- | ------------------------- |
-| `progress_tracker`      | Track automation progress |
-| `success_rate_reporter` | Report success rates      |
-| `performance_monitor`   | Monitor performance       |
-
-### 🛡️ Advanced Extraction & Obfuscation (4 tools)
-
-| Tool                         | Description                 |
-| ---------------------------- | --------------------------- |
-| `deobfuscate_js`             | Deobfuscate JavaScript      |
-| `multi_layer_redirect_trace` | Trace multi-layer redirects |
-| `ad_protection_detector`     | Detect ad protection        |
-
-## 🔧 Environment Variables
-
-You can configure the server using the local `.env` file directly.
-
-Edit `.env` to set your preferences:
+## 🔧 Environment Variables (.env)
 
 ```bash
-# Optional: Specify Brave browser path
-BRAVE_PATH="C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe"
-
 # Optional: Run in headless mode (default: false)
 HEADLESS=true
 
 # Optional: Disable content priority
 DISABLE_CONTENT_PRIORITY=true
 
-# Optional: Proxy URL
-PROXY_URL=http://localhost:8080
+# Optional: Proxy Configuration
+PROXY_URL=http://user:pass@host:port
 ```
 
-## 📊 Supported Protocols
-
-| Protocol        | Used By                                       | Auto-Config | Status     |
-| --------------- | --------------------------------------------- | ----------- | ---------- |
-| **MCP (STDIO)** | Claude Desktop, Cursor, Windsurf, Cline, Warp | ✅          | 🟢 Working |
+---
 
 ## 📄 License
-
-MIT License - See LICENSE file for details.
-
----
-
-## 🔗 Links
-
-- **GitHub:** https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server
-- **NPM:** https://www.npmjs.com/package/brave-real-browser-mcp-server
-- **Issues:** https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server/issues
-
----
-
-<div align="center">
-
-**🌟 78 Tools | 15+ AI IDEs | MCP Protocol | Universal Support 🌟**
-
-**Made with ❤️ for the AI Development Community**
+MIT License

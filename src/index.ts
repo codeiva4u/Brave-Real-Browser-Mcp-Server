@@ -136,34 +136,27 @@ import {
   handleAdProtectionDetector,
 } from "./handlers/advanced-extraction-handlers.js";
 
-console.error("🔍 [DEBUG] All modules loaded successfully");
-console.error(`🔍 [DEBUG] Server info: ${JSON.stringify(SERVER_INFO)}`);
+
 
 
 // Initialize MCP server
-console.error("🔍 [DEBUG] Creating MCP server instance...");
 const server = new Server(SERVER_INFO, { capabilities: CAPABILITIES });
-console.error("🔍 [DEBUG] MCP server instance created successfully");
 
 // Register initialize handler (CRITICAL - missing handler can cause crash)
-console.error("🔍 [DEBUG] Registering initialize handler...");
+
 server.setRequestHandler(InitializeRequestSchema, async (request) => {
-  console.error(
-    `🔍 [DEBUG] Initialize request received: ${JSON.stringify(request)}`,
-  );
+
 
   // Use the client's protocol version to ensure compatibility
   const clientProtocolVersion = request.params.protocolVersion;
-  console.error(`🔍 [DEBUG] Client protocol version: ${clientProtocolVersion}`);
+
 
   const response = {
     protocolVersion: clientProtocolVersion, // Match client version for compatibility
     capabilities: CAPABILITIES,
     serverInfo: SERVER_INFO,
   };
-  console.error(
-    `🔍 [DEBUG] Sending initialize response: ${JSON.stringify(response)}`,
-  );
+
 
   // Add a small delay to see if there are any immediate errors after response
   setTimeout(() => {
@@ -182,23 +175,23 @@ server.setRequestHandler(InitializeRequestSchema, async (request) => {
 });
 
 // Register tool handlers
-console.error("🔍 [DEBUG] Registering tools handler...");
+
 server.setRequestHandler(ListToolsRequestSchema, async () => {
-  console.error("🔍 [DEBUG] Tools list requested");
+
   return { tools: TOOLS };
 });
 
 // Register resource handlers (placeholder)
-console.error("🔍 [DEBUG] Registering resources handler...");
+
 server.setRequestHandler(ListResourcesRequestSchema, async () => {
-  console.error("🔍 [DEBUG] Resources list requested");
+
   return { resources: [] };
 });
 
 // Register prompt handlers (placeholder)
-console.error("🔍 [DEBUG] Registering prompts handler...");
+
 server.setRequestHandler(ListPromptsRequestSchema, async () => {
-  console.error("🔍 [DEBUG] Prompts list requested");
+
   return { prompts: [] };
 });
 
@@ -259,6 +252,11 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
 
       // Smart Data Extractors
 
+
+      // DOM & HTML Extraction
+      case TOOL_NAMES.HTML_ELEMENTS_EXTRACTOR:
+        result = await handleHtmlElementsExtractor(args || {});
+        break;
 
       case TOOL_NAMES.EXTRACT_JSON:
         result = await handleExtractJSON(args || {});
@@ -538,12 +536,10 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
 }
 
 // Main tool call handler
-console.error("🔍 [DEBUG] Registering tool call handler...");
+
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
-  console.error(
-    `🔍 [DEBUG] Tool call received: ${name} with args: ${JSON.stringify(args)}`,
-  );
+
 
   return await executeToolByName(name, args);
 });
@@ -551,7 +547,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 // Main function - now using multi-protocol launcher
 // Main function
 async function main(): Promise<void> {
-  console.error("🔍 [DEBUG] Starting in STDIO mode...");
+
 
   setupProcessCleanup(async () => {
     await closeBrowser();
@@ -562,59 +558,40 @@ async function main(): Promise<void> {
 
   await withErrorHandling(async () => {
     await server.connect(transport);
-    console.error("🚀 Brave Real Browser MCP Server started successfully");
-    console.error("📋 Available tools:", TOOLS.map((t) => t.name).join(", "));
   }, "Failed to start MCP server");
 }
 
 // Enhanced error handling with debug info
-console.error("🔍 [DEBUG] Setting up error handlers...");
+
 
 process.on("uncaughtException", (error) => {
-  console.error(`🔍 [DEBUG] Uncaught exception at ${new Date().toISOString()}`);
-  console.error("❌ Uncaught exception:", error);
-  console.error(`🔍 [DEBUG] Stack trace:`, error.stack);
   process.exit(1);
 });
 
 process.on("unhandledRejection", (reason, promise) => {
-  console.error(
-    `🔍 [DEBUG] Unhandled rejection at ${new Date().toISOString()}`,
-  );
-  console.error("❌ Unhandled rejection:", reason);
-  console.error(`🔍 [DEBUG] Promise:`, promise);
   process.exit(1);
 });
 
 // Process lifecycle debugging
 process.on("exit", (code) => {
-  console.error(
-    `🔍 [DEBUG] Process exiting with code: ${code} at ${new Date().toISOString()}`,
-  );
+
 });
 
 process.on("beforeExit", (code) => {
-  console.error(
-    `🔍 [DEBUG] Before exit event with code: ${code} at ${new Date().toISOString()}`,
-  );
+
 });
 
 process.on("SIGTERM", () => {
-  console.error(`🔍 [DEBUG] SIGTERM received at ${new Date().toISOString()}`);
+
 });
 
 process.on("SIGINT", () => {
-  console.error(`🔍 [DEBUG] SIGINT received at ${new Date().toISOString()}`);
+
 });
 
-console.error("🔍 [DEBUG] All error handlers registered");
+
 
 // Start the server
 main().catch((error) => {
-  console.error(
-    `🔍 [DEBUG] Main function failed at ${new Date().toISOString()}`,
-  );
-  console.error("❌ Failed to start server:", error);
-  console.error(`🔍 [DEBUG] Error stack:`, error.stack);
   process.exit(1);
 });
