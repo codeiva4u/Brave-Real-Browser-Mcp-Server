@@ -110,6 +110,14 @@ export const TOOLS = [
     },
   },
   {
+    name: 'browser_close',
+    description: 'Close the browser instance',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
+  {
     name: 'navigate',
     description: 'Navigate to a URL',
     inputSchema: {
@@ -241,14 +249,7 @@ export const TOOLS = [
       required: ['type', 'value'],
     },
   },
-  {
-    name: 'browser_close',
-    description: 'Close the browser instance',
-    inputSchema: {
-      type: 'object',
-      properties: {},
-    },
-  },
+
   {
     name: 'solve_captcha',
     description: 'Attempt to solve CAPTCHAs (if supported)',
