@@ -616,6 +616,12 @@ export async function initializeBrowser(options?: any) {
       connectOptions.customConfig.chromeFlags.push(`--proxy-server=${options.proxy}`);
     }
 
+    // Explicitly enforce headless mode via flags if enabled
+    // This fixes issues where brave-real-browser might default to GUI
+    if (connectOptions.headless) {
+      connectOptions.customConfig.chromeFlags.push('--headless=new');
+    }
+
     if (options?.plugins && Array.isArray(options.plugins)) {
       connectOptions.plugins = options.plugins;
     }
@@ -670,6 +676,11 @@ export async function initializeBrowser(options?: any) {
         },
       }
     };
+
+    // Fix: Ensure headless flag is present in primary strategy args if needed
+    if (primaryStrategy.strategy.headless) {
+      (primaryStrategy.strategy.args as string[]).push('--headless=new');
+    }
 
     const connectionStrategies = [
       primaryStrategy,
