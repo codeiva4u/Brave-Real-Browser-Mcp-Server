@@ -6,13 +6,13 @@
 
 ![Version](https://img.shields.io/badge/version-2.15.5-blue.svg)
 ![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-green.svg)
-![Tools](https://img.shields.io/badge/tools-48-purple.svg)
+![Tools](https://img.shields.io/badge/tools-49-purple.svg)
 ![IDEs](https://img.shields.io/badge/AI_IDEs-15+-orange.svg)
 ![License](https://img.shields.io/badge/license-MIT-red.svg)
 
-**सभी AI IDEs के लिए Universal MCP Server | 48 Tools | Browser Automation | Web Scraping | CAPTCHA Solving**
+**सभी AI IDEs के लिए Universal MCP Server | 49 Tools | Browser Automation | Web Scraping | CAPTCHA Solving**
 
-[Installation](#-installation) | [Quick Start](#-quick-start) | [Features](#-key-features) | [Tools](#-available-tools-48) | [IDE Configurations](#-ide-configurations)
+[Installation](#-installation) | [Quick Start](#-quick-start) | [Features](#-key-features) | [Tools](#-available-tools-49) | [IDE Configurations](#-ide-configurations)
 
 </div>
 
