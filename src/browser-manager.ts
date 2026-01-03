@@ -619,6 +619,9 @@ export async function initializeBrowser(options?: any) {
     // Explicitly enforce headless mode via flags if enabled
     // This fixes issues where brave-real-browser might default to GUI
     if (connectOptions.headless) {
+      if (!connectOptions.customConfig.chromeFlags) {
+        connectOptions.customConfig.chromeFlags = [];
+      }
       connectOptions.customConfig.chromeFlags.push('--headless=new');
     }
 
@@ -647,7 +650,7 @@ export async function initializeBrowser(options?: any) {
           ...braveConfig,
           ...modifications.customConfig,
           chromeFlags: [
-            ...(modifications.customConfig?.chromeFlags || braveConfig.chromeFlags),
+            ...(modifications.customConfig?.chromeFlags || braveConfig.chromeFlags || []),
             ...(availablePort ? [`--remote-debugging-port=${availablePort}`] : ['--remote-debugging-port=0'])
           ]
         }
@@ -679,6 +682,9 @@ export async function initializeBrowser(options?: any) {
 
     // Fix: Ensure headless flag is present in primary strategy args if needed
     if (primaryStrategy.strategy.headless) {
+      if (!primaryStrategy.strategy.args) {
+        primaryStrategy.strategy.args = [];
+      }
       (primaryStrategy.strategy.args as string[]).push('--headless=new');
     }
 
