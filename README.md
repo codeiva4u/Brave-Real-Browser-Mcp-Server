@@ -43,7 +43,7 @@ npx brave-real-browser-mcp-server@latest
 
 ---
 
-## 🛠️ Available Tools (48)
+## 🛠️ Available Tools (49)
 
 ### 🌐 Core Browser & Navigation (7 tools)
 | Tool | Description |
