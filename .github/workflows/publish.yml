@@ -160,9 +160,11 @@ jobs:
           BASE_VERSION=$(echo -e "$CURRENT_VERSION\n$LATEST_VERSION" | sort -V | tail -n1)
           echo "🎯 Base version for increment: $BASE_VERSION"
           
-          # Only set package.json to base version if they differ (and if not already updated by ncu?)
-          # If ncu updated package.json, we want to respect that file, but versions are separate.
-          # We should probably trust package.json version unless it is behind tags?
+          # Sync package.json if it is behind the latest tag
+          if [ "$CURRENT_VERSION" != "$BASE_VERSION" ]; then
+            echo "🔄 Syncing package.json from $CURRENT_VERSION to match latest tag $BASE_VERSION..."
+            npm version $BASE_VERSION --no-git-tag-version --allow-same-version
+          fi
           
           # Determine increment type
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
