@@ -1,7 +1,16 @@
 #!/usr/bin/env node
 
 import 'dotenv/config';
+
+// CRITICAL: Redirect console.log to console.error to prevent stdout pollution
+// Antigravity AI IDE and other MCP clients require stdout to be exclusively for JSON-RPC
+const originalConsoleLog = console.log;
+console.log = (...args) => {
+  console.error(...args);
+};
+
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
   CallToolRequestSchema,
