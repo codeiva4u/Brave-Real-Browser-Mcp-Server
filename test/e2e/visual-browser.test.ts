@@ -90,7 +90,7 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
         console.log('✅ Browser window opened successfully');
 
         // Small delay to see browser window
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await new Promise(resolve => setTimeout(resolve, 500));
 
         // Step 2: Navigate to a real website
         console.log('\n2️⃣ Navigating to example.com...');
@@ -103,7 +103,7 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
         console.log('✅ Page loaded successfully');
 
         // Delay to see navigation
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        await new Promise(resolve => setTimeout(resolve, 800));
 
         // Step 3: Get page content
         console.log('\n3️⃣ Analyzing page content...');
@@ -125,7 +125,7 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
         console.log('✅ Element located successfully');
 
         console.log('\n🎉 WORKFLOW COMPLETE! Browser will close...');
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        await new Promise(resolve => setTimeout(resolve, 500));
 
       } catch (error) {
         console.error('❌ E2E test failed:', error);
@@ -159,7 +159,7 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
           waitUntil: 'domcontentloaded'
         });
 
-        await new Promise(resolve => setTimeout(resolve, 3000)); // Increased delay for slow networks
+        await new Promise(resolve => setTimeout(resolve, 800)); // Reduced delay from 3000
 
         // Get content to analyze the page
         console.log('\n3️⃣ Analyzing form page...');
@@ -321,7 +321,7 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
         console.error('❌ Form automation test failed:', error);
         throw error;
       }
-    }, 180000); // 180 seconds for form automation (slow network + complex interactions)
+    }, 300000); // 300 seconds for sensitive form automation
   });
 
   describe('Content Strategy Demonstration', () => {
