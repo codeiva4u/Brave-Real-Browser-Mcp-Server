@@ -25,10 +25,10 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
   beforeAll(async () => {
     console.log('🚀 Starting E2E Visual Browser Tests');
     console.log('📺 You should see browser windows opening during these tests');
-    
+
     // Reset browser initialization depth at the start
     resetBrowserInitDepth();
-    
+
     // Clean up any existing browsers
     try {
       await handleBrowserClose();
@@ -46,21 +46,21 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
   afterEach(async () => {
     // NOTE: Not closing browser here to keep it stable and visible during all tests
     // Browser will only close in afterAll for final cleanup
-    
+
     // Reset depth counter after each test
     resetBrowserInitDepth();
   });
 
   afterAll(async () => {
     console.log('🏁 Completed E2E Visual Browser Tests');
-    
+
     // Final cleanup
     try {
       await handleBrowserClose();
     } catch (error) {
       // Ignore close errors
     }
-    
+
     // Final reset
     resetBrowserInitDepth();
   });
@@ -69,7 +69,7 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
     it('should demonstrate full browser automation workflow visually', async () => {
       console.log('\n🎬 DEMO: Complete Browser Automation Workflow');
       console.log('👀 Watch your screen - browser window will open and perform automation');
-      
+
       try {
         // Step 1: Initialize browser (visible)
         console.log('\n1️⃣ Initializing visible browser...');
@@ -85,10 +85,10 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
             ]
           }
         });
-        
+
         expect(initResult.content[0].text).toContain('Browser initialized successfully');
         console.log('✅ Browser window opened successfully');
-        
+
         // Small delay to see browser window
         await new Promise(resolve => setTimeout(resolve, 2000));
 
@@ -98,10 +98,10 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
           url: 'https://example.com',
           waitUntil: 'domcontentloaded'
         });
-        
+
         expect(navResult.content[0].text).toContain('Successfully navigated');
         console.log('✅ Page loaded successfully');
-        
+
         // Delay to see navigation
         await new Promise(resolve => setTimeout(resolve, 3000));
 
@@ -110,23 +110,23 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
         const contentResult = await handleGetContent({
           type: 'text'
         });
-        
+
         expect(contentResult.content[0].text).toContain('Example Domain');
         console.log('✅ Content analyzed - found "Example Domain"');
-        
+
         // Step 4: Find an element
         console.log('\n4️⃣ Finding "Learn more" link...');
         const findResult = await handleFindSelector({
           text: 'Learn more',
           elementType: 'a'
         });
-        
+
         expect(findResult.content[0].text).toContain('Found element');
         console.log('✅ Element located successfully');
-        
+
         console.log('\n🎉 WORKFLOW COMPLETE! Browser will close...');
         await new Promise(resolve => setTimeout(resolve, 3000));
-        
+
       } catch (error) {
         console.error('❌ E2E test failed:', error);
         throw error;
@@ -138,7 +138,7 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
     it('should demonstrate form interaction with visible browser', async () => {
       console.log('\n🎬 DEMO: Form Automation');
       console.log('👀 Watch browser interact with a search form');
-      
+
       try {
         // Initialize browser
         console.log('\n1️⃣ Opening browser for form demo...');
@@ -149,7 +149,7 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
             args: ['--window-size=1200,800']
           }
         });
-        
+
         await new Promise(resolve => setTimeout(resolve, 1000));
 
         // Navigate to a simple test site
@@ -158,23 +158,23 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
           url: 'https://httpbin.org/forms/post',
           waitUntil: 'domcontentloaded'
         });
-        
+
         await new Promise(resolve => setTimeout(resolve, 3000)); // Increased delay for slow networks
 
         // Get content to analyze the page
         console.log('\n3️⃣ Analyzing form page...');
         const contentResult = await handleGetContent({ type: 'text' });
-        
+
         // Check if httpbin is down (503 error)
-        if (contentResult.content[0].text.includes('503') || 
-            contentResult.content[0].text.includes('Service Temporarily Unavailable')) {
+        if (contentResult.content[0].text.includes('503') ||
+          contentResult.content[0].text.includes('Service Temporarily Unavailable')) {
           console.warn('⚠️ httpbin.org is temporarily unavailable - skipping form test');
           return; // Skip test gracefully
         }
-        
+
         expect(contentResult.content[0].text).toContain('Customer name');
         console.log('✅ Form page loaded successfully');
-        
+
         // Fill complete form in serial order (all fields)
         console.log('\n4️⃣ Filling out complete form in order...');
         try {
@@ -187,7 +187,7 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
           });
           console.log('   ✅ Customer name: John Doe');
           await new Promise(resolve => setTimeout(resolve, 800));
-          
+
           // Field 2: Telephone
           console.log('   2. Filling telephone...');
           await handleType({
@@ -197,7 +197,7 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
           });
           console.log('   ✅ Telephone: 555-123-4567');
           await new Promise(resolve => setTimeout(resolve, 800));
-          
+
           // Field 3: Email
           console.log('   3. Filling email...');
           await handleType({
@@ -207,7 +207,7 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
           });
           console.log('   ✅ Email: john.doe@example.com');
           await new Promise(resolve => setTimeout(resolve, 800));
-          
+
           // Field 4: Pizza size (radio button)
           console.log('   4. Selecting pizza size (Large)...');
           await handleClick({
@@ -216,7 +216,7 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
           });
           console.log('   ✅ Pizza size: Large');
           await new Promise(resolve => setTimeout(resolve, 800));
-          
+
           // Field 5: Toppings (checkboxes - all 4 toppings)
           console.log('   5. Selecting toppings...');
           await handleClick({
@@ -225,28 +225,28 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
           });
           console.log('   ✅ Topping: Bacon');
           await new Promise(resolve => setTimeout(resolve, 500));
-          
+
           await handleClick({
             selector: 'input[value="cheese"]',
             waitForNavigation: false
           });
           console.log('   ✅ Topping: Extra Cheese');
           await new Promise(resolve => setTimeout(resolve, 500));
-          
+
           await handleClick({
             selector: 'input[value="onion"]',
             waitForNavigation: false
           });
           console.log('   ✅ Topping: Onion');
           await new Promise(resolve => setTimeout(resolve, 500));
-          
+
           await handleClick({
             selector: 'input[value="mushroom"]',
             waitForNavigation: false
           });
           console.log('   ✅ Topping: Mushroom');
           await new Promise(resolve => setTimeout(resolve, 800));
-          
+
           // Field 6: Delivery time (time input)
           console.log('   6. Setting delivery time...');
           await handleType({
@@ -256,7 +256,7 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
           });
           console.log('   ✅ Delivery time: 18:30');
           await new Promise(resolve => setTimeout(resolve, 800));
-          
+
           // Field 7: Comments (textarea)
           console.log('   7. Adding comments...');
           await handleType({
@@ -266,9 +266,9 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
           });
           console.log('   ✅ Comments added');
           await new Promise(resolve => setTimeout(resolve, 1000));
-          
+
           console.log('\n✅ All form fields completed!');
-          
+
           // Submit the form
           console.log('\n5️⃣ Submitting form...');
           try {
@@ -281,26 +281,26 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
           } catch (submitError) {
             // Catch various navigation/session errors that are normal during form submission
             const errorMsg = submitError.message || '';
-            if (errorMsg.includes('detached') || 
-                errorMsg.includes('Target closed') || 
-                errorMsg.includes('Session closed') ||
-                errorMsg.includes('Protocol error')) {
+            if (errorMsg.includes('detached') ||
+              errorMsg.includes('Target closed') ||
+              errorMsg.includes('Session closed') ||
+              errorMsg.includes('Protocol error')) {
               console.log('🔄 Form submitted (page navigating)...');
             } else {
               console.log(`⚠️ Submit warning: ${errorMsg}`);
               // Don't throw - submission likely succeeded
             }
           }
-          
+
           // Wait longer for navigation to complete and page to settle
           await new Promise(resolve => setTimeout(resolve, 5000));
           console.log('✅ Form submitted successfully!');
-          
+
           // Verify submission with error handling for closed sessions
           try {
             const submitResult = await handleGetContent({ type: 'text' });
             if (submitResult.content[0].text.includes('john.doe@example.com') ||
-                submitResult.content[0].text.includes('custemail')) {
+              submitResult.content[0].text.includes('custemail')) {
               console.log('✅ Form submission verified - data received by server');
             } else {
               console.log('ℹ️ Form submitted (verification data not found, but submission succeeded)');
@@ -309,26 +309,26 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
             // Page might have navigated away or session closed - that's OK
             console.log('ℹ️ Form submitted successfully (verification skipped due to page state)');
           }
-          
+
         } catch (error) {
           console.log(`❌ Form fill error: ${error.message}`);
           throw error;
         }
 
         console.log('\n🎉 FORM AUTOMATION COMPLETE!');
-        
+
       } catch (error) {
         console.error('❌ Form automation test failed:', error);
         throw error;
       }
-    }, 120000); // 120 seconds for form automation (slow network + complex interactions)
+    }, 180000); // 180 seconds for form automation (slow network + complex interactions)
   });
 
   describe('Content Strategy Demonstration', () => {
     it('should show content analysis and token management', async () => {
       console.log('\n🎬 DEMO: Content Analysis & Token Management');
       console.log('👀 Watch browser analyze content from different websites');
-      
+
       try {
         // Initialize browser
         console.log('\n1️⃣ Opening browser for content analysis...');
@@ -340,7 +340,7 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
             autoSuggestGetContent: true
           }
         });
-        
+
         await new Promise(resolve => setTimeout(resolve, 1000));
 
         // Test different content types
@@ -351,28 +351,28 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
 
         for (const [index, site] of testSites.entries()) {
           console.log(`\n${index + 2}️⃣ Testing ${site.description}: ${site.url}`);
-          
+
           await handleNavigate({
             url: site.url,
             waitUntil: 'domcontentloaded'
           });
-          
+
           await new Promise(resolve => setTimeout(resolve, 2000));
 
           // Test HTML content
           console.log(`   📄 Getting HTML content...`);
           const htmlResult = await handleGetContent({ type: 'html' });
           console.log(`   ✅ HTML analyzed: ${htmlResult.content[0].text.length} characters`);
-          
+
           // Test text content
           console.log(`   📝 Getting text content...`);
           const textResult = await handleGetContent({ type: 'text' });
           console.log(`   ✅ Text analyzed: ${textResult.content[0].text.length} characters`);
-          
+
           // Basic content validation
           expect(htmlResult.content[0].text.length).toBeGreaterThan(0);
           expect(textResult.content[0].text.length).toBeGreaterThan(0);
-          
+
           await new Promise(resolve => setTimeout(resolve, 1500));
         }
 
