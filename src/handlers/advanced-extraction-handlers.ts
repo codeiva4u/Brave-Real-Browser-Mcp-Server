@@ -19,7 +19,7 @@ export async function handleAdvancedVideoExtraction(args: any) {
 
     const page = getCurrentPage();
     const waitTime = args.waitTime || 20000;
-    
+
     // Collect all video-related data
     const videoData: any = {
       directVideoUrls: [],
@@ -32,27 +32,27 @@ export async function handleAdvancedVideoExtraction(args: any) {
       downloadLinks: [],
       timestamp: new Date().toISOString()
     };
-    
+
     // Monitor network for video content
     const networkRequests: any[] = [];
     const requestHandler = (request: any) => {
       const url = request.url();
       const resourceType = request.resourceType();
-      
+
       networkRequests.push({
         url,
         method: request.method(),
         resourceType,
         headers: request.headers()
       });
-      
+
       // Detect video URLs
-      if (resourceType === 'media' || 
-          url.includes('.mp4') || 
-          url.includes('.m3u8') || 
-          url.includes('.mpd') ||
-          url.includes('.webm') ||
-          url.includes('video')) {
+      if (resourceType === 'media' ||
+        url.includes('.mp4') ||
+        url.includes('.m3u8') ||
+        url.includes('.mpd') ||
+        url.includes('.webm') ||
+        url.includes('video')) {
         videoData.directVideoUrls.push({
           url,
           type: resourceType,
@@ -60,12 +60,12 @@ export async function handleAdvancedVideoExtraction(args: any) {
         });
       }
     };
-    
+
     const responseHandler = async (response: any) => {
       try {
         const url = response.url();
         const contentType = response.headers()['content-type'] || '';
-        
+
         // Check for video content
         if (contentType.includes('video') || contentType.includes('application/vnd.apple.mpegurl')) {
           videoData.directVideoUrls.push({
@@ -75,7 +75,7 @@ export async function handleAdvancedVideoExtraction(args: any) {
             detected: 'response_monitor'
           });
         }
-        
+
         // Check for m3u8 playlists
         if (url.includes('.m3u8')) {
           videoData.m3u8Streams.push({
@@ -84,7 +84,7 @@ export async function handleAdvancedVideoExtraction(args: any) {
             type: 'HLS'
           });
         }
-        
+
         // Check for DASH manifests
         if (url.includes('.mpd')) {
           videoData.mpdStreams.push({
@@ -97,10 +97,10 @@ export async function handleAdvancedVideoExtraction(args: any) {
         // Ignore errors
       }
     };
-    
+
     page.on('request', requestHandler);
     page.on('response', responseHandler);
-    
+
     // Extract page content
     const pageAnalysis = await page.evaluate(() => {
       const results: any = {
@@ -110,7 +110,7 @@ export async function handleAdvancedVideoExtraction(args: any) {
         possibleHosts: [],
         downloadButtons: []
       };
-      
+
       // 1. Extract all iframes
       document.querySelectorAll('iframe').forEach((iframe: any) => {
         results.iframes.push({
@@ -120,13 +120,13 @@ export async function handleAdvancedVideoExtraction(args: any) {
           className: iframe.className
         });
       });
-      
+
       // 2. Extract video elements
       document.querySelectorAll('video').forEach((video: any) => {
         const sources: any[] = [];
-        
+
         if (video.src) sources.push({ src: video.src, type: 'direct' });
-        
+
         video.querySelectorAll('source').forEach((source: any) => {
           sources.push({
             src: source.src,
@@ -134,25 +134,25 @@ export async function handleAdvancedVideoExtraction(args: any) {
             quality: source.dataset.quality
           });
         });
-        
+
         results.videoElements.push({
           sources,
           poster: video.poster,
           currentSrc: video.currentSrc
         });
       });
-      
+
       // 3. Detect obfuscated JavaScript
       document.querySelectorAll('script').forEach((script: any) => {
         const content = script.textContent || '';
-        
+
         // Check for common obfuscation patterns
-        if (content.includes('eval(') || 
-            content.includes('atob(') ||
-            content.includes('\\x') ||
-            content.match(/0x[0-9a-f]{4}/gi) ||
-            content.includes('_0x')) {
-          
+        if (content.includes('eval(') ||
+          content.includes('atob(') ||
+          content.includes('\\x') ||
+          content.match(/0x[0-9a-f]{4}/gi) ||
+          content.includes('_0x')) {
+
           // Try to extract URLs from obfuscated code
           const urlPatterns = [
             /https?:\/\/[^\s"']+\.m3u8[^\s"']*/gi,
@@ -160,13 +160,13 @@ export async function handleAdvancedVideoExtraction(args: any) {
             /https?:\/\/[^\s"']+\.mpd[^\s"']*/gi,
             /https?:\/\/[^\s"']+video[^\s"']*/gi
           ];
-          
+
           const foundUrls: string[] = [];
           urlPatterns.forEach(pattern => {
             const matches = content.match(pattern);
             if (matches) foundUrls.push(...matches);
           });
-          
+
           results.obfuscatedScripts.push({
             hasObfuscation: true,
             patterns: {
@@ -179,7 +179,7 @@ export async function handleAdvancedVideoExtraction(args: any) {
             snippet: content.substring(0, 200)
           });
         }
-        
+
         // Extract video hosting domains
         const hostPatterns = [
           /streamtape/gi,
@@ -192,14 +192,14 @@ export async function handleAdvancedVideoExtraction(args: any) {
           /streamlare/gi,
           /upns\.online/gi
         ];
-        
+
         hostPatterns.forEach(pattern => {
           if (pattern.test(content)) {
             results.possibleHosts.push(pattern.source);
           }
         });
       });
-      
+
       // 4. Find download buttons and links
       const downloadSelectors = [
         'a[download]',
@@ -213,7 +213,7 @@ export async function handleAdvancedVideoExtraction(args: any) {
         '.btn-download',
         '[class*="download"]'
       ];
-      
+
       downloadSelectors.forEach(selector => {
         document.querySelectorAll(selector).forEach((el: any) => {
           results.downloadButtons.push({
@@ -223,19 +223,19 @@ export async function handleAdvancedVideoExtraction(args: any) {
           });
         });
       });
-      
+
       return results;
     });
-    
+
     // Merge page analysis into videoData
     videoData.iframeSources = pageAnalysis.iframes;
     videoData.obfuscatedUrls = pageAnalysis.obfuscatedScripts;
     videoData.hostingPlatforms = [...new Set(pageAnalysis.possibleHosts)];
     videoData.downloadLinks = pageAnalysis.downloadButtons;
-    
+
     // Wait for dynamic content
     await sleep(waitTime);
-    
+
     // Try to click play buttons to trigger video loading
     try {
       const playButton = await page.$('button[class*="play"], .play-button, [aria-label*="Play"]');
@@ -246,14 +246,14 @@ export async function handleAdvancedVideoExtraction(args: any) {
     } catch (e) {
       // Play button not found or not clickable
     }
-    
+
     page.off('request', requestHandler);
     page.off('response', responseHandler);
-    
+
     // Deduplicate URLs
     videoData.directVideoUrls = [...new Map(videoData.directVideoUrls.map((item: any) => [item.url, item])).values()];
     videoData.m3u8Streams = [...new Map(videoData.m3u8Streams.map((item: any) => [item.url, item])).values()];
-    
+
     // Create summary
     const summary = `
 🎬 Advanced Video Extraction Results
@@ -313,91 +313,7 @@ ${JSON.stringify(videoData, null, 2)}
   }, 'Failed to extract advanced video sources');
 }
 
-/**
- * Deobfuscate JavaScript - Attempt to decode obfuscated JavaScript
- */
-export async function handleDeobfuscateJS(args: any) {
-  return await withErrorHandling(async () => {
-    validateWorkflow('deobfuscate_js', {
-      requireBrowser: true,
-      requirePage: true,
-    });
 
-    const page = getCurrentPage();
-    
-    const deobfuscationResults = await page.evaluate(() => {
-      const results: any[] = [];
-      
-      document.querySelectorAll('script').forEach((script: any, index: number) => {
-        const content = script.textContent || '';
-        
-        if (content.length < 100) return;
-        
-        const analysis: any = {
-          scriptIndex: index,
-          obfuscationType: [],
-          extractedData: {
-            urls: [],
-            domains: [],
-            apiKeys: [],
-            base64Strings: []
-          }
-        };
-        
-        // Detect obfuscation types
-        if (content.includes('eval(')) analysis.obfuscationType.push('eval');
-        if (content.includes('atob(')) analysis.obfuscationType.push('base64');
-        if (content.match(/0x[0-9a-f]{4}/gi)) analysis.obfuscationType.push('hex');
-        if (content.match(/_0x[0-9a-f]+/gi)) analysis.obfuscationType.push('identifier_obfuscation');
-        if (content.includes('\\x')) analysis.obfuscationType.push('hex_escape');
-        
-        if (analysis.obfuscationType.length === 0) return;
-        
-        // Extract URLs
-        const urlPattern = /https?:\/\/[^\s"'<>]+/gi;
-        const urls = content.match(urlPattern);
-        if (urls) {
-          analysis.extractedData.urls = [...new Set(urls)];
-        }
-        
-        // Extract base64 encoded strings
-        const base64Pattern = /["']([A-Za-z0-9+/]{20,}={0,2})["']/g;
-        let match;
-        while ((match = base64Pattern.exec(content)) !== null) {
-          try {
-            const decoded = atob(match[1]);
-            if (decoded.includes('http') || decoded.includes('video') || decoded.includes('.m3u8')) {
-              analysis.extractedData.base64Strings.push({
-                original: match[1].substring(0, 50) + '...',
-                decoded: decoded.substring(0, 200)
-              });
-            }
-          } catch (e) {
-            // Not valid base64
-          }
-        }
-        
-        // Extract potential domains
-        const domainPattern = /[a-z0-9][a-z0-9-]*\.(com|net|org|io|tv|online|xyz|cc)/gi;
-        const domains = content.match(domainPattern);
-        if (domains) {
-          analysis.extractedData.domains = [...new Set(domains)];
-        }
-        
-        results.push(analysis);
-      });
-      
-      return results.filter(r => r.obfuscationType.length > 0);
-    });
-    
-    return {
-      content: [{
-        type: 'text' as const,
-        text: `🔓 Deobfuscation Results:\n\nFound ${deobfuscationResults.length} obfuscated scripts\n\n${JSON.stringify(deobfuscationResults, null, 2)}`
-      }]
-    };
-  }, 'Failed to deobfuscate JavaScript');
-}
 
 /**
  * Multi-Layer Redirect Tracer - Follow multiple redirect layers to find final video source
@@ -412,15 +328,15 @@ export async function handleMultiLayerRedirectTrace(args: any) {
     const page = getCurrentPage();
     const startUrl = args.url;
     const maxDepth = args.maxDepth || 5;
-    
+
     if (!startUrl) {
       throw new Error('URL is required');
     }
-    
+
     const redirectChain: any[] = [];
     let currentDepth = 0;
     let currentUrl = startUrl;
-    
+
     while (currentDepth < maxDepth) {
       try {
         const allRequests: any[] = [];
@@ -432,25 +348,25 @@ export async function handleMultiLayerRedirectTrace(args: any) {
             finalUrl: response.url()
           });
         };
-        
+
         page.on('response', responseHandler);
-        
-        await page.goto(currentUrl, { 
+
+        await page.goto(currentUrl, {
           waitUntil: 'networkidle0',
-          timeout: 30000 
+          timeout: 30000
         });
-        
+
         await sleep(2000);
-        
+
         page.off('response', responseHandler);
-        
+
         const finalUrl = page.url();
-        
+
         // Check for iframe redirects
         const iframes = await page.evaluate(() => {
           return Array.from(document.querySelectorAll('iframe')).map((f: any) => f.src);
         });
-        
+
         redirectChain.push({
           depth: currentDepth,
           startUrl: currentUrl,
@@ -458,7 +374,7 @@ export async function handleMultiLayerRedirectTrace(args: any) {
           iframes,
           requests: allRequests.length
         });
-        
+
         // If we found an iframe, follow it
         if (iframes.length > 0 && iframes[0] !== currentUrl) {
           currentUrl = iframes[0];
@@ -474,7 +390,7 @@ export async function handleMultiLayerRedirectTrace(args: any) {
         break;
       }
     }
-    
+
     return {
       content: [{
         type: 'text' as const,
@@ -495,7 +411,7 @@ export async function handleAdProtectionDetector(args: any) {
     });
 
     const page = getCurrentPage();
-    
+
     const adProtection = await page.evaluate(() => {
       const results: any = {
         adBlockDetection: false,
@@ -505,7 +421,7 @@ export async function handleAdProtectionDetector(args: any) {
         hiddenElements: 0,
         suspiciousScripts: []
       };
-      
+
       // Check for common ad-block detection
       const adBlockIndicators = [
         'adblock',
@@ -514,10 +430,10 @@ export async function handleAdProtectionDetector(args: any) {
         'please disable',
         'turn off ad blocker'
       ];
-      
+
       const bodyText = document.body.textContent?.toLowerCase() || '';
       results.adBlockDetection = adBlockIndicators.some(indicator => bodyText.includes(indicator));
-      
+
       // Check for anti-debugger code
       document.querySelectorAll('script').forEach((script: any) => {
         const content = script.textContent || '';
@@ -525,18 +441,18 @@ export async function handleAdProtectionDetector(args: any) {
           results.antiDebugger = true;
         }
       });
-      
+
       // Count popup layers
       const overlays = document.querySelectorAll('[style*="position: fixed"], [style*="z-index"]');
       results.popupLayers = overlays.length;
-      
+
       // Check for hidden elements
       const hidden = document.querySelectorAll('[style*="display: none"], [style*="visibility: hidden"]');
       results.hiddenElements = hidden.length;
-      
+
       return results;
     });
-    
+
     return {
       content: [{
         type: 'text' as const,

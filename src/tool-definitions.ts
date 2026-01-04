@@ -34,7 +34,6 @@ export const DEFAULT_CONTENT_PRIORITY_CONFIG: ContentPriorityConfig = {
   autoSuggestGetContent: !disableContentPriority
 };
 
-
 // Complete tool definitions array
 export const TOOLS = [
   {
@@ -353,18 +352,7 @@ export const TOOLS = [
 
 
   // DOM & HTML Extraction (Phase 1)
-  {
-    name: 'html_elements_extractor',
-    description: 'Extract detailed information about HTML elements matching a selector',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        selector: { type: 'string', default: '*' },
-        maxElements: { type: 'number', default: 100 },
-        includeStyles: { type: 'boolean', default: false },
-      },
-    },
-  },
+
   {
     name: 'extract_json',
     description: 'Extract embedded JSON/API data from the page',
@@ -415,19 +403,7 @@ export const TOOLS = [
       required: ['selector'],
     },
   },
-  {
-    name: 'attribute_harvester',
-    description: 'Collect attributes (href, src, data-*) from elements',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        selector: { type: 'string' },
-        attributes: { type: 'array', items: { type: 'string' } },
-        maxElements: { type: 'number', default: 100 },
-      },
-      required: ['selector'],
-    },
-  },
+
   // Content Type Specific Extractors
 
   {
@@ -660,16 +636,6 @@ export const TOOLS = [
 
 
   {
-    name: 'fetch_xhr',
-    description: 'Capture fetch and XHR requests with responses',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        duration: { type: 'number', default: 15000 },
-      },
-    },
-  },
-  {
     name: 'network_recorder',
     description: 'Record all network activity',
     inputSchema: {
@@ -782,14 +748,6 @@ export const TOOLS = [
     },
   },
   {
-    name: 'deobfuscate_js',
-    description: 'Deobfuscate JavaScript code and extract hidden URLs, domains, and base64-encoded content. Detects eval, atob, hex encoding, and identifier obfuscation.',
-    inputSchema: {
-      type: 'object',
-      properties: {},
-    },
-  },
-  {
     name: 'multi_layer_redirect_trace',
     description: 'Follow multiple layers of redirects (URL redirects and iframe chains) to find final video source. Traces up to specified depth.',
     inputSchema: {
@@ -823,47 +781,11 @@ export const TOOLS = [
   },
 
   // Phase 3: Media & Video Tools
-  {
-    name: 'video_source_extractor',
-    description: 'Extract raw video sources from video tags and sources',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        url: { type: 'string' }
-      }
-    }
-  },
-  {
-    name: 'video_player_finder',
-    description: 'Identify video players (JWPlayer, VideoJS, etc) and extract config',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        url: { type: 'string' }
-      }
-    }
-  },
-  {
-    name: 'stream_detector',
-    description: 'Detects HLS (m3u8) and DASH (mpd) streams from network traffic',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        duration: { type: 'number', description: 'Monitoring duration in ms' }
-      }
-    }
-  },
 
-  {
-    name: 'video_download_link_finder',
-    description: 'Find direct download links for video files',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        extensions: { type: 'array', items: { type: 'string' } }
-      }
-    }
-  }
+
+
+
+
 ];
 
 // Tool name constants for type safety
@@ -886,18 +808,18 @@ export const TOOL_NAMES = {
   EXTRACT_SCHEMA: 'extract_schema',
   // Multi-Element Extractors
   BATCH_ELEMENT_SCRAPER: 'batch_element_scraper',
-  ATTRIBUTE_HARVESTER: 'attribute_harvester',
+
   // Content Type Specific
   LINK_HARVESTER: 'link_harvester',
   MEDIA_EXTRACTOR: 'media_extractor',
 
   // DOM & HTML Extraction (Phase 1)
-  HTML_ELEMENTS_EXTRACTOR: 'html_elements_extractor',
+
 
 
   // Network Tools (Phase 1)
 
-  FETCH_XHR: 'fetch_xhr',
+
   NETWORK_RECORDER: 'network_recorder',
   API_FINDER: 'api_finder',
 
@@ -913,9 +835,7 @@ export const TOOL_NAMES = {
 
 
   // Phase 3: Media & Video
-  VIDEO_SOURCE_EXTRACTOR: 'video_source_extractor',
-  VIDEO_PLAYER_FINDER: 'video_player_finder',
-  STREAM_DETECTOR: 'stream_detector',
+
 
 
 
@@ -1032,3 +952,4 @@ export const TOOL_CATEGORIES = {
   INTERACTION: [TOOL_NAMES.CLICK, TOOL_NAMES.TYPE, TOOL_NAMES.PRESS_KEY, TOOL_NAMES.SOLVE_CAPTCHA, TOOL_NAMES.RANDOM_SCROLL],
   CONTENT: [TOOL_NAMES.GET_CONTENT, TOOL_NAMES.FIND_SELECTOR, TOOL_NAMES.SAVE_CONTENT_AS_MARKDOWN],
 } as const;
+

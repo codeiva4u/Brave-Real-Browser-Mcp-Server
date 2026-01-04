@@ -1,0 +1,13 @@
+﻿
+> brave-real-browser-mcp-server@2.17.10 prebuild
+> npm run clean
+
+
+> brave-real-browser-mcp-server@2.17.10 clean
+> rimraf dist
+
+
+> brave-real-browser-mcp-server@2.17.10 build
+> tsc
+
+src/index.ts(354,24): error TS2304: Cannot find name 'handleMediaExtractor'.

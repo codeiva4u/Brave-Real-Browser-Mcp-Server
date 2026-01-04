@@ -137,9 +137,10 @@ import {
 // Import multi-element handlers
 import {
   handleBatchElementScraper,
-  handleAttributeHarvester,
+
   handleLinkHarvester,
   handleMediaExtractor,
+
 } from "./handlers/multi-element-handlers.js";
 // Import pagination handlers
 import {
@@ -176,11 +177,10 @@ import {
 } from "./handlers/visual-tools-handlers.js";
 // Import smart data extractors
 import {
-  handleHtmlElementsExtractor,
-  handleFetchXHR,
+
   handleNetworkRecorder,
   handleImageExtractorAdvanced,
-  handleVideoSourceExtractor,
+
 
   handleUrlRedirectTracer,
   handleApiFinder,
@@ -197,16 +197,10 @@ import {
 
 
 } from "./handlers/monitoring-reporting-handlers.js";
-// Import advanced video & media handlers
-import {
-  handleVideoPlayerFinder,
-  handleStreamDetector,
-  handleVideoDownloadLinkFinder,
-} from "./handlers/advanced-video-media-handlers.js";
 // Import advanced extraction handlers (Ad-bypass & Obfuscation)
 import {
   handleAdvancedVideoExtraction,
-  handleDeobfuscateJS,
+
   handleMultiLayerRedirectTrace,
   handleAdProtectionDetector,
 } from "./handlers/advanced-extraction-handlers.js";
@@ -329,9 +323,7 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
 
 
       // DOM & HTML Extraction
-      case TOOL_NAMES.HTML_ELEMENTS_EXTRACTOR:
-        result = await handleHtmlElementsExtractor(args || {});
-        break;
+
 
       case TOOL_NAMES.EXTRACT_JSON:
         result = await handleExtractJSON(args || {});
@@ -352,9 +344,7 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
 
 
 
-      case TOOL_NAMES.ATTRIBUTE_HARVESTER:
-        result = await handleAttributeHarvester(args as any);
-        break;
+
 
       // Content Type Specific
       case TOOL_NAMES.LINK_HARVESTER:
@@ -475,9 +465,7 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
 
 
 
-      case "fetch_xhr":
-        result = await handleFetchXHR(args || {});
-        break;
+
 
       case "network_recorder":
         result = await handleNetworkRecorder(args || {});
@@ -496,9 +484,7 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
         result = await handleImageExtractorAdvanced(args || {});
         break;
 
-      case "video_source_extractor":
-        result = await handleVideoSourceExtractor(args || {});
-        break;
+
 
 
 
@@ -543,17 +529,11 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
       // Advanced Video & Media Download Tools
 
 
-      case "video_player_finder":
-        result = await handleVideoPlayerFinder(args || {});
-        break;
 
-      case "stream_detector":
-        result = await handleStreamDetector(args || {});
-        break;
 
-      case "video_download_link_finder":
-        result = await handleVideoDownloadLinkFinder(args || {});
-        break;
+
+
+
 
 
 
@@ -566,9 +546,7 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
         result = await handleAdvancedVideoExtraction(args || {});
         break;
 
-      case "deobfuscate_js":
-        result = await handleDeobfuscateJS(args || {});
-        break;
+
 
       case "multi_layer_redirect_trace":
         result = await handleMultiLayerRedirectTrace(args as any);

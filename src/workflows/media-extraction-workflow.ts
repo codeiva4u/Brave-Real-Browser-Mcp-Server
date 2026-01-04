@@ -6,11 +6,9 @@ import { handleElementScreenshot } from '../handlers/visual-tools-handlers.js';
 import { handleNetworkRecorder } from '../handlers/smart-data-extractors.js';
 import {
     handleAdvancedVideoExtraction,
-    handleDeobfuscateJS,
     handleMultiLayerRedirectTrace,
     handleAdProtectionDetector
 } from '../handlers/advanced-extraction-handlers.js';
-import { handleVideoDownloadLinkFinder } from '../handlers/advanced-video-media-handlers.js';
 
 async function main() {
     const targetUrl = process.argv[2];
@@ -60,9 +58,7 @@ async function main() {
 
     // 6. Obfuscation Bypass
     if (!foundMedia) {
-        console.log("Deep Scan empty. Attempting Deobfuscation...");
-        const deobfuscated = await handleDeobfuscateJS({});
-        console.log("Deobfuscation Results:", deobfuscated);
+        console.log("Deep Scan empty. Deobfuscation is now handled by Advanced Video Extraction.");
     }
 
     // 7. Network Traffic
@@ -74,9 +70,7 @@ async function main() {
 
     // Phase 3: Redirect & Link Validation
     console.log("\n--- Phase 3: Redirect & Link Validation ---");
-    console.log("Dumping page download links...");
-    const links = await handleVideoDownloadLinkFinder({});
-    console.log("Page Video Links:", links);
+    console.log("Direct download link finding is now integrated into Advanced Video Extraction.");
 
     // Phase 4: Fallback
     console.log("\n--- Phase 4: Fallback / Manual Aid ---");

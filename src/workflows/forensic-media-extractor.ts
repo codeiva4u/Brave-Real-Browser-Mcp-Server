@@ -1,10 +1,9 @@
 
 import { handleBrowserInit } from '../handlers/browser-handlers.js';
 import { handleNavigate } from '../handlers/navigation-handlers.js';
-import { handleAdProtectionDetector, handleAdvancedVideoExtraction, handleDeobfuscateJS, handleMultiLayerRedirectTrace } from '../handlers/advanced-extraction-handlers.js';
-import { handleVideoDownloadLinkFinder } from '../handlers/advanced-video-media-handlers.js';
+import { handleAdProtectionDetector, handleAdvancedVideoExtraction, handleMultiLayerRedirectTrace } from '../handlers/advanced-extraction-handlers.js';
 import { handleSmartSelectorGenerator } from '../handlers/ai-powered-handlers.js';
-import { handleNetworkRecorder, handleFetchXHR, handleApiFinder } from '../handlers/smart-data-extractors.js';
+import { handleNetworkRecorder, handleApiFinder } from '../handlers/smart-data-extractors.js';
 import { handleAdvancedCSSSelectors, handleRegexPatternMatcher } from '../handlers/search-filter-handlers.js';
 import { handleMediaExtractor } from '../handlers/multi-element-handlers.js';
 import { handleRandomScroll, handleClick } from '../handlers/interaction-handlers.js';
@@ -52,15 +51,7 @@ async function main() {
 
         // Logic Extraction (looking for player config)
         try {
-            const deobfuscated = await handleDeobfuscateJS({});
-            // Filter for relevant keys
-            if (deobfuscated && deobfuscated.content) {
-                const keyTerms = ['player', 'token', 'm3u8', 'mp4', 'config'];
-                const relevantScripts = deobfuscated.content
-                    .filter((c: any) => c.text && keyTerms.some(term => c.text.includes(term)))
-                    .map((c: any) => c.text.substring(0, 200) + "...");
-                report.infrastructure.event_handlers = relevantScripts;
-            }
+            console.log("Deobfuscation is now handled by Advanced Video Extraction.");
         } catch (e) { console.log("Deobfuscation skipped"); }
 
         // --- Phase 3: Network & API ---
@@ -101,8 +92,7 @@ async function main() {
         // For now, dump the raw result
         report.targets_raw = videoAssets;
 
-        const downloadLinks = await handleVideoDownloadLinkFinder({});
-        report.download_links = downloadLinks;
+        report.download_links = "Handled by Advanced Video Extraction";
 
         console.log("--- MASTER REPORT JSON ---");
         console.log(JSON.stringify(report, null, 2));
