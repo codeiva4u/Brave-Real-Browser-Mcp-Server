@@ -17,6 +17,7 @@ console.log = (...args) => {
 import { handleUnifiedCaptcha } from './handlers/unified-captcha-handler.js';
 import { handleSearchContent, handleFindElementAdvanced } from './handlers/unified-search-handler.js';
 import { handleDeepAnalysis } from './handlers/deep-analysis-handler.js';
+const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '..');
 const envPath = path.join(projectRoot, '.env');
