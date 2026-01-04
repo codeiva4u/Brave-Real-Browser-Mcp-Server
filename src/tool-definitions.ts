@@ -282,12 +282,15 @@ export const TOOLS = [
   },
   {
     name: 'media_extractor',
-    description: 'Extract all media URLs from the page including images, videos, audio files, and embedded content (YouTube, Vimeo, etc.). Returns URLs, types, dimensions, and alt text for each media item.',
+    description: 'Extract all media URLs from the page including images, videos, audio files, and embedded content. Universal tool for both STREAMING and DOWNLOADING sites. Automatically handles multi-step flows (Verify -> Get Link -> Download) and supports dynamic content via network monitoring and smart interaction loops.',
     inputSchema: {
       type: 'object',
       properties: {
         types: { type: 'array', items: { type: 'string' }, description: 'Media types to extract (e.g., ["image", "video", "audio", "iframe"]). Empty for all types.' },
         includeEmbeds: { type: 'boolean', default: true, description: 'Include embedded content from iframes (YouTube, Vimeo, Spotify, etc.).' },
+        waitTime: { type: 'number', default: 10000, description: 'Time to wait for dynamic content to load (milliseconds). Essential for streaming sites.' },
+        clickPlay: { type: 'boolean', default: true, description: 'Attempt to click play button to trigger video loading. Useful for lazy-loaded video players.' },
+        monitorNetwork: { type: 'boolean', default: true, description: 'Monitor network requests to detect video URLs (m3u8, mp4, mpd, webm).' },
       },
     },
   },

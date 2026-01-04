@@ -35,6 +35,14 @@ export async function handleElementScreenshot(args: any): Promise<any> {
       await fs.mkdir(dir, { recursive: true });
     }
 
+    // Scroll element into view
+    try {
+      await element.evaluate((el: any) => el.scrollIntoView({ block: 'center', inline: 'center' }));
+      await sleep(500); // Allow scrolling to settle
+    } catch (scrollError) {
+      // Continue even if scroll fails
+    }
+
     // Apply padding if specified
     let screenshotOptions: any = {
       path: outputPath,
@@ -55,9 +63,30 @@ export async function handleElementScreenshot(args: any): Promise<any> {
         };
         await page.screenshot(screenshotOptions);
       } else {
+        // Fallback for elements without bounding box (e.g., hidden)
+        // Check visibility first
+        const isVisible = await element.evaluate((el: any) => {
+          const style = window.getComputedStyle(el);
+          return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+        });
+
+        if (!isVisible) {
+          throw new Error(`Element '${selector}' is not visible. Cannot take screenshot.`);
+        }
         await element.screenshot(screenshotOptions);
       }
     } else {
+      // Check visibility & bounding box before screenshot
+      const box = await element.boundingBox();
+      if (!box) {
+        const isVisible = await element.evaluate((el: any) => {
+          const style = window.getComputedStyle(el);
+          return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+        });
+        if (!isVisible) {
+          throw new Error(`Element '${selector}' is not visible/has no dimensions. Cannot take screenshot.`);
+        }
+      }
       await element.screenshot(screenshotOptions);
     }
 
