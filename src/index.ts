@@ -13,7 +13,10 @@ console.log = (...args) => {
 };
 
 // Robust .env loading (Manual & Silent)
-const __filename = fileURLToPath(import.meta.url);
+// Import unified handlers
+import { handleUnifiedCaptcha } from './handlers/unified-captcha-handler.js';
+import { handleSearchContent, handleFindElementAdvanced } from './handlers/unified-search-handler.js';
+import { handleDeepAnalysis } from './handlers/deep-analysis-handler.js';
 const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '..');
 const envPath = path.join(projectRoot, '.env');
@@ -152,22 +155,7 @@ import {
   handleContentClassification,
 } from "./handlers/ai-powered-handlers.js";
 // Import search & filter handlers
-import {
-  handleKeywordSearch,
-  handleRegexPatternMatcher,
-  handleXPathSupport,
-  handleAdvancedCSSSelectors,
-} from "./handlers/search-filter-handlers.js";
-// Import data quality handlers
-import {
-  handleDataTypeValidator,
-} from "./handlers/data-quality-handlers.js";
-// Import captcha handlers
-import {
-  handleOCREngine,
-  handleAudioCaptchaSolver,
-  handlePuzzleCaptchaHandler,
-} from "./handlers/captcha-handlers.js";
+// Import visual tools handlers
 // Import visual tools handlers
 import {
 
@@ -400,49 +388,19 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
 
 
       // Search & Filter Tools
-      case TOOL_NAMES.KEYWORD_SEARCH:
-        result = await handleKeywordSearch(args as any);
-        break;
+      // --- Search & Filter (Consolidated) ---
+      case TOOL_NAMES.SEARCH_CONTENT:
+        return await handleSearchContent(args);
+      case TOOL_NAMES.FIND_ELEMENT_ADVANCED:
+        return await handleFindElementAdvanced(args);
 
-      case TOOL_NAMES.REGEX_PATTERN_MATCHER:
-        result = await handleRegexPatternMatcher(args as any);
-        break;
+      // --- Deep Analysis ---
+      case TOOL_NAMES.DEEP_ANALYSIS:
+        return await handleDeepAnalysis(args);
 
-      case TOOL_NAMES.XPATH_SUPPORT:
-        result = await handleXPathSupport(args as any);
-        break;
-
-      case TOOL_NAMES.ADVANCED_CSS_SELECTORS:
-        result = await handleAdvancedCSSSelectors(args as any);
-        break;
-
-
-
-      // Data Quality & Validation
-
-
-
-
-      case TOOL_NAMES.DATA_TYPE_VALIDATOR:
-        result = await handleDataTypeValidator(args as any);
-        break;
-
-
-
-
-
-      // Advanced Captcha Handling
-      case TOOL_NAMES.OCR_ENGINE:
-        result = await handleOCREngine(args as any);
-        break;
-
-      case TOOL_NAMES.AUDIO_CAPTCHA_SOLVER:
-        result = await handleAudioCaptchaSolver(args as any);
-        break;
-
-      case TOOL_NAMES.PUZZLE_CAPTCHA_HANDLER:
-        result = await handlePuzzleCaptchaHandler(args as any);
-        break;
+      // --- Advanced Captcha Handling (Consolidated) ---
+      case TOOL_NAMES.SOLVE_CAPTCHA:
+        return await handleUnifiedCaptcha({ strategy: 'auto', ...args });
 
       // Screenshot & Visual Tools
 

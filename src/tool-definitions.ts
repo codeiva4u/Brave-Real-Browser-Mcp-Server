@@ -251,17 +251,33 @@ export const TOOLS = [
 
   {
     name: 'solve_captcha',
-    description: 'Attempt to solve CAPTCHAs (if supported)',
+    description: 'Solve various types of CAPTCHAs (Auto-detect, OCR, Audio, Puzzle). Routes to appropriate solver based on arguments.',
     inputSchema: {
       type: 'object',
       properties: {
-        type: {
+        strategy: {
           type: 'string',
-          enum: ['recaptcha', 'hCaptcha', 'turnstile'],
-          description: 'Type of captcha to solve',
+          enum: ['auto', 'ocr', 'audio', 'puzzle', 'recaptcha', 'hCaptcha', 'turnstile'],
+          description: 'Strategy to use. "auto" attempts to infer based on provided arguments.',
+          default: 'auto'
         },
+        // Shared
+        url: { type: 'string' },
+        // OCR
+        selector: { type: 'string' },
+        imageUrl: { type: 'string' },
+        imageBuffer: { type: 'string' },
+        language: { type: 'string' },
+        // Audio
+        audioSelector: { type: 'string' },
+        audioUrl: { type: 'string' },
+        downloadPath: { type: 'string' },
+        // Puzzle
+        puzzleSelector: { type: 'string' },
+        sliderSelector: { type: 'string' },
+        method: { type: 'string' },
       },
-      required: ['type'],
+      required: [],
     },
   },
   {
@@ -484,120 +500,63 @@ export const TOOLS = [
 
 
   // Search & Filter Tools (5 tools)
+  // Search & Filter Tools (Consolidated)
   {
-    name: 'keyword_search',
-    description: 'Advanced keyword search in page content',
+    name: 'search_content',
+    description: 'Search content using keywords or regex patterns.',
     inputSchema: {
       type: 'object',
       properties: {
+        query: { type: 'string', description: 'Keyword or Regex pattern' },
+        type: { type: 'string', enum: ['text', 'regex'], default: 'text' },
         url: { type: 'string' },
-        keywords: { type: 'array', items: { type: 'string' } },
+        // Text options
         caseSensitive: { type: 'boolean', default: false },
         wholeWord: { type: 'boolean', default: false },
         context: { type: 'number', default: 50 },
-      },
-      required: ['keywords'],
-    },
-  },
-  {
-    name: 'regex_pattern_matcher',
-    description: 'Search using regular expressions',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        url: { type: 'string' },
-        pattern: { type: 'string', description: 'Regular expression pattern' },
+        // Regex options
         flags: { type: 'string', default: 'g' },
-        selector: { type: 'string' },
+        selector: { type: 'string', description: 'Limit search to specific element' },
       },
-      required: ['pattern'],
+      required: ['query'],
     },
   },
   {
-    name: 'xpath_support',
-    description: 'Query elements using XPath',
+    name: 'find_element_advanced',
+    description: 'Find elements using XPath or Advanced CSS selectors.',
     inputSchema: {
       type: 'object',
       properties: {
+        query: { type: 'string', description: 'Selector or XPath expression' },
+        type: { type: 'string', enum: ['css', 'xpath'], default: 'css' },
         url: { type: 'string' },
-        xpath: { type: 'string', description: 'XPath expression' },
-        returnType: { type: 'string', default: 'elements' },
-      },
-      required: ['xpath'],
-    },
-  },
-  {
-    name: 'advanced_css_selectors',
-    description: 'Support for complex CSS selectors',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        url: { type: 'string' },
-        selector: { type: 'string' },
+        // CSS options
         operation: { type: 'string', enum: ['query', 'closest', 'matches'], default: 'query' },
-        returnType: { type: 'string', default: 'elements' },
+        // Shared
+        returnType: { type: 'string', enum: ['elements', 'styles', 'html'], default: 'elements' },
       },
-      required: ['selector'],
+      required: ['query'],
     },
   },
 
   // Data Quality & Validation (5 tools)
 
 
+  // Deep Analysis Tool -- Trace Recording
   {
-    name: 'data_type_validator',
-    description: 'Validate data types against JSON schema',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        data: { description: 'Data to validate' },
-        schema: { type: 'object', description: 'JSON Schema' },
-      },
-      required: ['data', 'schema'],
-    },
-  },
-
-
-  // Advanced Captcha Handling (3 tools)
-  {
-    name: 'ocr_engine',
-    description: 'Extract text from captcha images using OCR',
+    name: 'deep_analysis',
+    description: 'Perform a deep analysis of the page including network traces, console logs, DOM snapshot, and screenshot. Equivalent to a trace recording.',
     inputSchema: {
       type: 'object',
       properties: {
         url: { type: 'string' },
-        selector: { type: 'string' },
-        imageUrl: { type: 'string' },
-        imageBuffer: { type: 'string', description: 'Base64 encoded image' },
-        language: { type: 'string', default: 'eng' },
-      },
-    },
-  },
-  {
-    name: 'audio_captcha_solver',
-    description: 'Handle audio captchas',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        url: { type: 'string' },
-        audioSelector: { type: 'string' },
-        audioUrl: { type: 'string' },
-        downloadPath: { type: 'string' },
-      },
-    },
-  },
-  {
-    name: 'puzzle_captcha_handler',
-    description: 'Handle slider and puzzle captchas',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        url: { type: 'string' },
-        puzzleSelector: { type: 'string' },
-        sliderSelector: { type: 'string' },
-        method: { type: 'string', enum: ['auto', 'manual'], default: 'auto' },
-      },
-    },
+        duration: { type: 'number', default: 5000, description: 'Duration to record (ms)' },
+        screenshots: { type: 'boolean', default: true },
+        network: { type: 'boolean', default: true },
+        logs: { type: 'boolean', default: true },
+        dom: { type: 'boolean', default: true }
+      }
+    }
   },
   // Screenshot & Visual Tools (5 tools)
 
@@ -839,26 +798,24 @@ export const TOOL_NAMES = {
 
 
 
-  // Search & Filter Tools
-  KEYWORD_SEARCH: 'keyword_search',
-  REGEX_PATTERN_MATCHER: 'regex_pattern_matcher',
-  XPATH_SUPPORT: 'xpath_support',
-  ADVANCED_CSS_SELECTORS: 'advanced_css_selectors',
+  // Search & Filter (Consolidated)
+  SEARCH_CONTENT: 'search_content',
+  FIND_ELEMENT_ADVANCED: 'find_element_advanced',
+
+  // Deep Analysis
+  DEEP_ANALYSIS: 'deep_analysis',
+
   // Data Quality & Validation
+  // (Removed DATA_TYPE_VALIDATOR)
 
-  DATA_TYPE_VALIDATOR: 'data_type_validator',
+  // Advanced Captcha Handling (Consolidated)
+  // OCR_ENGINE: 'ocr_engine', // Merged into solve_captcha
+  // AUDIO_CAPTCHA_SOLVER: 'audio_captcha_solver', // Merged
+  // PUZZLE_CAPTCHA_HANDLER: 'puzzle_captcha_handler', // Merged
 
-
-  // Advanced Captcha Handling
-  OCR_ENGINE: 'ocr_engine',
-  AUDIO_CAPTCHA_SOLVER: 'audio_captcha_solver',
-  PUZZLE_CAPTCHA_HANDLER: 'puzzle_captcha_handler',
   // Screenshot & Visual Tools
-
   ELEMENT_SCREENSHOT: 'element_screenshot',
-
   VIDEO_RECORDING: 'video_recording',
-
 } as const;
 
 // Type definitions for tool inputs

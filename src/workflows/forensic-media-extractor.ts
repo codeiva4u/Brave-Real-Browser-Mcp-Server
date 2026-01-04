@@ -4,7 +4,8 @@ import { handleNavigate } from '../handlers/navigation-handlers.js';
 import { handleAdProtectionDetector, handleAdvancedVideoExtraction, handleMultiLayerRedirectTrace } from '../handlers/advanced-extraction-handlers.js';
 import { handleSmartSelectorGenerator } from '../handlers/ai-powered-handlers.js';
 import { handleNetworkRecorder, handleApiFinder } from '../handlers/smart-data-extractors.js';
-import { handleAdvancedCSSSelectors, handleRegexPatternMatcher } from '../handlers/search-filter-handlers.js';
+import { handleSearchContent, handleFindElementAdvanced } from '../handlers/unified-search-handler.js';
+import { handleDeepAnalysis } from '../handlers/deep-analysis-handler.js';
 import { handleMediaExtractor } from '../handlers/multi-element-handlers.js';
 import { handleRandomScroll, handleClick } from '../handlers/interaction-handlers.js';
 
@@ -77,7 +78,7 @@ async function main() {
 
         report.infrastructure.patterns = [];
         for (const check of regexChecks) {
-            const match = await handleRegexPatternMatcher({ pattern: check.pattern });
+            const match = await handleSearchContent({ query: check.pattern, type: 'regex' });
             if (match && match.content) {
                 report.infrastructure.patterns.push({ type: check.name, result: match.content });
             }
