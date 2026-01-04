@@ -133,7 +133,7 @@ ${dom ? `
         return {
             content: [
                 { type: 'text', text: summary },
-                ...(screenshots ? [{ type: 'image', data: result.data.screenshot, netType: 'image/webp' }] : [])
+                ...(screenshots ? [{ type: 'image', data: result.data.screenshot, mimeType: 'image/webp' }] : [])
             ],
             // Return full dataset as JSON for programmatic use if needed (MCP usually just text/image)
             // We embed the summary logic here.

@@ -198,28 +198,83 @@ export async function handleBreadcrumbNavigator(args: BreadcrumbNavigatorArgs) {
       const followLinks = args.followLinks || false;
 
       const breadcrumbData = await page.evaluate((selector: string) => {
+        // 1. Try structured data (Schema.org) first - Most Advanced/Reliable
+        const jsonLd = Array.from(document.querySelectorAll('script[type="application/ld+json"]'));
+        for (const script of jsonLd) {
+          try {
+            const data = JSON.parse(script.textContent || '{}');
+            const items = Array.isArray(data) ? data : [data];
+            for (const item of items) {
+              if (item['@type'] === 'BreadcrumbList' && Array.isArray(item.itemListElement)) {
+                return [{
+                  source: 'schema.org (json-ld)',
+                  path: item.itemListElement.map((i: any) => i.name).join(' > '),
+                  links: item.itemListElement.map((i: any, idx: number) => ({
+                    text: i.name,
+                    href: i.item,
+                    level: i.position || idx + 1
+                  }))
+                }];
+              }
+            }
+          } catch (e) { /* ignore parse errors */ }
+        }
+
+        // 2. Try Standard DOM Selectors
         const breadcrumbs = document.querySelectorAll(selector);
         const results: any[] = [];
+
+        // Helper to clean text
+        const cleanText = (text: string) => text.replace(/[\n\t]+/g, ' ').trim();
 
         breadcrumbs.forEach((breadcrumb) => {
           const links = breadcrumb.querySelectorAll('a');
           const items: any[] = [];
 
           links.forEach((link: any, index: number) => {
-            items.push({
-              text: link.textContent?.trim() || '',
-              href: link.href,
-              level: index,
-            });
+            const text = cleanText(link.textContent || '');
+            if (text) {
+              items.push({
+                text: text,
+                href: link.href,
+                level: index + 1,
+              });
+            }
           });
+
+          // Try to get the last active item (plain text often)
+          const lastItem = breadcrumb.querySelector('span:last-child, .active, [aria-current="page"]');
+          if (lastItem && !lastItem.querySelector('a')) {
+            const text = cleanText(lastItem.textContent || '');
+            if (text && !items.find(i => i.text === text)) {
+              items.push({ text, href: null, level: items.length + 1 });
+            }
+          }
 
           if (items.length > 0) {
             results.push({
+              source: 'dom_selector',
+              selector: selector,
               path: items.map((i) => i.text).join(' > '),
               links: items,
             });
           }
         });
+
+        // 3. Heuristic Finding (if selector yielded nothing)
+        if (results.length === 0) {
+          const navs = document.querySelectorAll('nav[aria-label*="breadcrumb"], nav[class*="breadcrumb"]');
+          navs.forEach(nav => {
+            const links = nav.querySelectorAll('a');
+            const items: any[] = [];
+            links.forEach((link: any, idx) => {
+              items.push({ text: cleanText(link.textContent || ''), href: link.href, level: idx + 1 });
+            });
+            if (items.length > 0) {
+              results.push({ source: 'heuristic_nav', path: items.map(i => i.text).join(' > '), links: items });
+            }
+          });
+        }
 
         return results;
       }, breadcrumbSelector);

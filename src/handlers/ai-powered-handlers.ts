@@ -132,14 +132,25 @@ export async function handleContentClassification(args: ContentClassificationArg
     const categoriesToUse = categories || defaultCategories;
 
     const scores = categoriesToUse.map((cat: any) => {
-      const keywords = Array.isArray(cat.keywords) ? cat.keywords : cat.keywords.split(',');
+      // Handle both string categories (from inputs) and object categories (from default)
+      const isString = typeof cat === 'string';
+      const name = isString ? cat : cat.name;
+
+      let keywords: string[] = [];
+      if (isString) {
+        // For simple string categories, use the category name itself as the keyword
+        keywords = [name.toLowerCase()];
+      } else {
+        keywords = Array.isArray(cat.keywords) ? cat.keywords : cat.keywords.split(',');
+      }
+
       let score = 0;
       keywords.forEach((keyword: string) => {
         const regex = new RegExp(keyword.trim().toLowerCase(), 'g');
         const matches = allText.match(regex);
         score += matches ? matches.length : 0;
       });
-      return { category: cat.name, score };
+      return { category: name, score };
     });
 
     scores.sort((a, b) => b.score - a.score);
