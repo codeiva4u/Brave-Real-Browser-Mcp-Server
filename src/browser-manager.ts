@@ -4,16 +4,10 @@ import { ExtensionManager } from './extension-manager.js';
 import * as path from 'path';
 import * as net from 'net';
 import { execSync, spawn } from 'child_process';
-import { config as dotenvConfig } from 'dotenv';
 import { BraveInstaller } from './brave-installer.js';
 
-// Load environment variables from .env file
-// Silence dotenv output
-const originalWrite = process.stdout.write;
-// @ts-ignore
-process.stdout.write = () => true;
-dotenvConfig();
-process.stdout.write = originalWrite;
+// process.env should be loaded by the entry point (index.ts)
+
 
 // Content prioritization configuration
 export interface ContentPriorityConfig {

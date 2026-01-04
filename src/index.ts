@@ -1,16 +1,67 @@
 #!/usr/bin/env node
 
-import 'dotenv/config';
+import { fileURLToPath } from 'url';
+import path from 'path';
+import fs from 'fs';
+import { logDebug } from './debug-logger.js';
 
-// CRITICAL: Redirect console.log to console.error to prevent stdout pollution
-// Antigravity AI IDE and other MCP clients require stdout to be exclusively for JSON-RPC
+// CRITICAL: Patch console.log immediately
 const originalConsoleLog = console.log;
 console.log = (...args) => {
+  logDebug('Captured stdout log:', args);
   console.error(...args);
 };
 
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+// Robust .env loading (Manual & Silent)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const projectRoot = path.resolve(__dirname, '..');
+const envPath = path.join(projectRoot, '.env');
 
+// Manual .env parser to avoid stdout pollution from dotenv package
+const loadEnvFile = (filePath: string) => {
+  try {
+    if (!fs.existsSync(filePath)) return false;
+    const content = fs.readFileSync(filePath, 'utf-8');
+    content.split('\n').forEach(line => {
+      const trimmed = line.trim();
+      if (trimmed && !trimmed.startsWith('#')) {
+        const [key, ...valueParts] = trimmed.split('=');
+        if (key && valueParts.length > 0) {
+          const value = valueParts.join('=').replace(/(^"|"$)/g, '').trim();
+          if (!process.env[key.trim()]) {
+            process.env[key.trim()] = value;
+          }
+        }
+      }
+    });
+    return true;
+  } catch (e) {
+    logDebug('Error loading .env file', e);
+    return false;
+  }
+};
+
+if (loadEnvFile(envPath)) {
+  logDebug(`Loaded .env manually from: ${envPath}`);
+} else {
+  // Try CWD
+  const cwdEnv = path.join(process.cwd(), '.env');
+  if (loadEnvFile(cwdEnv)) {
+    logDebug(`Loaded .env manually from CWD: ${cwdEnv}`);
+  } else {
+    logDebug(`Warning: No .env found at ${envPath} or CWD`);
+  }
+}
+
+logDebug('Server Starting...', {
+  cwd: process.cwd(),
+  nodeVersion: process.version,
+  projectRoot,
+  bravePath: process.env.BRAVE_PATH || 'Not Set'
+});
+
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
   CallToolRequestSchema,
@@ -19,6 +70,21 @@ import {
   ListPromptsRequestSchema,
   InitializeRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
+
+// Log uncaught exceptions
+process.on('uncaughtException', (error) => {
+  logDebug('CRITICAL: Uncaught Exception', {
+    message: error.message,
+    stack: error.stack
+  });
+  console.error('CRITICAL: Uncaught Exception', error);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason) => {
+  logDebug('CRITICAL: Unhandled Rejection', reason);
+  console.error('CRITICAL: Unhandled Rejection', reason);
+});
 
 
 
