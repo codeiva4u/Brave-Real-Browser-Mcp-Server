@@ -38,97 +38,45 @@ export const DEFAULT_CONTENT_PRIORITY_CONFIG: ContentPriorityConfig = {
 export const TOOLS = [
   {
     name: 'browser_init',
-    description: 'Initialize a new browser instance with anti-detection features and automatic Brave Browser path detection',
+    description: 'Initialize a new browser instance.',
     inputSchema: {
       type: 'object',
       properties: {
-        headless: {
-          type: 'boolean',
-          description: 'Run browser in headless mode',
-        },
-        autoInstall: {
-          type: 'boolean',
-          description: 'Automatically install Brave Browser if not found (Default: true)',
-          default: true,
-        },
-        disableXvfb: {
-          type: 'boolean',
-          description: 'Disable Xvfb (X Virtual Framebuffer)',
-          default: false,
-        },
-        ignoreAllFlags: {
-          type: 'boolean',
-          description: 'Ignore all browser flags (recommended: true for clean startup)',
-          default: true,
-        },
-        proxy: {
-          type: 'string',
-          description: 'Proxy server URL (format: protocol://host:port)',
-        },
-        plugins: {
-          type: 'array',
-          description: 'Array of plugins to load',
-          items: {
-            type: 'string',
-          },
-        },
-        connectOption: {
-          type: 'object',
-          description: 'Additional connection options',
-          additionalProperties: true,
-        },
+        headless: { type: 'boolean', description: 'Run headless' },
+        autoInstall: { type: 'boolean', default: true },
+        disableXvfb: { type: 'boolean', default: false },
+        ignoreAllFlags: { type: 'boolean', default: true },
+        proxy: { type: 'string' },
+        plugins: { type: 'array', items: { type: 'string' } },
         customConfig: {
           type: 'object',
-          description: 'Custom configuration for Brave Browser launcher. Use chromePath property to specify custom Brave executable path (property name kept for API compatibility)',
-          properties: {
-            chromePath: {
-              type: 'string',
-              description: 'Custom path to Brave Browser executable (auto-detected if not specified). Note: Property name is chromePath for API compatibility with brave-real-browser',
-            },
-          },
+          properties: { chromePath: { type: 'string' } },
           additionalProperties: true,
         },
         contentPriority: {
           type: 'object',
-          description: 'Configuration for content-first workflow enforcement',
           properties: {
-            prioritizeContent: {
-              type: 'boolean',
-              description: 'Prioritize get_content method for better reliability and workflow enforcement',
-              default: true,
-            },
-            autoSuggestGetContent: {
-              type: 'boolean',
-              description: 'Automatically suggest get_content alternatives when other methods fail',
-              default: true,
-            },
+            prioritizeContent: { type: 'boolean', default: true },
+            autoSuggestGetContent: { type: 'boolean', default: true },
           },
-          additionalProperties: false,
         },
       },
     },
   },
   {
     name: 'browser_close',
-    description: 'Close the browser instance',
-    inputSchema: {
-      type: 'object',
-      properties: {},
-    },
+    description: 'Close the browser.',
+    inputSchema: { type: 'object', properties: {} },
   },
   {
     name: 'navigate',
-    description: 'Navigate to a URL',
+    description: 'Navigate to a URL.',
     inputSchema: {
       type: 'object',
       properties: {
-        url: {
-          type: 'string',
-          description: 'The URL to navigate to',
-        },
+        url: { type: 'string' },
         waitUntil: {
           type: 'string',
-          description: 'When to consider navigation complete',
           enum: ['load', 'domcontentloaded', 'networkidle0', 'networkidle2'],
           default: 'domcontentloaded',
         },
@@ -138,87 +86,54 @@ export const TOOLS = [
   },
   {
     name: 'get_content',
-    description: '**Recommended** method to get page content (HTML or text) - More reliable than screenshots for content analysis and navigation tasks',
+    description: 'Get page content (HTML or text).',
     inputSchema: {
       type: 'object',
       properties: {
-        type: {
-          type: 'string',
-          enum: ['html', 'text'],
-          description: 'Type of content to retrieve',
-          default: 'html',
-        },
-        selector: {
-          type: 'string',
-          description: 'CSS selector to get content from specific element',
-        },
+        type: { type: 'string', enum: ['html', 'text'], default: 'html' },
+        selector: { type: 'string' },
       },
     },
   },
   {
     name: 'click',
-    description: 'Click on an element',
+    description: 'Click on an element.',
     inputSchema: {
       type: 'object',
       properties: {
-        selector: {
-          type: 'string',
-          description: 'CSS selector of element to click',
-        },
-        waitForNavigation: {
-          type: 'boolean',
-          description: 'Wait for navigation after click',
-          default: false,
-        },
+        selector: { type: 'string' },
+        waitForNavigation: { type: 'boolean', default: false },
       },
       required: ['selector'],
     },
   },
   {
     name: 'type',
-    description: 'Type text into an input field',
+    description: 'Type text into an input.',
     inputSchema: {
       type: 'object',
       properties: {
-        selector: {
-          type: 'string',
-          description: 'CSS selector of input element',
-        },
-        text: {
-          type: 'string',
-          description: 'Text to type',
-        },
-        delay: {
-          type: 'number',
-          description: 'Delay between keystrokes in ms',
-          default: 100,
-        },
+        selector: { type: 'string' },
+        text: { type: 'string' },
+        delay: { type: 'number', default: 100 },
       },
       required: ['selector', 'text'],
     },
   },
   {
     name: 'press_key',
-    description: 'Press keyboard keys (Enter, Tab, Escape, Arrow keys, etc.) - Useful for form submission, navigation, and keyboard shortcuts',
+    description: 'Press a keyboard key.',
     inputSchema: {
       type: 'object',
       properties: {
         key: {
           type: 'string',
-          description: 'Key to press. Common keys: Enter, Tab, Escape, Backspace, Delete, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Space, PageUp, PageDown, Home, End, F1-F12',
-          enum: ['Enter', 'Tab', 'Escape', 'Backspace', 'Delete', 'Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End', 'F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12'],
+          description: 'Key (e.g., Enter, Tab, Escape)',
         },
-        selector: {
-          type: 'string',
-          description: 'Optional: CSS selector of element to focus before pressing key',
-        },
+        selector: { type: 'string' },
         modifiers: {
           type: 'array',
-          description: 'Optional: Modifier keys to hold (Ctrl, Shift, Alt, Meta)',
-          items: {
-            type: 'string',
-            enum: ['Control', 'Shift', 'Alt', 'Meta'],
-          },
+          items: { type: 'string', enum: ['Control', 'Shift', 'Alt', 'Meta'] },
         },
       },
       required: ['key'],
@@ -226,152 +141,81 @@ export const TOOLS = [
   },
   {
     name: 'wait',
-    description: 'Wait for various conditions',
+    description: 'Wait for conditions.',
     inputSchema: {
       type: 'object',
       properties: {
-        type: {
-          type: 'string',
-          enum: ['selector', 'navigation', 'timeout'],
-          description: 'Type of wait condition',
-        },
-        value: {
-          type: 'string',
-          description: 'Selector to wait for or timeout in ms',
-        },
-        timeout: {
-          type: 'number',
-          description: 'Maximum wait time in ms',
-          default: 30000,
-        },
+        type: { type: 'string', enum: ['selector', 'navigation', 'timeout'] },
+        value: { type: 'string' },
+        timeout: { type: 'number', default: 30000 },
       },
       required: ['type', 'value'],
     },
   },
-
   {
     name: 'solve_captcha',
-    description: 'Solve various types of CAPTCHAs (Auto-detect, OCR, Audio, Puzzle). Routes to appropriate solver based on arguments.',
+    description: 'Solve CAPTCHAs (Auto/OCR/Audio/Puzzle).',
     inputSchema: {
       type: 'object',
       properties: {
         strategy: {
           type: 'string',
           enum: ['auto', 'ocr', 'audio', 'puzzle', 'recaptcha', 'hCaptcha', 'turnstile'],
-          description: 'Strategy to use. "auto" attempts to infer based on provided arguments.',
           default: 'auto'
         },
-        // Shared
         url: { type: 'string' },
-        // OCR
         selector: { type: 'string' },
         imageUrl: { type: 'string' },
-        imageBuffer: { type: 'string' },
         language: { type: 'string' },
-        // Audio
         audioSelector: { type: 'string' },
         audioUrl: { type: 'string' },
-        downloadPath: { type: 'string' },
-        // Puzzle
         puzzleSelector: { type: 'string' },
         sliderSelector: { type: 'string' },
-        method: { type: 'string' },
       },
-      required: [],
     },
   },
   {
     name: 'random_scroll',
-    description: 'Perform random scrolling with natural timing',
-    inputSchema: {
-      type: 'object',
-      properties: {},
-    },
+    description: 'Scroll randomly.',
+    inputSchema: { type: 'object', properties: {} },
   },
   {
     name: 'find_selector',
-    description: 'Find CSS selector for element containing specific text',
+    description: 'Find component by text.',
     inputSchema: {
       type: 'object',
       properties: {
-        text: {
-          type: 'string',
-          description: 'Text content to search for in elements',
-        },
-        elementType: {
-          type: 'string',
-          description: 'HTML element type to search within (e.g., "button", "a", "div"). Default is "*" for any element',
-          default: '*',
-        },
-        exact: {
-          type: 'boolean',
-          description: 'Whether to match exact text (true) or partial text (false)',
-          default: false,
-        },
+        text: { type: 'string' },
+        elementType: { type: 'string', default: '*' },
+        exact: { type: 'boolean', default: false },
       },
       required: ['text'],
     },
   },
   {
     name: 'save_content_as_markdown',
-    description: 'Extract page content and save it as a formatted markdown file',
+    description: 'Save content as Markdown.',
     inputSchema: {
       type: 'object',
       properties: {
-        filePath: {
-          type: 'string',
-          description: 'Absolute path where the markdown file should be saved (must end with .md)',
-        },
-        contentType: {
-          type: 'string',
-          enum: ['text', 'html'],
-          description: 'Type of content to extract and convert',
-          default: 'text',
-        },
-        selector: {
-          type: 'string',
-          description: 'Optional CSS selector to extract content from specific element',
-        },
+        filePath: { type: 'string' },
+        contentType: { type: 'string', enum: ['text', 'html'], default: 'text' },
+        selector: { type: 'string' },
         formatOptions: {
           type: 'object',
-          description: 'Options for markdown formatting',
           properties: {
-            includeMetadata: {
-              type: 'boolean',
-              description: 'Include metadata header with timestamp and source URL',
-              default: true,
-            },
-            cleanupWhitespace: {
-              type: 'boolean',
-              description: 'Clean up excessive whitespace in the output',
-              default: true,
-            },
-            preserveLinks: {
-              type: 'boolean',
-              description: 'Preserve link URLs in markdown format',
-              default: true,
-            },
-            headingStyle: {
-              type: 'string',
-              enum: ['atx', 'setext'],
-              description: 'Heading style for markdown conversion',
-              default: 'atx',
-            },
+            includeMetadata: { type: 'boolean', default: true },
+            cleanupWhitespace: { type: 'boolean', default: true },
+            preserveLinks: { type: 'boolean', default: true },
           },
-          additionalProperties: false,
         },
       },
       required: ['filePath'],
     },
   },
-  // Smart Data Extractors
-
-
-  // DOM & HTML Extraction (Phase 1)
-
   {
     name: 'extract_json',
-    description: 'Extract embedded JSON/API data from the page',
+    description: 'Extract extracted JSON/API data.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -383,19 +227,17 @@ export const TOOLS = [
   },
   {
     name: 'scrape_meta_tags',
-    description: 'Extract SEO meta tags and Open Graph data',
+    description: 'Extract SEO meta tags.',
     inputSchema: {
       type: 'object',
       properties: {
         includeOgTags: { type: 'boolean', default: true },
-        includeTwitterCards: { type: 'boolean', default: true },
-        includeCustomTags: { type: 'boolean', default: false },
       },
     },
   },
   {
     name: 'extract_schema',
-    description: 'Extract Schema.org structured data (JSON-LD, Microdata)',
+    description: 'Extract Schema.org data.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -404,10 +246,9 @@ export const TOOLS = [
       },
     },
   },
-  // Multi-Element Extractors
   {
     name: 'batch_element_scraper',
-    description: 'Scrape multiple similar elements in a batch',
+    description: 'Scrape multiple elements.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -419,138 +260,99 @@ export const TOOLS = [
       required: ['selector'],
     },
   },
-
-  // Content Type Specific Extractors
-
   {
     name: 'link_harvester',
-    description: 'Collect internal/external links with classification',
+    description: 'Collect links.',
     inputSchema: {
       type: 'object',
       properties: {
         selector: { type: 'string', default: 'a[href]' },
         classifyLinks: { type: 'boolean', default: true },
-        includeAnchors: { type: 'boolean', default: false },
       },
     },
   },
   {
     name: 'media_extractor',
-    description: 'Extract URLs and metadata for videos, audio, and iframes',
+    description: 'Extract media URLs.',
     inputSchema: {
       type: 'object',
       properties: {
-        types: { type: 'array', items: { type: 'string', enum: ['video', 'audio', 'iframe'] } },
+        types: { type: 'array', items: { type: 'string' } },
         includeEmbeds: { type: 'boolean', default: true },
       },
     },
   },
-
-  // Pagination Tools
-
-
-
   {
     name: 'breadcrumb_navigator',
-    description: 'Extract navigation path by following site structure',
+    description: 'Extract breadcrumbs.',
     inputSchema: {
       type: 'object',
       properties: {
         breadcrumbSelector: { type: 'string' },
-        followLinks: { type: 'boolean', default: false },
       },
     },
   },
-  // Data Processing Tools
-
-  // Data Validation Tools
-
-
-
-  // Data Validation Tools
-
-
-
-  // AI-Powered Features (5 tools)
   {
     name: 'smart_selector_generator',
-    description: 'AI-powered CSS selector generation based on element description',
+    description: 'AI selector generator.',
     inputSchema: {
       type: 'object',
       properties: {
         url: { type: 'string' },
-        description: { type: 'string', description: 'Description of element to find' },
-        context: { type: 'string', description: 'Additional context' },
+        description: { type: 'string' },
+        context: { type: 'string' },
       },
       required: ['description'],
     },
   },
   {
     name: 'content_classification',
-    description: 'Classify webpage content into categories',
+    description: 'Classify content.',
     inputSchema: {
       type: 'object',
       properties: {
         url: { type: 'string' },
-        categories: { type: 'array', description: 'Custom categories to classify' },
+        categories: { type: 'array' },
       },
     },
   },
-
-
-
-  // Search & Filter Tools (5 tools)
-  // Search & Filter Tools (Consolidated)
   {
     name: 'search_content',
-    description: 'Search content using keywords or regex patterns.',
+    description: 'Search content (keyword/regex).',
     inputSchema: {
       type: 'object',
       properties: {
-        query: { type: 'string', description: 'Keyword or Regex pattern' },
+        query: { type: 'string' },
         type: { type: 'string', enum: ['text', 'regex'], default: 'text' },
         url: { type: 'string' },
-        // Text options
         caseSensitive: { type: 'boolean', default: false },
-        wholeWord: { type: 'boolean', default: false },
-        context: { type: 'number', default: 50 },
-        // Regex options
-        flags: { type: 'string', default: 'g' },
-        selector: { type: 'string', description: 'Limit search to specific element' },
+        selector: { type: 'string' },
       },
       required: ['query'],
     },
   },
   {
     name: 'find_element_advanced',
-    description: 'Find elements using XPath or Advanced CSS selectors.',
+    description: 'Find elements (CSS/XPath).',
     inputSchema: {
       type: 'object',
       properties: {
-        query: { type: 'string', description: 'Selector or XPath expression' },
+        query: { type: 'string' },
         type: { type: 'string', enum: ['css', 'xpath'], default: 'css' },
         url: { type: 'string' },
-        // CSS options
-        operation: { type: 'string', enum: ['query', 'closest', 'matches'], default: 'query' },
-        // Shared
-        returnType: { type: 'string', enum: ['elements', 'styles', 'html'], default: 'elements' },
+        operation: { type: 'string', default: 'query' },
       },
       required: ['query'],
     },
   },
-
-  // Data Quality & Validation (5 tools)
-
-
-  // Deep Analysis Tool -- Trace Recording
   {
     name: 'deep_analysis',
-    description: 'Perform a deep analysis of the page including network traces, console logs, DOM snapshot, and screenshot. Equivalent to a trace recording.',
+    description: 'Record traces (network, console, DOM).',
     inputSchema: {
       type: 'object',
       properties: {
         url: { type: 'string' },
-        duration: { type: 'number', default: 5000, description: 'Duration to record (ms)' },
+        duration: { type: 'number', default: 5000 },
         screenshots: { type: 'boolean', default: true },
         network: { type: 'boolean', default: true },
         logs: { type: 'boolean', default: true },
@@ -558,194 +360,122 @@ export const TOOLS = [
       }
     }
   },
-  // Screenshot & Visual Tools (5 tools)
-
   {
     name: 'element_screenshot',
-    description: 'Capture screenshot of specific element',
+    description: 'Capture element screenshot.',
     inputSchema: {
       type: 'object',
       properties: {
-        url: { type: 'string' },
         selector: { type: 'string' },
         outputPath: { type: 'string' },
-        format: { type: 'string', enum: ['png', 'jpeg'], default: 'png' },
-        padding: { type: 'number', default: 0 },
       },
       required: ['selector', 'outputPath'],
     },
   },
-
   {
     name: 'video_recording',
-    description: 'Record browser session',
+    description: 'Record video.',
     inputSchema: {
       type: 'object',
       properties: {
-        url: { type: 'string' },
         duration: { type: 'number', default: 10 },
         outputPath: { type: 'string' },
       },
       required: ['outputPath'],
     },
   },
-
-  // Smart Data Extractors (Advanced)
-
-
-
   {
     name: 'network_recorder',
-    description: 'Record all network activity',
+    description: 'Record network.',
     inputSchema: {
       type: 'object',
       properties: {
         duration: { type: 'number', default: 20000 },
-        filterTypes: { type: 'array', items: { type: 'string' }, default: ['video', 'xhr', 'fetch', 'media'] },
       },
     },
   },
   {
     name: 'api_finder',
-    description: 'Discover API endpoints on page',
+    description: 'Find APIs.',
     inputSchema: {
       type: 'object',
-      properties: {
-        deepScan: { type: 'boolean', default: true },
-      },
+      properties: { deepScan: { type: 'boolean', default: true } },
     },
   },
-
-
   {
     name: 'image_extractor_advanced',
-    description: 'Advanced image extraction with metadata',
+    description: 'Extract images.',
     inputSchema: {
       type: 'object',
-      properties: {
-        includeDataUrls: { type: 'boolean', default: false },
-      },
+      properties: { includeDataUrls: { type: 'boolean', default: false } },
     },
   },
-
   {
     name: 'url_redirect_tracer',
-    description: 'Trace URL redirects',
+    description: 'Trace redirects.',
     inputSchema: {
       type: 'object',
-      properties: {
-        url: { type: 'string' },
-      },
+      properties: { url: { type: 'string' } },
       required: ['url'],
     },
   },
-
-  // Dynamic Content & Session Handling
-
-
-
-
   {
     name: 'ajax_content_waiter',
-    description: 'Wait for dynamic content to load',
+    description: 'Wait for AJAX.',
     inputSchema: {
       type: 'object',
       properties: {
-        waitFor: { type: 'string', enum: ['selector', 'xhr', 'timeout'], default: 'selector' },
+        waitFor: { type: 'string', default: 'selector' },
         value: { type: 'string' },
-        timeout: { type: 'number', default: 30000 },
       },
     },
   },
-
-
-  // Monitoring & Reporting
   {
     name: 'progress_tracker',
-    description: 'Track operation progress',
+    description: 'Track progress.',
     inputSchema: {
       type: 'object',
       properties: {
-        action: { type: 'string', enum: ['status', 'start', 'complete', 'reset'], default: 'status' },
+        action: { type: 'string', default: 'status' },
         operationId: { type: 'string' },
-        operationName: { type: 'string' },
         success: { type: 'boolean' },
-        result: { type: 'object' },
-        metadata: { type: 'object' },
       },
     },
   },
-
-
-
-
-
-  // Advanced Video & Media Download Tools
-
-
-
-
-
-
-
-
-
-
-  // Advanced Extraction Tools (Ad-Bypass & Obfuscation)
   {
     name: 'advanced_video_extraction',
-    description: 'Advanced video source extractor with ad-protection bypass and comprehensive network monitoring. Extracts direct video URLs, HLS/DASH streams, iframe sources, detects obfuscated content, and identifies video hosting platforms.',
+    description: 'Advanced video extraction.',
     inputSchema: {
       type: 'object',
       properties: {
-        waitTime: {
-          type: 'number',
-          default: 10000,
-          description: 'Time to wait (in ms) for dynamic content and video sources to load'
-        },
+        waitTime: { type: 'number', default: 10000 },
       },
     },
   },
   {
     name: 'multi_layer_redirect_trace',
-    description: 'Follow multiple layers of redirects (URL redirects and iframe chains) to find final video source. Traces up to specified depth.',
+    description: 'Trace multi-layer redirects.',
     inputSchema: {
       type: 'object',
       required: ['url'],
       properties: {
-        url: {
-          type: 'string',
-          description: 'Starting URL to trace redirects from'
-        },
-        maxDepth: {
-          type: 'number',
-          default: 5,
-          description: 'Maximum redirect depth to follow'
-        },
+        url: { type: 'string' },
+        maxDepth: { type: 'number', default: 5 },
       },
     },
   },
   {
     name: 'ad_protection_detector',
-    description: 'Detect ad-protection mechanisms including ad-block detection, anti-debugger code, popup layers, and hidden elements.',
+    description: 'Detect ad protection.',
     inputSchema: {
       type: 'object',
       properties: {
-        url: { type: 'string', description: 'URL of the page to analyze (optional)' },
-        selector: { type: 'string', description: 'CSS selector for content to analyze (optional)' },
-        text: { type: 'string', description: 'Direct text to analyze (optional)' },
-        criteria: { type: 'object', description: 'Visual criteria (visible, color, size, etc.)' },
+        selector: { type: 'string' },
       },
     },
   },
-
-  // Phase 3: Media & Video Tools
-
-
-
-
-
 ];
+
 
 // Tool name constants for type safety
 export const TOOL_NAMES = {
