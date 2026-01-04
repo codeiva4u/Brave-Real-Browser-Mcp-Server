@@ -122,7 +122,10 @@ Add to your config:
   "mcpServers": {
     "brave-real-browser": {
       "command": "npx",
-      "args": ["-y", "brave-real-browser-mcp-server@latest"]
+      "args": ["-y", "brave-real-browser-mcp-server@latest"],
+      "env": {
+        "HEADLESS": "true" // Set to "false" to see the browser
+      }
     }
   }
 }
@@ -136,7 +139,10 @@ Add to your config:
   "mcpServers": {
     "brave-real-browser": {
       "command": "npx",
-      "args": ["-y", "brave-real-browser-mcp-server@latest"]
+      "args": ["-y", "brave-real-browser-mcp-server@latest"],
+      "env": {
+        "HEADLESS": "true" // Set to "false" to see the browser
+      }
     }
   }
 }
