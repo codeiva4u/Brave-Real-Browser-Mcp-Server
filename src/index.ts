@@ -426,11 +426,11 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
 
 
 
-      case "network_recorder":
+      case TOOL_NAMES.NETWORK_RECORDER:
         result = await handleNetworkRecorder(args || {});
         break;
 
-      case "api_finder":
+      case TOOL_NAMES.API_FINDER:
         result = await handleApiFinder(args || {});
         break;
 
@@ -439,7 +439,7 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
 
 
 
-      case "image_extractor_advanced":
+      case TOOL_NAMES.IMAGE_EXTRACTOR_ADVANCED:
         result = await handleImageExtractorAdvanced(args || {});
         break;
 
@@ -447,7 +447,7 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
 
 
 
-      case "url_redirect_tracer":
+      case TOOL_NAMES.URL_REDIRECT_TRACER:
         result = await handleUrlRedirectTracer(args as any);
         break;
 
@@ -462,7 +462,7 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
 
 
 
-      case "ajax_content_waiter":
+      case TOOL_NAMES.AJAX_CONTENT_WAITER:
         result = await handleAjaxContentWaiter(args as any);
         break;
 
@@ -471,7 +471,7 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
 
 
       // Monitoring & Reporting
-      case "progress_tracker":
+      case TOOL_NAMES.PROGRESS_TRACKER:
         result = await handleProgressTracker(args || {});
         break;
 
@@ -501,17 +501,17 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
 
 
       // Advanced Extraction Tools (Ad-Bypass & Obfuscation)
-      case "advanced_video_extraction":
+      case TOOL_NAMES.ADVANCED_VIDEO_EXTRACTION:
         result = await handleAdvancedVideoExtraction(args || {});
         break;
 
 
 
-      case "multi_layer_redirect_trace":
+      case TOOL_NAMES.MULTI_LAYER_REDIRECT_TRACE:
         result = await handleMultiLayerRedirectTrace(args as any);
         break;
 
-      case "ad_protection_detector":
+      case TOOL_NAMES.AD_PROTECTION_DETECTOR:
         result = await handleAdProtectionDetector(args || {});
         break;
 
