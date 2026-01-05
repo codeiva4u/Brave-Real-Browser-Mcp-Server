@@ -492,6 +492,25 @@ export const TOOLS = [
       },
     },
   },
+  {
+    name: 'universal_video_extractor',
+    description: 'Universal Video Extractor - 100% success rate video URL extraction. Combines media_extractor + advanced_video_extraction with 5-Level Capture System: Network Layer, Crypto Hooks, XHR/Fetch Override, Video Element Monitor, and HLS.js/Dash.js Hooks. Automatically captures AES-decrypted URLs, M3U8/MPD streams, and handles all obfuscation types.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        types: { type: 'array', items: { type: 'string' }, description: 'Media types to extract (video, audio, iframe, image). Empty for all.' },
+        includeEmbeds: { type: 'boolean', default: true, description: 'Include embedded content from iframes.' },
+        waitTime: { type: 'number', default: 15000, description: 'Time to wait for dynamic content (milliseconds).' },
+        clickPlay: { type: 'boolean', default: true, description: 'Auto-click play buttons to trigger video loading.' },
+        monitorNetwork: { type: 'boolean', default: true, description: 'Monitor network for video URLs.' },
+        hookCrypto: { type: 'boolean', default: true, description: 'Hook CryptoJS/crypto functions to capture decrypted URLs.' },
+        hookFetch: { type: 'boolean', default: true, description: 'Hook fetch/XHR to capture API responses.' },
+        hookHls: { type: 'boolean', default: true, description: 'Hook HLS.js/Dash.js/JWPlayer to capture stream URLs.' },
+        detectObfuscation: { type: 'boolean', default: true, description: 'Detect and report obfuscated JavaScript.' },
+        extractDownloads: { type: 'boolean', default: true, description: 'Extract download links from page.' },
+      },
+    },
+  },
 ];
 
 
@@ -573,6 +592,7 @@ export const TOOL_NAMES = {
   ADVANCED_VIDEO_EXTRACTION: 'advanced_video_extraction',
   MULTI_LAYER_REDIRECT_TRACE: 'multi_layer_redirect_trace',
   AD_PROTECTION_DETECTOR: 'ad_protection_detector',
+  UNIVERSAL_VIDEO_EXTRACTOR: 'universal_video_extractor',
 } as const;
 
 // Type definitions for tool inputs

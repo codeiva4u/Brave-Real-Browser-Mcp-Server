@@ -194,6 +194,9 @@ import {
   handleAdProtectionDetector,
 } from "./handlers/advanced-extraction-handlers.js";
 
+// Import universal video extractor
+import { handleUniversalVideoExtractor } from "./handlers/universal-video-extractor.js";
+
 
 
 
@@ -513,6 +516,10 @@ export async function executeToolByName(name: string, args: any): Promise<any> {
 
       case TOOL_NAMES.AD_PROTECTION_DETECTOR:
         result = await handleAdProtectionDetector(args || {});
+        break;
+
+      case TOOL_NAMES.UNIVERSAL_VIDEO_EXTRACTOR:
+        result = await handleUniversalVideoExtractor(args || {});
         break;
 
       default:
