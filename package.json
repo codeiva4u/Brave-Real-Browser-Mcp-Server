@@ -1,6 +1,6 @@
 {
   "name": "brave-real-browser-mcp-server",
-  "version": "2.18.3",
+  "version": "2.18.4",
   "description": "Universal AI IDE MCP Server - Auto-detects and supports all AI IDEs (Claude Desktop, Cursor, Windsurf, Cline, Zed, VSCode, Qoder AI, etc.) with Brave browser automation",
   "type": "module",
   "main": "dist/index.js",
