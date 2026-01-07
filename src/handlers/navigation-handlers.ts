@@ -1,0 +1,308 @@
+import { getBrowserInstance, getPageInstance, getCurrentPage } from '../browser-manager.js';
+import { withErrorHandling, withTimeout } from '../system-utils.js';
+import { validateWorkflow, recordExecution, workflowValidator } from '../workflow-validation.js';
+import { NavigateArgs, WaitArgs } from '../tool-definitions.js';
+
+// Navigation handler
+export async function handleNavigate(args: NavigateArgs) {
+  return await withWorkflowValidation('navigate', args, async () => {
+    return await withErrorHandling(async () => {
+      const pageInstance = getPageInstance();
+      if (!pageInstance) {
+        throw new Error('Browser not initialized. Call browser_init first.');
+      }
+
+      const { url, waitUntil = 'domcontentloaded' } = args;
+
+      console.error(`🔄 Navigating to: ${url}`);
+
+      // Navigate with retry logic
+      let lastError: Error | null = null;
+      let success = false;
+      const maxRetries = 3;
+
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          await withTimeout(async () => {
+            await pageInstance.goto(url, {
+              waitUntil: waitUntil as any,
+              timeout: 60000
+            });
+          }, 60000, 'page-navigation');
+
+          console.error(`✅ Navigation successful to: ${url}`);
+          success = true;
+          break;
+        } catch (error) {
+          lastError = error instanceof Error ? error : new Error(String(error));
+          console.error(`❌ Navigation attempt ${attempt}/${maxRetries} failed:`, lastError.message);
+
+          if (attempt < maxRetries) {
+            const delay = 1000 * Math.pow(2, attempt - 1);
+            console.error(`⏳ Waiting ${delay}ms before retry...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+          }
+        }
+      }
+
+      if (!success && lastError) {
+        throw lastError;
+      }
+
+      const workflowMessage = '\n\n🔄 Workflow Status: Page loaded\n' +
+        '  • Next step: Use get_content to analyze page content\n' +
+        '  • Then: Use find_selector to locate elements\n' +
+        '  • Finally: Use interaction tools (click, type)\n\n' +
+        '✅ Ready for content analysis and interactions';
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Successfully navigated to ${url}${workflowMessage}`,
+          },
+        ],
+      };
+    }, 'Failed to navigate');
+  });
+}
+
+// Wait handler with multiple wait types
+export async function handleWait(args: WaitArgs) {
+  return await withWorkflowValidation('wait', args, async () => {
+    return await withErrorHandling(async () => {
+      const pageInstance = getPageInstance();
+      if (!pageInstance) {
+        throw new Error('Browser not initialized. Call browser_init first.');
+      }
+
+      const { type, value, timeout = 30000 } = args;
+
+      // Validate timeout parameter
+      if (typeof timeout !== 'number' || isNaN(timeout) || timeout < 0) {
+        throw new Error('Timeout parameter must be a positive number');
+      }
+
+      const startTime = Date.now();
+
+      console.error(`⏳ Waiting for ${type}: ${value} (timeout: ${timeout}ms)`);
+
+      try {
+        switch (type) {
+          case 'selector':
+            await pageInstance.waitForSelector(value, {
+              timeout,
+              visible: true
+            });
+            break;
+
+          case 'navigation':
+            await pageInstance.waitForNavigation({
+              timeout,
+              waitUntil: 'networkidle2'
+            });
+            break;
+
+          case 'timeout':
+            const waitTime = parseInt(value, 10);
+            if (isNaN(waitTime) || waitTime < 0) {
+              throw new Error('Timeout value must be a number');
+            }
+            await new Promise(resolve => setTimeout(resolve, Math.min(waitTime, timeout)));
+            break;
+
+          default:
+            throw new Error(`Unsupported wait type: ${type}`);
+        }
+
+        const duration = Date.now() - startTime;
+        console.error(`✅ Wait completed in ${duration}ms`);
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Wait completed successfully for ${type}: ${value} (${duration}ms)`,
+            },
+          ],
+        };
+      } catch (error) {
+        const duration = Date.now() - startTime;
+        console.error(`❌ Wait failed after ${duration}ms:`, error);
+        throw error;
+      }
+    }, 'Wait operation failed');
+  });
+}
+
+// Workflow validation wrapper
+async function withWorkflowValidation<T>(
+  toolName: string,
+  args: any,
+  operation: () => Promise<T>
+): Promise<T> {
+  // Validate workflow state before execution
+  const validation = validateWorkflow(toolName, args);
+
+  if (!validation.isValid) {
+    let errorMessage = validation.errorMessage || `Tool '${toolName}' is not allowed in current workflow state.`;
+
+    if (validation.suggestedAction) {
+      errorMessage += `\n\n💡 Next Steps: ${validation.suggestedAction}`;
+    }
+
+    // Add workflow context for debugging
+    const workflowSummary = workflowValidator.getValidationSummary();
+    errorMessage += `\n\n🔍 ${workflowSummary}`;
+
+    // Record failed execution
+    recordExecution(toolName, args, false, errorMessage);
+
+    throw new Error(errorMessage);
+  }
+
+  try {
+    // Execute the operation
+    const result = await operation();
+
+    // Record successful execution
+    recordExecution(toolName, args, true);
+
+    return result;
+  } catch (error) {
+    // Record failed execution
+    recordExecution(toolName, args, false, error instanceof Error ? error.message : String(error));
+    throw error;
+  }
+}
+
+
+// Breadcrumb Navigator Arguments
+export interface BreadcrumbNavigatorArgs {
+  breadcrumbSelector?: string;
+  followLinks?: boolean;
+}
+
+/**
+ * Site structure follow करके pages scrape करता है
+ */
+export async function handleBreadcrumbNavigator(args: BreadcrumbNavigatorArgs) {
+  return await withWorkflowValidation('breadcrumb_navigator', args, async () => {
+    return await withErrorHandling(async () => {
+      const page = getPageInstance();
+      if (!page) {
+        throw new Error('Browser not initialized. Call browser_init first.');
+      }
+
+      const breadcrumbSelector = args.breadcrumbSelector || '.breadcrumb, nav[aria-label="breadcrumb"], .breadcrumbs';
+      const followLinks = args.followLinks || false;
+
+      const breadcrumbData = await page.evaluate((selector: string) => {
+        // 1. Try structured data (Schema.org) first - Most Advanced/Reliable
+        const jsonLd = Array.from(document.querySelectorAll('script[type="application/ld+json"]'));
+        for (const script of jsonLd) {
+          try {
+            const data = JSON.parse(script.textContent || '{}');
+            const items = Array.isArray(data) ? data : [data];
+            for (const item of items) {
+              if (item['@type'] === 'BreadcrumbList' && Array.isArray(item.itemListElement)) {
+                return [{
+                  source: 'schema.org (json-ld)',
+                  path: item.itemListElement.map((i: any) => i.name).join(' > '),
+                  links: item.itemListElement.map((i: any, idx: number) => ({
+                    text: i.name,
+                    href: i.item,
+                    level: i.position || idx + 1
+                  }))
+                }];
+              }
+            }
+          } catch (e) { /* ignore parse errors */ }
+        }
+
+        // 2. Try Standard DOM Selectors
+        const breadcrumbs = document.querySelectorAll(selector);
+        const results: any[] = [];
+
+        // Helper to clean text
+        const cleanText = (text: string) => text.replace(/[\n\t]+/g, ' ').trim();
+
+        breadcrumbs.forEach((breadcrumb) => {
+          const links = breadcrumb.querySelectorAll('a');
+          const items: any[] = [];
+
+          links.forEach((link: any, index: number) => {
+            const text = cleanText(link.textContent || '');
+            if (text) {
+              items.push({
+                text: text,
+                href: link.href,
+                level: index + 1,
+              });
+            }
+          });
+
+          // Try to get the last active item (plain text often)
+          const lastItem = breadcrumb.querySelector('span:last-child, .active, [aria-current="page"]');
+          if (lastItem && !lastItem.querySelector('a')) {
+            const text = cleanText(lastItem.textContent || '');
+            if (text && !items.find(i => i.text === text)) {
+              items.push({ text, href: null, level: items.length + 1 });
+            }
+          }
+
+          if (items.length > 0) {
+            results.push({
+              source: 'dom_selector',
+              selector: selector,
+              path: items.map((i) => i.text).join(' > '),
+              links: items,
+            });
+          }
+        });
+
+        // 3. Heuristic Finding (if selector yielded nothing)
+        if (results.length === 0) {
+          const navs = document.querySelectorAll('nav[aria-label*="breadcrumb"], nav[class*="breadcrumb"]');
+          navs.forEach(nav => {
+            const links = nav.querySelectorAll('a');
+            const items: any[] = [];
+            links.forEach((link: any, idx) => {
+              items.push({ text: cleanText(link.textContent || ''), href: link.href, level: idx + 1 });
+            });
+            if (items.length > 0) {
+              results.push({ source: 'heuristic_nav', path: items.map(i => i.text).join(' > '), links: items });
+            }
+          });
+        }
+
+        return results;
+      }, breadcrumbSelector);
+
+      if (breadcrumbData.length === 0) {
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: '❌ No breadcrumbs found on page',
+            },
+          ],
+        };
+      }
+
+      let additionalData = '';
+      if (followLinks && breadcrumbData[0]?.links) {
+        additionalData = `\n\n📌 To scrape breadcrumb pages, use multi_page_scraper with URLs: ${JSON.stringify(breadcrumbData[0].links.map((l: any) => l.href))}`;
+      }
+
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: `✅ Found ${breadcrumbData.length} breadcrumb trail(s)\n\n${JSON.stringify(breadcrumbData, null, 2)}${additionalData}`,
+          },
+        ],
+      };
+    }, 'Failed to navigate breadcrumbs');
+  });
+}

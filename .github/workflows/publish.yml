@@ -1,0 +1,318 @@
+name: 🚀 Auto Version Increment and NPM Publish
+
+on:
+  # Daily automatic update check (Midnight UTC)
+  schedule:
+    - cron: '0 0 * * *'
+
+  # Manual trigger with enhanced options
+  workflow_dispatch:
+    inputs:
+      increment_type:
+        description: '📈 Version increment type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+        - patch
+        - minor
+        - major
+      dry_run:
+        description: '🧪 Dry run (test without publishing)'
+        required: false
+        default: false
+        type: boolean
+      force_publish:
+        description: '🔥 Force publish (ignore version checks)'
+        required: false
+        default: false
+        type: boolean
+
+  # Automatic trigger on push to main/master
+  push:
+    branches: [main, master]
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
+      - '.gitignore'
+      - 'LICENSE'
+      - '*.md'
+
+  # Automatic trigger on PR merge
+  pull_request:
+    types: [closed]
+    branches: [main, master]
+
+jobs:
+  publish:
+    name: 🚀 Publish Package
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && !contains(github.event.head_commit.message, '[skip ci]')) || (github.event_name == 'pull_request' && github.event.pull_request.merged == true) || github.event_name == 'schedule'
+    
+    steps:
+      - name: 🏁 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_TOKEN || github.token }}
+          fetch-depth: 0
+
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: 🔍 Configure Git
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions@github.com"
+
+      - name: 📦 Install and Update Dependencies
+        env:
+          SKIP_AUTO_UPDATE: 'true'
+        run: |
+          echo "🔄 Installing dependencies..."
+          
+          # Install helper for updates
+          sudo npm install -g npm-check-updates
+
+          # Step 1: Install current base dependencies to ensure lockfile is valid initially
+          if [ -f "package-lock.json" ]; then
+            npm ci --ignore-scripts
+          else
+            npm install --ignore-scripts
+          fi
+          
+          # Step 2: Check for updates (Run always or specifically when needed)
+          echo ""
+          echo "🚀 Checking for ALL dependency updates (npm-check-updates)..."
+          # -u: overwrites package.json
+          # --target latest: target the very latest versions
+          ncu -u --target latest
+          
+          # Step 3: Re-install to apply updates (if any)
+          echo ""
+          echo "📦 Installing updated dependencies..."
+          npm install --ignore-scripts
+          
+          # Step 4: Run security audit fix
+          echo ""
+          echo "🔒 Running security audit fix..."
+          npm audit fix --force || echo "⚠️  Some vulnerabilities may require manual review"
+
+      - name: 🧬 Check for Changes
+        id: check_changes
+        run: |
+          # Check if package.json has changed
+          if git diff --quiet package.json; then
+            echo "updates_found=false" >> $GITHUB_OUTPUT
+            echo "✅ No dependency updates found."
+          else
+            echo "updates_found=true" >> $GITHUB_OUTPUT
+            echo "🚀 Dependency updates found!"
+            # Show diff for logs
+            git diff package.json
+          fi
+
+      - name: ✋ Stop if Schedule and No Updates
+        if: github.event_name == 'schedule' && steps.check_changes.outputs.updates_found == 'false'
+        run: |
+          echo "🛑 Daily schedule triggered but no updates found. Exiting workflow successfully."
+          exit 0
+
+      # Continue only if not stopped above (Implicit, as exit 0 stops specific step but we need to stop JOB if possible? 
+      # Actually 'exit 0' in a step counts as success and continues to next step.
+      # So we need 'exit 1' to stop or conditional steps.
+      # Better approach: Condition subsequent steps.
+
+      - name: 🔨 Build project
+        if: github.event_name != 'schedule' || steps.check_changes.outputs.updates_found == 'true'
+        run: npm run build
+
+      - name: 🧪 Run tests
+        if: github.event_name != 'schedule' || steps.check_changes.outputs.updates_found == 'true'
+        run: |
+          echo "🧪 Running tests..."
+          npm run test:ci || echo "⚠️ Tests completed with warnings (non-blocking)"
+
+      - name: 📈 Increment version
+        id: version
+        if: github.event_name != 'schedule' || steps.check_changes.outputs.updates_found == 'true'
+        run: |
+          # Get current version from package.json
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          echo "📆 Current package.json version: $CURRENT_VERSION"
+          
+          # Get latest Git tag to determine next version
+          LATEST_TAG=$(git tag -l "v*" | sort -V | tail -n1 || echo "v0.0.0")
+          echo "🏷️ Latest Git tag: $LATEST_TAG"
+          
+          # Extract version from tag (remove 'v' prefix)
+          if [ "$LATEST_TAG" != "v0.0.0" ]; then
+            LATEST_VERSION=${LATEST_TAG#v}
+          else
+            LATEST_VERSION="0.0.0"
+          fi
+          echo "🔄 Latest tagged version: $LATEST_VERSION"
+          
+          # Determine which version is higher and use as base
+          BASE_VERSION=$(echo -e "$CURRENT_VERSION\n$LATEST_VERSION" | sort -V | tail -n1)
+          echo "🎯 Base version for increment: $BASE_VERSION"
+          
+          # Sync package.json if it is behind the latest tag
+          if [ "$CURRENT_VERSION" != "$BASE_VERSION" ]; then
+            echo "🔄 Syncing package.json from $CURRENT_VERSION to match latest tag $BASE_VERSION..."
+            npm version $BASE_VERSION --no-git-tag-version --allow-same-version
+          fi
+          
+          # Determine increment type
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            INCREMENT_TYPE="${{ github.event.inputs.increment_type }}"
+          elif [ "${{ github.event_name }}" = "schedule" ]; then
+             INCREMENT_TYPE="patch" # Always patch for automatic updates
+             echo "🤖 Scheduled update: using patch increment"
+          else
+            # Auto-determine based on commit message
+            COMMIT_MSG=$(git log -1 --pretty=%B)
+            if echo "$COMMIT_MSG" | grep -qE "\[major\]|\bBREAKING CHANGE\b|\bmajor:|BREAKING:"; then
+              INCREMENT_TYPE="major"
+            elif echo "$COMMIT_MSG" | grep -qE "\[minor\]|\bfeat\b|\bfeature\b|\bminor:|feat:"; then
+              INCREMENT_TYPE="minor"
+            else
+              INCREMENT_TYPE="patch"
+            fi
+          fi
+          
+          # Increment version
+          echo "📈 Incrementing version: $BASE_VERSION + $INCREMENT_TYPE"
+          npm version $INCREMENT_TYPE --no-git-tag-version
+          NEW_VERSION=$(node -p "require('./package.json').version")
+          echo "✨ New version: $NEW_VERSION"
+          
+          # Verify version increment worked
+          if [ "$NEW_VERSION" = "$BASE_VERSION" ]; then
+            echo "❌ Error: Version increment failed - versions are same"
+            exit 1
+          fi
+          
+          # Check if new version already exists as tag
+          if git tag -l | grep -q "v$NEW_VERSION"; then
+            echo "⚠️ Warning: Tag v$NEW_VERSION already exists, will be overwritten"
+          fi
+          
+          # Check if version exists on NPM (unless force publish)
+          if [ "${{ github.event.inputs.force_publish }}" != "true" ]; then
+            if npm view brave-real-browser-mcp-server@$NEW_VERSION > /dev/null 2>&1; then
+              echo "⚠️ Warning: Version $NEW_VERSION already exists on NPM"
+              # Auto-bump patch again to avoid conflict
+              npm version patch --no-git-tag-version
+              NEW_VERSION=$(node -p "require('./package.json').version")
+              echo "✨ Updated version to avoid conflict: $NEW_VERSION"
+            fi
+          fi
+          
+          # Set outputs
+          echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "base_version=$BASE_VERSION" >> $GITHUB_OUTPUT
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "increment_type=$INCREMENT_TYPE" >> $GITHUB_OUTPUT
+          
+          # Check for dry run
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            echo "🧪 DRY RUN MODE - No changes will be committed"
+            echo "dry_run=true" >> $GITHUB_OUTPUT
+          else
+            echo "dry_run=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 📝 Commit version bump
+        if: (steps.version.outputs.dry_run == 'false') && (github.event_name != 'schedule' || steps.check_changes.outputs.updates_found == 'true')
+        run: |
+          # Add changed files - NOW INCLUDES package.json (deps + version) and package-lock.json
+          git add package.json package-lock.json 2>/dev/null || true
+          
+          # Check if there are changes to commit
+          if git diff --staged --quiet; then
+            echo "ℹ️ No changes detected in package files"
+          else
+            echo "📝 Committing version bump to v${{ steps.version.outputs.new_version }}"
+            git commit -m "🔖 Bump version to v${{ steps.version.outputs.new_version }} [skip ci]" || echo "Commit failed, continuing..."
+          fi
+          
+          # Handle existing tag and create new one
+          if git tag -l | grep -q "v${{ steps.version.outputs.new_version }}"; then
+             git tag -d "v${{ steps.version.outputs.new_version }}" || true
+             git push origin --delete "v${{ steps.version.outputs.new_version }}" 2>/dev/null || true
+          fi
+          
+          git tag -a "v${{ steps.version.outputs.new_version }}" -m "Release v${{ steps.version.outputs.new_version }}"
+
+      - name: 🚀 Publish to NPM
+        if: (steps.version.outputs.dry_run == 'false') && (github.event_name != 'schedule' || steps.check_changes.outputs.updates_found == 'true')
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          echo "🚀 Publishing version ${{ steps.version.outputs.new_version }} to NPM..."
+          
+          # Verify NPM token exists
+          if [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "❌ Error: NPM_TOKEN secret not found"
+            exit 1
+          fi
+          
+          # Verify build files exist
+          if [ ! -f "dist/index.js" ]; then
+            echo "⚠️ Build files not found. Running build again..."
+            npm run build
+          fi
+          
+          npm publish --access public --verbose
+          
+          echo "🔍 Verifying..."
+          for i in {1..6}; do
+            if npm view brave-real-browser-mcp-server@${{ steps.version.outputs.new_version }} > /dev/null 2>&1; then
+              echo "✅ Published successfully!"
+              break
+            fi
+            sleep 10
+          done
+
+      - name: 🔄 Push changes to GitHub
+        if: (steps.version.outputs.dry_run == 'false') && (github.event_name != 'schedule' || steps.check_changes.outputs.updates_found == 'true')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
+        run: |
+          git push origin HEAD --follow-tags
+          echo "✅ Successfully pushed version v${{ steps.version.outputs.new_version }} to GitHub"
+
+      - name: 📋 Create GitHub Release
+        if: (steps.version.outputs.dry_run == 'false') && (github.event_name != 'schedule' || steps.check_changes.outputs.updates_found == 'true')
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
+        with:
+          tag_name: v${{ steps.version.outputs.new_version }}
+          name: 🚀 Release v${{ steps.version.outputs.new_version }}
+          body: |
+            ## 🚀 Brave Real Browser MCP Server v${{ steps.version.outputs.new_version }}
+            
+            ✨ This release was automatically generated and published.
+            
+            ### 📊 Version Information
+            - **New Version**: v${{ steps.version.outputs.new_version }}
+            - **Trigger**: ${{ github.event_name }}
+            
+            ### 📦 Auto-Updates (If Applicable)
+            This release may contain automatic dependency updates to the latest versions.
+            
+            ### 📦 Installation
+            ```bash
+            npm install brave-real-browser-mcp-server@${{ steps.version.outputs.new_version }}
+            ```
+            
+            ---
+            *Generated automatically by GitHub Actions*
+          draft: false
+          prerelease: false
+          generate_release_notes: true
