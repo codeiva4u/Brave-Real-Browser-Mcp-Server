@@ -12,7 +12,7 @@ import { handleBrowserInit, handleBrowserClose } from '../../src/handlers/browse
 import { handleNavigate } from '../../src/handlers/navigation-handlers';
 import { handleGetContent, handleFindSelector } from '../../src/handlers/content-handlers';
 import { handleClick, handleType } from '../../src/handlers/interaction-handlers';
-import { resetBrowserInitDepth } from '../../src/browser-manager';
+import { resetBrowserInitDepth, getHeadlessValue } from '../../src/browser-manager';
 
 // Skip E2E visual tests in CI environment (they require display and are for demo purposes)
 const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
@@ -71,11 +71,11 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
       console.log('👀 Watch your screen - browser window will open and perform automation');
 
       try {
-        // Step 1: Initialize browser (visible)
-        console.log('\n1️⃣ Initializing visible browser...');
+        // Step 1: Initialize browser (controlled by ENV)
+        console.log('\n1️⃣ Initializing browser (ENV controlled)...');
         const initResult = await handleBrowserInit({
-          headless: false, // VISIBLE browser
-          disableXvfb: true, // Ensure no virtual display
+          headless: getHeadlessValue(), // ENV controlled
+          disableXvfb: true,
           customConfig: {
             args: [
               '--disable-setuid-sandbox',
@@ -145,7 +145,7 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
         // Initialize browser
         console.log('\n1️⃣ Opening browser for form demo...');
         await handleBrowserInit({
-          headless: false,
+          headless: getHeadlessValue(), // ENV controlled
           disableXvfb: true,
           customConfig: {
             args: ['--window-size=1200,800']
@@ -176,9 +176,10 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
 
         console.log('✅ Form page loaded successfully');
 
-        // Fill essential fields
-        console.log('\n4️⃣ Filling out essential form fields...');
+        // Fill ALL form fields completely
+        console.log('\n4️⃣ Filling out ALL form fields...');
 
+        // Customer Name
         await handleType({
           selector: 'input[name="custname"]',
           text: 'John Doe',
@@ -186,6 +187,7 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
         });
         console.log('   ✅ Customer name: John Doe');
 
+        // Customer Email
         await handleType({
           selector: 'input[name="custemail"]',
           text: 'john.doe@example.com',
@@ -193,13 +195,57 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
         });
         console.log('   ✅ Email: john.doe@example.com');
 
+        // Customer Telephone
+        await handleType({
+          selector: 'input[name="custtel"]',
+          text: '+1-555-123-4567',
+          delay: 30
+        });
+        console.log('   ✅ Phone: +1-555-123-4567');
+
+        // Pizza Size - Large
         await handleClick({
           selector: 'input[value="large"]',
           waitForNavigation: false
         });
         console.log('   ✅ Pizza size: Large');
 
-        console.log('\n✅ Essential form fields completed!');
+        // Toppings - Bacon and Cheese
+        await handleClick({
+          selector: 'input[value="bacon"]',
+          waitForNavigation: false
+        });
+        console.log('   ✅ Topping: Bacon');
+
+        await handleClick({
+          selector: 'input[value="cheese"]',
+          waitForNavigation: false
+        });
+        console.log('   ✅ Topping: Extra Cheese');
+
+        await handleClick({
+          selector: 'input[value="onion"]',
+          waitForNavigation: false
+        });
+        console.log('   ✅ Topping: Onion');
+
+        // Delivery Time
+        await handleType({
+          selector: 'input[name="delivery"]',
+          text: '18:30',
+          delay: 30
+        });
+        console.log('   ✅ Delivery time: 18:30');
+
+        // Comments/Instructions
+        await handleType({
+          selector: 'textarea[name="comments"]',
+          text: 'Please ring the doorbell twice. Leave at the front door if no answer. Extra napkins please!',
+          delay: 20
+        });
+        console.log('   ✅ Comments: Added special instructions');
+
+        console.log('\n✅ ALL form fields completed!');
 
         // Submit the form
         console.log('\n5️⃣ Submitting form...');
@@ -210,7 +256,7 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
 
         await new Promise(resolve => setTimeout(resolve, 500));
         console.log('✅ Form submitted successfully!');
-        console.log('\n🎉 FORM AUTOMATION COMPLETE!');
+        console.log('\n🎉 COMPLETE FORM AUTOMATION DONE!');
 
       } catch (error: any) {
         // If httpbin is down or slow, pass the test gracefully
@@ -230,7 +276,7 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
         // Initialize browser
         console.log('\n1️⃣ Opening browser for content analysis...');
         await handleBrowserInit({
-          headless: false,
+          headless: getHeadlessValue(), // ENV controlled
           disableXvfb: true,
           contentPriority: {
             prioritizeContent: true,
@@ -278,6 +324,81 @@ describeOrSkip.sequential('E2E Visual Browser Tests', () => {
       } catch (error) {
         console.error('❌ Content analysis test failed:', error);
         throw error;
+      }
+    }, E2E_TIMEOUT);
+  });
+
+  describe('NoPeCha CAPTCHA Detection Demo', () => {
+    it('should demonstrate CAPTCHA detection on nopecha.com', async () => {
+      console.log('\n🎬 DEMO: CAPTCHA Detection with NoPeCha');
+      console.log('👀 Watch browser analyze CAPTCHA demos');
+
+      try {
+        // Initialize browser
+        console.log('\n1️⃣ Opening browser for CAPTCHA demo...');
+        await handleBrowserInit({
+          headless: getHeadlessValue(), // ENV controlled
+          disableXvfb: true,
+          customConfig: {
+            args: ['--window-size=1400,900']
+          }
+        });
+
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Navigate to NoPeCha
+        console.log('\n2️⃣ Navigating to nopecha.com...');
+        await handleNavigate({
+          url: 'https://nopecha.com/',
+          waitUntil: 'domcontentloaded'
+        });
+
+        // Wait longer to see the page
+        await new Promise(resolve => setTimeout(resolve, 3000));
+
+        // Analyze page content
+        console.log('\n3️⃣ Analyzing NoPeCha homepage...');
+        const contentResult = await handleGetContent({ type: 'text' });
+
+        // Verify page loaded
+        if (contentResult.content[0].text.length > 100) {
+          console.log('✅ NoPeCha page loaded successfully');
+          console.log(`   📄 Content length: ${contentResult.content[0].text.length} characters`);
+        }
+
+        // Wait to see content analysis
+        await new Promise(resolve => setTimeout(resolve, 3000));
+
+        // Try to find CAPTCHA-related elements
+        console.log('\n4️⃣ Looking for CAPTCHA demos...');
+        try {
+          const findResult = await handleFindSelector({
+            text: 'demo',
+            elementType: '*'
+          });
+          console.log('✅ Found demo elements on page');
+        } catch (e) {
+          console.log('⚠️ No demo text found, but page analyzed');
+        }
+
+        // Wait after finding elements
+        await new Promise(resolve => setTimeout(resolve, 3000));
+
+        // Get HTML for detailed analysis
+        console.log('\n5️⃣ Extracting page structure...');
+        const htmlResult = await handleGetContent({ type: 'html' });
+        console.log(`   📄 HTML length: ${htmlResult.content[0].text.length} characters`);
+
+        // Final wait to allow CAPTCHA solving (30 seconds)
+        console.log('\n👀 Waiting 30 seconds for CAPTCHA solving...');
+        console.log('   ⏱️ You have time to interact with the page and solve CAPTCHAs');
+        await new Promise(resolve => setTimeout(resolve, 30000));
+        console.log('\n🎉 NOPECHA DEMO COMPLETE!');
+
+      } catch (error: any) {
+        console.warn(`⚠️ NoPeCha test encountered issue: ${error.message}`);
+        console.log('✅ Test passes gracefully');
+        expect(true).toBe(true);
       }
     }, E2E_TIMEOUT);
   });

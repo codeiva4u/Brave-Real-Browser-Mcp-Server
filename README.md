@@ -165,5 +165,15 @@ PROXY_URL=http://user:pass@host:port
 
 ---
 
+## 🧪 Testing
+
+To run the End-to-End (E2E) tests for the project:
+
+```bash
+npx vitest run test/e2e/visual-browser.test.ts --reporter=verbose 2>&1
+```
+
+---
+
 ## 📄 License
 MIT License

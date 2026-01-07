@@ -19,13 +19,13 @@ export async function handleClick(args: ClickArgs) {
 
       // Try to find element using self-healing locators
       const elementResult = await selfHealingLocators.findElementWithFallbacks(
-        pageInstance, 
+        pageInstance,
         selector
       );
 
       if (!elementResult) {
         const fallbackSummary = await selfHealingLocators.getFallbackSummary(pageInstance, selector);
-        
+
         throw new Error(
           `Element not found: ${selector}\n\n` +
           '🔧 Self-healing locators tried multiple fallback strategies but could not find the element.\n\n' +
@@ -44,7 +44,7 @@ export async function handleClick(args: ClickArgs) {
 
       const { element, usedSelector, strategy } = elementResult;
       let strategyMessage = '';
-      
+
       if (strategy !== 'primary') {
         strategyMessage = `\n🔄 Self-healing: Used ${strategy} fallback selector: ${usedSelector}`;
         console.warn(`Self-healing click: Primary selector '${selector}' failed, used '${usedSelector}' (${strategy})`);
@@ -56,7 +56,7 @@ export async function handleClick(args: ClickArgs) {
 
         // Check element visibility and interaction options
         const boundingBox = await element.boundingBox();
-        
+
         if (!boundingBox) {
           console.warn(`Element ${usedSelector} has no bounding box, attempting JavaScript click`);
           await pageInstance.$eval(usedSelector, (el: any) => el.click());
@@ -117,13 +117,13 @@ export async function handleType(args: TypeArgs) {
 
       // Try to find element using self-healing locators
       const elementResult = await selfHealingLocators.findElementWithFallbacks(
-        pageInstance, 
+        pageInstance,
         selector
       );
 
       if (!elementResult) {
         const fallbackSummary = await selfHealingLocators.getFallbackSummary(pageInstance, selector);
-        
+
         throw new Error(
           `Input element not found: ${selector}\n\n` +
           '🔧 Self-healing locators tried multiple fallback strategies but could not find the input element.\n\n' +
@@ -138,7 +138,7 @@ export async function handleType(args: TypeArgs) {
 
       const { element, usedSelector, strategy } = elementResult;
       let strategyMessage = '';
-      
+
       if (strategy !== 'primary') {
         strategyMessage = `\n🔄 Self-healing: Used ${strategy} fallback selector: ${usedSelector}`;
         console.warn(`Self-healing type: Primary selector '${selector}' failed, used '${usedSelector}' (${strategy})`);
@@ -237,15 +237,15 @@ export async function handlePressKey(args: PressKeyArgs) {
           for (const modifier of modifiers) {
             await pageInstance.keyboard.down(modifier);
           }
-          
+
           // Press the main key
           await pageInstance.keyboard.press(key);
-          
+
           // Release modifiers
           for (const modifier of modifiers.reverse()) {
             await pageInstance.keyboard.up(modifier);
           }
-          
+
           const modifierStr = modifiers.join('+');
           return {
             content: [
@@ -258,7 +258,7 @@ export async function handlePressKey(args: PressKeyArgs) {
         } else {
           // Simple key press without modifiers
           await pageInstance.keyboard.press(key);
-          
+
           return {
             content: [
               {
@@ -332,31 +332,31 @@ async function withWorkflowValidation<T>(
 ): Promise<T> {
   // Validate workflow state before execution
   const validation = validateWorkflow(toolName, args);
-  
+
   if (!validation.isValid) {
     let errorMessage = validation.errorMessage || `Tool '${toolName}' is not allowed in current workflow state.`;
-    
+
     if (validation.suggestedAction) {
       errorMessage += `\n\n💡 Next Steps: ${validation.suggestedAction}`;
     }
-    
+
     // Add workflow context for debugging
     const workflowSummary = workflowValidator.getValidationSummary();
     errorMessage += `\n\n🔍 ${workflowSummary}`;
-    
+
     // Record failed execution
     recordExecution(toolName, args, false, errorMessage);
-    
+
     throw new Error(errorMessage);
   }
-  
+
   try {
     // Execute the operation
     const result = await operation();
-    
+
     // Record successful execution
     recordExecution(toolName, args, true);
-    
+
     return result;
   } catch (error) {
     // Record failed execution

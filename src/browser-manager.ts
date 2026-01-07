@@ -51,6 +51,55 @@ export function setPage(page: any) {
 // Check environment variable for testing override
 const disableContentPriority = process.env.DISABLE_CONTENT_PRIORITY === 'true' || process.env.NODE_ENV === 'test';
 
+// ============================================
+// HEADLESS CONFIGURATION - Single Source of Truth
+// ============================================
+// Control via environment variable: HEADLESS=true or HEADLESS=false
+// ENV has HIGHEST PRIORITY - overrides any code/API settings
+// Default: false (browser GUI visible) when ENV not set
+const HEADLESS_ENV_SET = process.env.HEADLESS !== undefined;
+export const IS_HEADLESS = process.env.HEADLESS === 'true';
+
+// Helper: Get headless value (ENV always wins if set)
+export const getHeadlessValue = (optionsHeadless?: boolean): boolean => {
+  if (HEADLESS_ENV_SET) {
+    return IS_HEADLESS; // ENV has highest priority
+  }
+  return optionsHeadless ?? false; // Fallback to options or false
+};
+
+// ============================================
+// DISABLE_XVFB CONFIGURATION - Single Source of Truth
+// ============================================
+// Control via environment variable: DISABLE_XVFB=true or DISABLE_XVFB=false
+// ENV has HIGHEST PRIORITY - overrides any code/API settings
+// Default: true (Xvfb disabled) when ENV not set
+const DISABLE_XVFB_ENV_SET = process.env.DISABLE_XVFB !== undefined;
+export const IS_XVFB_DISABLED = process.env.DISABLE_XVFB !== 'false'; // Default true
+
+// Helper: Get disableXvfb value (ENV always wins if set)
+export const getDisableXvfbValue = (optionsDisableXvfb?: boolean): boolean => {
+  if (DISABLE_XVFB_ENV_SET) {
+    return IS_XVFB_DISABLED; // ENV has highest priority
+  }
+  return optionsDisableXvfb ?? true; // Fallback to options or true
+};
+
+// ============================================
+// PROXY CONFIGURATION - Single Source of Truth
+// ============================================
+// Control via environment variable: PROXY_URL=http://proxy:8080
+// ENV has HIGHEST PRIORITY - overrides any code/API settings
+export const ENV_PROXY_URL = process.env.PROXY_URL || '';
+
+// Helper: Get proxy value (ENV always wins if set)
+export const getProxyValue = (optionsProxy?: string): string | undefined => {
+  if (ENV_PROXY_URL) {
+    return ENV_PROXY_URL; // ENV has highest priority
+  }
+  return optionsProxy; // Fallback to options
+};
+
 let contentPriorityConfig: ContentPriorityConfig = {
   prioritizeContent: !disableContentPriority,
   autoSuggestGetContent: !disableContentPriority
@@ -592,10 +641,10 @@ export async function initializeBrowser(options?: any) {
     }
 
     const connectOptions: any = {
-      headless: options?.headless ?? (process.env.HEADLESS === 'true'),
+      headless: getHeadlessValue(options?.headless),
       customConfig: braveConfig,
       turnstile: true,
-      disableXvfb: options?.disableXvfb ?? true,
+      disableXvfb: getDisableXvfbValue(options?.disableXvfb),
       // CRITICAL: Must be false by default to allow brave-real-browser to modify flags
       ignoreAllFlags: options?.ignoreAllFlags ?? false,
       args: [],
@@ -606,8 +655,13 @@ export async function initializeBrowser(options?: any) {
       },
     };
 
-    if (options?.proxy) {
-      connectOptions.customConfig.chromeFlags.push(`--proxy-server=${options.proxy}`);
+    // Proxy: ENV has highest priority
+    const proxyUrl = getProxyValue(options?.proxy);
+    if (proxyUrl) {
+      if (!connectOptions.customConfig.chromeFlags) {
+        connectOptions.customConfig.chromeFlags = [];
+      }
+      connectOptions.customConfig.chromeFlags.push(`--proxy-server=${proxyUrl}`);
     }
 
     // Explicitly enforce headless mode via flags if enabled
@@ -658,13 +712,13 @@ export async function initializeBrowser(options?: any) {
       strategyName: 'User-Defined Configuration',
       strategy: {
         executablePath: detectedBravePath,
-        headless: options?.headless ?? (process.env.HEADLESS === 'true'),
+        headless: getHeadlessValue(options?.headless),
         turnstile: true,
         args: [
           "--start-maximized",
           ...uBlockArgs // Add uBlock args to primary strategy
         ],
-        disableXvfb: true,
+        disableXvfb: getDisableXvfbValue(options?.disableXvfb),
         // CRITICAL: Must be false to allow brave-real-browser to process DEFAULT_FLAGS
         ignoreAllFlags: false,
         customConfig: braveConfig,
