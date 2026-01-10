@@ -36,7 +36,7 @@
     "test:dashboard": "node test-runner.js"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": ">=latest",
+    "@modelcontextprotocol/sdk": "latest",
     "@types/turndown": "latest",
     "brave-real-browser": "latest",
     "brave-real-launcher": "latest",
@@ -45,7 +45,7 @@
     "turndown": "latest"
   },
   "peerDependencies": {
-    "@modelcontextprotocol/sdk": ">=latest"
+    "@modelcontextprotocol/sdk": "latest"
   },
   "devDependencies": {
     "@types/node": "latest",
