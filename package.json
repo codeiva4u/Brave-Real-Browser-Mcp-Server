@@ -1,6 +1,6 @@
 {
   "name": "brave-real-browser-mcp-server",
-  "version": "2.18.11",
+  "version": "2.18.10",
   "description": "MCP server for Brave Real Browser with anti-detection features",
   "type": "module",
   "main": "dist/index.js",
@@ -38,14 +38,14 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": ">=latest",
     "@types/turndown": "latest",
-    "brave-real-browser": "^2.0.11",
-    "brave-real-launcher": "^1.2.49",
+    "brave-real-browser": "^latest",
+    "brave-real-launcher": "^latest",
     "brave-real-puppeteer-core": "latest",
-    "dotenv": "^17.2.3",
+    "dotenv": "^latest",
     "turndown": "latest"
   },
   "peerDependencies": {
-    "@modelcontextprotocol/sdk": ">=1.0.0"
+    "@modelcontextprotocol/sdk": ">=latest"
   },
   "devDependencies": {
     "@types/node": "latest",
