@@ -1,6 +1,6 @@
 {
   "name": "brave-real-browser-mcp-server",
-  "version": "2.18.10",
+  "version": "2.18.12",
   "description": "MCP server for Brave Real Browser with anti-detection features",
   "type": "module",
   "main": "dist/index.js",
