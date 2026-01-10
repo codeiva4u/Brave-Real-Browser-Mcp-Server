@@ -317,6 +317,306 @@ export const TOOLS = [
       required: ['filePath'],
     },
   },
+  // ============================================================
+  // ADVANCED TOOLS (22 new tools)
+  // ============================================================
+  {
+    name: 'breadcrumb_navigator',
+    description: 'Navigate using site breadcrumbs - find and click breadcrumb links',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        targetIndex: { type: 'number', description: 'Index of breadcrumb to click (0-based)' },
+        targetText: { type: 'string', description: 'Text of breadcrumb to click' },
+      },
+    },
+  },
+  {
+    name: 'url_redirect_tracer',
+    description: 'Trace standard URL redirects and show the redirect chain',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        url: { type: 'string', description: 'URL to trace redirects for' },
+        maxRedirects: { type: 'number', description: 'Maximum redirects to follow', default: 10 },
+      },
+      required: ['url'],
+    },
+  },
+  {
+    name: 'multi_layer_redirect_trace',
+    description: 'Trace complex/hidden redirects including JavaScript and meta refresh redirects',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        url: { type: 'string', description: 'URL to trace' },
+        includeJsRedirects: { type: 'boolean', description: 'Include JS redirects', default: true },
+        timeout: { type: 'number', description: 'Timeout in ms', default: 30000 },
+      },
+      required: ['url'],
+    },
+  },
+  {
+    name: 'search_content',
+    description: 'Search text or Regex patterns in page content',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        pattern: { type: 'string', description: 'Search pattern (text or regex)' },
+        isRegex: { type: 'boolean', description: 'Treat pattern as regex', default: false },
+        caseSensitive: { type: 'boolean', description: 'Case sensitive search', default: false },
+        selector: { type: 'string', description: 'CSS selector to limit search scope' },
+      },
+      required: ['pattern'],
+    },
+  },
+  {
+    name: 'find_element_advanced',
+    description: 'Find elements using XPath, advanced CSS selectors, or text content',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        xpath: { type: 'string', description: 'XPath expression' },
+        cssSelector: { type: 'string', description: 'CSS selector' },
+        contains: { type: 'string', description: 'Text content to search for' },
+        attributes: { type: 'object', description: 'Attributes to match' },
+      },
+    },
+  },
+  {
+    name: 'extract_json',
+    description: 'Extract embedded JSON/API data from page (LD+JSON, __NEXT_DATA__, etc.)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        selector: { type: 'string', description: 'CSS selector for script tags' },
+        scriptIndex: { type: 'number', description: 'Index of script to extract' },
+        variableName: { type: 'string', description: 'Window variable name to extract' },
+      },
+    },
+  },
+  {
+    name: 'scrape_meta_tags',
+    description: 'Extract SEO and Open Graph meta tags from page',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        includeOG: { type: 'boolean', description: 'Include Open Graph tags', default: true },
+        includeTwitter: { type: 'boolean', description: 'Include Twitter cards', default: true },
+        includeSchema: { type: 'boolean', description: 'Include Schema.org', default: false },
+      },
+    },
+  },
+  {
+    name: 'press_key',
+    description: 'Simulate keyboard key presses with optional modifiers',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        key: { type: 'string', description: 'Key to press (e.g., "Enter", "Tab", "Escape")' },
+        modifiers: { type: 'array', items: { type: 'string' }, description: 'Modifier keys (Control, Shift, Alt, Meta)' },
+        count: { type: 'number', description: 'Number of times to press', default: 1 },
+        delay: { type: 'number', description: 'Delay between presses in ms', default: 100 },
+      },
+      required: ['key'],
+    },
+  },
+  {
+    name: 'progress_tracker',
+    description: 'Track automation progress for multi-step tasks',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        taskName: { type: 'string', description: 'Name of the task' },
+        currentStep: { type: 'number', description: 'Current step number' },
+        totalSteps: { type: 'number', description: 'Total number of steps' },
+        message: { type: 'string', description: 'Progress message' },
+      },
+      required: ['taskName', 'currentStep', 'totalSteps'],
+    },
+  },
+  {
+    name: 'deep_analysis',
+    description: 'Comprehensive analysis: Console logs, Network traffic, DOM stats, and Screenshot',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        includeConsole: { type: 'boolean', description: 'Include console logs', default: true },
+        includeNetwork: { type: 'boolean', description: 'Include network requests', default: true },
+        includeDom: { type: 'boolean', description: 'Include DOM statistics', default: true },
+        includeScreenshot: { type: 'boolean', description: 'Include screenshot', default: false },
+        duration: { type: 'number', description: 'Recording duration in ms', default: 5000 },
+      },
+    },
+  },
+  {
+    name: 'network_recorder',
+    description: 'Record full network traffic including headers and body',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        duration: { type: 'number', description: 'Recording duration in ms', default: 10000 },
+        filterUrl: { type: 'string', description: 'Filter requests by URL pattern' },
+        includeHeaders: { type: 'boolean', description: 'Include request headers', default: false },
+        includeBody: { type: 'boolean', description: 'Include request body', default: false },
+      },
+    },
+  },
+  {
+    name: 'api_finder',
+    description: 'Discover hidden API endpoints by monitoring network traffic',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        patterns: { type: 'array', items: { type: 'string' }, description: 'URL patterns to match' },
+        includeInternal: { type: 'boolean', description: 'Include internal XHR/fetch', default: true },
+      },
+    },
+  },
+  {
+    name: 'ad_protection_detector',
+    description: 'Detect anti-adblock systems on the page',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        checkTypes: { type: 'array', items: { type: 'string' }, description: 'Types of protection to check' },
+      },
+    },
+  },
+  {
+    name: 'ajax_content_waiter',
+    description: 'Wait for dynamic AJAX/JavaScript content to load',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        selector: { type: 'string', description: 'CSS selector to wait for' },
+        timeout: { type: 'number', description: 'Maximum wait time in ms', default: 30000 },
+        pollInterval: { type: 'number', description: 'Check interval in ms', default: 500 },
+        expectedContent: { type: 'string', description: 'Expected text content to wait for' },
+      },
+    },
+  },
+  {
+    name: 'advanced_video_extraction',
+    description: 'Premium video extractor with support for embedded videos and ad-bypass',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        quality: { type: 'string', description: 'Preferred quality (highest, lowest, 1080p, 720p)' },
+        format: { type: 'string', description: 'Preferred format (mp4, webm, m3u8)' },
+        bypassAds: { type: 'boolean', description: 'Attempt to bypass video ads', default: true },
+      },
+    },
+  },
+  {
+    name: 'media_extractor',
+    description: 'Extract generic media (audio/video) from page',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        mediaType: { type: 'string', enum: ['video', 'audio', 'all'], description: 'Type of media to extract', default: 'all' },
+        includeEmbedded: { type: 'boolean', description: 'Include embedded iframes', default: true },
+      },
+    },
+  },
+  {
+    name: 'element_screenshot',
+    description: 'Capture screenshot of a specific element',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        selector: { type: 'string', description: 'CSS selector of element to capture' },
+        path: { type: 'string', description: 'File path to save screenshot' },
+        format: { type: 'string', enum: ['png', 'jpeg', 'webp'], description: 'Image format', default: 'png' },
+        quality: { type: 'number', description: 'Quality for JPEG/WebP (0-100)' },
+      },
+      required: ['selector'],
+    },
+  },
+  {
+    name: 'video_recording',
+    description: 'Start or stop browser session video recording',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['start', 'stop'], description: 'Recording action' },
+        path: { type: 'string', description: 'File path for recording' },
+        fps: { type: 'number', description: 'Frames per second', default: 30 },
+      },
+      required: ['action'],
+    },
+  },
+  {
+    name: 'link_harvester',
+    description: 'Harvest all links from page with filtering options',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filter: { type: 'string', description: 'Filter links by URL or text pattern' },
+        includeExternal: { type: 'boolean', description: 'Include external links', default: true },
+        includeInternal: { type: 'boolean', description: 'Include internal links', default: true },
+        maxLinks: { type: 'number', description: 'Maximum links to return' },
+      },
+    },
+  },
+  {
+    name: 'image_extractor_advanced',
+    description: 'Advanced image extraction with size filtering and lazy-load support',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        minWidth: { type: 'number', description: 'Minimum image width', default: 0 },
+        minHeight: { type: 'number', description: 'Minimum image height', default: 0 },
+        includeBackgrounds: { type: 'boolean', description: 'Include CSS background images', default: false },
+        includeLazy: { type: 'boolean', description: 'Include lazy-loaded images', default: true },
+      },
+    },
+  },
+  {
+    name: 'smart_selector_generator',
+    description: 'AI-powered selector generation based on element description',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        description: { type: 'string', description: 'Natural language description of the element' },
+        context: { type: 'string', description: 'Additional context about the page' },
+      },
+      required: ['description'],
+    },
+  },
+  {
+    name: 'content_classification',
+    description: 'Classify page content type (e-commerce, blog, news, etc.)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        categories: { type: 'array', items: { type: 'string' }, description: 'Categories to check' },
+      },
+    },
+  },
+  {
+    name: 'batch_element_scraper',
+    description: 'Efficiently scrape lists of similar elements',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        selector: { type: 'string', description: 'CSS selector for elements to scrape' },
+        attributes: { type: 'array', items: { type: 'string' }, description: 'Attributes to extract' },
+        limit: { type: 'number', description: 'Maximum elements to scrape', default: 100 },
+      },
+      required: ['selector'],
+    },
+  },
+  {
+    name: 'extract_schema',
+    description: 'Extract Schema.org structured data (JSON-LD and Microdata)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        schemaTypes: { type: 'array', items: { type: 'string' }, description: 'Schema types to extract (e.g., Product, Article)' },
+      },
+    },
+  },
 ];
 
 // Tool name constants for type safety
@@ -332,6 +632,31 @@ export const TOOL_NAMES = {
   RANDOM_SCROLL: 'random_scroll',
   FIND_SELECTOR: 'find_selector',
   SAVE_CONTENT_AS_MARKDOWN: 'save_content_as_markdown',
+  // Advanced tools
+  BREADCRUMB_NAVIGATOR: 'breadcrumb_navigator',
+  URL_REDIRECT_TRACER: 'url_redirect_tracer',
+  MULTI_LAYER_REDIRECT_TRACE: 'multi_layer_redirect_trace',
+  SEARCH_CONTENT: 'search_content',
+  FIND_ELEMENT_ADVANCED: 'find_element_advanced',
+  EXTRACT_JSON: 'extract_json',
+  SCRAPE_META_TAGS: 'scrape_meta_tags',
+  PRESS_KEY: 'press_key',
+  PROGRESS_TRACKER: 'progress_tracker',
+  DEEP_ANALYSIS: 'deep_analysis',
+  NETWORK_RECORDER: 'network_recorder',
+  API_FINDER: 'api_finder',
+  AD_PROTECTION_DETECTOR: 'ad_protection_detector',
+  AJAX_CONTENT_WAITER: 'ajax_content_waiter',
+  ADVANCED_VIDEO_EXTRACTION: 'advanced_video_extraction',
+  MEDIA_EXTRACTOR: 'media_extractor',
+  ELEMENT_SCREENSHOT: 'element_screenshot',
+  VIDEO_RECORDING: 'video_recording',
+  LINK_HARVESTER: 'link_harvester',
+  IMAGE_EXTRACTOR_ADVANCED: 'image_extractor_advanced',
+  SMART_SELECTOR_GENERATOR: 'smart_selector_generator',
+  CONTENT_CLASSIFICATION: 'content_classification',
+  BATCH_ELEMENT_SCRAPER: 'batch_element_scraper',
+  EXTRACT_SCHEMA: 'extract_schema',
 } as const;
 
 // Type definitions for tool inputs

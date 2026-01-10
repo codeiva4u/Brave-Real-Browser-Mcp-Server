@@ -37,6 +37,38 @@ import { handleClick, handleType, handleSolveCaptcha, handleRandomScroll } from 
 import { handleGetContent, handleFindSelector } from './handlers/content-handlers.js';
 import { handleSaveContentAsMarkdown } from './handlers/file-handlers.js';
 
+// Import advanced tools handlers
+import {
+  handleBreadcrumbNavigator,
+  handleUrlRedirectTracer,
+  handleMultiLayerRedirectTrace,
+  handleSearchContent,
+  handleFindElementAdvanced,
+  handleExtractJson,
+  handleScrapeMetaTags,
+  handlePressKey,
+  handleProgressTracker,
+  handleDeepAnalysis,
+  handleNetworkRecorder,
+  handleApiFinder,
+  handleAdProtectionDetector,
+  handleAjaxContentWaiter,
+  handleAdvancedVideoExtraction,
+  handleMediaExtractor,
+  handleElementScreenshot,
+  handleVideoRecording,
+  handleLinkHarvester,
+  handleImageExtractorAdvanced,
+  handleSmartSelectorGenerator,
+  handleContentClassification,
+  handleBatchElementScraper,
+  handleExtractSchema,
+  handleSolveCaptchaAdvanced,
+} from './handlers/advanced-tools.js';
+
+// State for video recording
+const recorderState = new Map<string, any>();
+
 console.error('🔍 [DEBUG] All modules loaded successfully');
 console.error(`🔍 [DEBUG] Server info: ${JSON.stringify(SERVER_INFO)}`);
 console.error(`🔍 [DEBUG] Available tools: ${TOOLS.length} tools loaded`);
@@ -108,6 +140,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
   const { name, arguments: args } = request.params;
   console.error(`🔍 [DEBUG] Tool call received: ${name} with args: ${JSON.stringify(args)}`);
 
+  // Get page from browser manager for advanced tools
+  const { getPageInstance } = await import('./browser-manager.js');
+  const page = getPageInstance();
+
   try {
     switch (name) {
       case TOOL_NAMES.BROWSER_INIT:
@@ -142,6 +178,103 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
 
       case TOOL_NAMES.SAVE_CONTENT_AS_MARKDOWN:
         return await handleSaveContentAsMarkdown(args as unknown as SaveContentAsMarkdownArgs);
+
+      // Advanced Tools
+      case TOOL_NAMES.BREADCRUMB_NAVIGATOR:
+        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
+        return { content: [{ type: 'text', text: JSON.stringify(await handleBreadcrumbNavigator(page, args || {})) }] };
+
+      case TOOL_NAMES.URL_REDIRECT_TRACER:
+        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
+        return { content: [{ type: 'text', text: JSON.stringify(await handleUrlRedirectTracer(page, args as any)) }] };
+
+      case TOOL_NAMES.MULTI_LAYER_REDIRECT_TRACE:
+        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
+        return { content: [{ type: 'text', text: JSON.stringify(await handleMultiLayerRedirectTrace(page, args as any)) }] };
+
+      case TOOL_NAMES.SEARCH_CONTENT:
+        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
+        return { content: [{ type: 'text', text: JSON.stringify(await handleSearchContent(page, args as any)) }] };
+
+      case TOOL_NAMES.FIND_ELEMENT_ADVANCED:
+        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
+        return { content: [{ type: 'text', text: JSON.stringify(await handleFindElementAdvanced(page, args || {})) }] };
+
+      case TOOL_NAMES.EXTRACT_JSON:
+        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
+        return { content: [{ type: 'text', text: JSON.stringify(await handleExtractJson(page, args || {})) }] };
+
+      case TOOL_NAMES.SCRAPE_META_TAGS:
+        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
+        return { content: [{ type: 'text', text: JSON.stringify(await handleScrapeMetaTags(page, args || {})) }] };
+
+      case TOOL_NAMES.PRESS_KEY:
+        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
+        return { content: [{ type: 'text', text: JSON.stringify(await handlePressKey(page, args as any)) }] };
+
+      case TOOL_NAMES.PROGRESS_TRACKER:
+        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
+        return { content: [{ type: 'text', text: JSON.stringify(await handleProgressTracker(page, args as any)) }] };
+
+      case TOOL_NAMES.DEEP_ANALYSIS:
+        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
+        return { content: [{ type: 'text', text: JSON.stringify(await handleDeepAnalysis(page, args || {})) }] };
+
+      case TOOL_NAMES.NETWORK_RECORDER:
+        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
+        return { content: [{ type: 'text', text: JSON.stringify(await handleNetworkRecorder(page, args || {})) }] };
+
+      case TOOL_NAMES.API_FINDER:
+        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
+        return { content: [{ type: 'text', text: JSON.stringify(await handleApiFinder(page, args || {})) }] };
+
+      case TOOL_NAMES.AD_PROTECTION_DETECTOR:
+        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
+        return { content: [{ type: 'text', text: JSON.stringify(await handleAdProtectionDetector(page, args || {})) }] };
+
+      case TOOL_NAMES.AJAX_CONTENT_WAITER:
+        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
+        return { content: [{ type: 'text', text: JSON.stringify(await handleAjaxContentWaiter(page, args || {})) }] };
+
+      case TOOL_NAMES.ADVANCED_VIDEO_EXTRACTION:
+        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
+        return { content: [{ type: 'text', text: JSON.stringify(await handleAdvancedVideoExtraction(page, args || {})) }] };
+
+      case TOOL_NAMES.MEDIA_EXTRACTOR:
+        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
+        return { content: [{ type: 'text', text: JSON.stringify(await handleMediaExtractor(page, args || {})) }] };
+
+      case TOOL_NAMES.ELEMENT_SCREENSHOT:
+        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
+        return { content: [{ type: 'text', text: JSON.stringify(await handleElementScreenshot(page, args as any)) }] };
+
+      case TOOL_NAMES.VIDEO_RECORDING:
+        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
+        return { content: [{ type: 'text', text: JSON.stringify(await handleVideoRecording(page, args as any, recorderState)) }] };
+
+      case TOOL_NAMES.LINK_HARVESTER:
+        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
+        return { content: [{ type: 'text', text: JSON.stringify(await handleLinkHarvester(page, args || {})) }] };
+
+      case TOOL_NAMES.IMAGE_EXTRACTOR_ADVANCED:
+        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
+        return { content: [{ type: 'text', text: JSON.stringify(await handleImageExtractorAdvanced(page, args || {})) }] };
+
+      case TOOL_NAMES.SMART_SELECTOR_GENERATOR:
+        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
+        return { content: [{ type: 'text', text: JSON.stringify(await handleSmartSelectorGenerator(page, args as any)) }] };
+
+      case TOOL_NAMES.CONTENT_CLASSIFICATION:
+        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
+        return { content: [{ type: 'text', text: JSON.stringify(await handleContentClassification(page, args || {})) }] };
+
+      case TOOL_NAMES.BATCH_ELEMENT_SCRAPER:
+        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
+        return { content: [{ type: 'text', text: JSON.stringify(await handleBatchElementScraper(page, args as any)) }] };
+
+      case TOOL_NAMES.EXTRACT_SCHEMA:
+        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
+        return { content: [{ type: 'text', text: JSON.stringify(await handleExtractSchema(page, args || {})) }] };
 
       default:
         throw new Error(`Unknown tool: ${name}`);

@@ -31,7 +31,7 @@ export async function handleGetContent(args: GetContentArgs) {
       } else {
         // Get full page content
         if (type === 'text') {
-          content = await pageInstance.evaluate(() => document.body.innerText || document.body.textContent || '');
+          content = await pageInstance.evaluate(() => document.body?.innerText || document.documentElement?.innerText || document.body?.textContent || '');
         } else {
           content = await pageInstance.content();
         }

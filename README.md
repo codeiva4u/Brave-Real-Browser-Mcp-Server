@@ -120,7 +120,7 @@ assistants to control a real browser, extract content, and more.
 - **Advanced configuration**: Full support for all brave-real-browser options
 - **Dynamic selector discovery**: Intelligent element finding without hardcoded selectors
 - **Random scrolling**: Tools for natural scrolling to avoid detection
-- **Comprehensive toolset**: 11 tools covering all browser automation needs
+- **Comprehensive toolset**: 33 tools covering all browser automation needs
 - **Proxy support**: Built-in proxy configuration for enhanced privacy
 - **Captcha handling**: Support for solving reCAPTCHA, hCaptcha, and Turnstile
 - **Robust error handling**: Advanced error recovery with circuit breaker pattern
@@ -497,48 +497,170 @@ AI: I'll set up the browser with your proxy configuration.
 
 ## Available Tools
 
-### Core Browser Tools
+This server provides **33 powerful tools** organized into categories for comprehensive browser automation.
 
-| Tool Name | Description | Required Parameters | Optional Parameters |
-|-----------|-------------|---------------------|-------------------|
-| `browser_init` | Initialize stealth browser with advanced options | None | `headless`, `disableXvfb`, `ignoreAllFlags`, `proxy`, `plugins`, `connectOption` |
-| `navigate` | Navigate to a URL | `url` | `waitUntil` |
-| `get_content` | Get page content (HTML or text) | None | `type`, `selector` |
-| `browser_close` | Close the browser instance | None | None |
+---
 
-### Interaction Tools
+### 🖥️ Core Browser Tools (4 tools)
 
-| Tool Name | Description | Required Parameters | Optional Parameters |
-|-----------|-------------|---------------------|-------------------|
-| `click` | Standard click on element | `selector` | `waitForNavigation` |
-| `type` | Type text into input field | `selector`, `text` | `delay` |
-| `wait` | Wait for various conditions | `type`, `value` | `timeout` |
-| `find_selector` | Find CSS selector for element containing specific text | `text` | `elementType`, `exact` |
+| Tool | Description |
+|------|-------------|
+| `browser_init` | Initialize stealth browser with anti-detection features, uBlock Origin, and configurable options (headless, proxy, plugins) |
+| `navigate` | Navigate to any URL with customizable wait conditions (load, domcontentloaded, networkidle) |
+| `get_content` | Extract page content as HTML or plain text, with optional CSS selector for specific elements |
+| `browser_close` | Safely close the browser instance and cleanup resources |
 
+---
 
-### Behavior Tools
+### 🖱️ Interaction Tools (4 tools)
 
-| Tool Name | Description | Required Parameters | Optional Parameters |
-|-----------|-------------|---------------------|-------------------|
-| `random_scroll` | Perform random scrolling with natural timing | None | None |
+| Tool | Description |
+|------|-------------|
+| `click` | Click on any element using CSS selector, with optional navigation wait |
+| `type` | Type text into input fields with human-like delays between keystrokes |
+| `wait` | Wait for various conditions: selector visibility, navigation, or timeout |
+| `press_key` | Simulate keyboard key presses with modifiers (Ctrl, Shift, Alt) - supports Enter, Tab, Escape, etc. |
 
-### Element Discovery Tools
+---
 
-| Tool Name | Description | Required Parameters | Optional Parameters |
-|-----------|-------------|---------------------|-------------------|
-| `find_selector` | Find CSS selector for element containing specific text | `text` | `elementType`, `exact` |
+### 🔍 Selector & Element Discovery Tools (4 tools)
 
-### Content Tools
+| Tool | Description |
+|------|-------------|
+| `find_selector` | Find CSS selector for elements containing specific text (exact or partial match) |
+| `find_element_advanced` | Advanced element finding using XPath, CSS selectors, or text content |
+| `smart_selector_generator` | AI-powered selector generation based on natural language descriptions |
+| `batch_element_scraper` | Efficiently scrape lists of similar elements with customizable attributes |
 
-| Tool Name | Description | Required Parameters | Optional Parameters |
-|-----------|-------------|---------------------|-------------------|
-| `save_content_as_markdown` | Extract page content and save it as a formatted markdown file | `filePath` | `contentType`, `selector`, `formatOptions` |
+---
 
-### Anti-Detection Tools
+### 📝 Content Extraction Tools (6 tools)
 
-| Tool Name | Description | Required Parameters | Optional Parameters |
-|-----------|-------------|---------------------|-------------------|
-| `solve_captcha` | Attempt to solve captchas | `type` | None |
+| Tool | Description |
+|------|-------------|
+| `save_content_as_markdown` | Convert page content to formatted markdown file with metadata |
+| `search_content` | Search text or regex patterns in page content with context |
+| `extract_json` | Extract embedded JSON data (LD+JSON, __NEXT_DATA__, window variables) |
+| `scrape_meta_tags` | Extract SEO, Open Graph, and Twitter meta tags |
+| `extract_schema` | Extract Schema.org structured data (JSON-LD and Microdata) |
+| `content_classification` | Classify page type (e-commerce, blog, news, social-media, documentation) |
+
+---
+
+### 🔗 Navigation & Redirect Tools (3 tools)
+
+| Tool | Description |
+|------|-------------|
+| `breadcrumb_navigator` | Navigate using site breadcrumbs - find and click breadcrumb links |
+| `url_redirect_tracer` | Trace standard URL redirects and show the complete redirect chain |
+| `multi_layer_redirect_trace` | Trace complex redirects including JavaScript and meta refresh redirects |
+
+---
+
+### 🌐 Network & API Tools (4 tools)
+
+| Tool | Description |
+|------|-------------|
+| `network_recorder` | Record full network traffic with headers, body, and response data |
+| `api_finder` | Discover hidden API endpoints by monitoring XHR/fetch requests |
+| `ajax_content_waiter` | Wait for dynamic AJAX/JavaScript content to load |
+| `deep_analysis` | Comprehensive analysis: console logs, network, DOM stats, and screenshot |
+
+---
+
+### 🎬 Media Extraction Tools (3 tools)
+
+| Tool | Description |
+|------|-------------|
+| `advanced_video_extraction` | Extract video URLs from pages including YouTube, Vimeo, embedded players |
+| `media_extractor` | Extract audio/video elements and embedded media |
+| `image_extractor_advanced` | Advanced image extraction with size filtering, backgrounds, and lazy-load support |
+
+---
+
+### 📷 Screenshot & Recording Tools (2 tools)
+
+| Tool | Description |
+|------|-------------|
+| `element_screenshot` | Capture screenshot of specific elements by selector |
+| `video_recording` | Start/stop browser session video recording |
+
+---
+
+### 🔗 Link Tools (1 tool)
+
+| Tool | Description |
+|------|-------------|
+| `link_harvester` | Harvest all links from page with filtering (internal, external, pattern) |
+
+---
+
+### 🛡️ Anti-Detection & Security Tools (2 tools)
+
+| Tool | Description |
+|------|-------------|
+| `solve_captcha` | Solve CAPTCHAs (reCAPTCHA, hCaptcha, Turnstile) with auto-detection |
+| `ad_protection_detector` | Detect anti-adblock systems on pages |
+
+---
+
+### 📊 Utility Tools (2 tools)
+
+| Tool | Description |
+|------|-------------|
+| `random_scroll` | Perform natural random scrolling to avoid bot detection |
+| `progress_tracker` | Track automation progress for multi-step tasks |
+
+---
+
+### Tool Parameters Quick Reference
+
+#### browser_init
+```json
+{
+  "headless": false,
+  "disableXvfb": false,
+  "ignoreAllFlags": true,
+  "proxy": "http://proxy:8080",
+  "plugins": ["plugin1"],
+  "customConfig": { "bravePath": "/path/to/brave" }
+}
+```
+
+#### navigate
+```json
+{
+  "url": "https://example.com",
+  "waitUntil": "domcontentloaded"  // or: load, networkidle0, networkidle2
+}
+```
+
+#### get_content
+```json
+{
+  "type": "html",  // or: text
+  "selector": ".main-content"
+}
+```
+
+#### search_content
+```json
+{
+  "pattern": "search term",
+  "isRegex": false,
+  "caseSensitive": false,
+  "selector": "body"
+}
+```
+
+#### find_element_advanced
+```json
+{
+  "xpath": "//button[@type='submit']",
+  "cssSelector": "form button",
+  "contains": "Submit"
+}
+```
 
 ## Advanced Features
 
