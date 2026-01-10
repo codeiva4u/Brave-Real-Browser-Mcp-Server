@@ -38,10 +38,10 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": ">=latest",
     "@types/turndown": "latest",
-    "brave-real-browser": "^latest",
-    "brave-real-launcher": "^latest",
+    "brave-real-browser": "latest",
+    "brave-real-launcher": "latest",
     "brave-real-puppeteer-core": "latest",
-    "dotenv": "^latest",
+    "dotenv": "latest",
     "turndown": "latest"
   },
   "peerDependencies": {
