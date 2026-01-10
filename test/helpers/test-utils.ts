@@ -22,170 +22,30 @@ export interface MCPRequest {
 /**
  * Wait for server to start up by monitoring stderr output
  */
-// Track which servers have been started
-const startedServers = new WeakSet<ChildProcess>();
-
-export function waitForServerStartup(serverProcess: ChildProcess, timeoutMs: number = 45000): Promise<void> {
-  // If already started, resolve immediately
-  if (startedServers.has(serverProcess)) {
-    return Promise.resolve();
-  }
-
+export function waitForServerStartup(serverProcess: ChildProcess, timeoutMs: number = 10000): Promise<void> {
   return new Promise((resolve, reject) => {
-    let resolved = false;
-
-    const cleanup = () => {
-      clearTimeout(timeout);
-      serverProcess.stderr?.removeListener('data', stderrHandler);
-      serverProcess.removeListener('error', errorHandler);
-      serverProcess.removeListener('exit', exitHandler);
-    };
-
-    // Timeout is now just a failsafe for the delay check above
     const timeout = setTimeout(() => {
-      // Do nothing, let the startupDelay handle resolution
+      reject(new Error(`Server did not start within ${timeoutMs}ms`));
     }, timeoutMs);
 
-    const stderrHandler = (data: Buffer) => {
+    serverProcess.stderr?.on('data', (data) => {
       const output = data.toString();
-      console.error(`[SERVER STDERR] ${output}`);
-      // Only fail on critical errors, ignore missing "succcess" log since we are now silent
-      if (output.includes('Server process exited')) {
-        // This is handled by exitHandler
-      }
-    };
-
-    // For silent server, we wait a short period to ensure no immediate crash
-    const startupDelay = setTimeout(() => {
-      if (!resolved) {
-        resolved = true;
-        cleanup();
-        startedServers.add(serverProcess);
-        console.error('[TEST] Server startup assumed successful (Silent Mode)');
+      if (output.includes('Puppeteer Real Browser MCP Server started successfully')) {
+        clearTimeout(timeout);
         resolve();
       }
-    }, 15000); // Wait 15 seconds to ensure stable start
-
-    const errorHandler = (error: Error) => {
-      if (!resolved) {
-        resolved = true;
-        cleanup();
-        console.error('[TEST] Server process error:', error.message);
-        reject(new Error(`Server process error: ${error.message}`));
-      }
-    };
-
-    const exitHandler = (code: number | null) => {
-      if (!resolved) {
-        resolved = true;
-        cleanup();
-        console.error(`[TEST] Server process exited with code: ${code}`);
-        reject(new Error(`Server process exited with code ${code}`));
-      }
-    };
-
-    serverProcess.stderr?.on('data', stderrHandler);
-    serverProcess.on('error', errorHandler);
-    serverProcess.on('exit', exitHandler);
-  });
-}
-
-// Track if server has been initialized
-let serverInitialized = false;
-
-/**
- * Reset server initialization state (call this in test cleanup)
- */
-export function resetServerInitialization(): void {
-  serverInitialized = false;
-}
-
-/**
- * Send initialize request to server
- */
-async function initializeServer(serverProcess: ChildProcess): Promise<void> {
-  if (serverInitialized) return;
-
-  const initRequest: MCPRequest = {
-    jsonrpc: '2.0',
-    id: 0,
-    method: 'initialize',
-    params: {
-      protocolVersion: '2024-11-05',
-      capabilities: {},
-      clientInfo: {
-        name: 'test-client',
-        version: '1.0.0'
-      }
-    }
-  };
-
-  return new Promise((resolve, reject) => {
-    const message = JSON.stringify(initRequest) + '\n';
-    let responseReceived = false;
-
-    const timeout = setTimeout(() => {
-      if (!responseReceived) {
-        console.error('[TEST] Initialize request timed out after 30s');
-        reject(new Error('Server initialization timeout'));
-      }
-    }, 30000); // Increased to 30 seconds for Windows
-
-    const dataHandler = (data: Buffer) => {
-      const lines = data.toString().split('\n').filter((line: string) => line.trim());
-
-      lines.forEach((line: string) => {
-        try {
-          const response = JSON.parse(line);
-          // Check for initialize response (id === 0 and has result)
-          if (response.id === 0 && response.result) {
-            console.error('[TEST] Initialize response received successfully');
-            responseReceived = true;
-            serverInitialized = true;
-            clearTimeout(timeout);
-            serverProcess.stdout?.removeListener('data', dataHandler);
-            resolve();
-          }
-        } catch (e) {
-          // Ignore non-JSON lines
-        }
-      });
-    };
-
-    serverProcess.stdout?.on('data', dataHandler);
-
-    // Small delay to ensure server is ready
-    setTimeout(() => {
-      console.error('[TEST] Sending initialize request');
-      serverProcess.stdin?.write(message);
-    }, 100);
+    });
   });
 }
 
 /**
  * Send an MCP request and wait for a response
  */
-export async function sendMCPRequest(
-  serverProcess: ChildProcess,
-  request: MCPRequest,
+export function sendMCPRequest(
+  serverProcess: ChildProcess, 
+  request: MCPRequest, 
   timeoutMs: number = 10000
 ): Promise<MCPResponse> {
-  // Wait for server startup and initialize if not done
-  // Use longer timeout to ensure server has time to start
-  try {
-    await waitForServerStartup(serverProcess, 45000);
-  } catch (error) {
-    console.error('[TEST] Failed to wait for server startup:', error);
-    throw error;
-  }
-
-  try {
-    await initializeServer(serverProcess);
-  } catch (error) {
-    console.error('[TEST] Failed to initialize server:', error);
-    throw error;
-  }
-
   return new Promise((resolve, reject) => {
     const message = JSON.stringify(request) + '\n';
     let responseReceived = false;
@@ -194,11 +54,11 @@ export async function sendMCPRequest(
       if (!responseReceived) {
         reject(new Error(`No response received for request ${request.id} within ${timeoutMs}ms`));
       }
-    }, 60000);
+    }, timeoutMs);
 
     const dataHandler = (data: Buffer) => {
       const lines = data.toString().split('\n').filter((line: string) => line.trim());
-
+      
       lines.forEach((line: string) => {
         try {
           const response = JSON.parse(line);
@@ -215,7 +75,11 @@ export async function sendMCPRequest(
     };
 
     serverProcess.stdout?.on('data', dataHandler);
-    serverProcess.stdin?.write(message);
+
+    // Wait for server to be ready, then send the request
+    waitForServerStartup(serverProcess).then(() => {
+      serverProcess.stdin?.write(message);
+    }).catch(reject);
   });
 }
 
@@ -223,7 +87,7 @@ export async function sendMCPRequest(
  * Monitor stdout for invalid (non-JSON) output
  */
 export function monitorStdoutOutput(
-  serverProcess: ChildProcess,
+  serverProcess: ChildProcess, 
   durationMs: number = 2000
 ): Promise<boolean> {
   return new Promise((resolve) => {
@@ -231,7 +95,7 @@ export function monitorStdoutOutput(
 
     const dataHandler = (data: Buffer) => {
       const lines = data.toString().split('\n').filter((line: string) => line.trim());
-
+      
       lines.forEach((line: string) => {
         try {
           JSON.parse(line);
@@ -259,54 +123,15 @@ export async function testWorkflowSequence(
   serverProcess: ChildProcess,
   sequence: MCPRequest[]
 ): Promise<MCPResponse[]> {
-  // Initialize server once before the entire sequence
-  try {
-    await initializeServer(serverProcess);
-  } catch (error) {
-    console.error('[TEST] Failed to initialize server for workflow sequence:', error);
-    throw error;
-  }
-
+  await waitForServerStartup(serverProcess);
+  
   const responses: MCPResponse[] = [];
-
+  
   for (const request of sequence) {
-    // Send requests without re-initializing
-    const response = await new Promise<MCPResponse>((resolve, reject) => {
-      const message = JSON.stringify(request) + '\n';
-      let responseReceived = false;
-      const timeoutMs = 40000; // Extra long timeout for workflow tests
-
-      const timeout = setTimeout(() => {
-        if (!responseReceived) {
-          reject(new Error(`No response received for request ${request.id} within ${timeoutMs}ms`));
-        }
-      }, timeoutMs);
-
-      const dataHandler = (data: Buffer) => {
-        const lines = data.toString().split('\n').filter((line: string) => line.trim());
-
-        lines.forEach((line: string) => {
-          try {
-            const response = JSON.parse(line);
-            if (response.id === request.id) {
-              responseReceived = true;
-              clearTimeout(timeout);
-              serverProcess.stdout?.removeListener('data', dataHandler);
-              resolve(response);
-            }
-          } catch (e) {
-            // Ignore non-JSON lines
-          }
-        });
-      };
-
-      serverProcess.stdout?.on('data', dataHandler);
-      serverProcess.stdin?.write(message);
-    });
-
+    const response = await sendMCPRequest(serverProcess, request);
     responses.push(response);
   }
-
+  
   return responses;
 }
 
@@ -345,15 +170,15 @@ export class MCPRequestBuilder {
  * Helper to create common MCP requests
  */
 export const createMCPRequest = {
-  toolsList: (id: number): MCPRequest =>
+  toolsList: (id: number): MCPRequest => 
     new MCPRequestBuilder().id(id).method('tools/list').params({}).build(),
-
-  resourcesList: (id: number): MCPRequest =>
+    
+  resourcesList: (id: number): MCPRequest => 
     new MCPRequestBuilder().id(id).method('resources/list').params({}).build(),
-
-  promptsList: (id: number): MCPRequest =>
+    
+  promptsList: (id: number): MCPRequest => 
     new MCPRequestBuilder().id(id).method('prompts/list').params({}).build(),
-
-  toolCall: (id: number, name: string, args: any): MCPRequest =>
+    
+  toolCall: (id: number, name: string, args: any): MCPRequest => 
     new MCPRequestBuilder().id(id).method('tools/call').params({ name, arguments: args }).build(),
 };

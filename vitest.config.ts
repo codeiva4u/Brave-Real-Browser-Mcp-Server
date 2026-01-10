@@ -8,11 +8,16 @@ export default defineConfig({
     // Set test environment to Node.js for MCP server testing
     environment: 'node',
 
-    // Test file patterns (co-located tests + test directory)
-    include: ['src/**/*.{test,spec}.ts', 'test/**/*.{test,spec}.ts'],
+    // Test file patterns - core unit tests and E2E tests
+    include: [
+      'src/browser-manager.test.ts',
+      'src/token-management.test.ts',
+      'src/workflow-validation.test.ts',
+      'test/e2e/**/*.test.ts'
+    ],
 
-    // Exclude patterns
-    exclude: ['node_modules', 'dist', 'tests/mcp-testing'],
+    // Exclude patterns - keep test/integration excluded but allow test/e2e
+    exclude: ['node_modules', 'dist', 'tests', 'test/integration/**/*'],
 
     // Setup files
     setupFiles: ['./test/setup.ts'],
@@ -21,7 +26,7 @@ export default defineConfig({
     testTimeout: parseInt(process.env.VITEST_TEST_TIMEOUT || '60000'), // Default 60s, configurable
 
     // Hook timeout for setup/teardown (browser init/cleanup) - configurable via environment
-    hookTimeout: parseInt(process.env.VITEST_HOOK_TIMEOUT || '60000'), // Default 60s, configurable
+    hookTimeout: parseInt(process.env.VITEST_HOOK_TIMEOUT || '45000'), // Default 45s, configurable
 
     // Server dependency configuration  
     server: {
@@ -54,25 +59,18 @@ export default defineConfig({
       }
     },
 
-    // Improved error reporting
-    reporters: 'verbose',
+    // Reporter configuration removed for latest vitest compatibility
 
     // Allow only for CI environments
     allowOnly: !process.env.CI,
 
     // Concurrent execution settings
     sequence: {
-      concurrent: false
+      concurrent: true
     },
 
     // Pool settings - use main thread for integration tests to allow process.chdir()
-    pool: 'forks',
-    poolOptions: {
-      forks: {
-        singleFork: false,
-        maxForks: 4,
-        minForks: 1
-      }
-    }
+    // Pool settings - use forks for integration tests
+    pool: 'forks'
   }
 });

@@ -1,16 +1,15 @@
 {
   "name": "brave-real-browser-mcp-server",
-  "version": "2.18.9",
-  "description": "Universal AI IDE MCP Server - Auto-detects and supports all AI IDEs (Claude Desktop, Cursor, Windsurf, Cline, Zed, VSCode, Qoder AI, etc.) with Brave browser automation",
+  "version": "1.0.0",
+  "description": "MCP server for Brave Real Browser with anti-detection features",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "preinstall": "npm update && node scripts/check-version.js",
-    "postinstall": "node scripts/patch-puppeteer-screen-recorder.cjs",
+    "preinstall": "node -e \"try{require('fs').unlinkSync('package-lock.json')}catch(e){}\"",
     "clean": "rimraf dist",
     "clean:cache": "npm cache clean --force",
     "fix-cache-permissions": "echo 'Run: sudo chown -R $(whoami):$(id -gn) ~/.npm' && echo 'This fixes npm cache permission issues'",
-    "clean:modules": "rimraf node_modules",
+    "clean:modules": "rm -rf node_modules",
     "clean:all": "npm run clean:modules && npm run clean:cache && npm run clean",
     "fresh-install": "npm run clean:all && npm install",
     "fresh-start": "npm run fresh-install && npm run build && npm start",
@@ -29,79 +28,54 @@
     "test:integration": "vitest run test/integration",
     "test:e2e": "vitest run --config vitest.e2e.config.ts",
     "test:e2e:watch": "vitest --config vitest.e2e.config.ts",
-    "test:visual": "vitest run test/e2e/visual-browser.test.ts",
-    "test:visual:watch": "vitest test/e2e/visual-browser.test.ts",
-    "test:brave:cleanup": "taskkill /F /IM brave.exe || pkill -f brave || true"
+    "test:chrome:cleanup": "pkill -f 'Google Chrome' || true",
+    "test:full": "cd tests/mcp-testing && npm test",
+    "test:performance": "node tests/performance/performance-tests.js",
+    "test:debug": "node debug-server.js",
+    "test:all": "npm run test:ci && npm run test:full && npm run test:performance",
+    "test:dashboard": "node test-runner.js"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.25.2",
-    "@types/turndown": "^5.0.6",
-    "ajv": "^8.17.1",
-    "axios": "^1.13.2",
-    "brave-real-browser": "^2.0.11",
-    "brave-real-launcher": "^1.2.49",
-    "brave-real-puppeteer-core": "^24.34.0-patch.14",
-    "compromise": "^14.14.5",
+    "@modelcontextprotocol/sdk": ">=1.0.0",
+    "@types/turndown": "latest",
+    "brave-real-browser": "^2.0.2",
+    "brave-real-launcher": "^1.2.42",
+    "brave-real-puppeteer-core": "latest",
     "dotenv": "^17.2.3",
-    "pixelmatch": "^7.1.0",
-    "pngjs": "^7.0.0",
-    "puppeteer-screen-recorder": "^3.0.6",
-    "tesseract.js": "^7.0.0",
-    "turndown": "^7.2.2"
+    "turndown": "latest"
+  },
+  "peerDependencies": {
+    "@modelcontextprotocol/sdk": ">=1.0.0"
   },
   "devDependencies": {
     "@types/node": "latest",
-    "@vitest/coverage-v8": "^4.0.16",
-    "@vitest/ui": "^4.0.16",
-    "rimraf": "^6.1.2",
+    "@vitest/coverage-v8": "latest",
+    "@vitest/ui": "latest",
+    "rimraf": "latest",
     "tsx": "latest",
-    "typescript": "^5.9.3",
-    "vitest": "^4.0.16"
+    "typescript": "latest",
+    "vitest": "latest"
   },
   "keywords": [
     "mcp",
     "puppeteer",
-    "browser-automation",
-    "claude-desktop",
-    "cursor-ai",
-    "windsurf",
-    "cline",
-    "zed-editor",
-    "vscode",
-    "qoder-ai",
-    "warp-terminal",
-    "roo-coder",
-    "continue-dev",
-    "github-copilot",
-    "cody",
-    "tabnine",
-    "ai-ide",
-    "universal-adapter",
-    "auto-detection",
-    "multi-protocol",
-    "lsp",
-    "websocket",
-    "brave-browser",
-    "web-scraping",
-    "captcha-solver"
+    "browser-automation"
   ],
   "author": "withlinda13",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/withLinda/brave-real-browser-mcp-server.git"
+    "url": "git+https://github.com/withLinda/Brave-Real-Browser-Mcp-Server.git"
   },
-  "homepage": "https://github.com/withLinda/brave-real-browser-mcp-server",
+  "homepage": "https://github.com/withLinda/Brave-Real-Browser-Mcp-Server",
   "bugs": {
-    "url": "https://github.com/withLinda/brave-real-browser-mcp-server/issues"
+    "url": "https://github.com/withLinda/Brave-Real-Browser-Mcp-Server/issues"
   },
   "bin": {
     "brave-real-browser-mcp-server": "dist/index.js"
   },
   "files": [
     "dist/**/*",
-    "scripts/**/*",
-    ".npmrc",
     "README.md",
     "LICENSE"
   ],
@@ -113,38 +87,5 @@
     "darwin",
     "linux",
     "win32"
-  ],
-  "resolutions": {
-    "puppeteer": "npm:brave-real-puppeteer-core@latest",
-    "puppeteer-core": "npm:brave-real-puppeteer-core@latest",
-    "**/puppeteer": "npm:brave-real-puppeteer-core@latest",
-    "**/puppeteer-core": "npm:brave-real-puppeteer-core@latest"
-  },
-  "overrides": {
-    "puppeteer": "npm:brave-real-puppeteer-core@latest",
-    "puppeteer-core": "npm:brave-real-puppeteer-core@latest",
-    "puppeteer-screen-recorder": {
-      "puppeteer": "npm:brave-real-puppeteer-core@latest",
-      "puppeteer-core": "npm:brave-real-puppeteer-core@latest",
-      "fluent-ffmpeg": "latest",
-      "glob": "latest",
-      "rimraf": "latest"
-    },
-    "brave-real-browser": {
-      "puppeteer": "npm:brave-real-puppeteer-core@latest",
-      "puppeteer-core": "npm:brave-real-puppeteer-core@latest"
-    },
-    "tesseract.js": {
-      "puppeteer": "npm:brave-real-puppeteer-core@latest",
-      "puppeteer-core": "npm:brave-real-puppeteer-core@latest"
-    },
-    "*": {
-      "puppeteer": "npm:brave-real-puppeteer-core@latest",
-      "puppeteer-core": "npm:brave-real-puppeteer-core@latest"
-    },
-    "fluent-ffmpeg": "latest",
-    "glob": "latest",
-    "inflight": "latest",
-    "tar-fs": "latest"
-  }
+  ]
 }

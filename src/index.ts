@@ -1,616 +1,278 @@
 #!/usr/bin/env node
 
-import { fileURLToPath } from 'url';
-import path from 'path';
-import fs from 'fs';
-import { logDebug } from './debug-logger.js';
+// Debug logging setup - Log process start
+console.error(`🔍 [DEBUG] Process starting - PID: ${process.pid}, Node: ${process.version}, Platform: ${process.platform}`);
+console.error(`🔍 [DEBUG] Working directory: ${process.cwd()}`);
+console.error(`🔍 [DEBUG] Command args: ${process.argv.join(' ')}`);
 
-// CRITICAL: Patch console.log immediately
-const originalConsoleLog = console.log;
-console.log = (...args) => {
-  logDebug('Captured stdout log:', args);
-  console.error(...args);
-};
-
-// Robust .env loading (Manual & Silent)
-// Import unified handlers
-import { handleUnifiedCaptcha } from './handlers/unified-captcha-handler.js';
-import { handleSearchContent, handleFindElementAdvanced } from './handlers/unified-search-handler.js';
-import { handleDeepAnalysis } from './handlers/deep-analysis-handler.js';
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const projectRoot = path.resolve(__dirname, '..');
-const envPath = path.join(projectRoot, '.env');
-
-// Manual .env parser to avoid stdout pollution from dotenv package
-const loadEnvFile = (filePath: string) => {
-  try {
-    if (!fs.existsSync(filePath)) return false;
-    const content = fs.readFileSync(filePath, 'utf-8');
-    content.split('\n').forEach(line => {
-      const trimmed = line.trim();
-      if (trimmed && !trimmed.startsWith('#')) {
-        const [key, ...valueParts] = trimmed.split('=');
-        if (key && valueParts.length > 0) {
-          const value = valueParts.join('=').replace(/(^"|"$)/g, '').trim();
-          if (!process.env[key.trim()]) {
-            process.env[key.trim()] = value;
-          }
-        }
-      }
-    });
-    return true;
-  } catch (e) {
-    logDebug('Error loading .env file', e);
-    return false;
-  }
-};
-
-if (loadEnvFile(envPath)) {
-  logDebug(`Loaded .env manually from: ${envPath}`);
-} else {
-  // Try CWD
-  const cwdEnv = path.join(process.cwd(), '.env');
-  if (loadEnvFile(cwdEnv)) {
-    logDebug(`Loaded .env manually from CWD: ${cwdEnv}`);
-  } else {
-    logDebug(`Warning: No .env found at ${envPath} or CWD`);
-  }
-}
-
-logDebug('Server Starting...', {
-  cwd: process.cwd(),
-  nodeVersion: process.version,
-  projectRoot,
-  bravePath: process.env.BRAVE_PATH || 'Not Set'
-});
-
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { Server } from '@modelContextProtocol/sdk/server/index.js';
+import { StdioServerTransport } from '@modelContextProtocol/sdk/server/stdio.js';
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
   ListResourcesRequestSchema,
   ListPromptsRequestSchema,
   InitializeRequestSchema,
-} from "@modelcontextprotocol/sdk/types.js";
+} from '@modelContextProtocol/sdk/types.js';
 
-// Log uncaught exceptions
-process.on('uncaughtException', (error) => {
-  logDebug('CRITICAL: Uncaught Exception', {
-    message: error.message,
-    stack: error.stack
-  });
-  console.error('CRITICAL: Uncaught Exception', error);
-  process.exit(1);
-});
+console.error('🔍 [DEBUG] MCP SDK imports completed successfully');
 
-process.on('unhandledRejection', (reason) => {
-  logDebug('CRITICAL: Unhandled Rejection', reason);
-  console.error('CRITICAL: Unhandled Rejection', reason);
-});
-
-
-
-import {
-  TOOLS,
-  SERVER_INFO,
-  CAPABILITIES,
-  TOOL_NAMES,
-  NavigateArgs,
-  ClickArgs,
-  TypeArgs,
-  WaitArgs,
-  SolveCaptchaArgs,
-  FindSelectorArgs,
-  SaveContentAsMarkdownArgs,
-} from "./tool-definitions.js";
-import { withErrorHandling } from "./system-utils.js";
-import { validateMCPResponse } from "./mcp-response-validator.js";
-import { closeBrowser, forceKillAllBraveProcesses } from "./browser-manager.js";
-import {
-  setupProcessCleanup,
-  MCP_SERVER_CONFIG,
-} from "./core-infrastructure.js";
-
+// Import extracted modules
+console.error('🔍 [DEBUG] Loading tool definitions...');
+import { TOOLS, SERVER_INFO, CAPABILITIES, TOOL_NAMES, NavigateArgs, ClickArgs, TypeArgs, WaitArgs, SolveCaptchaArgs, FindSelectorArgs, SaveContentAsMarkdownArgs } from './tool-definitions.js';
+console.error('🔍 [DEBUG] Loading system utils...');
+import { withErrorHandling } from './system-utils.js';
+console.error('🔍 [DEBUG] Loading browser manager...');
+import { closeBrowser, forceKillAllBraveProcesses } from './browser-manager.js';
+console.error('🔍 [DEBUG] Loading core infrastructure...');
+import { setupProcessCleanup, MCP_SERVER_CONFIG } from './core-infrastructure.js';
 
 // Import handlers
-import {
-  handleBrowserInit,
-  handleBrowserClose,
-} from "./handlers/browser-handlers.js";
-import { handleNavigate, handleWait } from "./handlers/navigation-handlers.js";
-import {
-  handleClick,
-  handleType,
-  handleSolveCaptcha,
-  handleRandomScroll,
-  handlePressKey,
-} from "./handlers/interaction-handlers.js";
-import {
-  handleGetContent,
-  handleFindSelector,
-} from "./handlers/content-handlers.js";
-import { handleSaveContentAsMarkdown } from "./handlers/file-handlers.js";
-// Import new data extraction handlers
-import {
-  handleExtractJSON,
-  handleScrapeMetaTags,
-  handleExtractSchema,
-} from "./handlers/data-extraction-handlers.js";
-// Import multi-element handlers
-import {
-  handleBatchElementScraper,
+console.error('🔍 [DEBUG] Loading handlers...');
+import { handleBrowserInit, handleBrowserClose } from './handlers/browser-handlers.js';
+import { handleNavigate, handleWait } from './handlers/navigation-handlers.js';
+import { handleClick, handleType, handleSolveCaptcha, handleRandomScroll } from './handlers/interaction-handlers.js';
+import { handleGetContent, handleFindSelector } from './handlers/content-handlers.js';
+import { handleSaveContentAsMarkdown } from './handlers/file-handlers.js';
 
-  handleLinkHarvester,
-  handleMediaExtractor,
-
-} from "./handlers/multi-element-handlers.js";
-// Import pagination handlers
-import {
-  handleBreadcrumbNavigator,
-} from "./handlers/navigation-handlers.js";
-// Import AI-powered handlers
-import {
-  handleSmartSelectorGenerator,
-  handleContentClassification,
-} from "./handlers/ai-powered-handlers.js";
-// Import search & filter handlers
-// Import visual tools handlers
-// Import visual tools handlers
-import {
-
-  handleElementScreenshot,
-  handleVideoRecording,
-
-} from "./handlers/visual-tools-handlers.js";
-// Import smart data extractors
-import {
-
-  handleNetworkRecorder,
-  handleImageExtractorAdvanced,
-
-
-  handleUrlRedirectTracer,
-  handleApiFinder,
-} from "./handlers/smart-data-extractors.js";
-// Import dynamic session handlers
-import {
-  handleAjaxContentWaiter,
-} from "./handlers/dynamic-session-handlers.js";
-// Import monitoring & reporting handlers
-import {
-  handleProgressTracker,
-
-
-
-
-} from "./handlers/monitoring-reporting-handlers.js";
-// Import advanced extraction handlers (Ad-bypass & Obfuscation)
-import {
-  handleAdvancedVideoExtraction,
-
-  handleMultiLayerRedirectTrace,
-  handleAdProtectionDetector,
-} from "./handlers/advanced-extraction-handlers.js";
-
-// Import universal video extractor
-import { handleUniversalVideoExtractor } from "./handlers/universal-video-extractor.js";
-
-
-
+console.error('🔍 [DEBUG] All modules loaded successfully');
+console.error(`🔍 [DEBUG] Server info: ${JSON.stringify(SERVER_INFO)}`);
+console.error(`🔍 [DEBUG] Available tools: ${TOOLS.length} tools loaded`);
 
 // Initialize MCP server
+console.error('🔍 [DEBUG] Creating MCP server instance...');
 const server = new Server(SERVER_INFO, { capabilities: CAPABILITIES });
+console.error('🔍 [DEBUG] MCP server instance created successfully');
 
 // Register initialize handler (CRITICAL - missing handler can cause crash)
+console.error('🔍 [DEBUG] Registering initialize handler...');
 
 server.setRequestHandler(InitializeRequestSchema, async (request) => {
-
+  console.error(`🔍 [DEBUG] Initialize request received: ${JSON.stringify(request)}`);
 
   // Use the client's protocol version to ensure compatibility
   const clientProtocolVersion = request.params.protocolVersion;
+  console.error(`🔍 [DEBUG] Client protocol version: ${clientProtocolVersion}`);
 
+  // Log client info for debugging (LLM handles its own token limits)
+  const clientInfo = request.params.clientInfo;
+  if (clientInfo) {
+    console.error(`🔍 [DEBUG] Client info: ${JSON.stringify(clientInfo)}`);
+  }
 
   const response = {
     protocolVersion: clientProtocolVersion, // Match client version for compatibility
     capabilities: CAPABILITIES,
     serverInfo: SERVER_INFO,
   };
-
+  console.error(`🔍 [DEBUG] Sending initialize response: ${JSON.stringify(response)}`);
 
   // Add a small delay to see if there are any immediate errors after response
   setTimeout(() => {
-    console.error(
-      `🔍 [DEBUG] 1 second after initialize response - server still alive`,
-    );
+    console.error(`🔍 [DEBUG] 1 second after initialize response - server still alive`);
   }, 1000);
 
   setTimeout(() => {
-    console.error(
-      `🔍 [DEBUG] 5 seconds after initialize response - server still alive`,
-    );
+    console.error(`🔍 [DEBUG] 5 seconds after initialize response - server still alive`);
   }, 5000);
 
   return response;
 });
 
 // Register tool handlers
-
+console.error('🔍 [DEBUG] Registering tools handler...');
 server.setRequestHandler(ListToolsRequestSchema, async () => {
-
+  console.error('🔍 [DEBUG] Tools list requested');
   return { tools: TOOLS };
 });
 
 // Register resource handlers (placeholder)
-
+console.error('🔍 [DEBUG] Registering resources handler...');
 server.setRequestHandler(ListResourcesRequestSchema, async () => {
-
+  console.error('🔍 [DEBUG] Resources list requested');
   return { resources: [] };
 });
 
 // Register prompt handlers (placeholder)
-
+console.error('🔍 [DEBUG] Registering prompts handler...');
 server.setRequestHandler(ListPromptsRequestSchema, async () => {
-
+  console.error('🔍 [DEBUG] Prompts list requested');
   return { prompts: [] };
 });
 
-// Tool execution function - exported for use in transports
-export async function executeToolByName(name: string, args: any): Promise<any> {
+// Main tool call handler
+console.error('🔍 [DEBUG] Registering tool call handler...');
+server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  const { name, arguments: args } = request.params;
+  console.error(`🔍 [DEBUG] Tool call received: ${name} with args: ${JSON.stringify(args)}`);
+
   try {
-    let result: any;
     switch (name) {
       case TOOL_NAMES.BROWSER_INIT:
-        result = await handleBrowserInit(args || {});
-        break;
+        return await handleBrowserInit(args || {});
 
       case TOOL_NAMES.NAVIGATE:
-        result = await handleNavigate(args as unknown as NavigateArgs);
-        break;
+        return await handleNavigate(args as unknown as NavigateArgs);
 
       case TOOL_NAMES.GET_CONTENT:
-        result = await handleGetContent(args || {});
-        break;
+        return await handleGetContent(args || {});
 
       case TOOL_NAMES.CLICK:
-        result = await handleClick(args as unknown as ClickArgs);
-        break;
+        return await handleClick(args as unknown as ClickArgs);
 
       case TOOL_NAMES.TYPE:
-        result = await handleType(args as unknown as TypeArgs);
-        break;
+        return await handleType(args as unknown as TypeArgs);
 
       case TOOL_NAMES.WAIT:
-        result = await handleWait(args as unknown as WaitArgs);
-        break;
+        return await handleWait(args as unknown as WaitArgs);
 
       case TOOL_NAMES.BROWSER_CLOSE:
-        result = await handleBrowserClose();
-        break;
+        return await handleBrowserClose();
 
       case TOOL_NAMES.SOLVE_CAPTCHA:
-        result = await handleSolveCaptcha(args as unknown as SolveCaptchaArgs);
-        break;
+        return await handleSolveCaptcha(args as unknown as SolveCaptchaArgs);
 
       case TOOL_NAMES.RANDOM_SCROLL:
-        result = await handleRandomScroll();
-        break;
-
-      case TOOL_NAMES.PRESS_KEY:
-        result = await handlePressKey(args as any);
-        break;
+        return await handleRandomScroll();
 
       case TOOL_NAMES.FIND_SELECTOR:
-        result = await handleFindSelector(args as unknown as FindSelectorArgs);
-        break;
+        return await handleFindSelector(args as unknown as FindSelectorArgs);
 
       case TOOL_NAMES.SAVE_CONTENT_AS_MARKDOWN:
-        result = await handleSaveContentAsMarkdown(
-          args as unknown as SaveContentAsMarkdownArgs,
-        );
-        break;
-
-      // Smart Data Extractors
-
-
-      // DOM & HTML Extraction
-
-
-      case TOOL_NAMES.EXTRACT_JSON:
-        result = await handleExtractJSON(args || {});
-        break;
-
-      case TOOL_NAMES.SCRAPE_META_TAGS:
-        result = await handleScrapeMetaTags(args || {});
-        break;
-
-      case TOOL_NAMES.EXTRACT_SCHEMA:
-        result = await handleExtractSchema(args || {});
-        break;
-
-      // Multi-Element Extractors
-      case TOOL_NAMES.BATCH_ELEMENT_SCRAPER:
-        result = await handleBatchElementScraper(args as any);
-        break;
-
-
-
-
-
-      // Content Type Specific
-      case TOOL_NAMES.LINK_HARVESTER:
-        result = await handleLinkHarvester(args || {});
-        break;
-
-      case TOOL_NAMES.MEDIA_EXTRACTOR:
-        result = await handleMediaExtractor(args || {});
-        break;
-
-
-
-      // Pagination Tools
-
-
-
-
-      // Pagination Tools
-      // Pagination Tools
-
-
-
-      case TOOL_NAMES.BREADCRUMB_NAVIGATOR:
-        result = await handleBreadcrumbNavigator(args || {});
-        break;
-
-      // Data Processing Tools
-
-
-      // Data Processing Tools
-
-
-
-
-
-
-
-
-
-      // AI-Powered Features
-      case TOOL_NAMES.SMART_SELECTOR_GENERATOR:
-        result = await handleSmartSelectorGenerator(args as any);
-        break;
-
-      case TOOL_NAMES.CONTENT_CLASSIFICATION:
-        result = await handleContentClassification(args as any);
-        break;
-
-
-
-
-
-
-
-      // Search & Filter Tools
-      // --- Search & Filter (Consolidated) ---
-      case TOOL_NAMES.SEARCH_CONTENT:
-        return await handleSearchContent(args);
-      case TOOL_NAMES.FIND_ELEMENT_ADVANCED:
-        return await handleFindElementAdvanced(args);
-
-      // --- Deep Analysis ---
-      case TOOL_NAMES.DEEP_ANALYSIS:
-        return await handleDeepAnalysis(args);
-
-      // --- Advanced Captcha Handling (Consolidated) ---
-      case TOOL_NAMES.SOLVE_CAPTCHA:
-        return await handleUnifiedCaptcha({ strategy: 'auto', ...args });
-
-      // Screenshot & Visual Tools
-
-
-      case TOOL_NAMES.ELEMENT_SCREENSHOT:
-        result = await handleElementScreenshot(args as any);
-        break;
-
-
-
-      case TOOL_NAMES.VIDEO_RECORDING:
-        result = await handleVideoRecording(args as any);
-        break;
-
-
-
-
-      // Smart Data Extractors (Advanced)
-
-
-
-
-
-
-      case TOOL_NAMES.NETWORK_RECORDER:
-        result = await handleNetworkRecorder(args || {});
-        break;
-
-      case TOOL_NAMES.API_FINDER:
-        result = await handleApiFinder(args || {});
-        break;
-
-
-
-
-
-
-      case TOOL_NAMES.IMAGE_EXTRACTOR_ADVANCED:
-        result = await handleImageExtractorAdvanced(args || {});
-        break;
-
-
-
-
-
-      case TOOL_NAMES.URL_REDIRECT_TRACER:
-        result = await handleUrlRedirectTracer(args as any);
-        break;
-
-
-
-      // Dynamic Content & Session Handling
-
-
-
-
-
-
-
-
-      case TOOL_NAMES.AJAX_CONTENT_WAITER:
-        result = await handleAjaxContentWaiter(args as any);
-        break;
-
-
-
-
-
-      // Monitoring & Reporting
-      case TOOL_NAMES.PROGRESS_TRACKER:
-        result = await handleProgressTracker(args || {});
-        break;
-
-
-
-
-
-
-
-
-
-
-
-      // Advanced Video & Media Download Tools
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-      // Advanced Extraction Tools (Ad-Bypass & Obfuscation)
-      case TOOL_NAMES.ADVANCED_VIDEO_EXTRACTION:
-        result = await handleAdvancedVideoExtraction(args || {});
-        break;
-
-
-
-      case TOOL_NAMES.MULTI_LAYER_REDIRECT_TRACE:
-        result = await handleMultiLayerRedirectTrace(args as any);
-        break;
-
-      case TOOL_NAMES.AD_PROTECTION_DETECTOR:
-        result = await handleAdProtectionDetector(args || {});
-        break;
-
-      case TOOL_NAMES.UNIVERSAL_VIDEO_EXTRACTOR:
-        result = await handleUniversalVideoExtractor(args || {});
-        break;
+        return await handleSaveContentAsMarkdown(args as unknown as SaveContentAsMarkdownArgs);
 
       default:
         throw new Error(`Unknown tool: ${name}`);
     }
-
-    // Validate MCP response format universally
-    return validateMCPResponse(result, name) as any;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error(`Tool ${name} failed:`, errorMessage);
 
-    // For workflow validation errors, throw them so MCP SDK handles them properly
-    if (
-      errorMessage.includes("cannot be executed in current state") ||
-      errorMessage.includes("Cannot search for selectors") ||
-      errorMessage.includes("Next Steps:")
-    ) {
-      throw error;
-    }
-
-    // For other errors, return formatted response
     return {
       content: [
         {
-          type: "text",
+          type: 'text',
           text: `❌ Tool execution failed: ${errorMessage}`,
         },
       ],
       isError: true,
     };
   }
-}
-
-// Main tool call handler
-
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const { name, arguments: args } = request.params;
-
-
-  return await executeToolByName(name, args);
 });
 
-// Main function - now using multi-protocol launcher
-// Main function
+// Main function to start the server
 async function main(): Promise<void> {
+  console.error('🔍 [DEBUG] Main function starting...');
 
-
+  // Setup process cleanup handlers
+  console.error('🔍 [DEBUG] Setting up process cleanup handlers...');
   setupProcessCleanup(async () => {
+    console.error('🔍 [DEBUG] Process cleanup triggered');
     await closeBrowser();
     await forceKillAllBraveProcesses();
   });
 
+  // Create and start the server transport
+  console.error('🔍 [DEBUG] Creating StdioServerTransport...');
   const transport = new StdioServerTransport();
+  console.error('🔍 [DEBUG] StdioServerTransport created successfully');
 
   await withErrorHandling(async () => {
+    console.error('🔍 [DEBUG] Attempting to connect server to transport...');
     await server.connect(transport);
-  }, "Failed to start MCP server");
+    console.error('🔍 [DEBUG] Server connected to transport successfully');
+
+    console.error('🚀 Brave Real Browser MCP Server started successfully');
+    console.error('📋 Available tools:', TOOLS.map(t => t.name).join(', '));
+    console.error('🔧 Workflow validation: Active');
+    console.error('💡 Content priority mode: Enabled (use get_content for better reliability)');
+
+    console.error('🔍 [DEBUG] Server is now ready and waiting for requests...');
+
+    // Keep the process alive by maintaining the connection
+    console.error('🔍 [DEBUG] Maintaining process alive - server will wait for requests');
+
+    // Add a heartbeat to confirm the process is still running
+    const heartbeat = setInterval(() => {
+      console.error(`🔍 [DEBUG] Heartbeat - Server alive at ${new Date().toISOString()}`);
+    }, 30000); // Every 30 seconds
+
+    // Cleanup heartbeat on process exit
+    process.on('exit', () => {
+      console.error('🔍 [DEBUG] Process exiting - clearing heartbeat');
+      clearInterval(heartbeat);
+    });
+
+  }, 'Failed to start MCP server');
+
+  console.error('🔍 [DEBUG] Main function completed - server should be running');
 }
 
 // Enhanced error handling with debug info
+console.error('🔍 [DEBUG] Setting up error handlers...');
 
-
-process.on("uncaughtException", (error) => {
+process.on('uncaughtException', (error) => {
+  console.error(`🔍 [DEBUG] Uncaught exception at ${new Date().toISOString()}`);
+  console.error('❌ Uncaught exception:', error);
+  console.error(`🔍 [DEBUG] Stack trace:`, error.stack);
   process.exit(1);
 });
 
-process.on("unhandledRejection", (reason, promise) => {
+process.on('unhandledRejection', (reason, promise) => {
+  console.error(`🔍 [DEBUG] Unhandled rejection at ${new Date().toISOString()}`);
+  console.error('❌ Unhandled rejection:', reason);
+  console.error(`🔍 [DEBUG] Promise:`, promise);
   process.exit(1);
 });
 
 // Process lifecycle debugging
-process.on("exit", (code) => {
-
+process.on('exit', (code) => {
+  console.error(`🔍 [DEBUG] Process exiting with code: ${code} at ${new Date().toISOString()}`);
 });
 
-process.on("beforeExit", (code) => {
-
+process.on('beforeExit', (code) => {
+  console.error(`🔍 [DEBUG] Before exit event with code: ${code} at ${new Date().toISOString()}`);
 });
 
-process.on("SIGTERM", () => {
-
+process.on('SIGTERM', () => {
+  console.error(`🔍 [DEBUG] SIGTERM received at ${new Date().toISOString()}`);
 });
 
-process.on("SIGINT", () => {
-
+process.on('SIGINT', () => {
+  console.error(`🔍 [DEBUG] SIGINT received at ${new Date().toISOString()}`);
 });
 
-
+console.error('🔍 [DEBUG] All error handlers registered');
 
 // Start the server
-main().catch((error) => {
-  process.exit(1);
-});
+console.error('🔍 [DEBUG] Checking if module is main...');
+console.error(`🔍 [DEBUG] import.meta.url: ${import.meta.url}`);
+console.error(`🔍 [DEBUG] process.argv[1]: ${process.argv[1]}`);
+console.error(`🔍 [DEBUG] process.argv[0]: ${process.argv[0]}`);
+
+// Enhanced main module detection for npx compatibility
+const isMain = import.meta.url === `file://${process.argv[1]}` ||
+  process.argv[1].includes('brave-real-browser-mcp-server') ||
+  process.argv[1].endsWith('.bin/brave-real-browser-mcp-server') ||
+  process.argv.some(arg => arg.includes('brave-real-browser-mcp-server'));
+
+console.error(`🔍 [DEBUG] Enhanced main detection result: ${isMain}`);
+
+if (isMain) {
+  console.error('🔍 [DEBUG] Module is main - starting server...');
+  main().catch((error) => {
+    console.error(`🔍 [DEBUG] Main function failed at ${new Date().toISOString()}`);
+    console.error('❌ Failed to start server:', error);
+    console.error(`🔍 [DEBUG] Error stack:`, error.stack);
+    process.exit(1);
+  });
+} else {
+  console.error('🔍 [DEBUG] Module is not main - not starting server');
+  console.error('🔍 [DEBUG] FORCE STARTING - This is likely an npx execution');
+  main().catch((error) => {
+    console.error(`🔍 [DEBUG] Forced main function failed at ${new Date().toISOString()}`);
+    console.error('❌ Failed to start server:', error);
+    console.error(`🔍 [DEBUG] Error stack:`, error.stack);
+    process.exit(1);
+  });
+}

@@ -1,8 +1,6 @@
 import { getBrowserInstance, getPageInstance, getContentPriorityConfig } from '../browser-manager.js';
 import { withErrorHandling, withTimeout } from '../system-utils.js';
 import { validateWorkflow, recordExecution, workflowValidator } from '../workflow-validation.js';
-import { contentStrategy } from '../content-strategy.js';
-import { tokenManager } from '../token-management.js';
 import { GetContentArgs, FindSelectorArgs } from '../tool-definitions.js';
 
 // Get content handler
@@ -17,14 +15,14 @@ export async function handleGetContent(args: GetContentArgs) {
       const { type = 'html', selector } = args;
 
       let content: string;
-      
+
       if (selector) {
         // Get content from specific element
         const element = await pageInstance.$(selector);
         if (!element) {
           throw new Error(`Element not found: ${selector}. Use find_selector to locate elements first.`);
         }
-        
+
         if (type === 'text') {
           content = await pageInstance.$eval(selector, (el: any) => el.innerText || el.textContent || '');
         } else {
@@ -39,29 +37,7 @@ export async function handleGetContent(args: GetContentArgs) {
         }
       }
 
-      // Process content using content strategy
-      const processedContent = content; // Use content directly for now
-
-      // Check token limits and handle large content  
-      const tokenCount = tokenManager.countTokens(processedContent);
-      const maxTokens = 20000; // Safe default for MCP
-
-      if (tokenCount > maxTokens) {
-        console.warn(`Content size (${tokenCount} tokens) exceeds limit (${maxTokens} tokens). Chunking content...`);
-        
-        const chunks = [processedContent.substring(0, Math.floor(maxTokens * 0.8 * 3))];
-        const firstChunk = chunks[0];
-        
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Content retrieved successfully (showing first chunk of ${chunks.length} total chunks):\n\n${firstChunk}\n\n📊 Content Stats: ${tokenCount} tokens total, showing ${tokenManager.countTokens(firstChunk)} tokens`,
-            },
-          ],
-        };
-      }
-
+      // Return content directly - LLM handles its own token limits
       const workflowMessage = '\n\n🔄 Workflow Status: Content analyzed\n' +
         '  • Next step: Use find_selector to locate specific elements\n' +
         '  • Then: Use interaction tools (click, type) for automation\n\n' +
@@ -71,7 +47,7 @@ export async function handleGetContent(args: GetContentArgs) {
         content: [
           {
             type: 'text',
-            text: `${processedContent}${workflowMessage}`,
+            text: `${content}${workflowMessage}`,
           },
         ],
       };
@@ -152,13 +128,13 @@ export async function handleFindSelector(args: FindSelectorArgs) {
           function isMeaningfulClass(className: string): boolean {
             // Keep classes that seem semantic/meaningful
             const meaningfulPatterns = [
-              /^(nav|menu|header|footer|sidebar|content|main|article)/, 
+              /^(nav|menu|header|footer|sidebar|content|main|article)/,
               /^(form|input|button|link|modal|dialog)/,
               /^(auth|login|signin|signup|register)/,
               /^(search|filter|sort|toggle)/,
               /(container|wrapper|section|panel|card)$/
             ];
-            
+
             return meaningfulPatterns.some(pattern => pattern.test(className.toLowerCase()));
           }
 
@@ -172,7 +148,7 @@ export async function handleFindSelector(args: FindSelectorArgs) {
             const dataAttrs = Array.from(element.attributes)
               .filter(attr => attr.name.startsWith('data-') && attr.value)
               .map(attr => `[${attr.name}="${CSS.escape(attr.value)}"]`);
-            
+
             if (dataAttrs.length > 0) {
               return element.tagName.toLowerCase() + dataAttrs[0];
             }
@@ -182,7 +158,7 @@ export async function handleFindSelector(args: FindSelectorArgs) {
               const classes = element.className.trim().split(/\s+/)
                 .filter(cls => cls && (isMeaningfulClass(cls) || !isUtilityClass(cls)))
                 .slice(0, 2); // Limit to 2 classes for simplicity
-              
+
               if (classes.length > 0) {
                 return element.tagName.toLowerCase() + '.' + classes.map(c => CSS.escape(c)).join('.');
               }
@@ -205,23 +181,23 @@ export async function handleFindSelector(args: FindSelectorArgs) {
 
             // Exact match bonus
             if (lowerElementText === lowerSearchText) score += 100;
-            
+
             // Contains match
             else if (lowerElementText.includes(lowerSearchText)) score += 50;
-            
+
             // Word boundary match bonus
             const wordRegex = new RegExp(`\\b${lowerSearchText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`);
             if (wordRegex.test(lowerElementText)) score += 25;
 
             // Interactive elements bonus
             if (['button', 'a', 'input'].includes(element.tagName.toLowerCase())) score += 20;
-            
+
             // Role attribute bonus
             if (element.getAttribute('role')) score += 10;
-            
+
             // ID bonus
             if (element.id) score += 15;
-            
+
             // Clickable bonus
             if (element.getAttribute('onclick') || element.getAttribute('href')) score += 10;
 
@@ -237,20 +213,20 @@ export async function handleFindSelector(args: FindSelectorArgs) {
           // Search through specified selectors
           for (const baseSelector of selectors) {
             const candidates = document.querySelectorAll(baseSelector);
-            
+
             candidates.forEach(element => {
               const elementText = element.textContent?.trim() || '';
               const ariaLabel = element.getAttribute('aria-label') || '';
               const title = element.getAttribute('title') || '';
               const placeholder = element.getAttribute('placeholder') || '';
-              
+
               const searchableText = [elementText, ariaLabel, title, placeholder].join(' ').toLowerCase();
               const lowerSearchText = searchText.toLowerCase();
 
               let matches = false;
               if (isExact) {
                 matches = elementText.toLowerCase() === lowerSearchText ||
-                         ariaLabel.toLowerCase() === lowerSearchText;
+                  ariaLabel.toLowerCase() === lowerSearchText;
               } else {
                 matches = searchableText.includes(lowerSearchText);
               }
@@ -258,8 +234,8 @@ export async function handleFindSelector(args: FindSelectorArgs) {
               // Special handling for authentication searches
               if (isAuthSearch && !matches) {
                 const href = (element as HTMLAnchorElement).href || '';
-                const hasAuthRoute = href.includes('login') || href.includes('signin') || 
-                                   href.includes('auth') || href.includes('oauth');
+                const hasAuthRoute = href.includes('login') || href.includes('signin') ||
+                  href.includes('auth') || href.includes('oauth');
                 if (hasAuthRoute) matches = true;
               }
 
@@ -306,7 +282,7 @@ export async function handleFindSelector(args: FindSelectorArgs) {
 
       // Return the best match with additional options
       const bestMatch = results[0];
-      const additionalMatches = results.slice(1, 3).map((r: any) => 
+      const additionalMatches = results.slice(1, 3).map((r: any) =>
         `  • ${r.selector} (confidence: ${r.confidence})`
       ).join('\n');
 
@@ -320,10 +296,10 @@ export async function handleFindSelector(args: FindSelectorArgs) {
           {
             type: 'text',
             text: `Found element: ${bestMatch.selector}\n` +
-                  `Text: "${bestMatch.text}"\n` +
-                  `Confidence: ${bestMatch.confidence}\n` +
-                  (additionalMatches ? `\nAlternative matches:\n${additionalMatches}` : '') +
-                  workflowMessage,
+              `Text: "${bestMatch.text}"\n` +
+              `Confidence: ${bestMatch.confidence}\n` +
+              (additionalMatches ? `\nAlternative matches:\n${additionalMatches}` : '') +
+              workflowMessage,
           },
         ],
       };
@@ -339,31 +315,31 @@ async function withWorkflowValidation<T>(
 ): Promise<T> {
   // Validate workflow state before execution
   const validation = validateWorkflow(toolName, args);
-  
+
   if (!validation.isValid) {
     let errorMessage = validation.errorMessage || `Tool '${toolName}' is not allowed in current workflow state.`;
-    
+
     if (validation.suggestedAction) {
       errorMessage += `\n\n💡 Next Steps: ${validation.suggestedAction}`;
     }
-    
+
     // Add workflow context for debugging
     const workflowSummary = workflowValidator.getValidationSummary();
     errorMessage += `\n\n🔍 ${workflowSummary}`;
-    
+
     // Record failed execution
     recordExecution(toolName, args, false, errorMessage);
-    
+
     throw new Error(errorMessage);
   }
-  
+
   try {
     // Execute the operation
     const result = await operation();
-    
+
     // Record successful execution
     recordExecution(toolName, args, true);
-    
+
     return result;
   } catch (error) {
     // Record failed execution

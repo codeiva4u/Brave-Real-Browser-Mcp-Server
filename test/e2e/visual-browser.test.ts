@@ -1,284 +1,227 @@
 /**
- * End-to-End Visual Browser Tests
+ * End-to-End Visual Browser Tests - Human-Like Behavior
  * 
- * These tests actually launch a visible browser window so you can see
- * the automation happening like in production usage.
+ * Tests all URLs with human-like interaction:
+ * - nopecha.com (Cloudflare protected)
+ * - httpbin.org/forms/post (Form filling)
+ * - httpbin.org/html (HTML content)
+ * - example.com (Simple page)
+ * - httpbin.org/headers (Headers info)
  * 
  * Run with: npm run test:e2e
  */
 
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { handleBrowserInit, handleBrowserClose } from '../../src/handlers/browser-handlers';
 import { handleNavigate } from '../../src/handlers/navigation-handlers';
-import { handleGetContent, handleFindSelector } from '../../src/handlers/content-handlers';
+import { handleGetContent } from '../../src/handlers/content-handlers';
 import { handleClick, handleType } from '../../src/handlers/interaction-handlers';
 import { resetBrowserInitDepth } from '../../src/browser-manager';
 
-// Skip E2E visual tests in CI environment (they require display and are for demo purposes)
-const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
-const describeOrSkip = isCI ? describe.skip : describe;
+// ============== Human-Like Helper Functions ==============
 
-describeOrSkip.sequential('E2E Visual Browser Tests', () => {
-  // Increase timeout for E2E tests since they use real browser
-  const E2E_TIMEOUT = 90000;
+const humanDelay = (min: number, max: number): Promise<void> => {
+  const delay = Math.floor(Math.random() * (max - min + 1)) + min;
+  return new Promise(resolve => setTimeout(resolve, delay));
+};
 
+const quickPause = () => humanDelay(200, 500);
+const thinkPause = () => humanDelay(500, 1000);
+const readPause = () => humanDelay(1000, 2000);
+const humanTypingDelay = (): number => Math.floor(Math.random() * 80) + 40;
+
+describe.sequential('E2E Visual Browser Tests', () => {
+  const E2E_TIMEOUT = 180000;
+
+  // ============== Browser Setup ==============
   beforeAll(async () => {
-    console.log('🚀 Starting E2E Visual Browser Tests');
-    console.log('📺 You should see browser windows opening during these tests');
+    console.log('🚀 Starting Human-Like E2E Tests');
 
-    // Reset browser initialization depth at the start
     resetBrowserInitDepth();
+    try { await handleBrowserClose(); } catch (e) { }
 
-    // Clean up any existing browsers
-    try {
-      await handleBrowserClose();
-    } catch (error) {
-      // Ignore close errors - browser might not exist
-    }
+    const initResult = await handleBrowserInit({ headless: false });
+    expect(initResult.content[0].text).toContain('Browser initialized');
+
+    await readPause();
+    console.log('✅ Browser ready\n');
   }, E2E_TIMEOUT);
 
-  beforeEach(async () => {
-    // Reset depth counter before each test to prevent accumulation
-    resetBrowserInitDepth();
-    // NOTE: Not closing browser here to keep it stable and visible during tests
-  });
-
-  afterEach(async () => {
-    // NOTE: Not closing browser here to keep it stable and visible during all tests
-    // Browser will only close in afterAll for final cleanup
-
-    // Reset depth counter after each test
-    resetBrowserInitDepth();
-  });
-
   afterAll(async () => {
-    console.log('🏁 Completed E2E Visual Browser Tests');
-
-    // Final cleanup
-    try {
-      await handleBrowserClose();
-    } catch (error) {
-      // Ignore close errors
-    }
-
-    // Final reset
+    console.log('\n🏁 Closing browser...');
+    try { await handleBrowserClose(); } catch (e) { }
     resetBrowserInitDepth();
   });
 
-  describe('Complete Workflow Demonstration', () => {
-    it('should demonstrate full browser automation workflow visually', async () => {
-      console.log('\n🎬 DEMO: Complete Browser Automation Workflow');
-      console.log('👀 Watch your screen - browser window will open and perform automation');
+  // ============== TEST 1: NoPecha (Cloudflare Protected) ==============
+  describe('NoPecha Site Test', () => {
+    it('should navigate to nopecha.com', async () => {
+      console.log('📍 TEST 1: NoPecha.com');
 
-      try {
-        // Step 1: Initialize browser (visible)
-        console.log('\n1️⃣ Initializing visible browser...');
-        const initResult = await handleBrowserInit({
-          headless: false, // VISIBLE browser
-          disableXvfb: true, // Ensure no virtual display
-          customConfig: {
-            args: [
-              '--disable-setuid-sandbox',
-              '--disable-web-security',
-              '--disable-features=VizDisplayCompositor',
-              '--window-size=1200,800'
-            ]
-          }
-        });
+      const nav = await handleNavigate({
+        url: 'https://nopecha.com',
+        waitUntil: 'networkidle2' // Wait for network to be idle
+      });
+      expect(nav.content[0].text).toContain('Successfully navigated');
 
-        expect(initResult.content[0].text).toContain('Browser initialized successfully');
-        console.log('✅ Browser window opened successfully');
+      // Wait for captcha to solve (Cloudflare challenge needs time)
+      console.log('   ⏳ Waiting for page and captcha...');
+      await new Promise(resolve => setTimeout(resolve, 6000));
 
-        // Small delay to see browser window
-        await new Promise(resolve => setTimeout(resolve, 500));
+      // Get content after captcha solved
+      const content = await handleGetContent({ type: 'text' });
+      expect(content.content[0].text.length).toBeGreaterThan(0);
 
-        // Step 2: Navigate to a real website
-        console.log('\n2️⃣ Navigating to example.com...');
-        const navResult = await handleNavigate({
-          url: 'https://example.com',
-          waitUntil: 'domcontentloaded'
-        });
-
-        expect(navResult.content[0].text).toContain('Successfully navigated');
-        console.log('✅ Page loaded successfully');
-
-        // Delay to see navigation
-        await new Promise(resolve => setTimeout(resolve, 800));
-
-        // Step 3: Get page content
-        console.log('\n3️⃣ Analyzing page content...');
-        const contentResult = await handleGetContent({
-          type: 'text'
-        });
-
-        expect(contentResult.content[0].text).toContain('Example Domain');
-        console.log('✅ Content analyzed - found "Example Domain"');
-
-        // Step 4: Find an element
-        console.log('\n4️⃣ Finding "Learn more" link...');
-        const findResult = await handleFindSelector({
-          text: 'Learn more',
-          elementType: 'a'
-        });
-
-        expect(findResult.content[0].text).toContain('Found element');
-        console.log('✅ Element located successfully');
-
-        console.log('\n🎉 WORKFLOW COMPLETE! Browser will close...');
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-      } catch (error) {
-        console.error('❌ E2E test failed:', error);
-        throw error;
-      }
+      await readPause();
+      console.log('   ✅ NoPecha.com loaded');
     }, E2E_TIMEOUT);
   });
 
-  describe('Interactive Form Automation', () => {
-    // This test uses httpbin.org which can be slow/unavailable - designed to pass gracefully
-    it('should demonstrate form interaction with visible browser', async () => {
-      console.log('\n🎬 DEMO: Form Automation');
-      console.log('👀 Watch browser interact with a search form');
+  // ============== TEST 2: Form Filling (httpbin.org/forms/post) ==============
+  describe('Form Automation', () => {
+    it('should fill form on httpbin.org/forms/post', async () => {
+      console.log('\n📍 TEST 2: Form Filling');
 
-      // Wrap entire test in try-catch to handle httpbin failures gracefully
-      try {
-        // Initialize browser
-        console.log('\n1️⃣ Opening browser for form demo...');
-        await handleBrowserInit({
-          headless: false,
-          disableXvfb: true,
-          customConfig: {
-            args: ['--window-size=1200,800']
-          }
-        });
+      // Navigate
+      const nav = await handleNavigate({
+        url: 'https://httpbin.org/forms/post',
+        waitUntil: 'domcontentloaded'
+      });
+      expect(nav.content[0].text).toContain('Successfully navigated');
+      await readPause();
 
-        await new Promise(resolve => setTimeout(resolve, 500));
+      // Verify form
+      const page = await handleGetContent({ type: 'text' });
+      expect(page.content[0].text).toContain('Customer name');
+      console.log('   Form loaded');
 
-        // Navigate to httpbin form
-        console.log('\n2️⃣ Navigating to httpbin form...');
-        await handleNavigate({
-          url: 'https://httpbin.org/forms/post',
-          waitUntil: 'domcontentloaded'
-        });
+      // Fill Name
+      await thinkPause();
+      await handleType({
+        selector: 'input[name="custname"]',
+        text: 'John Smith',
+        delay: humanTypingDelay()
+      });
+      console.log('   ✓ Name filled');
 
-        await new Promise(resolve => setTimeout(resolve, 500));
+      // Fill Phone
+      await quickPause();
+      await handleType({
+        selector: 'input[name="custtel"]',
+        text: '9876543210',
+        delay: humanTypingDelay()
+      });
+      console.log('   ✓ Phone filled');
 
-        // Get content to analyze the page
-        console.log('\n3️⃣ Analyzing form page...');
-        const contentResult = await handleGetContent({ type: 'text' });
+      // Fill Email
+      await quickPause();
+      await handleType({
+        selector: 'input[name="custemail"]',
+        text: 'john@example.com',
+        delay: humanTypingDelay()
+      });
+      console.log('   ✓ Email filled');
 
-        // Check if httpbin loaded correctly
-        if (!contentResult.content[0].text.includes('Customer name')) {
-          console.warn('⚠️ httpbin.org did not load correctly - test passes gracefully');
-          expect(true).toBe(true); // Pass the test
-          return;
-        }
+      // Select Size
+      await thinkPause();
+      await handleClick({ selector: 'input[name="size"][value="large"]' });
+      console.log('   ✓ Size selected');
 
-        console.log('✅ Form page loaded successfully');
+      // Select Toppings
+      await quickPause();
+      await handleClick({ selector: 'input[name="topping"][value="bacon"]' });
+      await quickPause();
+      await handleClick({ selector: 'input[name="topping"][value="cheese"]' });
+      await quickPause();
+      await handleClick({ selector: 'input[name="topping"][value="mushroom"]' });
+      console.log('   ✓ Toppings selected');
 
-        // Fill essential fields
-        console.log('\n4️⃣ Filling out essential form fields...');
+      // Fill Time
+      await thinkPause();
+      await handleType({
+        selector: 'input[name="delivery"]',
+        text: '20:00',
+        delay: humanTypingDelay()
+      });
+      console.log('   ✓ Time set');
 
-        await handleType({
-          selector: 'input[name="custname"]',
-          text: 'John Doe',
-          delay: 30
-        });
-        console.log('   ✅ Customer name: John Doe');
+      // Fill Comments
+      await thinkPause();
+      await handleType({
+        selector: 'textarea[name="comments"]',
+        text: 'Please call before delivery. Gate code: 1234',
+        delay: humanTypingDelay()
+      });
+      console.log('   ✓ Comments added');
 
-        await handleType({
-          selector: 'input[name="custemail"]',
-          text: 'john.doe@example.com',
-          delay: 30
-        });
-        console.log('   ✅ Email: john.doe@example.com');
-
-        await handleClick({
-          selector: 'input[value="large"]',
-          waitForNavigation: false
-        });
-        console.log('   ✅ Pizza size: Large');
-
-        console.log('\n✅ Essential form fields completed!');
-
-        // Submit the form
-        console.log('\n5️⃣ Submitting form...');
-        await handleClick({
-          selector: 'button',
-          waitForNavigation: false
-        });
-
-        await new Promise(resolve => setTimeout(resolve, 500));
-        console.log('✅ Form submitted successfully!');
-        console.log('\n🎉 FORM AUTOMATION COMPLETE!');
-
-      } catch (error: any) {
-        // If httpbin is down or slow, pass the test gracefully
-        console.warn(`⚠️ Form test encountered issue: ${error.message}`);
-        console.log('✅ Test passes gracefully (httpbin dependency)');
-        expect(true).toBe(true);
-      }
+      await readPause();
+      console.log('   ✅ Form completed');
     }, E2E_TIMEOUT);
   });
 
-  describe('Content Strategy Demonstration', () => {
-    it('should show content analysis and token management', async () => {
-      console.log('\n🎬 DEMO: Content Analysis & Token Management');
-      console.log('👀 Watch browser analyze content from different websites');
+  // ============== TEST 3: HTML Content (httpbin.org/html) ==============
+  describe('HTML Content Test', () => {
+    it('should analyze httpbin.org/html', async () => {
+      console.log('\n📍 TEST 3: HTML Content');
 
-      try {
-        // Initialize browser
-        console.log('\n1️⃣ Opening browser for content analysis...');
-        await handleBrowserInit({
-          headless: false,
-          disableXvfb: true,
-          contentPriority: {
-            prioritizeContent: true,
-            autoSuggestGetContent: true
-          }
-        });
+      const nav = await handleNavigate({
+        url: 'https://httpbin.org/html',
+        waitUntil: 'domcontentloaded'
+      });
+      expect(nav.content[0].text).toContain('Successfully navigated');
 
-        await new Promise(resolve => setTimeout(resolve, 1000));
+      await readPause();
 
-        // Test different content types
-        const testSites = [
-          { url: 'https://httpbin.org/html', description: 'Simple HTML page' },
-          { url: 'https://example.com', description: 'Minimal content page' }
-        ];
+      const content = await handleGetContent({ type: 'text' });
+      expect(content.content[0].text).toContain('Herman Melville');
 
-        for (const [index, site] of testSites.entries()) {
-          console.log(`\n${index + 2}️⃣ Testing ${site.description}: ${site.url}`);
+      const html = await handleGetContent({ type: 'html' });
+      expect(html.content[0].text).toContain('<h1>');
 
-          await handleNavigate({
-            url: site.url,
-            waitUntil: 'domcontentloaded'
-          });
+      console.log('   ✅ HTML content analyzed');
+    }, E2E_TIMEOUT);
+  });
 
-          await new Promise(resolve => setTimeout(resolve, 2000));
+  // ============== TEST 4: Example.com ==============
+  describe('Example Domain Test', () => {
+    it('should analyze example.com', async () => {
+      console.log('\n📍 TEST 4: Example.com');
 
-          // Test HTML content
-          console.log(`   📄 Getting HTML content...`);
-          const htmlResult = await handleGetContent({ type: 'html' });
-          console.log(`   ✅ HTML analyzed: ${htmlResult.content[0].text.length} characters`);
+      const nav = await handleNavigate({
+        url: 'https://example.com',
+        waitUntil: 'domcontentloaded'
+      });
+      expect(nav.content[0].text).toContain('Successfully navigated');
 
-          // Test text content
-          console.log(`   📝 Getting text content...`);
-          const textResult = await handleGetContent({ type: 'text' });
-          console.log(`   ✅ Text analyzed: ${textResult.content[0].text.length} characters`);
+      await readPause();
 
-          // Basic content validation
-          expect(htmlResult.content[0].text.length).toBeGreaterThan(0);
-          expect(textResult.content[0].text.length).toBeGreaterThan(0);
+      const content = await handleGetContent({ type: 'text' });
+      expect(content.content[0].text).toContain('Example Domain');
 
-          await new Promise(resolve => setTimeout(resolve, 1500));
-        }
+      const html = await handleGetContent({ type: 'html' });
+      expect(html.content[0].text).toContain('</a>');
 
-        console.log('\n🎉 CONTENT ANALYSIS COMPLETE!');
+      console.log('   ✅ Example.com analyzed');
+    }, E2E_TIMEOUT);
+  });
 
-      } catch (error) {
-        console.error('❌ Content analysis test failed:', error);
-        throw error;
-      }
+  // ============== TEST 5: Headers (httpbin.org/headers) ==============
+  describe('Headers Test', () => {
+    it('should analyze httpbin.org/headers', async () => {
+      console.log('\n📍 TEST 5: Headers Page');
+
+      const nav = await handleNavigate({
+        url: 'https://httpbin.org/headers',
+        waitUntil: 'domcontentloaded'
+      });
+      expect(nav.content[0].text).toContain('Successfully navigated');
+
+      await readPause();
+
+      const content = await handleGetContent({ type: 'text' });
+      expect(content.content[0].text).toContain('Host');
+
+      console.log('   ✅ Headers page analyzed');
     }, E2E_TIMEOUT);
   });
 });

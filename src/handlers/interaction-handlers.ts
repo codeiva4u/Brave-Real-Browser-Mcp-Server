@@ -2,8 +2,7 @@ import { getBrowserInstance, getPageInstance } from '../browser-manager.js';
 import { withErrorHandling } from '../system-utils.js';
 import { validateWorkflow, recordExecution, workflowValidator } from '../workflow-validation.js';
 import { selfHealingLocators } from '../self-healing-locators.js';
-import { randomScroll } from '../stealth-actions.js';
-import { ClickArgs, TypeArgs, PressKeyArgs, SolveCaptchaArgs } from '../tool-definitions.js';
+import { ClickArgs, TypeArgs, SolveCaptchaArgs } from '../tool-definitions.js';
 import { setTimeout as sleep } from 'node:timers/promises';
 
 // Click handler
@@ -19,13 +18,13 @@ export async function handleClick(args: ClickArgs) {
 
       // Try to find element using self-healing locators
       const elementResult = await selfHealingLocators.findElementWithFallbacks(
-        pageInstance, 
+        pageInstance,
         selector
       );
 
       if (!elementResult) {
         const fallbackSummary = await selfHealingLocators.getFallbackSummary(pageInstance, selector);
-        
+
         throw new Error(
           `Element not found: ${selector}\n\n` +
           '🔧 Self-healing locators tried multiple fallback strategies but could not find the element.\n\n' +
@@ -44,7 +43,7 @@ export async function handleClick(args: ClickArgs) {
 
       const { element, usedSelector, strategy } = elementResult;
       let strategyMessage = '';
-      
+
       if (strategy !== 'primary') {
         strategyMessage = `\n🔄 Self-healing: Used ${strategy} fallback selector: ${usedSelector}`;
         console.warn(`Self-healing click: Primary selector '${selector}' failed, used '${usedSelector}' (${strategy})`);
@@ -56,7 +55,7 @@ export async function handleClick(args: ClickArgs) {
 
         // Check element visibility and interaction options
         const boundingBox = await element.boundingBox();
-        
+
         if (!boundingBox) {
           console.warn(`Element ${usedSelector} has no bounding box, attempting JavaScript click`);
           await pageInstance.$eval(usedSelector, (el: any) => el.click());
@@ -117,13 +116,13 @@ export async function handleType(args: TypeArgs) {
 
       // Try to find element using self-healing locators
       const elementResult = await selfHealingLocators.findElementWithFallbacks(
-        pageInstance, 
+        pageInstance,
         selector
       );
 
       if (!elementResult) {
         const fallbackSummary = await selfHealingLocators.getFallbackSummary(pageInstance, selector);
-        
+
         throw new Error(
           `Input element not found: ${selector}\n\n` +
           '🔧 Self-healing locators tried multiple fallback strategies but could not find the input element.\n\n' +
@@ -138,7 +137,7 @@ export async function handleType(args: TypeArgs) {
 
       const { element, usedSelector, strategy } = elementResult;
       let strategyMessage = '';
-      
+
       if (strategy !== 'primary') {
         strategyMessage = `\n🔄 Self-healing: Used ${strategy} fallback selector: ${usedSelector}`;
         console.warn(`Self-healing type: Primary selector '${selector}' failed, used '${usedSelector}' (${strategy})`);
@@ -205,79 +204,6 @@ export async function handleType(args: TypeArgs) {
   });
 }
 
-// Press key handler
-export async function handlePressKey(args: PressKeyArgs) {
-  return await withWorkflowValidation('press_key', args, async () => {
-    return await withErrorHandling(async () => {
-      const pageInstance = getPageInstance();
-      if (!pageInstance) {
-        throw new Error('Browser not initialized. Call browser_init first.');
-      }
-
-      const { key, selector, modifiers = [] } = args;
-
-      try {
-        // If selector is provided, focus on element first
-        if (selector) {
-          const elementResult = await selfHealingLocators.findElementWithFallbacks(
-            pageInstance,
-            selector
-          );
-
-          if (elementResult) {
-            await elementResult.element.focus();
-          } else {
-            console.warn(`Element not found: ${selector}, pressing key on current focus`);
-          }
-        }
-
-        // Press key with modifiers if specified
-        if (modifiers.length > 0) {
-          // Hold down modifiers
-          for (const modifier of modifiers) {
-            await pageInstance.keyboard.down(modifier);
-          }
-          
-          // Press the main key
-          await pageInstance.keyboard.press(key);
-          
-          // Release modifiers
-          for (const modifier of modifiers.reverse()) {
-            await pageInstance.keyboard.up(modifier);
-          }
-          
-          const modifierStr = modifiers.join('+');
-          return {
-            content: [
-              {
-                type: 'text',
-                text: `Pressed key combination: ${modifierStr}+${key}${selector ? ` on element: ${selector}` : ''}\n\n✅ Keyboard interaction completed successfully`,
-              },
-            ],
-          };
-        } else {
-          // Simple key press without modifiers
-          await pageInstance.keyboard.press(key);
-          
-          return {
-            content: [
-              {
-                type: 'text',
-                text: `Pressed key: ${key}${selector ? ` on element: ${selector}` : ''}\n\n✅ Keyboard interaction completed successfully`,
-              },
-            ],
-          };
-        }
-      } catch (pressError) {
-        throw new Error(
-          `Failed to press key: ${key}. ` +
-          `Error: ${pressError instanceof Error ? pressError.message : String(pressError)}`
-        );
-      }
-    }, 'Failed to press key');
-  });
-}
-
 // Solve captcha handler
 export async function handleSolveCaptcha(args: SolveCaptchaArgs) {
   return await withErrorHandling(async () => {
@@ -332,35 +258,65 @@ async function withWorkflowValidation<T>(
 ): Promise<T> {
   // Validate workflow state before execution
   const validation = validateWorkflow(toolName, args);
-  
+
   if (!validation.isValid) {
     let errorMessage = validation.errorMessage || `Tool '${toolName}' is not allowed in current workflow state.`;
-    
+
     if (validation.suggestedAction) {
       errorMessage += `\n\n💡 Next Steps: ${validation.suggestedAction}`;
     }
-    
+
     // Add workflow context for debugging
     const workflowSummary = workflowValidator.getValidationSummary();
     errorMessage += `\n\n🔍 ${workflowSummary}`;
-    
+
     // Record failed execution
     recordExecution(toolName, args, false, errorMessage);
-    
+
     throw new Error(errorMessage);
   }
-  
+
   try {
     // Execute the operation
     const result = await operation();
-    
+
     // Record successful execution
     recordExecution(toolName, args, true);
-    
+
     return result;
   } catch (error) {
     // Record failed execution
     recordExecution(toolName, args, false, error instanceof Error ? error.message : String(error));
     throw error;
+  }
+}
+
+/**
+ * Performs random scrolling to simulate human behavior
+ */
+async function randomScroll(page: any) {
+  try {
+    await page.evaluate(async () => {
+      const distance = 100 + Math.random() * 500; // Random distance
+      const delay = 100 + Math.random() * 400; // Random delay
+
+      // Scroll down
+      window.scrollBy({
+        top: distance,
+        behavior: 'smooth'
+      });
+
+      await new Promise(resolve => setTimeout(resolve, delay));
+
+      // Occasionally scroll up a bit
+      if (Math.random() < 0.3) {
+        window.scrollBy({
+          top: -distance / 2,
+          behavior: 'smooth'
+        });
+      }
+    });
+  } catch (error) {
+    console.warn('Random scroll failed (non-fatal):', error);
   }
 }

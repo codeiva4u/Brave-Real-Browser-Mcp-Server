@@ -4,7 +4,6 @@ import TurndownService from 'turndown';
 import { getPageInstance } from '../browser-manager.js';
 import { withErrorHandling, withTimeout } from '../system-utils.js';
 import { validateWorkflow, recordExecution, workflowValidator } from '../workflow-validation.js';
-import { tokenManager } from '../token-management.js';
 import { SaveContentAsMarkdownArgs } from '../tool-definitions.js';
 
 // Path validation and security functions
@@ -13,22 +12,22 @@ function validateFilePath(filePath: string): void {
   if (extname(filePath).toLowerCase() !== '.md') {
     throw new Error('File path must end with .md extension');
   }
-  
+
   // Normalize the path to resolve any relative components
   const normalizedPath = resolve(filePath);
-  
+
   // Check if the original path contained directory traversal patterns
   // This protects against inputs like "../../etc/passwd.md"
   if (filePath.includes('..')) {
     throw new Error('File path cannot contain directory traversal patterns (..)');
   }
-  
+
   // Additional security: prevent writing to system directories
   const systemPaths = ['/etc', '/usr', '/var', '/bin', '/sbin', '/proc', '/sys'];
-  const isSystemPath = systemPaths.some(systemPath => 
+  const isSystemPath = systemPaths.some(systemPath =>
     normalizedPath.startsWith(systemPath)
   );
-  
+
   if (isSystemPath) {
     throw new Error('Cannot write to system directories');
   }
@@ -57,21 +56,21 @@ function createTurndownService(formatOptions: SaveContentAsMarkdownArgs['formatO
   // Customize table handling
   turndownService.addRule('table', {
     filter: 'table',
-    replacement: function(content: string) {
+    replacement: function (content) {
       return '\n\n' + content + '\n\n';
     }
   });
 
-  // Improve list handling  
+  // Improve list handling
   turndownService.addRule('listItem', {
     filter: 'li',
-    replacement: function(content: string, node: any, options: any) {
+    replacement: function (content, node, options) {
       content = content
         .replace(/^\n+/, '') // remove leading newlines
         .replace(/\n+$/, '\n') // replace trailing newlines with just one
         .replace(/\n/gm, '\n    '); // indent
 
-      const prefix = (options.bulletListMarker || '-') + ' ';
+      const prefix = options.bulletListMarker + ' ';
       return prefix + content + (node.nextSibling && !/\n$/.test(content) ? '\n' : '');
     }
   });
@@ -80,7 +79,7 @@ function createTurndownService(formatOptions: SaveContentAsMarkdownArgs['formatO
   if (!preserveLinks) {
     turndownService.addRule('stripLinks', {
       filter: 'a',
-      replacement: function(content: string) {
+      replacement: function (content) {
         return content;
       }
     });
@@ -93,7 +92,7 @@ function createTurndownService(formatOptions: SaveContentAsMarkdownArgs['formatO
 function generateMetadata(currentUrl?: string): string {
   const timestamp = new Date().toISOString();
   const date = new Date().toLocaleDateString();
-  
+
   let metadata = `---
 title: Extracted Content
 date: ${date}
@@ -178,7 +177,7 @@ export async function handleSaveContentAsMarkdown(args: SaveContentAsMarkdownArg
         if (!element) {
           throw new Error(`Element not found: ${selector}. Use find_selector to locate elements first.`);
         }
-        
+
         if (contentType === 'text') {
           content = await pageInstance.$eval(selector, (el: any) => el.innerText || el.textContent || '');
         } else {
@@ -199,7 +198,7 @@ export async function handleSaveContentAsMarkdown(args: SaveContentAsMarkdownArg
 
       // Process content based on type
       let markdownContent: string;
-      
+
       if (contentType === 'html') {
         // Convert HTML to markdown
         const turndownService = createTurndownService(formatOptions);
@@ -220,12 +219,6 @@ export async function handleSaveContentAsMarkdown(args: SaveContentAsMarkdownArg
         finalContent += generateMetadata(currentUrl);
       }
       finalContent += markdownContent;
-
-      // Check token count for large files
-      const tokenCount = tokenManager.countTokens(finalContent);
-      if (tokenCount > 50000) {
-        console.warn(`Large file detected: ${tokenCount} tokens. Consider extracting specific content with a selector.`);
-      }
 
       // Write file
       try {
@@ -253,13 +246,12 @@ export async function handleSaveContentAsMarkdown(args: SaveContentAsMarkdownArg
           {
             type: 'text',
             text: `✅ Content saved successfully!\n\n` +
-                  `📁 File: ${filePath}\n` +
-                  `📊 Size: ${(fileStats.size / 1024).toFixed(2)} KB\n` +
-                  `🎯 Content type: ${contentType}\n` +
-                  `📝 Token count: ${tokenCount}\n` +
-                  (selector ? `🎯 Selector: ${selector}\n` : '') +
-                  `🌐 Source: ${currentUrl}` +
-                  workflowMessage,
+              `📁 File: ${filePath}\n` +
+              `📊 Size: ${(fileStats.size / 1024).toFixed(2)} KB\n` +
+              `🎯 Content type: ${contentType}\n` +
+              (selector ? `🎯 Selector: ${selector}\n` : '') +
+              `🌐 Source: ${currentUrl}` +
+              workflowMessage,
           },
         ],
       };
@@ -275,31 +267,31 @@ async function withWorkflowValidation<T>(
 ): Promise<T> {
   // Validate workflow state before execution
   const validation = validateWorkflow(toolName, args);
-  
+
   if (!validation.isValid) {
     let errorMessage = validation.errorMessage || `Tool '${toolName}' is not allowed in current workflow state.`;
-    
+
     if (validation.suggestedAction) {
       errorMessage += `\n\n💡 Next Steps: ${validation.suggestedAction}`;
     }
-    
+
     // Add workflow context for debugging
     const workflowSummary = workflowValidator.getValidationSummary();
     errorMessage += `\n\n🔍 ${workflowSummary}`;
-    
+
     // Record failed execution
     recordExecution(toolName, args, false, errorMessage);
-    
+
     throw new Error(errorMessage);
   }
-  
+
   try {
     // Execute the operation
     const result = await operation();
-    
+
     // Record successful execution
     recordExecution(toolName, args, true);
-    
+
     return result;
   } catch (error) {
     // Record failed execution

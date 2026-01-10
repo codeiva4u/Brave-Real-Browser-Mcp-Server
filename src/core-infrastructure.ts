@@ -49,9 +49,9 @@ export async function withBrowserRetry<T>(
         const isRecoverable = recoverableErrors.includes(errorType);
 
         // For session-related errors, clean up browser state
-        if (errorType === BrowserErrorType.SESSION_CLOSED || 
-            errorType === BrowserErrorType.TARGET_CLOSED ||
-            errorType === BrowserErrorType.FRAME_DETACHED) {
+        if (errorType === BrowserErrorType.SESSION_CLOSED ||
+          errorType === BrowserErrorType.TARGET_CLOSED ||
+          errorType === BrowserErrorType.FRAME_DETACHED) {
           console.warn(`Browser session error detected (${errorType}), cleaning up browser state...`);
           try {
             await closeBrowser();
@@ -89,21 +89,21 @@ export async function withWorkflowValidation<T>(
 ): Promise<T> {
   // Validate workflow state before execution
   const validation = validateWorkflow(toolName, args);
-  
+
   if (!validation.isValid) {
     let errorMessage = validation.errorMessage || `Tool '${toolName}' is not allowed in current workflow state.`;
-    
+
     if (validation.suggestedAction) {
       errorMessage += `\n\n💡 Next Steps: ${validation.suggestedAction}`;
     }
-    
+
     // Add workflow context for debugging
     const workflowSummary = workflowValidator.getValidationSummary();
     errorMessage += `\n\n🔍 ${workflowSummary}`;
-    
+
     // Record failed execution
     recordExecution(toolName, args, false, errorMessage);
-    
+
     throw new Error(errorMessage);
   }
 
@@ -250,11 +250,11 @@ export async function executeWithTracking<T>(
   operation: () => Promise<T>
 ): Promise<ToolExecutionResult<T>> {
   const startTime = Date.now();
-  
+
   try {
     const result = await operation();
     const duration = Date.now() - startTime;
-    
+
     return {
       success: true,
       result,
@@ -263,7 +263,7 @@ export async function executeWithTracking<T>(
     };
   } catch (error) {
     const duration = Date.now() - startTime;
-    
+
     return {
       success: false,
       error: error instanceof Error ? error : new Error(String(error)),
