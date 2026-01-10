@@ -36,16 +36,16 @@
     "test:dashboard": "node test-runner.js"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": ">=1.25.2",
+    "@modelcontextprotocol/sdk": ">=latest",
     "@types/turndown": "latest",
-    "brave-real-browser": "^2.0.11",
-    "brave-real-launcher": "^1.2.49",
+    "brave-real-browser": "^latest",
+    "brave-real-launcher": "^latest",
     "brave-real-puppeteer-core": "latest",
-    "dotenv": "^17.2.3",
+    "dotenv": "^latest",
     "turndown": "latest"
   },
   "peerDependencies": {
-    "@modelcontextprotocol/sdk": ">=1.0.0"
+    "@modelcontextprotocol/sdk": ">=latest"
   },
   "devDependencies": {
     "@types/node": "latest",
