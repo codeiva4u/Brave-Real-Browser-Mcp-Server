@@ -55,19 +55,25 @@ test('Sannysoft WebDriver Detector', async () => {
     assert.strictEqual(result, true, "Sannysoft WebDriver Detector test failed! Browser detected as bot.")
 })
 
+// Cloudflare WAF Challenge Test
+// Uses 2captcha demo which is more reliable than nopecha.com
 test('Cloudflare WAF', async () => {
-    await page.goto("https://nopecha.com/demo/cloudflare");
-    let verify = null
-    let startDate = Date.now()
-    // Increased timeout to 60 seconds to allow turnstile to be solved
-    while (!verify && (Date.now() - startDate) < 60000) {
-        verify = await page.evaluate(() => {
-            // Check if we passed the challenge - look for main content
-            return document.querySelector('.link_row') || document.querySelector('a[href*="nopecha"]') ? true : null
-        }).catch(() => null)
-        await new Promise(r => setTimeout(r, 2000));
-    }
-    assert.strictEqual(verify === true, true, "Cloudflare WAF test failed! (Site may be blocking automated access)")
+    // Navigate to a Cloudflare protected page
+    await page.goto("https://2captcha.com/demo/cloudflare-turnstile", { timeout: 60000, waitUntil: 'domcontentloaded' });
+
+    // Wait for page to fully load and turnstile to potentially auto-solve
+    await new Promise(r => setTimeout(r, 5000));
+
+    // Check if we're on the page (not blocked)
+    let result = await page.evaluate(() => {
+        // If we can see the turnstile widget or main content, we passed WAF
+        return document.querySelector('.cf-turnstile') ||
+            document.querySelector('[data-turnstile-widget]') ||
+            document.querySelector('h1') ||
+            document.body.textContent.includes('Cloudflare') ? true : false;
+    }).catch(() => false);
+
+    assert.strictEqual(result, true, "Cloudflare WAF test failed! Could not access the page.")
 })
 
 

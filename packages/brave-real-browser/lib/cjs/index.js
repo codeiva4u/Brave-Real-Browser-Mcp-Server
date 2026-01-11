@@ -1,4 +1,6 @@
-let puppeteer = require("brave-real-puppeteer-core");
+// brave-real-puppeteer-core patches puppeteer-core at install time
+// So we require the patched puppeteer-core directly
+let puppeteer = require("puppeteer-core");
 const { pageController } = require("./module/pageController.js");
 
 
@@ -113,6 +115,6 @@ module.exports.killAll = launcher.killAll;
 module.exports.getBravePath = launcher.getBravePath;
 module.exports.DEFAULT_FLAGS = launcher.DEFAULT_FLAGS;
 
-// Re-export brave-real-puppeteer-core
-const puppeteerCore = require("brave-real-puppeteer-core");
-module.exports.puppeteerCore = puppeteerCore;
+// Note: brave-real-puppeteer-core is a CLI patcher tool, not a library
+// It patches puppeteer-core at npm install time, not at runtime
+

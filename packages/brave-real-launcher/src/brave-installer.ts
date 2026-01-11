@@ -236,20 +236,30 @@ export class BraveInstaller {
      */
     private downloadFile(url: string, destPath: string): Promise<void> {
         return new Promise((resolve, reject) => {
-            const followRedirect = (url: string, redirectCount = 0) => {
+            const followRedirect = (currentUrl: string, redirectCount = 0) => {
                 if (redirectCount > 10) {
                     reject(new Error('Too many redirects'));
                     return;
                 }
 
-                const protocol = url.startsWith('https') ? https : http;
+                const protocol = currentUrl.startsWith('https') ? https : http;
 
-                protocol.get(url, {
+                protocol.get(currentUrl, {
                     headers: { 'User-Agent': 'brave-real-launcher' }
                 }, (response) => {
                     if (response.statusCode === 301 || response.statusCode === 302 || response.statusCode === 307 || response.statusCode === 308) {
-                        const redirectUrl = response.headers.location;
+                        let redirectUrl = response.headers.location;
                         if (redirectUrl) {
+                            // Handle relative redirect URLs
+                            if (!redirectUrl.startsWith('http')) {
+                                try {
+                                    const baseUrl = new URL(currentUrl);
+                                    redirectUrl = new URL(redirectUrl, baseUrl.origin).href;
+                                } catch (e) {
+                                    reject(new Error(`Invalid redirect URL: ${redirectUrl}`));
+                                    return;
+                                }
+                            }
                             followRedirect(redirectUrl, redirectCount + 1);
                             return;
                         }

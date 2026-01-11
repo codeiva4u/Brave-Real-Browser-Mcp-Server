@@ -497,7 +497,7 @@ AI: I'll set up the browser with your proxy configuration.
 
 ## Available Tools
 
-This server provides **33 powerful tools** organized into categories for comprehensive browser automation.
+This server provides **40 powerful tools** organized into categories for comprehensive browser automation.
 
 ---
 

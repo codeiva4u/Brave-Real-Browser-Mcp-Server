@@ -10,14 +10,32 @@ Launch Brave Browser with ease from Node.js. Based on [chrome-launcher](https://
 - 🎯 **Launch Modes**: Headless mode, GUI mode, or automatic detection
 - 🔄 **Auto-Sync**: Automatically syncs with chrome-launcher updates while preserving Brave-specific features
 - 📦 **uBlock Origin**: Automatic download and loading of uBlock Origin ad blocker
-- 🛡️ **Stealth Mode**: Anti-bot-detection capabilities for automation
-- ⬇️ **Auto-Install**: Automatically install Brave if not present (Windows/Linux/macOS)
+- 🛡️ **Stealth Mode**: Anti-bot-detection capabilities (enabled by default)
+- ⬇️ **Auto-Install**: Automatically install Brave if not present (enabled by default)
 - 🔇 **P3A Disabled**: Private analytics notifications disabled by default
+- 🔍 **Chrome/Chromium Fallback**: Detect Chrome and Chromium as fallback browsers
 
 ## Installation
 
 ```bash
 npm install brave-real-launcher
+```
+
+## Quick Start
+
+```javascript
+const { launch, killAll } = require('brave-real-launcher');
+
+// Basic launch - auto-installs Brave if missing, stealth mode enabled
+const brave = await launch({
+  startingUrl: 'https://example.com',
+  logLevel: 'info'
+});
+
+console.log(`Brave running on port ${brave.port}`);
+
+// Clean up
+brave.kill();
 ```
 
 ## API
@@ -38,9 +56,9 @@ Launches Brave Browser with the specified options.
 | `launchMode` | `'auto'\|'headless'\|'gui'` | `'auto'` | Launch mode |
 | `enableXvfb` | `boolean` | `false` | Enable Xvfb on Linux |
 | `autoLoadUBlock` | `boolean` | `false` | Auto-load uBlock Origin |
-| `enableStealth` | `boolean` | `false` | Enable stealth mode |
-| `autoInstall` | `boolean` | `false` | Auto-install Brave if not found |
-| `userAgent` | `string` | default | Custom user agent |
+| `enableStealth` | `boolean` | **`true`** | Enable stealth mode |
+| `autoInstall` | `boolean` | **`true`** | Auto-install Brave if not found |
+| `userAgent` | `string` | dynamic | Custom user agent |
 | `logLevel` | `'verbose'\|'info'\|'error'\|'silent'` | `'silent'` | Log level |
 
 **Returns:** `LaunchedBrave` object with:
@@ -50,9 +68,59 @@ Launches Brave Browser with the specified options.
 - `extensions`: Loaded extensions info
 - `kill()`: Function to kill browser
 
-### `getBravePath()`
+### Other Exports
 
-Returns the path to the Brave Browser executable.
+```javascript
+const {
+  // Core functions
+  launch,
+  killAll,
+  getBravePath,
+  getInstallations,
+  findBrave,
+  
+  // Classes
+  BraveLauncher,      // Launcher class
+  BraveInstaller,     // Auto-install helper
+  ExtensionManager,   // Extension loader
+  XvfbManager,        // Xvfb for Linux
+  
+  // Flags
+  DEFAULT_FLAGS,      // 32 default flags
+  
+  // Stealth utilities
+  STEALTH_FLAGS,
+  STEALTH_SCRIPTS,
+  USER_AGENTS,
+  getStealthFlags,
+  getDynamicUserAgents,
+  getLatestChromeVersion,
+  
+  // Browser detection
+  braveFinder,        // findChrome, findChromium, findAnyChromiumBrowser
+  
+  // Utilities
+  getRandomPort,
+  getPlatform,
+  detectDesktopEnvironment
+} = require('brave-real-launcher');
+```
+
+## Chrome/Chromium Fallback
+
+If Brave is not available, you can use Chrome or Chromium:
+
+```javascript
+const { braveFinder } = require('brave-real-launcher');
+
+// Find any Chromium-based browser (Brave → Chrome → Chromium)
+const browser = braveFinder.findAnyChromiumBrowser();
+// Returns: { browser: 'brave'|'chrome'|'chromium', path: '...' }
+
+// Or find specific browsers
+const chromePaths = braveFinder.findChrome();
+const chromiumPaths = braveFinder.findChromium();
+```
 
 ## Platform Support
 
@@ -67,7 +135,7 @@ Returns the path to the Brave Browser executable.
 ### Path Detection
 
 | Platform | Detection Paths |
-|----------|-----------------|
+|----------|-----------------||
 | **Windows** | `%LOCALAPPDATA%\BraveSoftware\...`, `%PROGRAMFILES%\...` |
 | **Linux** | `/usr/bin/brave-browser`, `/opt/brave.com/brave/...`, Flatpak, Snap |
 | **macOS** | `/Applications/Brave Browser.app/...` |
@@ -75,21 +143,32 @@ Returns the path to the Brave Browser executable.
 ## Testing
 
 ```bash
-# Install dependencies
-npm install
+# Run comprehensive tests (10 tests)
+node test.cjs
 
-# Build project
-npm run build
-
-# Run tests
-npm test
-
-# Test Brave detection
-npm run test:detection
+# Quick test commands
+npm run test:detection    # Test Brave detection
+npm run test:exports      # Test module exports
+npm run test:ci           # Full CI test suite
 
 # Test with uBlock Origin
 node -e "const {launch} = require('./dist'); launch({autoLoadUBlock:true, startingUrl:'https://example.com', logLevel:'info'}).then(b => setTimeout(() => b.kill(), 5000))"
 ```
+
+### Test Coverage
+
+| Test | Description |
+|------|-------------|
+| Brave Installations Check | Detects all Brave installations |
+| Basic Launch & Kill | Launch and terminate browser |
+| Headless Mode | Headless browser operation |
+| Custom Configuration | Custom flags and preferences |
+| Port Management | Multiple instances on different ports |
+| API Validation | All exports work correctly |
+| Remote Debugging Pipes | Debugging pipes functionality |
+| Multiple Instances | Run 3+ instances simultaneously |
+| Kill All Functionality | Terminate all instances |
+| Performance Test | < 1s launch time |
 
 ## Environment Variables
 
@@ -98,23 +177,8 @@ node -e "const {launch} = require('./dist'); launch({autoLoadUBlock:true, starti
 | `BRAVE_PATH` | Path to Brave executable |
 | `HEADLESS` | Force headless mode when set |
 | `DISPLAY` | X11 display (Linux) |
-
-## Development
-
-```bash
-# Clone repository
-git clone https://github.com/codeiva4u/Brave-Real-Launcher.git
-cd brave-real-launcher
-
-# Install dependencies
-npm install
-
-# Build
-npm run build
-
-# Run CI tests
-npm run test:ci
-```
+| `CI` | Skip postinstall in CI environments |
+| `SKIP_BRAVE_INSTALL` | Skip auto-install on npm install |
 
 ## Auto-Sync with chrome-launcher
 
@@ -129,3 +193,4 @@ This project automatically syncs with chrome-launcher updates while preserving B
 ## License
 
 Apache-2.0 - Based on chrome-launcher by The Chromium Authors
+

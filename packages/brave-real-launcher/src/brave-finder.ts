@@ -7,23 +7,23 @@
 
 import fs from 'fs';
 import path from 'path';
-import {homedir} from 'os';
-import {execSync} from 'child_process';
+import { homedir } from 'os';
+import { execSync } from 'child_process';
 import escapeRegExp from 'escape-string-regexp';
 import log from './logger.js';
 import which from 'which';
 
-import {getWSLLocalAppDataPath, toWSLPath, BravePathNotSetError} from './utils.js';
+import { getWSLLocalAppDataPath, toWSLPath, BravePathNotSetError } from './utils.js';
 
 const newLineRegex = /\r?\n/;
 
-type Priorities = Array<{regex: RegExp, weight: number}>;
+type Priorities = Array<{ regex: RegExp, weight: number }>;
 
 /**
  * check for macOS default app paths first to avoid waiting for the slow lsregister command
  */
-export function darwinFast(): string|undefined {
-  const priorityOptions: Array<string|undefined> = [
+export function darwinFast(): string | undefined {
+  const priorityOptions: Array<string | undefined> = [
     process.env.BRAVE_PATH,
     process.env.LIGHTHOUSE_BRAVE_PATH,
     // Brave Browser paths
@@ -49,8 +49,8 @@ export function darwin() {
   ];
 
   const LSREGISTER = '/System/Library/Frameworks/CoreServices.framework' +
-      '/Versions/A/Frameworks/LaunchServices.framework' +
-      '/Versions/A/Support/lsregister';
+    '/Versions/A/Frameworks/LaunchServices.framework' +
+    '/Versions/A/Support/lsregister';
 
   const installations: Array<string> = [];
 
@@ -62,19 +62,19 @@ export function darwin() {
   // Look for Brave Browser installations
   try {
     execSync(
-        `${LSREGISTER} -dump` +
-        ' | grep -i \'brave browser\\( beta\\| nightly\\| dev\\)\\?\\.app\'' +
-        ' | awk \'{$1=""; print $0}\'')
-        .toString()
-        .split(newLineRegex)
-        .forEach((inst: string) => {
-          suffixes.forEach(suffix => {
-            const execPath = path.join(inst.substring(0, inst.indexOf('.app') + 4).trim(), suffix);
-            if (canAccess(execPath) && installations.indexOf(execPath) === -1) {
-              installations.push(execPath);
-            }
-          });
+      `${LSREGISTER} -dump` +
+      ' | grep -i \'brave browser\\( beta\\| nightly\\| dev\\)\\?\\.app\'' +
+      ' | awk \'{$1=""; print $0}\'')
+      .toString()
+      .split(newLineRegex)
+      .forEach((inst: string) => {
+        suffixes.forEach(suffix => {
+          const execPath = path.join(inst.substring(0, inst.indexOf('.app') + 4).trim(), suffix);
+          if (canAccess(execPath) && installations.indexOf(execPath) === -1) {
+            installations.push(execPath);
+          }
         });
+      });
   } catch (e) {
     // lsregister might not be available or might fail
     log.warn('BraveLauncher', 'lsregister command failed, checking default paths');
@@ -84,24 +84,24 @@ export function darwin() {
   // clang-format off
   const home = escapeRegExp(process.env.HOME || homedir());
   const priorities: Priorities = [
-    {regex: new RegExp(`^${home}/Applications/.*Brave Browser\\.app`), weight: 50},
-    {regex: new RegExp(`^${home}/Applications/.*Brave Browser Beta\\.app`), weight: 51},
-    {regex: new RegExp(`^${home}/Applications/.*Brave Browser Nightly\\.app`), weight: 52},
-    {regex: new RegExp(`^${home}/Applications/.*Brave Browser Dev\\.app`), weight: 53},
-    {regex: /^\/Applications\/.*Brave Browser\.app/, weight: 100},
-    {regex: /^\/Applications\/.*Brave Browser Beta\.app/, weight: 101},
-    {regex: /^\/Applications\/.*Brave Browser Nightly\.app/, weight: 102},
-    {regex: /^\/Applications\/.*Brave Browser Dev\.app/, weight: 103},
-    {regex: /^\/Volumes\/.*Brave Browser\.app/, weight: -2},
-    {regex: /^\/Volumes\/.*Brave Browser Beta\.app/, weight: -1},
+    { regex: new RegExp(`^${home}/Applications/.*Brave Browser\\.app`), weight: 50 },
+    { regex: new RegExp(`^${home}/Applications/.*Brave Browser Beta\\.app`), weight: 51 },
+    { regex: new RegExp(`^${home}/Applications/.*Brave Browser Nightly\\.app`), weight: 52 },
+    { regex: new RegExp(`^${home}/Applications/.*Brave Browser Dev\\.app`), weight: 53 },
+    { regex: /^\/Applications\/.*Brave Browser\.app/, weight: 100 },
+    { regex: /^\/Applications\/.*Brave Browser Beta\.app/, weight: 101 },
+    { regex: /^\/Applications\/.*Brave Browser Nightly\.app/, weight: 102 },
+    { regex: /^\/Applications\/.*Brave Browser Dev\.app/, weight: 103 },
+    { regex: /^\/Volumes\/.*Brave Browser\.app/, weight: -2 },
+    { regex: /^\/Volumes\/.*Brave Browser Beta\.app/, weight: -1 },
   ];
 
   if (process.env.LIGHTHOUSE_BRAVE_PATH) {
-    priorities.unshift({regex: new RegExp(escapeRegExp(process.env.LIGHTHOUSE_BRAVE_PATH)), weight: 150});
+    priorities.unshift({ regex: new RegExp(escapeRegExp(process.env.LIGHTHOUSE_BRAVE_PATH)), weight: 150 });
   }
 
   if (process.env.BRAVE_PATH) {
-    priorities.unshift({regex: new RegExp(escapeRegExp(process.env.BRAVE_PATH)), weight: 151});
+    priorities.unshift({ regex: new RegExp(escapeRegExp(process.env.BRAVE_PATH)), weight: 151 });
   }
 
   // clang-format on
@@ -115,8 +115,8 @@ function resolveBravePath() {
 
   if (canAccess(process.env.LIGHTHOUSE_BRAVE_PATH)) {
     log.warn(
-        'BraveLauncher',
-        'LIGHTHOUSE_BRAVE_PATH is deprecated, use BRAVE_PATH env variable instead.');
+      'BraveLauncher',
+      'LIGHTHOUSE_BRAVE_PATH is deprecated, use BRAVE_PATH env variable instead.');
     return process.env.LIGHTHOUSE_BRAVE_PATH;
   }
 
@@ -208,26 +208,26 @@ export function linux() {
   }
 
   const priorities: Priorities = [
-    {regex: /brave-wrapper$/, weight: 51},
-    {regex: /brave-browser-stable$/, weight: 50},
-    {regex: /brave-browser$/, weight: 49},
-    {regex: /brave-stable$/, weight: 48},
-    {regex: /brave$/, weight: 47},
-    {regex: /brave-browser-beta$/, weight: 46},
-    {regex: /brave-beta$/, weight: 45},
-    {regex: /brave-browser-nightly$/, weight: 44},
-    {regex: /brave-nightly$/, weight: 43},
-    {regex: /brave-browser-dev$/, weight: 42},
-    {regex: /brave-dev$/, weight: 41},
+    { regex: /brave-wrapper$/, weight: 51 },
+    { regex: /brave-browser-stable$/, weight: 50 },
+    { regex: /brave-browser$/, weight: 49 },
+    { regex: /brave-stable$/, weight: 48 },
+    { regex: /brave$/, weight: 47 },
+    { regex: /brave-browser-beta$/, weight: 46 },
+    { regex: /brave-beta$/, weight: 45 },
+    { regex: /brave-browser-nightly$/, weight: 44 },
+    { regex: /brave-nightly$/, weight: 43 },
+    { regex: /brave-browser-dev$/, weight: 42 },
+    { regex: /brave-dev$/, weight: 41 },
   ];
 
   if (process.env.LIGHTHOUSE_BRAVE_PATH) {
     priorities.unshift(
-        {regex: new RegExp(escapeRegExp(process.env.LIGHTHOUSE_BRAVE_PATH)), weight: 100});
+      { regex: new RegExp(escapeRegExp(process.env.LIGHTHOUSE_BRAVE_PATH)), weight: 100 });
   }
 
   if (process.env.BRAVE_PATH) {
-    priorities.unshift({regex: new RegExp(escapeRegExp(process.env.BRAVE_PATH)), weight: 101});
+    priorities.unshift({ regex: new RegExp(escapeRegExp(process.env.BRAVE_PATH)), weight: 101 });
   }
 
   return sort(uniq(installations.filter(Boolean)), priorities);
@@ -238,14 +238,14 @@ export function wsl() {
   process.env.LOCALAPPDATA = getWSLLocalAppDataPath(`${process.env.PATH}`);
   process.env.PROGRAMFILES = toWSLPath('C:/Program Files', '/mnt/c/Program Files');
   process.env['PROGRAMFILES(X86)'] =
-      toWSLPath('C:/Program Files (x86)', '/mnt/c/Program Files (x86)');
+    toWSLPath('C:/Program Files (x86)', '/mnt/c/Program Files (x86)');
 
   return win32();
 }
 
 export function win32() {
   const installations: Array<string> = [];
-  
+
   // Brave Browser installation paths for different architectures
   const suffixes = [
     // Standard x64 installations
@@ -259,8 +259,8 @@ export function win32() {
   ];
 
   const prefixes = [
-    process.env.LOCALAPPDATA, 
-    process.env.PROGRAMFILES, 
+    process.env.LOCALAPPDATA,
+    process.env.PROGRAMFILES,
     process.env['PROGRAMFILES(X86)'],
     // Additional paths for ARM64 and other architectures
     process.env.PROGRAMW6432,
@@ -296,7 +296,7 @@ export function win32() {
 
 function getWindowsRegistryBravePaths(): string[] {
   const paths: string[] = [];
-  
+
   // Registry keys where Brave might be registered
   const registryKeys = [
     'HKEY_LOCAL_MACHINE\\SOFTWARE\\BraveSoftware\\Brave',
@@ -307,7 +307,7 @@ function getWindowsRegistryBravePaths(): string[] {
 
   registryKeys.forEach(key => {
     try {
-      const result = execSync(`reg query "${key}" /ve 2>nul`, {encoding: 'utf-8'});
+      const result = execSync(`reg query "${key}" /ve 2>nul`, { encoding: 'utf-8' });
       const match = result.match(/REG_SZ\s+(.+)/);
       if (match && match[1]) {
         const bravePath = match[1].trim();
@@ -326,22 +326,22 @@ function getWindowsRegistryBravePaths(): string[] {
 function sort(installations: string[], priorities: Priorities) {
   const defaultPriority = 10;
   return installations
-      // assign priorities
-      .map((inst: string) => {
-        for (const pair of priorities) {
-          if (pair.regex.test(inst)) {
-            return {path: inst, weight: pair.weight};
-          }
+    // assign priorities
+    .map((inst: string) => {
+      for (const pair of priorities) {
+        if (pair.regex.test(inst)) {
+          return { path: inst, weight: pair.weight };
         }
-        return {path: inst, weight: defaultPriority};
-      })
-      // sort based on priorities
-      .sort((a, b) => (b.weight - a.weight))
-      // remove priority flag
-      .map(pair => pair.path);
+      }
+      return { path: inst, weight: defaultPriority };
+    })
+    // sort based on priorities
+    .sort((a, b) => (b.weight - a.weight))
+    // remove priority flag
+    .map(pair => pair.path);
 }
 
-function canAccess(file: string|undefined): Boolean {
+function canAccess(file: string | undefined): Boolean {
   if (!file) {
     return false;
   }
@@ -372,22 +372,149 @@ function findBraveExecutables(folder: string): Array<string> {
     // Some systems do not support grep -R so fallback to -r.
     try {
       execPaths = execSync(
-          `grep -ER "${braveExecRegex}" ${folder} | awk -F '=' '{print $2}'`, {stdio: 'pipe'});
+        `grep -ER "${braveExecRegex}" ${folder} | awk -F '=' '{print $2}'`, { stdio: 'pipe' });
     } catch (e) {
       try {
         execPaths = execSync(
-            `grep -Er "${braveExecRegex}" ${folder} | awk -F '=' '{print $2}'`, {stdio: 'pipe'});
+          `grep -Er "${braveExecRegex}" ${folder} | awk -F '=' '{print $2}'`, { stdio: 'pipe' });
       } catch (e2) {
         return installations;
       }
     }
 
     execPaths = execPaths.toString()
-                    .split(newLineRegex)
-                    .map((execPath: string) => execPath.replace(argumentsRegex, '$1'));
+      .split(newLineRegex)
+      .map((execPath: string) => execPath.replace(argumentsRegex, '$1'));
 
     execPaths.forEach((execPath: string) => canAccess(execPath) && installations.push(execPath));
   }
 
   return installations;
+}
+
+/**
+ * Chrome/Chromium Fallback Detection
+ * These functions can be used to find Chrome or Chromium when Brave is not available
+ */
+
+/**
+ * Find Chrome browser installations
+ */
+export function findChrome(): string[] {
+  const installations: string[] = [];
+  const platform = process.platform;
+
+  if (platform === 'win32') {
+    const suffixes = [
+      `${path.sep}Google${path.sep}Chrome${path.sep}Application${path.sep}chrome.exe`,
+      `${path.sep}Google${path.sep}Chrome Beta${path.sep}Application${path.sep}chrome.exe`,
+      `${path.sep}Google${path.sep}Chrome Dev${path.sep}Application${path.sep}chrome.exe`,
+      `${path.sep}Google${path.sep}Chrome Canary${path.sep}Application${path.sep}chrome.exe`,
+    ];
+    const prefixes = [
+      process.env.LOCALAPPDATA,
+      process.env.PROGRAMFILES,
+      process.env['PROGRAMFILES(X86)'],
+    ].filter(Boolean) as string[];
+
+    prefixes.forEach(prefix => suffixes.forEach(suffix => {
+      const chromePath = path.join(prefix, suffix);
+      if (canAccess(chromePath)) installations.push(chromePath);
+    }));
+  } else if (platform === 'darwin') {
+    const paths = [
+      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+      '/Applications/Google Chrome Beta.app/Contents/MacOS/Google Chrome Beta',
+      '/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary',
+    ];
+    paths.forEach(p => canAccess(p) && installations.push(p));
+  } else if (platform === 'linux') {
+    const paths = [
+      '/usr/bin/google-chrome',
+      '/usr/bin/google-chrome-stable',
+      '/usr/bin/google-chrome-beta',
+      '/usr/bin/google-chrome-dev',
+      '/opt/google/chrome/chrome',
+      '/opt/google/chrome-beta/chrome',
+    ];
+    paths.forEach(p => canAccess(p) && installations.push(p));
+
+    try {
+      const chromePath = which.sync('google-chrome', { nothrow: true });
+      if (chromePath && canAccess(chromePath)) installations.push(chromePath);
+    } catch (e) { /* ignore */ }
+  }
+
+  return uniq(installations);
+}
+
+/**
+ * Find Chromium browser installations  
+ */
+export function findChromium(): string[] {
+  const installations: string[] = [];
+  const platform = process.platform;
+
+  if (platform === 'win32') {
+    const paths = [
+      path.join(process.env.LOCALAPPDATA || '', 'Chromium', 'Application', 'chrome.exe'),
+      path.join(process.env.PROGRAMFILES || '', 'Chromium', 'Application', 'chrome.exe'),
+    ];
+    paths.forEach(p => canAccess(p) && installations.push(p));
+  } else if (platform === 'darwin') {
+    const paths = [
+      '/Applications/Chromium.app/Contents/MacOS/Chromium',
+      path.join(homedir(), 'Applications', 'Chromium.app', 'Contents', 'MacOS', 'Chromium'),
+    ];
+    paths.forEach(p => canAccess(p) && installations.push(p));
+  } else if (platform === 'linux') {
+    const paths = [
+      '/usr/bin/chromium',
+      '/usr/bin/chromium-browser',
+      '/snap/bin/chromium',
+      '/opt/chromium/chrome',
+    ];
+    paths.forEach(p => canAccess(p) && installations.push(p));
+
+    try {
+      const chromiumPath = which.sync('chromium', { nothrow: true }) ||
+        which.sync('chromium-browser', { nothrow: true });
+      if (chromiumPath && canAccess(chromiumPath)) installations.push(chromiumPath);
+    } catch (e) { /* ignore */ }
+  }
+
+  return uniq(installations);
+}
+
+/**
+ * Find any Chromium-based browser with fallback chain: Brave -> Chrome -> Chromium
+ */
+export function findAnyChromiumBrowser(): { browser: string; path: string } | null {
+  // Try Brave first
+  try {
+    const platform = process.platform;
+    let braveInstallations: string[] = [];
+
+    if (platform === 'win32') braveInstallations = win32();
+    else if (platform === 'darwin') braveInstallations = darwin();
+    else if (platform === 'linux') braveInstallations = linux();
+
+    if (braveInstallations.length > 0) {
+      return { browser: 'brave', path: braveInstallations[0] };
+    }
+  } catch (e) { /* Brave not found */ }
+
+  // Try Chrome
+  const chromeInstallations = findChrome();
+  if (chromeInstallations.length > 0) {
+    return { browser: 'chrome', path: chromeInstallations[0] };
+  }
+
+  // Try Chromium
+  const chromiumInstallations = findChromium();
+  if (chromiumInstallations.length > 0) {
+    return { browser: 'chromium', path: chromiumInstallations[0] };
+  }
+
+  return null;
 }

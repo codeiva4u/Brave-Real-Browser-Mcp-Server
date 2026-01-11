@@ -8,16 +8,16 @@ export default defineConfig({
     // Set test environment to Node.js for MCP server testing
     environment: 'node',
 
-    // Test file patterns - core unit tests and E2E tests
+    // Test file patterns - core unit tests only (E2E tests run separately with test:e2e)
     include: [
       'src/browser-manager.test.ts',
       'src/token-management.test.ts',
-      'src/workflow-validation.test.ts',
-      'test/e2e/**/*.test.ts'
+      'src/workflow-validation.test.ts'
     ],
 
     // Exclude patterns - keep test/integration excluded but allow test/e2e
-    exclude: ['node_modules', 'dist', 'tests', 'test/integration/**/*'],
+    // Also exclude packages folder which contains sub-package CLI tools
+    exclude: ['node_modules', 'dist', 'tests', 'test/integration/**/*', 'packages/**/*'],
 
     // Setup files
     setupFiles: ['./test/setup.ts'],

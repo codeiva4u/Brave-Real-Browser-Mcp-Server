@@ -64,6 +64,13 @@ import {
   handleBatchElementScraper,
   handleExtractSchema,
   handleSolveCaptchaAdvanced,
+  // Streaming tools
+  handleM3u8Parser,
+  handleSubtitleExtractor,
+  handleCookieManager,
+  // Download tools
+  handleFileDownloader,
+  handleBulkDownloader,
 } from './handlers/advanced-tools.js';
 
 // State for video recording
@@ -275,6 +282,28 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
       case TOOL_NAMES.EXTRACT_SCHEMA:
         if (!page) throw new Error('Browser not initialized. Call browser_init first.');
         return { content: [{ type: 'text', text: JSON.stringify(await handleExtractSchema(page, args || {})) }] };
+
+      // Streaming & Media Tools
+      case TOOL_NAMES.M3U8_PARSER:
+        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
+        return { content: [{ type: 'text', text: JSON.stringify(await handleM3u8Parser(page, args || {})) }] };
+
+      case TOOL_NAMES.SUBTITLE_EXTRACTOR:
+        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
+        return { content: [{ type: 'text', text: JSON.stringify(await handleSubtitleExtractor(page, args || {})) }] };
+
+      case TOOL_NAMES.COOKIE_MANAGER:
+        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
+        return { content: [{ type: 'text', text: JSON.stringify(await handleCookieManager(page, args as any)) }] };
+
+      // File Download Tools
+      case TOOL_NAMES.FILE_DOWNLOADER:
+        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
+        return { content: [{ type: 'text', text: JSON.stringify(await handleFileDownloader(page, args as any)) }] };
+
+      case TOOL_NAMES.BULK_DOWNLOADER:
+        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
+        return { content: [{ type: 'text', text: JSON.stringify(await handleBulkDownloader(page, args as any)) }] };
 
       default:
         throw new Error(`Unknown tool: ${name}`);

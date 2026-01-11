@@ -1,6 +1,6 @@
 /**
  * Advanced Tools Handlers for brave-real-browser-mcp-server
- * Contains 22 new advanced tools for enhanced browser automation
+ * Contains 24 advanced tools for enhanced browser automation
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -1577,5 +1577,552 @@ export async function handleSolveCaptchaAdvanced(
         type: detectedType,
         method: 'none',
         message: `Could not automatically solve ${detectedType} captcha. Manual intervention may be required.`,
+    };
+}
+
+// ============================================================
+// STREAMING & MEDIA TOOLS (3 new tools)
+// ============================================================
+
+export interface M3u8ParserArgs {
+    url?: string;
+    extractAll?: boolean;
+    preferQuality?: string;
+    includeAudio?: boolean;
+}
+
+export interface SubtitleExtractorArgs {
+    url?: string;
+    languages?: string[];
+    format?: 'vtt' | 'srt' | 'ass' | 'all';
+    savePath?: string;
+}
+
+export interface CookieManagerArgs {
+    action: 'get' | 'set' | 'delete' | 'export' | 'import' | 'clear';
+    domain?: string;
+    cookies?: any[];
+    name?: string;
+    filePath?: string;
+    format?: 'json' | 'netscape';
+}
+
+/**
+ * Parse and extract HLS/m3u8 streaming URLs
+ */
+export async function handleM3u8Parser(
+    page: Page,
+    args: M3u8ParserArgs
+): Promise<{ found: boolean; streams: any[]; masterPlaylist?: string; qualities: string[] }> {
+    const streams: any[] = [];
+    const qualities: string[] = [];
+    let masterPlaylist: string | undefined;
+
+    // Intercept network requests to find m3u8 files
+    const m3u8Urls: string[] = [];
+
+    await page.setRequestInterception(true);
+
+    const requestHandler = (request: any) => {
+        const url = request.url();
+        if (url.includes('.m3u8') || url.includes('manifest') || url.includes('playlist')) {
+            m3u8Urls.push(url);
+        }
+        request.continue();
+    };
+
+    page.on('request', requestHandler);
+
+    // Wait for network activity
+    await new Promise(r => setTimeout(r, 3000));
+
+    // Also check for m3u8 in page source
+    const pageM3u8 = await page.evaluate(() => {
+        const scripts = Array.from(document.querySelectorAll('script'));
+        const urls: string[] = [];
+        scripts.forEach(script => {
+            const content = script.textContent || '';
+            const matches = content.match(/https?:\/\/[^\s"']+\.m3u8[^\s"']*/g);
+            if (matches) urls.push(...matches);
+        });
+
+        // Check video sources
+        const videos = Array.from(document.querySelectorAll('video source'));
+        videos.forEach(source => {
+            const src = source.getAttribute('src') || '';
+            if (src.includes('.m3u8')) urls.push(src);
+        });
+
+        return urls;
+    });
+
+    m3u8Urls.push(...pageM3u8);
+
+    page.off('request', requestHandler);
+    await page.setRequestInterception(false);
+
+    // Parse unique URLs
+    const uniqueUrls = [...new Set(m3u8Urls)];
+
+    for (const url of uniqueUrls) {
+        const stream: any = { url, type: 'hls' };
+
+        // Try to determine quality from URL
+        if (url.includes('1080')) { stream.quality = '1080p'; qualities.push('1080p'); }
+        else if (url.includes('720')) { stream.quality = '720p'; qualities.push('720p'); }
+        else if (url.includes('480')) { stream.quality = '480p'; qualities.push('480p'); }
+        else if (url.includes('360')) { stream.quality = '360p'; qualities.push('360p'); }
+        else if (url.includes('master')) { stream.quality = 'master'; masterPlaylist = url; }
+        else { stream.quality = 'unknown'; }
+
+        if (url.includes('audio') || url.includes('a=')) {
+            stream.type = 'audio';
+        }
+
+        if (args.extractAll || stream.quality === args.preferQuality || stream.quality === 'master') {
+            streams.push(stream);
+        }
+    }
+
+    // Filter audio if not wanted
+    const filteredStreams = args.includeAudio !== false
+        ? streams
+        : streams.filter(s => s.type !== 'audio');
+
+    return {
+        found: filteredStreams.length > 0,
+        streams: filteredStreams,
+        masterPlaylist,
+        qualities: [...new Set(qualities)],
+    };
+}
+
+/**
+ * Extract subtitles/captions from video pages
+ */
+export async function handleSubtitleExtractor(
+    page: Page,
+    args: SubtitleExtractorArgs
+): Promise<{ found: boolean; subtitles: any[]; languages: string[] }> {
+    const subtitles: any[] = [];
+    const foundLanguages: string[] = [];
+    const preferredLanguages = args.languages || ['en'];
+
+    // Look for subtitle tracks
+    const trackData = await page.evaluate(() => {
+        const tracks: any[] = [];
+
+        // HTML5 video tracks
+        const videoTracks = document.querySelectorAll('video track');
+        videoTracks.forEach(track => {
+            tracks.push({
+                kind: track.getAttribute('kind'),
+                src: track.getAttribute('src'),
+                srclang: track.getAttribute('srclang'),
+                label: track.getAttribute('label'),
+            });
+        });
+
+        // Look for VTT/SRT links in page
+        const links = Array.from(document.querySelectorAll('a[href*=".vtt"], a[href*=".srt"], a[href*=".ass"]'));
+        links.forEach(link => {
+            tracks.push({
+                kind: 'subtitles',
+                src: link.getAttribute('href'),
+                label: link.textContent?.trim(),
+            });
+        });
+
+        // Look in script data
+        const scripts = Array.from(document.querySelectorAll('script'));
+        scripts.forEach(script => {
+            const content = script.textContent || '';
+
+            // VTT URLs
+            const vttMatches = content.match(/https?:\/\/[^\s"']+\.vtt[^\s"']*/g);
+            if (vttMatches) {
+                vttMatches.forEach(url => tracks.push({ src: url, kind: 'subtitles', format: 'vtt' }));
+            }
+
+            // SRT URLs
+            const srtMatches = content.match(/https?:\/\/[^\s"']+\.srt[^\s"']*/g);
+            if (srtMatches) {
+                srtMatches.forEach(url => tracks.push({ src: url, kind: 'subtitles', format: 'srt' }));
+            }
+        });
+
+        return tracks;
+    });
+
+    // Process found tracks
+    for (const track of trackData) {
+        if (!track.src) continue;
+
+        const subtitle: any = {
+            url: track.src,
+            language: track.srclang || 'unknown',
+            label: track.label || 'Unknown',
+            format: track.format || (track.src.includes('.vtt') ? 'vtt' : track.src.includes('.srt') ? 'srt' : 'unknown'),
+        };
+
+        // Filter by preferred languages
+        if (preferredLanguages.includes(subtitle.language) || preferredLanguages.includes('all')) {
+            subtitles.push(subtitle);
+            foundLanguages.push(subtitle.language);
+        }
+    }
+
+    // Also check for YouTube-style captions API
+    const ytCaptions = await page.evaluate(() => {
+        const captionData: any[] = [];
+        // Look for YouTube caption data
+        const ytInitialData = (window as any).ytInitialPlayerResponse;
+        if (ytInitialData?.captions?.playerCaptionsTracklistRenderer?.captionTracks) {
+            ytInitialData.captions.playerCaptionsTracklistRenderer.captionTracks.forEach((track: any) => {
+                captionData.push({
+                    url: track.baseUrl,
+                    language: track.languageCode,
+                    label: track.name?.simpleText || track.languageCode,
+                    format: 'vtt',
+                });
+            });
+        }
+        return captionData;
+    });
+
+    subtitles.push(...ytCaptions.filter(c => preferredLanguages.includes(c.language) || preferredLanguages.includes('all')));
+
+    return {
+        found: subtitles.length > 0,
+        subtitles,
+        languages: [...new Set(foundLanguages)],
+    };
+}
+
+/**
+ * Manage browser cookies for premium accounts
+ */
+export async function handleCookieManager(
+    page: Page,
+    args: CookieManagerArgs
+): Promise<{ success: boolean; cookies?: any[]; message: string; count?: number }> {
+    const client = await page.target().createCDPSession();
+
+    switch (args.action) {
+        case 'get': {
+            const cookies = await page.cookies();
+            let filtered = cookies;
+
+            if (args.domain) {
+                filtered = cookies.filter(c => c.domain.includes(args.domain!));
+            }
+            if (args.name) {
+                filtered = filtered.filter(c => c.name === args.name);
+            }
+
+            return {
+                success: true,
+                cookies: filtered,
+                message: `Retrieved ${filtered.length} cookies`,
+                count: filtered.length,
+            };
+        }
+
+        case 'set': {
+            if (!args.cookies || args.cookies.length === 0) {
+                return { success: false, message: 'No cookies provided to set' };
+            }
+
+            for (const cookie of args.cookies) {
+                await page.setCookie(cookie);
+            }
+
+            return {
+                success: true,
+                message: `Set ${args.cookies.length} cookies`,
+                count: args.cookies.length,
+            };
+        }
+
+        case 'delete': {
+            const cookies = await page.cookies();
+            let toDelete = cookies;
+
+            if (args.domain) {
+                toDelete = cookies.filter(c => c.domain.includes(args.domain!));
+            }
+            if (args.name) {
+                toDelete = toDelete.filter(c => c.name === args.name);
+            }
+
+            for (const cookie of toDelete) {
+                await page.deleteCookie({ name: cookie.name, domain: cookie.domain });
+            }
+
+            return {
+                success: true,
+                message: `Deleted ${toDelete.length} cookies`,
+                count: toDelete.length,
+            };
+        }
+
+        case 'clear': {
+            await client.send('Network.clearBrowserCookies');
+            return { success: true, message: 'All cookies cleared' };
+        }
+
+        case 'export': {
+            const cookies = await page.cookies();
+            let filtered = args.domain ? cookies.filter(c => c.domain.includes(args.domain!)) : cookies;
+
+            let exportData: string;
+            if (args.format === 'netscape') {
+                // Netscape format for wget/curl
+                exportData = '# Netscape HTTP Cookie File\n';
+                filtered.forEach(c => {
+                    exportData += `${c.domain}\tTRUE\t${c.path}\t${c.secure ? 'TRUE' : 'FALSE'}\t${c.expires || 0}\t${c.name}\t${c.value}\n`;
+                });
+            } else {
+                exportData = JSON.stringify(filtered, null, 2);
+            }
+
+            return {
+                success: true,
+                cookies: filtered,
+                message: `Exported ${filtered.length} cookies in ${args.format || 'json'} format`,
+                count: filtered.length,
+            };
+        }
+
+        case 'import': {
+            if (!args.cookies || args.cookies.length === 0) {
+                return { success: false, message: 'No cookies provided to import' };
+            }
+
+            for (const cookie of args.cookies) {
+                await page.setCookie(cookie);
+            }
+
+            return {
+                success: true,
+                message: `Imported ${args.cookies.length} cookies`,
+                count: args.cookies.length,
+            };
+        }
+
+        default:
+            return { success: false, message: `Unknown action: ${args.action}` };
+    }
+}
+
+// ============================================================
+// FILE DOWNLOAD TOOLS (2 new tools)
+// ============================================================
+
+export interface FileDownloaderArgs {
+    url: string;
+    savePath: string;
+    filename?: string;
+    overwrite?: boolean;
+    headers?: Record<string, string>;
+    timeout?: number;
+}
+
+export interface BulkDownloaderArgs {
+    files: Array<{ url: string; filename?: string }>;
+    savePath: string;
+    concurrency?: number;
+    overwrite?: boolean;
+    skipErrors?: boolean;
+    headers?: Record<string, string>;
+}
+
+/**
+ * Download a file from URL directly to disk
+ */
+export async function handleFileDownloader(
+    page: Page,
+    args: FileDownloaderArgs
+): Promise<{ success: boolean; filePath?: string; size?: number; message: string }> {
+    const fs = await import('fs');
+    const path = await import('path');
+    const https = await import('https');
+    const http = await import('http');
+
+    const timeout = args.timeout || 300000; // 5 minutes default
+
+    // Extract filename from URL if not provided
+    let filename = args.filename;
+    if (!filename) {
+        const urlObj = new URL(args.url);
+        filename = path.basename(urlObj.pathname) || 'download';
+        // Handle URLs without extension
+        if (!filename.includes('.')) {
+            filename = 'download_' + Date.now();
+        }
+    }
+
+    const fullPath = path.join(args.savePath, filename);
+
+    // Check if file exists and overwrite is false
+    if (!args.overwrite && fs.existsSync(fullPath)) {
+        return {
+            success: false,
+            message: `File already exists: ${fullPath}. Set overwrite: true to replace.`,
+        };
+    }
+
+    // Ensure directory exists
+    if (!fs.existsSync(args.savePath)) {
+        fs.mkdirSync(args.savePath, { recursive: true });
+    }
+
+    return new Promise((resolve) => {
+        const protocol = args.url.startsWith('https') ? https : http;
+
+        const options: any = {
+            timeout,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                ...(args.headers || {}),
+            },
+        };
+
+        const file = fs.createWriteStream(fullPath);
+        let downloadedSize = 0;
+
+        const request = protocol.get(args.url, options, (response: any) => {
+            // Handle redirects
+            if (response.statusCode === 301 || response.statusCode === 302) {
+                file.close();
+                fs.unlinkSync(fullPath);
+                // Follow redirect
+                handleFileDownloader(page, { ...args, url: response.headers.location })
+                    .then(resolve);
+                return;
+            }
+
+            if (response.statusCode !== 200) {
+                file.close();
+                fs.unlinkSync(fullPath);
+                resolve({
+                    success: false,
+                    message: `Download failed with status: ${response.statusCode}`,
+                });
+                return;
+            }
+
+            const totalSize = parseInt(response.headers['content-length'] || '0', 10);
+
+            response.on('data', (chunk: Buffer) => {
+                downloadedSize += chunk.length;
+            });
+
+            response.pipe(file);
+
+            file.on('finish', () => {
+                file.close();
+                resolve({
+                    success: true,
+                    filePath: fullPath,
+                    size: downloadedSize,
+                    message: `Downloaded ${downloadedSize} bytes to ${fullPath}`,
+                });
+            });
+        });
+
+        request.on('timeout', () => {
+            request.destroy();
+            file.close();
+            if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
+            resolve({
+                success: false,
+                message: `Download timeout after ${timeout}ms`,
+            });
+        });
+
+        request.on('error', (err: Error) => {
+            file.close();
+            if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
+            resolve({
+                success: false,
+                message: `Download error: ${err.message}`,
+            });
+        });
+    });
+}
+
+/**
+ * Download multiple files simultaneously
+ */
+export async function handleBulkDownloader(
+    page: Page,
+    args: BulkDownloaderArgs
+): Promise<{ success: boolean; downloaded: number; failed: number; files: any[]; message: string }> {
+    const concurrency = args.concurrency || 3;
+    const results: any[] = [];
+    let downloaded = 0;
+    let failed = 0;
+
+    // Process files in batches based on concurrency
+    const chunks: Array<typeof args.files> = [];
+    for (let i = 0; i < args.files.length; i += concurrency) {
+        chunks.push(args.files.slice(i, i + concurrency));
+    }
+
+    for (const chunk of chunks) {
+        const promises = chunk.map(async (file) => {
+            try {
+                const result = await handleFileDownloader(page, {
+                    url: file.url,
+                    savePath: args.savePath,
+                    filename: file.filename,
+                    overwrite: args.overwrite,
+                    headers: args.headers,
+                });
+
+                if (result.success) {
+                    downloaded++;
+                    results.push({
+                        url: file.url,
+                        status: 'success',
+                        filePath: result.filePath,
+                        size: result.size,
+                    });
+                } else {
+                    failed++;
+                    results.push({
+                        url: file.url,
+                        status: 'failed',
+                        error: result.message,
+                    });
+
+                    if (!args.skipErrors) {
+                        throw new Error(result.message);
+                    }
+                }
+            } catch (error) {
+                failed++;
+                results.push({
+                    url: file.url,
+                    status: 'error',
+                    error: error instanceof Error ? error.message : String(error),
+                });
+
+                if (!args.skipErrors) {
+                    throw error;
+                }
+            }
+        });
+
+        await Promise.all(promises);
+    }
+
+    return {
+        success: failed === 0 || args.skipErrors === true,
+        downloaded,
+        failed,
+        files: results,
+        message: `Downloaded ${downloaded}/${args.files.length} files. ${failed} failed.`,
     };
 }

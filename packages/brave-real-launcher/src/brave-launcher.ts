@@ -201,7 +201,7 @@ class Launcher {
     // New features initialization
     this.extensions = defaults(this.opts.extensions, []);
     this.autoLoadUBlock = defaults(this.opts.autoLoadUBlock, false);
-    this.autoInstall = defaults(this.opts.autoInstall, false);
+    this.autoInstall = defaults(this.opts.autoInstall, true);
     this.enableStealth = defaults(this.opts.enableStealth, true);
     this.userAgent = this.opts.userAgent;
 

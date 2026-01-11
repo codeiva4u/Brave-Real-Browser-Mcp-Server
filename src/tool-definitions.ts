@@ -318,7 +318,7 @@ export const TOOLS = [
     },
   },
   // ============================================================
-  // ADVANCED TOOLS (22 new tools)
+  // ADVANCED TOOLS (24 advanced tools)
   // ============================================================
   {
     name: 'breadcrumb_navigator',
@@ -617,6 +617,97 @@ export const TOOLS = [
       },
     },
   },
+  // ============================================================
+  // STREAMING & MEDIA TOOLS (3 new tools)
+  // ============================================================
+  {
+    name: 'm3u8_parser',
+    description: 'Parse and extract HLS/m3u8 streaming URLs with quality options',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        url: { type: 'string', description: 'URL of the page or m3u8 file' },
+        extractAll: { type: 'boolean', description: 'Extract all quality variants', default: true },
+        preferQuality: { type: 'string', description: 'Preferred quality (1080p, 720p, 480p, best, worst)', default: 'best' },
+        includeAudio: { type: 'boolean', description: 'Include audio-only streams', default: true },
+      },
+    },
+  },
+  {
+    name: 'subtitle_extractor',
+    description: 'Extract subtitles/captions from video pages (VTT, SRT, ASS formats)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        url: { type: 'string', description: 'URL of the video page' },
+        languages: { type: 'array', items: { type: 'string' }, description: 'Preferred languages (e.g., ["en", "hi", "es"])', default: ['en'] },
+        format: { type: 'string', enum: ['vtt', 'srt', 'ass', 'all'], description: 'Output format', default: 'srt' },
+        savePath: { type: 'string', description: 'Optional path to save subtitle files' },
+      },
+    },
+  },
+  {
+    name: 'cookie_manager',
+    description: 'Manage browser cookies for premium accounts and sessions',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['get', 'set', 'delete', 'export', 'import', 'clear'], description: 'Cookie action to perform' },
+        domain: { type: 'string', description: 'Domain to filter cookies' },
+        cookies: { type: 'array', description: 'Cookies to set (for set/import action)' },
+        name: { type: 'string', description: 'Cookie name (for get/delete action)' },
+        filePath: { type: 'string', description: 'File path for export/import' },
+        format: { type: 'string', enum: ['json', 'netscape'], description: 'Export/Import format', default: 'json' },
+      },
+      required: ['action'],
+    },
+  },
+  // ============================================================
+  // FILE DOWNLOAD TOOLS (2 new tools)
+  // ============================================================
+  {
+    name: 'file_downloader',
+    description: 'Download a file from URL directly to disk with progress tracking',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        url: { type: 'string', description: 'URL of the file to download' },
+        savePath: { type: 'string', description: 'Absolute path where to save the file' },
+        filename: { type: 'string', description: 'Optional filename (auto-detected if not provided)' },
+        overwrite: { type: 'boolean', description: 'Overwrite existing file', default: false },
+        headers: { type: 'object', description: 'Custom headers for the request' },
+        timeout: { type: 'number', description: 'Download timeout in ms', default: 300000 },
+      },
+      required: ['url', 'savePath'],
+    },
+  },
+  {
+    name: 'bulk_downloader',
+    description: 'Download multiple files simultaneously with queue management',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        files: {
+          type: 'array',
+          description: 'Array of files to download',
+          items: {
+            type: 'object',
+            properties: {
+              url: { type: 'string', description: 'File URL' },
+              filename: { type: 'string', description: 'Optional filename' },
+            },
+            required: ['url'],
+          },
+        },
+        savePath: { type: 'string', description: 'Directory where to save all files' },
+        concurrency: { type: 'number', description: 'Number of parallel downloads', default: 3 },
+        overwrite: { type: 'boolean', description: 'Overwrite existing files', default: false },
+        skipErrors: { type: 'boolean', description: 'Continue on individual file errors', default: true },
+        headers: { type: 'object', description: 'Custom headers for all requests' },
+      },
+      required: ['files', 'savePath'],
+    },
+  },
 ];
 
 // Tool name constants for type safety
@@ -657,6 +748,13 @@ export const TOOL_NAMES = {
   CONTENT_CLASSIFICATION: 'content_classification',
   BATCH_ELEMENT_SCRAPER: 'batch_element_scraper',
   EXTRACT_SCHEMA: 'extract_schema',
+  // Streaming & Media tools
+  M3U8_PARSER: 'm3u8_parser',
+  SUBTITLE_EXTRACTOR: 'subtitle_extractor',
+  COOKIE_MANAGER: 'cookie_manager',
+  // File Download tools
+  FILE_DOWNLOADER: 'file_downloader',
+  BULK_DOWNLOADER: 'bulk_downloader',
 } as const;
 
 // Type definitions for tool inputs

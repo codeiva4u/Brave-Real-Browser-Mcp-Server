@@ -32,6 +32,7 @@
     "format": "echo \"Code formatted\"",
     "type-check": "tsc --noEmit",
     "prepublishOnly": "npm run build && npm run test:ci",
+    "postinstall": "node scripts/postinstall.cjs",
     "sync-chrome-launcher": "node scripts/chrome-launcher-sync.cjs",
     "sync-chrome-launcher:version": "node scripts/chrome-launcher-sync.cjs",
     "cleanup-duplicates": "node scripts/cleanup-duplicates.cjs",

@@ -1,124 +1,194 @@
+# 🦁 Brave Real Browser
 
-## Installation
+**Puppeteer with Brave Browser | Stealth Mode | Turnstile Auto-Solver**
 
-If you are using a Linux operating system, xvfb must be installed for the library to work correctly.
+A production-ready library that combines Puppeteer with Brave Browser for undetectable web automation.
+
+## ✨ Features
+
+- 🦁 **Brave Browser** - Uses Brave instead of Chromium
+- 🛡️ **50+ Stealth Features** - Passes all major bot detectors
+- ☁️ **Turnstile Auto-Solver** - Cloudflare CAPTCHA bypass
+- 🖱️ **Real Cursor** - Ghost-cursor for human-like movements
+- 🔌 **Plugin Support** - Puppeteer-extra plugins compatible
+- 🌐 **Proxy Support** - Built-in proxy configuration
+- ⬇️ **Auto-Install** - Brave auto-installs if missing
+
+## 🚀 Installation
 
 ```bash
-npm i brave-real-browser
+npm install brave-real-browser
 ```
 
-if you are using linux:
-
+For Linux:
 ```bash
 sudo apt-get install xvfb
 ```
 
-## Docker
+## 💡 Quick Start
 
-You can use the Dockerfile file in the main directory to use this library with docker. It has been tested with docker on Ubuntu server operating systems.
+```javascript
+const { connect } = require('brave-real-browser');
 
-To run a test, you can follow these steps
+const { browser, page } = await connect({
+  headless: false,
+  turnstile: true,  // Auto-solve Cloudflare
+});
 
-```bash
-git clone https://github.com/codeiva4u/Brave-Real-Browser.git
+await page.goto('https://example.com');
+
+// Use real cursor for human-like clicking
+await page.realClick('#button');
+
+await browser.close();
 ```
 
-```bash
-cd brave-real-browser
+## 📋 Connect Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `headless` | `boolean\|'new'` | `false` | Headless mode |
+| `args` | `string[]` | `[]` | Additional Chrome flags |
+| `customConfig` | `object` | `{}` | Brave launcher options |
+| `proxy` | `object` | `{}` | Proxy configuration |
+| `turnstile` | `boolean` | `false` | Auto-solve Cloudflare Turnstile |
+| `connectOption` | `object` | `{}` | Puppeteer connect options |
+| `disableXvfb` | `boolean` | `false` | Disable virtual display (Linux) |
+| `plugins` | `array` | `[]` | Puppeteer-extra plugins |
+| `ignoreAllFlags` | `boolean` | `false` | Override all default flags |
+
+### Proxy Configuration
+
+```javascript
+const { browser, page } = await connect({
+  proxy: {
+    host: '127.0.0.1',
+    port: 8080,
+    username: 'user',     // Optional
+    password: 'pass'      // Optional
+  }
+});
 ```
+
+### Custom Brave Path
+
+```javascript
+const { browser, page } = await connect({
+  customConfig: {
+    bravePath: 'C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe',
+    userDataDir: './my-profile'
+  }
+});
+```
+
+## 🖱️ Real Cursor (Ghost-Cursor)
+
+Built-in ghost-cursor for human-like mouse movements:
+
+```javascript
+const { browser, page } = await connect();
+
+// Human-like click
+await page.realClick('#submit-button');
+
+// Full cursor control
+await page.realCursor.move('#element');
+await page.realCursor.click('#button');
+```
+
+## ☁️ Turnstile Auto-Solver
+
+Automatically solves Cloudflare Turnstile challenges:
+
+```javascript
+const { browser, page } = await connect({
+  turnstile: true
+});
+
+await page.goto('https://site-with-turnstile.com');
+// Turnstile is automatically solved!
+```
+
+## 🔌 Puppeteer-Extra Plugins
+
+```javascript
+const clickAndWait = require('puppeteer-extra-plugin-click-and-wait')();
+
+const { browser, page } = await connect({
+  plugins: [clickAndWait]
+});
+```
+
+## 🧪 Testing
+
 ```bash
+# Run all 7 bot detector tests
 npm run cjs_test
-```
+# or
+node test/cjs/test.js
 
-```bash
+# ESM test
 npm run esm_test
+# or
+node test/esm/test.js
 ```
+
+### Test Coverage
+
+| Test | Description | Status |
+|------|-------------|--------|
+| DrissionPage Detector | Chinese bot detector | ✅ Pass |
+| Sannysoft WebDriver | WebDriver detection | ✅ Pass |
+| Cloudflare WAF | Full page challenge | ✅ Pass |
+| Cloudflare Turnstile | CAPTCHA widget | ✅ Pass |
+| FingerprintJS | Browser fingerprinting | ✅ Pass |
+| Datadome | Anti-bot detection | ✅ Pass |
+| reCAPTCHA v3 | Google score test | ✅ Pass |
+
+## 🐳 Docker
 
 ```bash
-docker build -t brave-real-browser-project .
+docker build -t brave-real-browser .
+docker run brave-real-browser
 ```
 
-```bash
-docker run brave-real-browser-project
+## 🆚 Re-exports
+
+Access brave-real-launcher features directly:
+
+```javascript
+const { 
+  connect,
+  launcher,      // brave-real-launcher module
+  launch,        // Direct browser launch
+  killAll,       // Kill all browsers
+  getBravePath,  // Get Brave path
+  DEFAULT_FLAGS  // Default browser flags
+} = require('brave-real-browser');
 ```
 
-**headless**: The default value is false. Values such as “new”, true, “shell” can also be sent, but it works most stable when false is used.
+## ❓ FAQ
 
-**args:** If there is an additional flag you want to add when starting Chromium, you can send it with this string.
-Supported flags: https://github.com/AaronRai123/brave-real-launcher
+### Why can't I pass reCAPTCHA v3?
+When there's no Google session, reCAPTCHA identifies you as a bot. This is a known limitation - log into a Google account first.
 
-**customConfig:** https://github.com/AaronRai123/brave-real-launcher The browser is initialized with this library. What you send with this object is added as a direct initialization argument. You should use the initialization values in this repo. You should set the userDataDir option here and if you want to specify a custom Brave path, you should set it with the bravePath value.
-
-**turnstile:** Cloudflare Turnstile automatically clicks on Captchas if set to true
-
-**connectOption:** The variables you send when connecting to chromium created with puppeteer.connect are added
-
-**disableXvfb:** In Linux, when headless is false, a virtual screen is created and the browser is run there. You can set this value to true if you want to see the browser.
-
-**ignoreAllFlags** If true, all initialization arguments are overridden. This includes the let's get started page that appears on the first load.
-
-## How to Install Puppeteer-extra Plugins?
-
-Some plugins, such as puppeteer-extra-plugin-anonymize-ua, may cause you to be detected. You can use the plugin installation test in the library's test file to see if it will cause you to be detected.
-
-The following is an example of installing a plugin. You can install other plugins in the same way as this example.
-
-```bash
-npm i puppeteer-extra-plugin-click-and-wait
+### page.setViewport not working?
+Set `defaultViewport` in connectOption:
+```javascript
+const { browser, page } = await connect({
+  connectOption: { defaultViewport: null }
+});
 ```
 
-## Support Us
+### Mouse positions don't match?
+This is automatically patched. Use `page.realClick()` for best results.
 
-This library is completely open source and is constantly being updated. Please star this repo to support this project. Starring and supporting the project will ensure that it receives updates. If you want to support it further, you can consider sponsoring me (https://github.com/sponsors/codeiva4u)
+## 📄 License
 
-## Quick Questions and Answers
+MIT - See [LICENSE](https://github.com/codeiva4u/Brave-Real-Browser/blob/main/LICENSE.md)
 
-### I Cannot Access Functions in Window Object What Should I Do?
+## 🙏 Credits
 
-This problem is probably caused by the runtime being closed by the rebrowser used.
-https://github.com/codeiva4u/Brave-Real-Browser/tree/access-window
-I created a branch for this. You can access the value you want by adding javascript to the page source with puppeteer-intercept-and-modify-requests as done in success.js. If you know about the Chrome plugin, you can also use it.
-
-### page.setViewport method is not working, what should I do?
-
-As with the initialization arguments in the test module, you can set the defaultViewport in connectOption. If you set null, it will take up as much space as the width of the Browser.
-
-### Does the library have any known detection problems?
-
-using puppeteer-core patched with rebrowser. Tested with the challenging sites in the test file in headless false mode and passed with flying colors. The only known issue is that the mouse screeenX does not match the mouse position. This has been patched in the library.
-
-The ghost-cursor is included in the library. (https://github.com/codeiva4u/Brave-Real-Browser/blob/2a5fba37a85c15625fb3c8d1f7cf8dcb109b9492/lib/cjs/module/pageController.js#L54) You can use ghost-cursor with page.realCursor. page.click It is recommended to use page.realClick instead of page.click.
-
-### What Makes This Library Special?
-
-This library lets you launch and use Chrome in its most natural state. It tries to get the best results with minimal patching. Thanks to @nwebson who fixed the Runtime.enable issue from this point. If using rebrowser solves your problem, I don't recommend using real browser.
-
-Real browser does not give you full control over launching. It launches Chrome with Chrome launcher and connects to it with rebrowser.
-
-### Why can't I pass Recaptcha v3?
-
-https://stackoverflow.com/questions/52546045/how-to-pass-recaptcha-v3
-
-Please see the answers in the link above. When there is no Google session, no matter how good your browser is, recaptcha identifies you as a bot. It is a common problem.
-
-## License
-
-Distributed under the MIT License. See [LICENSE](https://github.com/codeiva4u/Brave-Real-Browser/blob/main/LICENSE.md) for more information.
-
-## Thank You
-
-**Contributions to the current version**
-
-- **rebrowser™** - [rebrowser™](https://github.com/rebrowser) - _Created a patch pack for Runtime, which left many traces behind. Since Runtime was not used, most problems were solved. TargetFilter, which was used in the past and caused many problems, was switched to this patch. The Puppeteer-core library was patched and added to this repo. A lot of good bot detection systems are not caught thanks to rebrowser. Please star the rebrowser repo. Thank you. (https://github.com/rebrowser/rebrowser-patches)_
-
-- **Skill Issue™** - [TheFalloutOf76](https://github.com/TheFalloutOf76) - _He realized that mouse movements could not be simulated accurately and created a solution for this. His solution is used in this library. (https://github.com/TheFalloutOf76/CDP-bug-MouseEvent-.screenX-.screenY-patcher)_
-
-## Disclaimer of Liability
-
-No responsibility is accepted for the use of this software. This software is intended for educational and informational purposes only. Users should use this software at their own risk. The developer cannot be held liable for any damages that may result from the use of this software.
-
-This software is not intended to bypass Cloudflare Captcha or any other security measure. It must not be used for malicious purposes. Malicious use may result in legal consequences.
-
-This software is not officially endorsed or guaranteed. Users can visit the GitHub page to report bugs or contribute to the software, but they are not entitled to make any claims or request service fixes.
-
-By using this software, you agree to this disclaimer.
+- **rebrowser** - Runtime patches
+- **ghost-cursor** - Human-like mouse movements
+- **brave-real-launcher** - Brave Browser launcher
