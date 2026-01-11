@@ -1,5 +1,5 @@
 import { launch, BraveLauncher, DEFAULT_FLAGS } from "brave-real-launcher";
-import puppeteer from "brave-real-puppeteer-core";
+import * as puppeteer from "brave-real-puppeteer-core";
 import { pageController } from "./module/pageController.mjs";
 
 // process.env.REBROWSER_PATCHES_DEBUG=1

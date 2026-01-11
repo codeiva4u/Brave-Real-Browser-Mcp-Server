@@ -58,7 +58,14 @@
     "/scripts"
   ],
   "homepage": "https://rebrowser.net",
-  "main": "scripts/patcher.js",
+  "main": "index.js",
+  "exports": {
+    ".": {
+      "import": "./index.js",
+      "require": "./index.cjs"
+    },
+    "./patcher": "./scripts/patcher.js"
+  },
   "bin": {
     "brave-stealth": "scripts/patcher.js",
     "brave-patches": "scripts/patcher.js",
@@ -119,6 +126,7 @@
   },
   "dependencies": {
     "brave-real-launcher": "*",
+    "get-east-asian-width": "^1.4.0",
     "yargs": "^18.0.0"
   },
   "optionalDependencies": {
