@@ -1,6 +1,6 @@
 {
   "name": "brave-real-browser-mcp-server",
-  "version": "2.18.13",
+  "version": "2.18.14",
   "description": "🦁 MCP server for Brave Real Browser - NPM Workspaces Monorepo with anti-detection features",
   "type": "module",
   "main": "dist/index.js",
