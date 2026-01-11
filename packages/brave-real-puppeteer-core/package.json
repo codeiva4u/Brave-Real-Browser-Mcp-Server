@@ -55,7 +55,9 @@
   },
   "files": [
     "/patches",
-    "/scripts"
+    "/scripts",
+    "index.js",
+    "index.cjs"
   ],
   "homepage": "https://rebrowser.net",
   "main": "index.js",
