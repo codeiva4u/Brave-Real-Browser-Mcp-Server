@@ -1,0 +1,126 @@
+--- a/lib/cjs/puppeteer/common/util.js
++++ b/lib/cjs/puppeteer/common/util.js
+@@ -290,6 +290,124 @@
+ exports.injectNavigatorSpoofing = injectNavigatorSpoofing;
+ 
++/**
++ * @internal
++ * rebrowser-stealth: inject canvas and WebGL fingerprint spoofing
++ */
++function injectFingerprintSpoofing() {
++    return `
++        // Canvas fingerprint spoofing
++        (function() {
++            const canvasProto = HTMLCanvasElement.prototype;
++            const contextProto = CanvasRenderingContext2D.prototype;
++            const webglProto = WebGLRenderingContext.prototype;
++            const webgl2Proto = WebGL2RenderingContext.prototype;
++            
++            // Add noise to canvas data
++            function addCanvasNoise(originalMethod) {
++                return function(...args) {
++                    const result = originalMethod.apply(this, args);
++                    if (typeof result === 'string' && result.startsWith('data:image')) {
++                        // Add subtle noise to break fingerprinting
++                        const canvas = document.createElement('canvas');
++                        const ctx = canvas.getContext('2d');
++                        const img = new Image();
++                        img.onload = function() {
++                            canvas.width = img.width;
++                            canvas.height = img.height;
++                            ctx.drawImage(img, 0, 0);
++                            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
++                            // Add minimal noise
++                            for (let i = 0; i < imageData.data.length; i += 4) {
++                                if (Math.random() < 0.001) {
++                                    imageData.data[i] = Math.min(255, imageData.data[i] + Math.random() * 2 - 1);
++                                }
++                            }
++                            ctx.putImageData(imageData, 0, 0);
++                        };
++                        img.src = result;
++                        return result;
++                    }
++                    return result;
++                };
++            }
++            
++            // Override canvas methods
++            canvasProto.toDataURL = addCanvasNoise(canvasProto.toDataURL);
++            canvasProto.toBlob = addCanvasNoise(canvasProto.toBlob);
++            
++            // WebGL spoofing
++            const webglSpoofData = {
++                vendor: 'Google Inc.',
++                renderer: 'ANGLE (Intel(R) HD Graphics 620 Direct3D11 vs_5_0 ps_5_0)',
++                version: 'WebGL 1.0 (OpenGL ES 2.0 Chromium)',
++                shadingLanguageVersion: 'WebGL GLSL ES 1.0 (OpenGL ES GLSL ES 1.0 Chromium)',
++                extensions: [
++                    'ANGLE_instanced_arrays',
++                    'EXT_blend_minmax',
++                    'EXT_color_buffer_half_float',
++                    'EXT_frag_depth',
++                    'EXT_shader_texture_lod',
++                    'EXT_texture_filter_anisotropic',
++                    'WEBKIT_EXT_texture_filter_anisotropic',
++                    'EXT_sRGB',
++                    'OES_element_index_uint',
++                    'OES_standard_derivatives',
++                    'OES_texture_float',
++                    'OES_texture_half_float',
++                    'OES_vertex_array_object',
++                    'WEBGL_color_buffer_float',
++                    'WEBGL_compressed_texture_s3tc',
++                    'WEBKIT_WEBGL_compressed_texture_s3tc',
++                    'WEBGL_debug_renderer_info',
++                    'WEBGL_debug_shaders',
++                    'WEBGL_depth_texture',
++                    'WEBKIT_WEBGL_depth_texture',
++                    'WEBGL_draw_buffers',
++                    'WEBGL_lose_context',
++                    'WEBKIT_WEBGL_lose_context'
++                ]
++            };
++            
++            function spoofWebGL(proto) {
++                const originalGetParameter = proto.getParameter;
++                proto.getParameter = function(parameter) {
++                    switch (parameter) {
++                        case this.VENDOR:
++                            return webglSpoofData.vendor;
++                        case this.RENDERER:
++                            return webglSpoofData.renderer;
++                        case this.VERSION:
++                            return webglSpoofData.version;
++                        case this.SHADING_LANGUAGE_VERSION:
++                            return webglSpoofData.shadingLanguageVersion;
++                        case this.UNMASKED_VENDOR_WEBGL:
++                            return webglSpoofData.vendor;
++                        case this.UNMASKED_RENDERER_WEBGL:
++                            return webglSpoofData.renderer;
++                        default:
++                            return originalGetParameter.call(this, parameter);
++                    }
++                };
++                
++                const originalGetExtension = proto.getExtension;
++                proto.getExtension = function(name) {
++                    if (webglSpoofData.extensions.includes(name)) {
++                        return originalGetExtension.call(this, name);
++                    }
++                    return null;
++                };
++                
++                const originalGetSupportedExtensions = proto.getSupportedExtensions;
++                proto.getSupportedExtensions = function() {
++                    return webglSpoofData.extensions;
++                };
++            }
++            
++            spoofWebGL(webglProto);
++            if (webgl2Proto) spoofWebGL(webgl2Proto);
++        })();
++    `;
++}
++
++exports.injectFingerprintSpoofing = injectFingerprintSpoofing;

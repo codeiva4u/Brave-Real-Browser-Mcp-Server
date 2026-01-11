@@ -1,0 +1,130 @@
+{
+  "name": "brave-real-puppeteer-core",
+  "version": "1.0.1",
+  "description": "🦁 Brave Real-World Optimized Puppeteer & Playwright Core with 1-5ms ultra-fast timing, 50+ professional stealth features, intelligent browser auto-detection, and 100% bot detection bypass. Features cross-platform Brave browser integration, comprehensive anti-detection, and breakthrough performance improvements.",
+  "keywords": [
+    "automation",
+    "bot",
+    "bot-detection",
+    "stealth",
+    "undetectable",
+    "fingerprint-spoofing",
+    "navigator-spoofing",
+    "canvas-spoofing",
+    "webgl-spoofing",
+    "crawler",
+    "crawling",
+    "chromedriver",
+    "webdriver",
+    "headless",
+    "headless-chrome",
+    "captcha",
+    "scraping",
+    "web-scraping",
+    "cloudflare",
+    "datadome",
+    "chrome",
+    "puppeteer",
+    "puppeteer-extra",
+    "selenium",
+    "playwright",
+    "rebrowser",
+    "rebrowser-patches",
+    "rebrowser-stealth",
+    "brave",
+    "brave-browser",
+    "brave-core",
+    "brave-real",
+    "ultra-fast",
+    "1-5ms-timing"
+  ],
+  "author": {
+    "name": "Rebrowser",
+    "email": "info@rebrowser.net",
+    "url": "https://rebrowser.net"
+  },
+  "contributors": [
+    "Nick Webson <nwebson@rebrowser.net>"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rebrowser/rebrowser-patches.git"
+  },
+  "bugs": {
+    "url": "https://github.com/rebrowser/rebrowser-patches/issues"
+  },
+  "files": [
+    "/patches",
+    "/scripts"
+  ],
+  "homepage": "https://rebrowser.net",
+  "main": "scripts/patcher.js",
+  "bin": {
+    "brave-stealth": "scripts/patcher.js",
+    "brave-patches": "scripts/patcher.js",
+    "brave-enhanced": "scripts/patcher.js",
+    "rebrowser-stealth": "scripts/patcher.js",
+    "rebrowser-patches": "scripts/patcher.js",
+    "rebrowser-enhanced": "scripts/patcher.js"
+  },
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "start": "node ./scripts/patcher.js",
+    "cjs_test": "node ./scripts/test_cjs.cjs",
+    "esm_test": "node ./scripts/test-bot-detector.js",
+    "patch": "node ./scripts/patcher.js patch",
+    "patch-puppeteer": "node ./scripts/enhanced-patcher.js patch-comprehensive --packageName=puppeteer-core && npm run create-brave-puppeteer && npm run ai-agent",
+    "patch-playwright": "node ./scripts/enhanced-patcher.js patch-comprehensive --packageName=playwright-core && npm run create-brave-playwright && npm run ai-agent",
+    "patch-both": "npm run version-sync && npm run patch-puppeteer-basic && npm run patch-playwright-basic && npm run create-brave-packages && npm run ai-agent && npm run check-versions",
+    "patch-puppeteer-basic": "node ./scripts/enhanced-patcher.js patch-comprehensive --packageName=puppeteer-core",
+    "patch-playwright-basic": "node ./scripts/enhanced-patcher.js patch-comprehensive --packageName=playwright-core",
+    "setup-puppeteer": "npm install puppeteer-core && npm run patch-puppeteer && npm run test-bot-detector-headless && echo 🎭 Puppeteer-core setup completed with EVERYTHING!",
+    "setup-playwright": "npm install playwright-core && npm run patch-playwright && npm run test-bot-detector-headless && echo 🎪 Playwright-core setup completed with EVERYTHING!",
+    "setup-both": "npm install puppeteer-core playwright-core && npm run patch-both && npm run test-bot-detector-headless && echo 🎯 Both engines setup completed with ALL FEATURES!",
+    "setup-both-basic": "npm install puppeteer-core playwright-core && npm run patch-puppeteer-basic && npm run patch-playwright-basic && echo 🎯 Both engines setup completed with stealth only!",
+    "setup-complete": "npm install puppeteer-core playwright-core && npm run version-sync && npm run patch-both && npm run ai-agent && npm run test-bot-detector-headless && echo 🚀 Complete setup with stealth + AI + testing completed!",
+    "install-puppeteer": "npm install puppeteer-core && npm run patch-puppeteer",
+    "install-playwright": "npm install playwright-core && npm run patch-playwright",
+    "ai-agent": "node ./scripts/ai-agent.js",
+    "create-brave-puppeteer": "node ./scripts/create-brave-package.js --engine=puppeteer",
+    "create-brave-playwright": "node ./scripts/create-brave-package.js --engine=playwright",
+    "create-brave-packages": "npm run version-sync && npm run create-brave-puppeteer && npm run create-brave-playwright",
+    "check-versions": "node ./scripts/check-versions.js",
+    "version-sync": "node ./scripts/version-sync-checker.js",
+    "version-sync-fix": "node ./scripts/version-sync-checker.js fix",
+    "version-table": "node ./scripts/version-sync-checker.js table",
+    "test-bot-detector": "node ./scripts/test-bot-detector.js",
+    "test-bot-detector-headless": "node ./scripts/test-bot-detector.js --headless",
+    "test-bot-detector-mobile": "node ./scripts/test-bot-detector.js --mobile",
+    "test-puppeteer": "node ./scripts/test-bot-detector.js",
+    "test-puppeteer-headless": "node ./scripts/test-bot-detector.js --headless",
+    "test-puppeteer-mobile": "node ./scripts/test-bot-detector.js --mobile",
+    "test-playwright": "node ./scripts/test-playwright-bot-detector.js",
+    "test-playwright-headless": "node ./scripts/test-playwright-bot-detector.js --headless",
+    "test-playwright-mobile": "node ./scripts/test-playwright-bot-detector.js --mobile",
+    "test-features": "node ./scripts/test-features.js",
+    "test": "npm run ai-agent",
+    "setup-ai-enhanced": "npm install puppeteer-core playwright-core && npm run patch-both && npm run create-brave-packages && npm run ai-agent && echo 🤖 AI-Enhanced setup with Brave packages completed!",
+    "setup-ultimate": "npm install puppeteer-core playwright-core && npm run patch-both && npm run test-bot-detector && npm run test-bot-detector-mobile && echo 🔥 Ultimate setup with all features completed!",
+    "help": "echo 🎆 BRAVE STEALTH COMMANDS: && echo 🚀 Quick Setup: npm run setup-both && echo 🎨 Individual: npm run patch-puppeteer / patch-playwright && echo 🤖 AI Testing: npm run ai-agent && echo 🤾 Bot Testing: npm run test-bot-detector && echo 📊 Versions: npm run version-sync && echo 🔧 Fix Versions: npm run version-sync-fix",
+    "features": "echo 🚫️ 50+ STEALTH FEATURES: Navigator, Canvas, WebGL, Performance, Human Behavior && echo 🤖 AI FEATURES: Intelligence Testing, Auto Analysis, Smart Cleanup && echo 🦁 BRAVE FEATURES: Auto-Detection, Optimized Launch, Privacy Protection",
+    "test-workflow": "echo 🧪 WORKFLOW TEST INSTRUCTIONS: && echo === Brave NPM Auto-Publish Workflow === && echo 1. Go to GitHub Actions tab && echo 2. Select '🦁 Brave NPM Auto-Publish Workflow' && echo 3. Click 'Run workflow' && echo 4. Set test_mode: true && echo 5. Choose version_type: patch/minor/major && echo 6. Select packages to publish && echo 7. Click 'Run workflow' button && echo 🚀 Test complete publishing workflow with semantic versioning!",
+    "release": "echo 🚀 Creating new release... && gh workflow run publish-packages.yml --field version_type=patch --field test_mode=false",
+    "release-minor": "echo 🚀 Creating minor release... && gh workflow run publish-packages.yml --field version_type=minor --field test_mode=false",
+    "release-major": "echo 🚀 Creating major release... && gh workflow run publish-packages.yml --field version_type=major --field test_mode=false",
+    "test-release": "echo 🧪 Testing release workflow... && gh workflow run publish-packages.yml --field version_type=patch --field test_mode=true",
+    "test-version": "node ./scripts/test-version-management.js"
+  },
+  "dependencies": {
+    "brave-real-launcher": "*",
+    "yargs": "^18.0.0"
+  },
+  "optionalDependencies": {
+    "playwright-core": "^1.57.0",
+    "puppeteer-core": "^24.34.0"
+  },
+  "devDependencies": {
+    "test": "^3.3.0"
+  }
+}

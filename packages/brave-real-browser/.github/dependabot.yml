@@ -1,0 +1,44 @@
+version: 2
+updates:
+  # npm dependencies को हर हफ्ते check करें और auto-update करें
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    # Auto-merge छोटे updates के लिए
+    open-pull-requests-limit: 10
+    # Commit message customization
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    # Dependency groups - सभी को एक साथ update करें
+    groups:
+      all-dependencies:
+        patterns:
+          - "*"
+    # Version update strategy
+    versioning-strategy: increase
+    # Labels for PRs
+    labels:
+      - "dependencies"
+      - "automated"
+    # Ignore specific updates (if needed)
+    # ignore:
+    #   - dependency-name: "package-name"
+    #     versions: ["x.x.x"]
+    
+  # GitHub Actions को भी auto-update करें
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    commit-message:
+      prefix: "chore(ci)"
+      include: "scope"
+    labels:
+      - "ci"
+      - "automated"

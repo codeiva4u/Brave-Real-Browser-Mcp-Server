@@ -1,0 +1,146 @@
+--- a/lib/cjs/puppeteer/cdp/ExecutionContext.js
++++ b/lib/cjs/puppeteer/cdp/ExecutionContext.js
+@@ -308,6 +308,89 @@
+     }
+     
++    // rebrowser-stealth: prevent function-based detection mechanisms
++    #getFunctionDetectionPreventionScript() {
++        return `
++            (function() {
++                'use strict';
++                
++                // Prevent dummyFn detection by avoiding main world interaction
++                const preventDummyFnDetection = function() {
++                    // If dummyFn exists in main world, neutralize it safely
++                    if (typeof window.dummyFn === 'function') {
++                        // Store original function
++                        const originalDummyFn = window.dummyFn;
++                        
++                        // Replace with safe no-op version
++                        window.dummyFn = function() {
++                            // Return undefined to avoid triggering detection
++                            // Do NOT call the original function as it marks us as automation
++                            return undefined;
++                        };
++                        
++                        // Ensure function appears native
++                        Object.defineProperty(window.dummyFn, 'toString', {
++                            value: function() {
++                                return 'function dummyFn() { [native code] }';
++                            },
++                            configurable: false
++                        });
++                    }
++                    
++                    // Prevent accidental dummyFn creation
++                    Object.defineProperty(window, 'dummyFn', {
++                        get: function() {
++                            return undefined; // Always return undefined
++                        },
++                        set: function(value) {
++                            // Ignore any attempts to set dummyFn
++                            return false;
++                        },
++                        configurable: true
++                    });
++                };
++                
++                // Prevent exposedFn detection (page.exposeFunction)
++                const preventExposedFnDetection = function() {
++                    // Ensure exposedFn never exists or gets created
++                    if ('exposedFn' in window) {
++                        delete window.exposedFn;
++                    }
++                    
++                    // Prevent exposedFn property creation
++                    Object.defineProperty(window, 'exposedFn', {
++                        get: function() {
++                            return undefined;
++                        },
++                        set: function(value) {
++                            // Block any attempt to create exposedFn
++                            return false;
++                        },
++                        configurable: true,
++                        enumerable: false
++                    });
++                    
++                    // Also prevent variations of exposedFn
++                    const exposedFnVariations = [
++                        'exposedFn', 'exposedFunction', '__exposedFn__', 
++                        'puppeteerExposed', 'playwrightExposed'
++                    ];
++                    
++                    exposedFnVariations.forEach(fnName => {
++                        if (fnName in window) {
++                            delete window[fnName];
++                        }
++                        
++                        Object.defineProperty(window, fnName, {
++                            get: () => undefined,
++                            set: () => false,
++                            configurable: true,
++                            enumerable: false
++                        });
++                    });
++                };
++                
++                // General function exposure prevention
++                const preventFunctionExposure = function() {
++                    // Override common function exposure mechanisms
++                    const originalDefineProperty = Object.defineProperty;
++                    
++                    Object.defineProperty = function(obj, prop, descriptor) {
++                        // Block creation of suspicious function names
++                        if (obj === window && typeof prop === 'string') {
++                            const suspiciousFunctions = [
++                                'dummyFn', 'exposedFn', 'testFn', 'puppeteerFn', 
++                                'playwrightFn', '__webdriver_func', '__puppeteer_func'
++                            ];
++                            
++                            if (suspiciousFunctions.some(fn => prop.includes(fn))) {
++                                // Ignore suspicious function definitions
++                                return obj;
++                            }
++                        }
++                        
++                        return originalDefineProperty.call(this, obj, prop, descriptor);
++                    };
++                };
++                
++                // Initialize all prevention mechanisms
++                try {
++                    preventDummyFnDetection();
++                    preventExposedFnDetection();
++                    preventFunctionExposure();
++                } catch (error) {
++                    // Silently handle any errors in function detection prevention
++                }
++                
++            })();
++        `;
++    }
++    
+     async #evaluate(returnByValue, pageFunction, ...args) {
+         // rebrowser-stealth: ensure isolated world execution before any evaluation
+         if (process.env['REBROWSER_STEALTH_MODE'] !== '0') {
+@@ -332,6 +415,16 @@
+             }
+         }
+         
++        // rebrowser-stealth: inject function detection prevention
++        if (process.env['REBROWSER_STEALTH_MODE'] !== '0' && this.#id > 0) {
++            try {
++                await this.#client.send('Runtime.evaluate', {
++                    expression: this.#getFunctionDetectionPreventionScript(),
++                    contextId: this.#id,
++                    returnByValue: false
++                });
++            } catch (error) {
++                process.env['REBROWSER_STEALTH_DEBUG'] && console.log('[rebrowser-stealth] function detection prevention error:', error.message);
++            }
++        }
++        
+         // rebrowser-patches: context id is missing, acquire it and try again
+         if (this.#id < 0) {
+             await this.acquireContextId();

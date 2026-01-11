@@ -1,0 +1,226 @@
+--- a/lib/cjs/puppeteer/cdp/ExecutionContext.js
++++ b/lib/cjs/puppeteer/cdp/ExecutionContext.js
+@@ -15,6 +15,7 @@
+  * limitations under the License.
+  */
+ 
++const UTILITY_WORLD_NAME = process.env['REBROWSER_PATCHES_UTILITY_WORLD_NAME'] || '__rebrowser_utility_world__';
+ const util_js_1 = require("../common/util.js");
+ const errors_js_1 = require("../common/errors.js");
+ const LazyArg_js_1 = require("./LazyArg.js");
+@@ -335,6 +336,21 @@
+     async evaluateHandle(pageFunction, ...args) {
+         return await this.#evaluate(false, pageFunction, ...args);
+     }
++    
++    // rebrowser-stealth: ensure isolated world execution
++    async #ensureIsolatedWorldExecution(expression) {
++        // Check if we're in main world by testing for document access
++        const mainWorldCheck = `
++            (function() {
++                try {
++                    return typeof document !== 'undefined' && 
++                           document.getElementsByClassName !== undefined;
++                } catch(e) {
++                    return false;
++                }
++            })()
++        `;
++        
++        try {
++            const { result } = await this.#client.send('Runtime.evaluate', {
++                expression: mainWorldCheck,
++                contextId: this.#id,
++                returnByValue: true
++            });
++            
++            // If we can access document, we're in main world - create isolated context
++            if (result.value === true) {
++                console.warn('[rebrowser-stealth] Detected main world execution, creating isolated context');
++                
++                // Create isolated world for secure execution
++                const { executionContextId } = await this.#client.send('Page.createIsolatedWorld', {
++                    frameId: this._frame._id,
++                    worldName: UTILITY_WORLD_NAME,
++                    grantUniveralAccess: false
++                });
++                
++                // Update context ID to isolated world
++                this.#id = executionContextId;
++                
++                // Inject stealth scripts in isolated world
++                await this.#client.send('Runtime.evaluate', {
++                    expression: this.#getComprehensiveStealthScript(),
++                    contextId: this.#id,
++                    returnByValue: false
++                });
++            }
++        } catch (error) {
++            // Fallback: if isolation fails, use alternative approach
++            console.warn('[rebrowser-stealth] Isolated world creation failed, using alternative approach:', error.message);
++        }
++    }
++    
++    // rebrowser-stealth: comprehensive stealth script for isolated execution
++    #getComprehensiveStealthScript() {
++        return `
++            (function() {
++                'use strict';
++                
++                // Isolated execution marker
++                if (typeof window.__rebrowser_stealth_isolated__ !== 'undefined') {
++                    return; // Already initialized in isolated context
++                }
++                window.__rebrowser_stealth_isolated__ = true;
++                
++                // Navigator spoofing with proper Chrome version
++                const navigatorSpoofing = function() {
++                    if ('webdriver' in navigator) {
++                        delete navigator.webdriver;
++                    }
++                    
++                    Object.defineProperty(navigator, 'webdriver', {
++                        get: () => undefined,
++                        configurable: true,
++                        enumerable: false
++                    });
++                    
++                    // Enhanced user agent with proper Chrome version format
++                    const userAgent = navigator.userAgent.replace(/Headless/g, '');
++                    
++                    Object.defineProperty(navigator, 'userAgent', {
++                        get: () => userAgent,
++                        configurable: true
++                    });
++                    
++                    Object.defineProperty(navigator, 'appVersion', {
++                        get: () => navigator.appVersion.replace(/Headless/g, ''),
++                        configurable: true
++                    });
++                    
++                    // Plugins spoofing
++                    const realisticPlugins = [
++                        { name: 'Chrome PDF Plugin', filename: 'internal-pdf-viewer', description: 'Portable Document Format' },
++                        { name: 'Chrome PDF Viewer', filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai', description: '' },
++                        { name: 'Native Client', filename: 'internal-nacl-plugin', description: '' }
++                    ];
++                    
++                    Object.defineProperty(navigator, 'plugins', {
++                        get: () => realisticPlugins,
++                        configurable: true
++                    });
++                };
++                
++                // Screen and viewport spoofing
++                const screenSpoofing = function() {
++                    const screenData = {
++                        width: 1920,
++                        height: 1080,
++                        availWidth: 1920,
++                        availHeight: 1040,
++                        colorDepth: 24,
++                        pixelDepth: 24
++                    };
++                    
++                    Object.keys(screenData).forEach(prop => {
++                        Object.defineProperty(screen, prop, {
++                            get: () => screenData[prop],
++                            configurable: true
++                        });
++                    });
++                };
++                
++                // Remove automation indicators
++                const removeAutomationIndicators = function() {
++                    const indicators = [
++                        '_phantom', '__nightmare', 'callPhantom',
++                        '_selenium', '__selenium_unwrapped', '__selenium_evaluate',
++                        '__fxdriver_evaluate', '__driver_evaluate', '__webdriver_evaluate',
++                        '__fxdriver_unwrapped', '__driver_unwrapped', '__webdriver_unwrapped',
++                        '__puppeteer__', 'puppeteer',
++                        '__playwright__', 'playwright'
++                    ];
++                    
++                    indicators.forEach(indicator => {
++                        delete window[indicator];
++                    });
++                };
++                
++                // Prevent dummyFn execution to avoid main world detection
++                const preventDummyFnExecution = function() {
++                    if (typeof window.dummyFn === 'function') {
++                        // Replace with safe no-op function
++                        window.dummyFn = function() {
++                            return false; // Don't trigger detection
++                        };
++                    }
++                };
++                
++                // Runtime enable leak prevention
++                const preventRuntimeEnableLeak = function() {
++                    // Override Error constructor to prevent stack trace inspection
++                    const OriginalError = window.Error;
++                    window.Error = function(...args) {
++                        const error = new OriginalError(...args);
++                        
++                        // Override stack getter to prevent inspection
++                        Object.defineProperty(error, 'stack', {
++                            configurable: false,
++                            enumerable: false,
++                            get() {
++                                return 'Error\n    at <anonymous>:1:1';
++                            }
++                        });
++                        
++                        return error;
++                    };
++                    
++                    // Prevent console.debug stack inspection
++                    const originalConsoleDebug = console.debug;
++                    console.debug = function(...args) {
++                        // Filter out error objects that could leak stack info
++                        const filteredArgs = args.filter(arg => !(arg instanceof Error));
++                        return originalConsoleDebug.apply(console, filteredArgs);
++                    };
++                };
++                
++                // Prevent exposeFunction leak
++                const preventExposeFunctionLeak = function() {
++                    // Ensure no window.exposedFn is created
++                    if ('exposedFn' in window) {
++                        delete window.exposedFn;
++                    }
++                    
++                    // Prevent creation of exposedFn
++                    Object.defineProperty(window, 'exposedFn', {
++                        get: () => undefined,
++                        set: () => false,
++                        configurable: true
++                    });
++                };
++                
++                // Apply all stealth measures
++                try {
++                    navigatorSpoofing();
++                    screenSpoofing();
++                    removeAutomationIndicators();
++                    preventDummyFnExecution();
++                    preventRuntimeEnableLeak();
++                    preventExposeFunctionLeak();
++                } catch(e) {
++                    // Silently handle any errors in stealth application
++                }
++                
++            })();
++        `;
++    }
++    
+     async #evaluate(returnByValue, pageFunction, ...args) {
++        // rebrowser-stealth: ensure isolated world execution before any evaluation
++        if (process.env['REBROWSER_STEALTH_MODE'] !== '0') {
++            await this.#ensureIsolatedWorldExecution();
++        }
++        
+         // rebrowser-patches: context id is missing, acquire it and try again
+         if (this.#id < 0) {
+             await this.acquireContextId();

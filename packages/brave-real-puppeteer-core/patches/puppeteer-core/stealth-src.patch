@@ -1,0 +1,254 @@
+--- a/src/cdp/ExecutionContext.ts
++++ b/src/cdp/ExecutionContext.ts
+@@ -14,6 +14,44 @@
+  * limitations under the License.
+  */
+ 
++// REBROWSER STEALTH: Enhanced anti-detection script
++const REBROWSER_STEALTH_SCRIPT = `
++(() => {
++  // Core stealth features
++  const stealthCore = {
++    // Remove webdriver property completely
++    removeWebdriver() {
++      if ('webdriver' in navigator) {
++        delete navigator.webdriver;
++      }
++      Object.defineProperty(navigator, 'webdriver', {
++        get: () => undefined,
++        set: () => {},
++        configurable: false,
++        enumerable: false
++      });
++    },
++    
++    // Enhanced user agent spoofing
++    spoofUserAgent() {
++      const realisticUA = navigator.userAgent.replace(/Headless/g, '');
++      
++      Object.defineProperty(navigator, 'userAgent', {
++        get: () => realisticUA,
++        configurable: true,
++        enumerable: false
++      });
++      
++      Object.defineProperty(navigator, 'appVersion', {
++        get: () => navigator.appVersion.replace(/Headless/g, ''),
++        configurable: true,
++        enumerable: false
++      });
++    },
++    
++    // Enhanced userAgentData with proper brands
++    spoofUserAgentData() {
++      Object.defineProperty(navigator, 'userAgentData', {
++        get: () => ({
++          brands: [
++            { brand: 'Not_A Brand', version: '8' },
++            { brand: 'Chromium', version: '140' },
++            { brand: 'Google Chrome', version: '140' }
++          ],
++          mobile: false,
++          platform: 'Windows',
++          getHighEntropyValues: function(hints) {
++            return Promise.resolve({
++              architecture: 'x86',
++              bitness: '64',
++              brands: this.brands,
++              fullVersionList: [
++                { brand: 'Not_A Brand', version: '8.0.0.0' },
++                { brand: 'Chromium', version: '140.0.7339.81' },
++                { brand: 'Google Chrome', version: '140.0.7339.81' }
++              ],
++              mobile: false,
++              model: '',
++              platform: 'Windows',
++              platformVersion: '10.0.0',
++              uaFullVersion: '140.0.7339.81'
++            });
++          }
++        }),
++        configurable: true,
++        enumerable: false
++      });
++    },
++    
++    // Realistic plugins simulation
++    spoofPlugins() {
++      const realisticPlugins = [
++        { name: 'Chrome PDF Plugin', filename: 'internal-pdf-viewer', description: 'Portable Document Format' },
++        { name: 'Chrome PDF Viewer', filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai', description: '' },
++        { name: 'Native Client', filename: 'internal-nacl-plugin', description: '' }
++      ];
++      
++      Object.defineProperty(navigator, 'plugins', {
++        get: () => realisticPlugins,
++        configurable: true,
++        enumerable: false
++      });
++    },
++    
++    // Language spoofing
++    spoofLanguages() {
++      Object.defineProperty(navigator, 'languages', {
++        get: () => ['en-US', 'en'],
++        configurable: true,
++        enumerable: false
++      });
++      
++      Object.defineProperty(navigator, 'language', {
++        get: () => 'en-US',
++        configurable: true,
++        enumerable: false
++      });
++    },
++    
++    // Remove chrome automation indicators
++    cleanChrome() {
++      if (window.chrome) {
++        if (window.chrome.runtime) delete window.chrome.runtime;
++        if (window.chrome.loadTimes) delete window.chrome.loadTimes;
++        if (window.chrome.csi) delete window.chrome.csi;
++      }
++    },
++    
++    // Remove all automation indicators
++    removeAutomationIndicators() {
++      const indicators = [
++        '_phantom', '__nightmare', 'callPhantom', '_selenium',
++        '__selenium_unwrapped', '__puppeteer__', 'puppeteer',
++        '__playwright__', 'playwright', 'webdriver'
++      ];
++      
++      indicators.forEach(indicator => {
++        if (window[indicator]) delete window[indicator];
++      });
++    },
++    
++    // Screen spoofing
++    spoofScreen() {
++      Object.defineProperty(screen, 'width', { get: () => 1920, configurable: true });
++      Object.defineProperty(screen, 'height', { get: () => 1080, configurable: true });
++      Object.defineProperty(screen, 'availWidth', { get: () => 1920, configurable: true });
++      Object.defineProperty(screen, 'availHeight', { get: () => 1040, configurable: true });
++      Object.defineProperty(screen, 'colorDepth', { get: () => 24, configurable: true });
++      Object.defineProperty(screen, 'pixelDepth', { get: () => 24, configurable: true });
++    },
++    
++    // Permission API spoofing
++    spoofPermissions() {
++      if (navigator.permissions && navigator.permissions.query) {
++        const originalQuery = navigator.permissions.query;
++        navigator.permissions.query = function(parameters) {
++          if (parameters.name === 'notifications') {
++            return Promise.resolve({ state: 'default' });
++          }
++          return originalQuery.apply(this, arguments);
++        };
++      }
++    },
++    
++    // WebGL fingerprint spoofing
++    spoofWebGL() {
++      const getContext = HTMLCanvasElement.prototype.getContext;
++      HTMLCanvasElement.prototype.getContext = function(contextType, contextAttributes) {
++        const context = getContext.apply(this, arguments);
++        
++        if (contextType === 'webgl' || contextType === 'experimental-webgl') {
++          const getParameter = context.getParameter;
++          context.getParameter = function(parameter) {
++            // Spoof common WebGL fingerprinting parameters
++            if (parameter === 7937) return 'Intel Inc.'; // VENDOR
++            if (parameter === 7938) return 'Intel(R) HD Graphics 620'; // RENDERER
++            return getParameter.apply(this, arguments);
++          };
++        }
++        
++        return context;
++      };
++    },
++    
++    // Hide property enumeration for our modifications
++    hidePropertyEnumeration() {
++      const originalGetOwnPropertyNames = Object.getOwnPropertyNames;
++      Object.getOwnPropertyNames = function(obj) {
++        const props = originalGetOwnPropertyNames.call(this, obj);
++        if (obj === navigator) {
++          return props.filter(prop => !['webdriver', 'userAgent', 'userAgentData', 'plugins', 'languages', 'language'].includes(prop));
++        }
++        return props;
++      };
++      
++      const originalGetOwnPropertyDescriptor = Object.getOwnPropertyDescriptor;
++      Object.getOwnPropertyDescriptor = function(obj, prop) {
++        const descriptor = originalGetOwnPropertyDescriptor.call(this, obj, prop);
++        if (obj === navigator && ['webdriver', 'userAgent', 'userAgentData', 'plugins', 'languages', 'language'].includes(prop)) {
++          return undefined;
++        }
++        return descriptor;
++      };
++    }
++  };
++  
++  // Apply all stealth features
++  stealthCore.removeWebdriver();
++  stealthCore.spoofUserAgent();
++  stealthCore.spoofUserAgentData();
++  stealthCore.spoofPlugins();
++  stealthCore.spoofLanguages();
++  stealthCore.cleanChrome();
++  stealthCore.removeAutomationIndicators();
++  stealthCore.spoofScreen();
++  stealthCore.spoofPermissions();
++  stealthCore.spoofWebGL();
++  stealthCore.hidePropertyEnumeration();
++  
++  // Set ready flag
++  window.__rebrowser_stealth_ready__ = true;
++})();
++`;
++
+ import type {Protocol} from 'devtools-protocol';
+ 
+ import {assert} from '../util/assert.js';
+@@ -84,6 +172,17 @@ export class ExecutionContext {
+     }
+   }
+ 
++  // REBROWSER STEALTH: Enhanced evaluation with stealth script injection
++  async evaluateWithStealth<
++    Params extends unknown[],
++    Func extends EvaluateFunc<Params> = EvaluateFunc<Params>,
++  >(
++    pageFunction: Func | string,
++    ...args: Params
++  ): Promise<Awaited<ReturnType<Func>>> {
++    await this.evaluate(REBROWSER_STEALTH_SCRIPT);
++    return this.evaluate(pageFunction, ...args);
++  }
++
+   /**
+    * @internal
+    */
+@@ -121,6 +220,20 @@ export class ExecutionContext {
+       throw error;
+     }
+   }
++  
++  // REBROWSER STEALTH: Auto-inject stealth script on world creation
++  async #injectStealthScript(): Promise<void> {
++    try {
++      await this.#client.send('Runtime.evaluate', {
++        expression: REBROWSER_STEALTH_SCRIPT,
++        contextId: this.#contextId,
++        returnByValue: false,
++        awaitPromise: false,
++        userGesture: false
++      });
++    } catch (error) {
++      // Silently fail to maintain stealth
++    }
++  }
+ 
+   /**
+    * @internal

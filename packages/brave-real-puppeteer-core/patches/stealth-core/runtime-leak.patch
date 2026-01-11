@@ -1,0 +1,154 @@
+--- a/lib/cjs/puppeteer/cdp/ExecutionContext.js
++++ b/lib/cjs/puppeteer/cdp/ExecutionContext.js
+@@ -230,6 +230,78 @@
+     }
+     
++    // rebrowser-stealth: comprehensive runtime execution leak prevention
++    #getRuntimeLeakPreventionScript() {
++        return `
++            (function() {
++                'use strict';
++                
++                // Runtime enable leak prevention - comprehensive approach
++                const preventRuntimeEnableLeak = function() {
++                    // Track original Error constructor
++                    const OriginalError = window.Error;
++                    const originalConsoleDebug = console.debug;
++                    
++                    // Override Error constructor to prevent stack inspection
++                    window.Error = function(...args) {
++                        const error = new OriginalError(...args);
++                        
++                        // Override stack getter with clean stack
++                        Object.defineProperty(error, 'stack', {
++                            configurable: false,
++                            enumerable: false,
++                            get() {
++                                // Return a clean, generic stack trace
++                                return 'Error\\n    at <anonymous>:1:1';
++                            },
++                            set() {
++                                // Prevent stack modification
++                                return false;
++                            }
++                        });
++                        
++                        return error;
++                    };
++                    
++                    // Ensure Error constructor maintains original prototype
++                    window.Error.prototype = OriginalError.prototype;
++                    
++                    // Override console.debug to prevent stack inspection
++                    console.debug = function(...args) {
++                        // Filter error objects and anything that might contain stack info
++                        const safeArgs = args.filter(arg => {
++                            if (arg instanceof Error || arg instanceof OriginalError) {
++                                return false;
++                            }
++                            if (typeof arg === 'object' && arg !== null) {
++                                // Check for stack-like properties
++                                if ('stack' in arg || 'message' in arg) {
++                                    return false;
++                                }
++                            }
++                            return true;
++                        });
++                        
++                        // Call original console.debug with safe arguments only
++                        if (safeArgs.length > 0) {
++                            return originalConsoleDebug.apply(console, safeArgs);
++                        }
++                        return undefined;
++                    };
++                    
++                    // Prevent stack lookups by overriding common stack inspection methods
++                    if (window.stackLookupCount !== undefined) {
++                        window.stackLookupCount = 0;
++                    }
++                    
++                    // Override setTimeout to prevent delayed stack inspection
++                    const originalSetTimeout = window.setTimeout;
++                    window.setTimeout = function(callback, delay) {
++                        if (typeof callback === 'function') {
++                            const wrappedCallback = function() {
++                                try {
++                                    return callback.apply(this, arguments);
++                                } catch (error) {
++                                    // Swallow errors that might expose stack traces
++                                    return undefined;
++                                }
++                            };
++                            return originalSetTimeout.call(window, wrappedCallback, delay);
++                        }
++                        return originalSetTimeout.call(window, callback, delay);
++                    };
++                };
++                
++                // Initialize runtime leak prevention
++                preventRuntimeEnableLeak();
++                
++                // Additional measures to prevent devtools detection
++                const preventDevToolsDetection = function() {
++                    // Override common devtools detection methods
++                    let devtools = {
++                        open: false,
++                        orientation: null
++                    };
++                    
++                    // Prevent console.clear detection
++                    const originalClear = console.clear;
++                    console.clear = function() {
++                        // Do nothing to prevent detection
++                        return undefined;
++                    };
++                    
++                    // Override performance.now to prevent timing attacks
++                    const originalPerformanceNow = performance.now;
++                    performance.now = function() {
++                        // Add slight randomness to prevent precise timing
++                        return originalPerformanceNow.call(performance) + Math.random() * 0.1;
++                    };
++                    
++                    // Prevent function toString inspection
++                    const originalToString = Function.prototype.toString;
++                    Function.prototype.toString = function() {
++                        if (this === console.debug || 
++                            this === window.Error || 
++                            this === console.clear ||
++                            this === performance.now) {
++                            return 'function ' + this.name + '() { [native code] }';
++                        }
++                        return originalToString.call(this);
++                    };
++                };
++                
++                preventDevToolsDetection();
++                
++            })();
++        `;
++    }
++    
+     async #evaluate(returnByValue, pageFunction, ...args) {
+         // rebrowser-stealth: ensure isolated world execution before any evaluation
+         if (process.env['REBROWSER_STEALTH_MODE'] !== '0') {
+@@ -246,6 +318,16 @@
+             }
+         }
+         
++        // rebrowser-stealth: inject runtime leak prevention
++        if (process.env['REBROWSER_STEALTH_MODE'] !== '0' && this.#id > 0) {
++            try {
++                await this.#client.send('Runtime.evaluate', {
++                    expression: this.#getRuntimeLeakPreventionScript(),
++                    contextId: this.#id,
++                    returnByValue: false
++                });
++            } catch (error) {
++                process.env['REBROWSER_STEALTH_DEBUG'] && console.log('[rebrowser-stealth] runtime leak prevention error:', error.message);
++            }
++        }
++        
+         // rebrowser-patches: context id is missing, acquire it and try again
+         if (this.#id < 0) {
+             await this.acquireContextId();

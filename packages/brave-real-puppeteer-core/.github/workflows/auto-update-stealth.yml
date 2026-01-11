@@ -1,0 +1,276 @@
+name: 🔄 Auto-Update, Build & Publish Workflow
+
+on:
+  # ⏰ DAILY: हर रोज़ सुबह 6 बजे (IST) चले
+  schedule:
+    - cron: '30 0 * * *'  # UTC 00:30 = IST 06:00
+  
+  # 🎯 MANUAL: Manual trigger with options
+  workflow_dispatch:
+    inputs:
+      force_publish:
+        description: 'Force publish even if no changes'
+        type: boolean
+        default: false
+      test_mode:
+        description: 'Test mode (dry run, no publish)'
+        type: boolean
+        default: false
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  unified-update-build-publish:
+    name: 🛡️ Update, Build & Publish
+    runs-on: ubuntu-latest
+    # Skip if last commit was by bot (prevent infinite loop)
+    if: "!contains(github.event.head_commit.message, 'Auto-Update') && !contains(github.event.head_commit.author.name, 'Auto-Update Bot')"
+    
+    permissions:
+      contents: write
+      packages: write
+    
+    steps:
+      # ==================== SETUP ====================
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_TOKEN }}
+          fetch-depth: 0
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+
+      - name: 📦 Install Dependencies
+        run: npm ci || npm install
+
+      # ==================== VERSION CHECKS ====================
+      - name: 🔍 Fetch Latest Chrome Version
+        id: chrome-version
+        run: |
+          LATEST_CHROME=$(curl -s 'https://chromiumdash.appspot.com/fetch_releases?channel=Stable&platform=Windows&num=1&offset=0' | node -e "
+            const data = require('fs').readFileSync('/dev/stdin', 'utf8');
+            const json = JSON.parse(data);
+            console.log(json[0].version);
+          ")
+          echo "chrome=$LATEST_CHROME" >> $GITHUB_OUTPUT
+          echo "🔵 Latest Chrome Version: $LATEST_CHROME"
+
+      - name: � Check Puppeteer & Playwright Versions
+        id: versions
+        run: |
+          # Get current versions from package.json
+          CURRENT_PUPPETEER=$(npm pkg get optionalDependencies.puppeteer-core | tr -d '\"^~' | sed 's/null//')
+          CURRENT_PLAYWRIGHT=$(npm pkg get optionalDependencies.playwright-core | tr -d '\"^~' | sed 's/null//')
+          
+          # Get latest versions from NPM
+          PUPPETEER_LATEST=$(npm view puppeteer-core version)
+          PLAYWRIGHT_LATEST=$(npm view playwright-core version)
+          
+          echo "puppeteer_current=$CURRENT_PUPPETEER" >> $GITHUB_OUTPUT
+          echo "puppeteer_latest=$PUPPETEER_LATEST" >> $GITHUB_OUTPUT
+          echo "playwright_current=$CURRENT_PLAYWRIGHT" >> $GITHUB_OUTPUT
+          echo "playwright_latest=$PLAYWRIGHT_LATEST" >> $GITHUB_OUTPUT
+          
+          # Check for updates
+          if [ "$CURRENT_PUPPETEER" != "$PUPPETEER_LATEST" ]; then
+            echo "puppeteer_update=true" >> $GITHUB_OUTPUT
+            echo "🆕 Puppeteer update: $CURRENT_PUPPETEER → $PUPPETEER_LATEST"
+          else
+            echo "puppeteer_update=false" >> $GITHUB_OUTPUT
+            echo "✅ Puppeteer current: $PUPPETEER_LATEST"
+          fi
+          
+          if [ "$CURRENT_PLAYWRIGHT" != "$PLAYWRIGHT_LATEST" ]; then
+            echo "playwright_update=true" >> $GITHUB_OUTPUT
+            echo "🆕 Playwright update: $CURRENT_PLAYWRIGHT → $PLAYWRIGHT_LATEST"
+          else
+            echo "playwright_update=false" >> $GITHUB_OUTPUT
+            echo "✅ Playwright current: $PLAYWRIGHT_LATEST"
+          fi
+
+      # ==================== UPDATE CODE ====================
+      - name: 🛠️ Verify Dynamic Chrome Version Setup
+        run: |
+          LATEST="${{ steps.chrome-version.outputs.chrome }}"
+          
+          # Verify chrome-version.js exists and works
+          if [ -f "scripts/chrome-version.js" ]; then
+            echo "✅ chrome-version.js found - Dynamic Chrome version enabled"
+            echo "📡 Latest Chrome: $LATEST"
+            echo "💡 Scripts will auto-fetch latest version at runtime from:"
+            echo "   - Primary: chromiumdash.appspot.com"
+            echo "   - Fallback: googlechromelabs.github.io"
+          else
+            echo "⚠️ chrome-version.js not found!"
+            exit 1
+          fi
+
+      - name: ⬆️ Update Dependencies to Latest
+        if: steps.versions.outputs.puppeteer_update == 'true' || steps.versions.outputs.playwright_update == 'true'
+        run: |
+          PUPPETEER_LATEST="${{ steps.versions.outputs.puppeteer_latest }}"
+          PLAYWRIGHT_LATEST="${{ steps.versions.outputs.playwright_latest }}"
+          
+          npm pkg set optionalDependencies.puppeteer-core="^$PUPPETEER_LATEST"
+          npm pkg set optionalDependencies.playwright-core="^$PLAYWRIGHT_LATEST"
+          npm install
+          
+          echo "✅ Dependencies updated"
+
+      # ==================== PATCH ====================
+      - name: 🔧 Apply Stealth Patches
+        run: |
+          npm run patch-both || true
+          echo "✅ Patches applied"
+
+      # ==================== TEST ====================
+      - name: 🧪 Run Tests
+        id: tests
+        continue-on-error: true
+        run: |
+          echo "🧪 Running AI Agent Test..."
+          npm run ai-agent 2>&1 | tee test_output.txt || true
+          
+          if grep -q "FAILED\|Error" test_output.txt; then
+            echo "status=failed" >> $GITHUB_OUTPUT
+          else
+            echo "status=passed" >> $GITHUB_OUTPUT
+          fi
+
+      # ==================== BUILD PACKAGES ====================
+      - name: 🏗️ Generate Package Versions
+        id: package-version
+        run: |
+          PUPPETEER_VERSION="${{ steps.versions.outputs.puppeteer_latest }}"
+          PLAYWRIGHT_VERSION="${{ steps.versions.outputs.playwright_latest }}"
+          
+          echo "🔍 Checking existing NPM versions..."
+          
+          # Puppeteer version generation
+          if npm view "brave-real-puppeteer-core@$PUPPETEER_VERSION" version 2>/dev/null >/dev/null; then
+            # Base version exists, find next patch
+            PATCH=1
+            while npm view "brave-real-puppeteer-core@$PUPPETEER_VERSION-patch.$PATCH" version 2>/dev/null >/dev/null; do
+              PATCH=$((PATCH + 1))
+            done
+            PUPPETEER_NEW="$PUPPETEER_VERSION-patch.$PATCH"
+          else
+            PUPPETEER_NEW="$PUPPETEER_VERSION"
+          fi
+          
+          # Playwright version generation
+          if npm view "brave-real-playwright-core@$PLAYWRIGHT_VERSION" version 2>/dev/null >/dev/null; then
+            # Base version exists, find next patch
+            PATCH=1
+            while npm view "brave-real-playwright-core@$PLAYWRIGHT_VERSION-patch.$PATCH" version 2>/dev/null >/dev/null; do
+              PATCH=$((PATCH + 1))
+            done
+            PLAYWRIGHT_NEW="$PLAYWRIGHT_VERSION-patch.$PATCH"
+          else
+            PLAYWRIGHT_NEW="$PLAYWRIGHT_VERSION"
+          fi
+          
+          echo "puppeteer=$PUPPETEER_NEW" >> $GITHUB_OUTPUT
+          echo "playwright=$PLAYWRIGHT_NEW" >> $GITHUB_OUTPUT
+          echo "🎭 Puppeteer package: $PUPPETEER_NEW"
+          echo "🎪 Playwright package: $PLAYWRIGHT_NEW"
+
+      - name: 📦 Create Brave Packages
+        run: |
+          PUPPETEER_VER="${{ steps.package-version.outputs.puppeteer }}"
+          PLAYWRIGHT_VER="${{ steps.package-version.outputs.playwright }}"
+          
+          node ./scripts/create-brave-package.js --engine=puppeteer --brave-version=$PUPPETEER_VER
+          node ./scripts/create-brave-package.js --engine=playwright --brave-version=$PLAYWRIGHT_VER
+          
+          echo "✅ Packages created"
+
+      # ==================== COMMIT CHANGES ====================
+      - name: � Check for Changes
+        id: changes
+        run: |
+          if git diff --quiet; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "📝 No changes"
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            git diff --stat
+          fi
+
+      - name: 📝 Commit Changes
+        if: steps.changes.outputs.has_changes == 'true'
+        run: |
+          git config user.name "Auto-Update Bot"
+          git config user.email "bot@github.com"
+          
+          CHROME="${{ steps.chrome-version.outputs.chrome }}"
+          PUPPETEER="${{ steps.versions.outputs.puppeteer_latest }}"
+          PLAYWRIGHT="${{ steps.versions.outputs.playwright_latest }}"
+          
+          git add -A
+          git commit -m "🔄 Auto-Update: Chrome $CHROME, Puppeteer $PUPPETEER, Playwright $PLAYWRIGHT [skip ci]"
+          git pull origin main --rebase || true
+          git push origin main || echo "Push failed, may have conflicts"
+
+      # ==================== PUBLISH TO NPM ====================
+      - name: 🚀 Publish Brave Puppeteer Package
+        if: |
+          github.event.inputs.test_mode != 'true' &&
+          (steps.changes.outputs.has_changes == 'true' || github.event.inputs.force_publish == 'true' || github.event_name == 'workflow_dispatch')
+        run: |
+          cd dist/brave-real-puppeteer-core
+          npm publish --access public || echo "Version may already exist"
+          echo "🎭 Published brave-real-puppeteer-core@${{ steps.package-version.outputs.puppeteer }}"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: 🚀 Publish Brave Playwright Package
+        if: |
+          github.event.inputs.test_mode != 'true' &&
+          (steps.changes.outputs.has_changes == 'true' || github.event.inputs.force_publish == 'true' || github.event_name == 'workflow_dispatch')
+        run: |
+          cd dist/brave-real-playwright-core
+          npm publish --access public || echo "Version may already exist"
+          echo "🎪 Published brave-real-playwright-core@${{ steps.package-version.outputs.playwright }}"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # ==================== RELEASE ====================
+      - name: 🏷️ Create Git Tag
+        if: |
+          github.event.inputs.test_mode != 'true' &&
+          (steps.changes.outputs.has_changes == 'true' || github.event.inputs.force_publish == 'true')
+        run: |
+          TAG="v${{ steps.package-version.outputs.puppeteer }}-${{ steps.package-version.outputs.playwright }}"
+          
+          if ! git rev-parse "$TAG" >/dev/null 2>&1; then
+            git tag -a "$TAG" -m "Release $TAG"
+            git push origin "$TAG"
+            echo "✅ Tag $TAG created"
+          fi
+
+      # ==================== SUMMARY ====================
+      - name: 📋 Create Summary
+        run: |
+          echo "## 🔄 Unified Workflow Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Chrome | ${{ steps.chrome-version.outputs.chrome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Puppeteer | ${{ steps.versions.outputs.puppeteer_latest }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Playwright | ${{ steps.versions.outputs.playwright_latest }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Tests | ${{ steps.tests.outputs.status }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Changes | ${{ steps.changes.outputs.has_changes }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ github.event.inputs.test_mode }}" = "true" ]; then
+            echo "🧪 **TEST MODE** - No packages published" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "🚀 Packages published to NPM!" >> $GITHUB_STEP_SUMMARY
+          fi

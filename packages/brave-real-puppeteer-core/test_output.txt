@@ -1,0 +1,59 @@
+
+> brave-real-puppeteer-playwright-core@1.0.1 ai-agent
+> node ./scripts/ai-agent.js
+
+🚀 Starting AI Test Agent...
+🤖 AI TEST AGENT STARTING...
+===================================================
+🧠 Intelligent automation testing initiated
+
+🔍 AI Agent: Validating environment...
+📦 Node.js version: v20.19.6
+🌐 Using system Chrome (CI/Docker environment)
+✅ Environment validation completed
+
+🏗️ AI Agent: Auto-building project...
+✅ Auto-build completed
+
+🧪 AI Agent: Running simplified intelligent tests...
+🤖 Running simplified stealth validation test...
+🎯 Running simplified validation test...
+✅ package.json: Found
+✅ stealth scripts: Found
+✅ patches folder: Found
+📊 Validation completed: 3/3 checks passed
+✅ Smart testing completed
+
+📊 AI Agent: Analyzing test results...
+🧠 AI Analysis for Puppeteer:
+   validation: 3.194216187609003ms 🏆 EXCELLENT
+   📊 Average timing: 3.2ms
+🧠 AI Analysis for Playwright:
+   validation: 5.312275087944419ms 🏆 EXCELLENT
+   📊 Average timing: 5.3ms
+✅ AI analysis completed
+
+🧹 AI Agent: Performing intelligent cleanup...
+✅ Smart cleanup completed
+
+📋 AI AGENT FINAL REPORT
+===============================
+
+🎯 TEST RESULTS:
+   Puppeteer: ✅ PASSED
+   Playwright: ✅ PASSED
+
+🎭 PUPPETEER PERFORMANCE:
+   validation: 3.194216187609003ms
+
+🎪 PLAYWRIGHT PERFORMANCE:
+   validation: 5.312275087944419ms
+
+⏱️ EXECUTION METRICS:
+   Total duration: 0.0s
+   Puppeteer test: 0.1s
+   Playwright test: 0.1s
+
+🏆 OVERALL STATUS: ✅ ALL TESTS PASSED
+
+🤖 AI Agent execution completed successfully! 🎉

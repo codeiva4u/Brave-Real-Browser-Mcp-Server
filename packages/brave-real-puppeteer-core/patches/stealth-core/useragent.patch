@@ -1,0 +1,116 @@
+--- a/lib/cjs/puppeteer/cdp/ExecutionContext.js
++++ b/lib/cjs/puppeteer/cdp/ExecutionContext.js
+@@ -140,6 +140,91 @@
+         }
+     }
+     
++    // rebrowser-stealth: enhanced user agent spoofing for Chrome version detection
++    #getUserAgentStealthScript() {
++        return `
++            (function() {
++                'use strict';
++                
++                // Comprehensive Chrome version spoofing
++                const generateRealisticChromeUA = function() {
++                    // Latest stable Chrome versions with proper format
++                    const chromeVersionData = [
++                        {
++                            version: '120.0.6099.216',
++                            webkitVersion: '537.36',
++                            platform: 'Windows NT 10.0; Win64; x64'
++                        },
++                        {
++                            version: '119.0.6045.199', 
++                            webkitVersion: '537.36',
++                            platform: 'Windows NT 10.0; Win64; x64'
++                        },
++                        {
++                            version: '118.0.5993.117',
++                            webkitVersion: '537.36', 
++                            platform: 'Windows NT 10.0; Win64; x64'
++                        }
++                    ];
++                    
++                    const selected = chromeVersionData[Math.floor(Math.random() * chromeVersionData.length)];
++                    
++                    return {
++                        userAgent: \`Mozilla/5.0 (\${selected.platform}) AppleWebKit/\${selected.webkitVersion} (KHTML, like Gecko) Chrome/\${selected.version} Safari/\${selected.webkitVersion}\`,
++                        appVersion: \`5.0 (\${selected.platform}) AppleWebKit/\${selected.webkitVersion} (KHTML, like Gecko) Chrome/\${selected.version} Safari/\${selected.webkitVersion}\`,
++                        version: selected.version,
++                        platform: selected.platform,
++                        webkitVersion: selected.webkitVersion
++                    };
++                };
++                
++                const chromeData = generateRealisticChromeUA();
++                
++                // Override navigator.userAgent with proper Chrome version
++                Object.defineProperty(navigator, 'userAgent', {
++                    get: () => chromeData.userAgent,
++                    configurable: true,
++                    enumerable: true
++                });
++                
++                Object.defineProperty(navigator, 'appVersion', {
++                    get: () => chromeData.appVersion,
++                    configurable: true,
++                    enumerable: true
++                });
++                
++                // Additional navigator properties for consistency
++                Object.defineProperty(navigator, 'vendor', {
++                    get: () => 'Google Inc.',
++                    configurable: true
++                });
++                
++                Object.defineProperty(navigator, 'vendorSub', {
++                    get: () => '',
++                    configurable: true
++                });
++                
++                Object.defineProperty(navigator, 'productSub', {
++                    get: () => '20030107',
++                    configurable: true
++                });
++                
++                Object.defineProperty(navigator, 'product', {
++                    get: () => 'Gecko',
++                    configurable: true
++                });
++                
++                // Ensure Chrome object exists with proper structure
++                if (!window.chrome) {
++                    window.chrome = {};
++                }
++                
++                // Remove automation-specific chrome properties
++                ['runtime', 'loadTimes', 'csi'].forEach(prop => {
++                    if (window.chrome[prop]) delete window.chrome[prop];
++                });
++                
++            })();
++        `;
++    }
++    
+     async #evaluate(returnByValue, pageFunction, ...args) {
+         // rebrowser-stealth: ensure isolated world execution before any evaluation
+         if (process.env['REBROWSER_STEALTH_MODE'] !== '0') {
+@@ -147,6 +232,16 @@
+         }
+         
++        // rebrowser-stealth: inject user agent spoofing for Chrome version detection
++        if (process.env['REBROWSER_STEALTH_MODE'] !== '0' && this.#id > 0) {
++            try {
++                await this.#client.send('Runtime.evaluate', {
++                    expression: this.#getUserAgentStealthScript(),
++                    contextId: this.#id,
++                    returnByValue: false
++                });
++            } catch (error) {
++                process.env['REBROWSER_STEALTH_DEBUG'] && console.log('[rebrowser-stealth] user agent injection error:', error.message);
++            }
++        }
++        
+         // rebrowser-patches: context id is missing, acquire it and try again
+         if (this.#id < 0) {
+             await this.acquireContextId();

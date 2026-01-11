@@ -1,0 +1,23 @@
+--- a/lib/server/chromium/crExecutionContext.js
++++ b/lib/server/chromium/crExecutionContext.js
+@@ -39,6 +39,20 @@
+ var import_utilityScriptSerializers = require("../../utils/isomorphic/utilityScriptSerializers");
+ var js = __toESM(require("../javascript"));
+ var dom = __toESM(require("../dom"));
++
++const REBROWSER_PLAYWRIGHT_STEALTH_SCRIPT = `
++(function() {
++  if ('webdriver' in navigator) {
++    delete navigator.webdriver;
++  }
++  Object.defineProperty(navigator, 'webdriver', {
++    get: () => undefined,
++    configurable: false,
++    enumerable: false
++  });
++})();
++`;
++
+ var import_protocolError = require("../protocolError");
+ class CRExecutionContext {
+   constructor(client, contextPayload) {
