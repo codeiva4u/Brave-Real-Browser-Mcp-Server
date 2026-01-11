@@ -278,34 +278,40 @@ jobs:
           npm run build:self || npm run build || true
 
       - name: 🚀 Publish brave-real-launcher
-        if: needs.detect-changes.outputs.launcher_changed == 'true' || github.event.inputs.force_publish == 'true'
+        # Always publish to ensure versions match
         run: |
           cd packages/brave-real-launcher
           npm publish --access public || echo "Version may already exist"
           echo "✅ Published brave-real-launcher@${{ steps.version.outputs.launcher_version }}"
+          echo "⏳ Waiting 10s for npm registry to sync..."
+          sleep 10
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: 🚀 Publish brave-real-puppeteer-core
-        if: needs.detect-changes.outputs.puppeteer_changed == 'true' || github.event.inputs.force_publish == 'true'
+        # Always publish to ensure versions match
         run: |
           cd packages/brave-real-puppeteer-core
           npm publish --access public || echo "Version may already exist"
           echo "✅ Published brave-real-puppeteer-core@${{ steps.version.outputs.puppeteer_version }}"
+          echo "⏳ Waiting 10s for npm registry to sync..."
+          sleep 10
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: 🚀 Publish brave-real-browser
-        if: needs.detect-changes.outputs.browser_changed == 'true' || github.event.inputs.force_publish == 'true'
+        # Always publish to ensure versions match
         run: |
           cd packages/brave-real-browser
           npm publish --access public || echo "Version may already exist"
           echo "✅ Published brave-real-browser@${{ steps.version.outputs.browser_version }}"
+          echo "⏳ Waiting 10s for npm registry to sync..."
+          sleep 10
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: 🚀 Publish brave-real-browser-mcp-server
-        if: needs.detect-changes.outputs.mcp_changed == 'true' || github.event.inputs.force_publish == 'true'
+        # Always publish to ensure versions match (published last as it depends on all others)
         run: |
           npm publish --access public || echo "Version may already exist"
           echo "✅ Published brave-real-browser-mcp-server@${{ steps.version.outputs.mcp_version }}"
