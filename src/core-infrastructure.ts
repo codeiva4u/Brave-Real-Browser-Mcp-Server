@@ -206,12 +206,12 @@ export const MCP_SERVER_CONFIG = {
 export function setupProcessCleanup(cleanupCallback: () => Promise<void>): void {
   // Handle process termination gracefully
   const cleanup = async () => {
-    // Silent for MCP compatibility
+    console.error('🧹 Cleaning up before exit...');
     try {
       await cleanupCallback();
-      // Silent for MCP compatibility
+      console.error('✅ Cleanup completed');
     } catch (error) {
-      // Silent for MCP compatibility
+      console.error('❌ Error during cleanup:', error);
     }
     process.exit(0);
   };
@@ -219,11 +219,11 @@ export function setupProcessCleanup(cleanupCallback: () => Promise<void>): void 
   process.on('SIGINT', cleanup);
   process.on('SIGTERM', cleanup);
   process.on('uncaughtException', async (error) => {
-    // Silent for MCP compatibility
+    console.error('❌ Uncaught exception:', error);
     await cleanup();
   });
   process.on('unhandledRejection', async (reason) => {
-    // Silent for MCP compatibility
+    console.error('❌ Unhandled rejection:', reason);
     await cleanup();
   });
 }
