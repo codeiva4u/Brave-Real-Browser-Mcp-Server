@@ -319,7 +319,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error(`Tool ${name} failed:`, errorMessage);
+    debug(`Tool ${name} failed:`, errorMessage);
 
     return {
       content: [
@@ -355,10 +355,11 @@ async function main(): Promise<void> {
     await server.connect(transport);
     debug('Server connected to transport successfully');
 
-    console.error('🚀 Brave Real Browser MCP Server started successfully');
-    console.error('📋 Available tools:', TOOLS.map(t => t.name).join(', '));
-    console.error('🔧 Workflow validation: Active');
-    console.error('💡 Content priority mode: Enabled (use get_content for better reliability)');
+    // Startup messages - only in debug mode to avoid MCP protocol interference
+    debug('🚀 Brave Real Browser MCP Server started successfully');
+    debug('📋 Available tools:', TOOLS.map(t => t.name).join(', '));
+    debug('🔧 Workflow validation: Active');
+    debug('💡 Content priority mode: Enabled (use get_content for better reliability)');
 
     debug('Server is now ready and waiting for requests...');
 
@@ -386,14 +387,14 @@ debug('Setting up error handlers...');
 
 process.on('uncaughtException', (error) => {
   debug(`Uncaught exception at ${new Date().toISOString()}`);
-  console.error('❌ Uncaught exception:', error);
+  debug('❌ Uncaught exception:', error);
   debug(`Stack trace:`, error.stack);
   process.exit(1);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
   debug(`Unhandled rejection at ${new Date().toISOString()}`);
-  console.error('❌ Unhandled rejection:', reason);
+  debug('❌ Unhandled rejection:', reason);
   debug(`Promise:`, promise);
   process.exit(1);
 });
@@ -435,7 +436,7 @@ if (isMain) {
   debug('Module is main - starting server...');
   main().catch((error) => {
     debug(`Main function failed at ${new Date().toISOString()}`);
-    console.error('❌ Failed to start server:', error);
+    debug('❌ Failed to start server:', error);
     debug(`Error stack:`, error.stack);
     process.exit(1);
   });
@@ -444,7 +445,7 @@ if (isMain) {
   debug('FORCE STARTING - This is likely an npx execution');
   main().catch((error) => {
     debug(`Forced main function failed at ${new Date().toISOString()}`);
-    console.error('❌ Failed to start server:', error);
+    debug('❌ Failed to start server:', error);
     debug(`Error stack:`, error.stack);
     process.exit(1);
   });
