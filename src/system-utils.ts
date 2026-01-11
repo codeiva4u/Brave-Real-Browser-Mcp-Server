@@ -8,7 +8,7 @@ export async function withErrorHandling<T>(
   try {
     return await operation();
   } catch (error) {
-    console.error(`${errorMessage}:`, error);
+    // console.(`${errorMessage}:`, error);
     throw new Error(`${errorMessage}: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
@@ -38,7 +38,7 @@ export async function withRetry<T>(
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
       
-      console.error(`Attempt ${attempt}/${maxRetries} failed in context ${context}:`, lastError.message);
+      // console.(`Attempt ${attempt}/${maxRetries} failed in context ${context}:`, lastError.message);
 
       // Check if we should retry this error
       if (!shouldRetry(lastError, attempt) || attempt === maxRetries) {

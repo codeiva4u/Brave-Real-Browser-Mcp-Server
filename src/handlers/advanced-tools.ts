@@ -625,7 +625,7 @@ export async function handleProgressTracker(
     if (args.currentStep === 0) status = 'started';
     if (args.currentStep >= args.totalSteps) status = 'completed';
 
-    console.log(`[Progress] ${args.taskName}: ${progress}% (${args.currentStep}/${args.totalSteps}) - ${args.message || ''}`);
+    // console.(`[Progress] ${args.taskName}: ${progress}% (${args.currentStep}/${args.totalSteps}) - ${args.message || ''}`);
 
     return {
         taskName: args.taskName,

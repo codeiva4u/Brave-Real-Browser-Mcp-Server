@@ -196,7 +196,7 @@ export async function testHostConnectivity(): Promise<{ localhost: boolean; ipv4
       recommendedHost: ipv4Available ? '127.0.0.1' : 'localhost'
     };
   } catch (error) {
-    console.error('Host connectivity test failed:', error);
+    // console.('Host connectivity test failed:', error);
     return {
       localhost: false,
       ipv4: true,
@@ -222,7 +222,7 @@ export function updateCircuitBreakerOnFailure(): void {
 
   if (browserCircuitBreaker.failureCount >= CIRCUIT_BREAKER_THRESHOLD) {
     browserCircuitBreaker.state = 'open';
-    console.error(`Circuit breaker opened after ${browserCircuitBreaker.failureCount} failures`);
+    // console.(`Circuit breaker opened after ${browserCircuitBreaker.failureCount} failures`);
   }
 }
 
@@ -240,7 +240,7 @@ export function isCircuitBreakerOpen(): boolean {
     const timeSinceLastFailure = Date.now() - browserCircuitBreaker.lastFailureTime;
     if (timeSinceLastFailure > CIRCUIT_BREAKER_TIMEOUT) {
       browserCircuitBreaker.state = 'half-open';
-      console.error('Circuit breaker entering half-open state');
+      // console.('Circuit breaker entering half-open state');
       return false;
     }
     return true;
@@ -255,7 +255,7 @@ export function isCircuitBreakerOpen(): boolean {
 // Session validation utility
 export async function validateSession(): Promise<boolean> {
   if (sessionValidationInProgress) {
-    console.warn('Session validation already in progress, skipping duplicate validation');
+    // console.('Session validation already in progress, skipping duplicate validation');
     return false;
   }
 
@@ -273,7 +273,7 @@ export async function validateSession(): Promise<boolean> {
 
     return true;
   } catch (error) {
-    console.error('Session validation failed:', error);
+    // console.('Session validation failed:', error);
     return false;
   } finally {
     sessionValidationInProgress = false;
@@ -344,13 +344,13 @@ export async function initializeBrowser(options?: any) {
       if (isValid) {
         return { browser: browserInstance, page: pageInstance };
       } else {
-        console.error('Existing session is invalid, reinitializing browser...');
+        // console.('Existing session is invalid, reinitializing browser...');
         await closeBrowser();
       }
     }
 
-    console.error('🦁 Launching Brave Browser...');
-    console.error('   brave-real-browser handles auto-detection, uBlock Origin, and Stealth mode');
+    // console.('🦁 Launching Brave Browser...');
+    // console.('   brave-real-browser handles auto-detection, uBlock Origin, and Stealth mode');
 
     // Determine headless mode from:
     // 1. Tool argument (highest priority)
@@ -360,9 +360,9 @@ export async function initializeBrowser(options?: any) {
     const headlessMode = options?.headless ?? envHeadless;
 
     if (headlessMode) {
-      console.error('   Mode: HEADLESS (from ' + (options?.headless !== undefined ? 'tool argument' : 'environment variable') + ')');
+      // console.('   Mode: HEADLESS (from ' + (options?.headless !== undefined ? 'tool argument' : 'environment variable') + ')');
     } else {
-      console.error('   Mode: GUI (visible browser)');
+      // console.('   Mode: GUI (visible browser)');
     }
 
     // Brave-real-browser handles everything automatically
@@ -391,19 +391,19 @@ export async function initializeBrowser(options?: any) {
       browserInstance = browser;
       pageInstance = page;
 
-      console.error('✅ Brave Browser initialized successfully');
-      console.error('   Features: uBlock Origin (built-in), Stealth Mode, Auto-Detection');
+      // console.('✅ Brave Browser initialized successfully');
+      // console.('   Features: uBlock Origin (built-in), Stealth Mode, Auto-Detection');
       updateCircuitBreakerOnSuccess();
       return { browser, page };
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error(`❌ Brave Browser launch failed: ${errorMessage}`);
-      console.error('');
-      console.error('🔧 Troubleshooting:');
-      console.error('   1. Ensure Brave Browser is installed');
-      console.error('   2. Set BRAVE_PATH environment variable if auto-detection fails');
-      console.error('   3. Check if another Brave instance is running');
+      // console.(`❌ Brave Browser launch failed: ${errorMessage}`);
+      // console.('');
+      // console.('🔧 Troubleshooting:');
+      // console.('   1. Ensure Brave Browser is installed');
+      // console.('   2. Set BRAVE_PATH environment variable if auto-detection fails');
+      // console.('   3. Check if another Brave instance is running');
 
       updateCircuitBreakerOnFailure();
       throw error;
@@ -423,7 +423,7 @@ export async function closeBrowser() {
         try {
           await page.close();
         } catch (error) {
-          console.error('Error closing page:', error);
+          // console.('Error closing page:', error);
         }
       }
 
@@ -438,17 +438,17 @@ export async function closeBrowser() {
             browserInstance.process().kill('SIGKILL');
           }
         } catch (error) {
-          console.error('Error force-killing browser process:', error);
+          // console.('Error force-killing browser process:', error);
         }
       }
     } catch (error) {
-      console.error('Error closing browser:', error);
+      // console.('Error closing browser:', error);
 
       if (browserInstance && browserInstance.process() != null) {
         try {
           browserInstance.process().kill('SIGKILL');
         } catch (killError) {
-          console.error('Error force-killing browser process with SIGKILL:', killError);
+          // console.('Error force-killing browser process with SIGKILL:', killError);
         }
       }
     } finally {
@@ -470,7 +470,7 @@ export async function forceKillAllBraveProcesses() {
       spawn('taskkill', ['/F', '/IM', 'brave.exe'], { stdio: 'ignore' });
     }
   } catch (error) {
-    console.error('Error force-killing Brave processes:', error);
+    // console.('Error force-killing Brave processes:', error);
   }
 }
 

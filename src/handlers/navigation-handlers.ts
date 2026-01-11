@@ -14,7 +14,7 @@ export async function handleNavigate(args: NavigateArgs) {
 
       const { url, waitUntil = 'domcontentloaded' } = args;
       
-      console.error(`🔄 Navigating to: ${url}`);
+      // console.(`🔄 Navigating to: ${url}`);
       
       // Navigate with retry logic
       let lastError: Error | null = null;
@@ -30,16 +30,16 @@ export async function handleNavigate(args: NavigateArgs) {
             });
           }, 60000, 'page-navigation');
           
-          console.error(`✅ Navigation successful to: ${url}`);
+          // console.(`✅ Navigation successful to: ${url}`);
           success = true;
           break;
         } catch (error) {
           lastError = error instanceof Error ? error : new Error(String(error));
-          console.error(`❌ Navigation attempt ${attempt}/${maxRetries} failed:`, lastError.message);
+          // console.(`❌ Navigation attempt ${attempt}/${maxRetries} failed:`, lastError.message);
           
           if (attempt < maxRetries) {
             const delay = 1000 * Math.pow(2, attempt - 1);
-            console.error(`⏳ Waiting ${delay}ms before retry...`);
+            // console.(`⏳ Waiting ${delay}ms before retry...`);
             await new Promise(resolve => setTimeout(resolve, delay));
           }
         }
@@ -85,7 +85,7 @@ export async function handleWait(args: WaitArgs) {
       
       const startTime = Date.now();
       
-      console.error(`⏳ Waiting for ${type}: ${value} (timeout: ${timeout}ms)`);
+      // console.(`⏳ Waiting for ${type}: ${value} (timeout: ${timeout}ms)`);
 
       try {
         switch (type) {
@@ -116,7 +116,7 @@ export async function handleWait(args: WaitArgs) {
         }
 
         const duration = Date.now() - startTime;
-        console.error(`✅ Wait completed in ${duration}ms`);
+        // console.(`✅ Wait completed in ${duration}ms`);
 
         return {
           content: [
@@ -128,7 +128,7 @@ export async function handleWait(args: WaitArgs) {
         };
       } catch (error) {
         const duration = Date.now() - startTime;
-        console.error(`❌ Wait failed after ${duration}ms:`, error);
+        // console.(`❌ Wait failed after ${duration}ms:`, error);
         throw error;
       }
     }, 'Wait operation failed');

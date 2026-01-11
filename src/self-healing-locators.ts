@@ -93,7 +93,7 @@ export class SelfHealingLocators {
       return sortedFallbacks;
       
     } catch (error) {
-      console.warn('Fallback generation failed:', error);
+      // console.('Fallback generation failed:', error);
       return [];
     }
   }
@@ -139,7 +139,7 @@ export class SelfHealingLocators {
             }
           }
           
-          console.warn(`Self-healing: Found element using fallback selector '${fallback.selector}' (${fallback.type}, confidence: ${fallback.confidence})`);
+          // console.(`Self-healing: Found element using fallback selector '${fallback.selector}' (${fallback.type}, confidence: ${fallback.confidence})`);
           
           return {
             element,
@@ -228,7 +228,7 @@ export class SelfHealingLocators {
       return analysis;
       
     } catch (error) {
-      console.warn('Selector analysis failed:', error);
+      // console.('Selector analysis failed:', error);
       return null;
     }
   }
@@ -551,7 +551,7 @@ export class SelfHealingLocators {
       }
       
     } catch (error) {
-      console.warn('Exploratory fallback generation failed:', error);
+      // console.('Exploratory fallback generation failed:', error);
     }
     
     return fallbacks;
@@ -639,7 +639,7 @@ export class SelfHealingLocators {
       }
       
     } catch (error) {
-      console.warn('Text-based search failed:', error);
+      // console.('Text-based search failed:', error);
     }
     
     return fallbacks;

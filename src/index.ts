@@ -355,7 +355,7 @@ async function main(): Promise<void> {
     await server.connect(transport);
     debug('Server connected to transport successfully');
 
-    // Startup messages - visible to user via stderr (MCP protocol allows stderr for logs)
+    // Startup messages
     console.error('🚀 Brave Real Browser MCP Server started successfully');
     console.error('📋 Available tools:', TOOLS.map(t => t.name).join(', '));
     console.error('🔧 Workflow validation: Active');

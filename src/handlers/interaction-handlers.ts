@@ -46,7 +46,7 @@ export async function handleClick(args: ClickArgs) {
 
       if (strategy !== 'primary') {
         strategyMessage = `\n🔄 Self-healing: Used ${strategy} fallback selector: ${usedSelector}`;
-        console.warn(`Self-healing click: Primary selector '${selector}' failed, used '${usedSelector}' (${strategy})`);
+        // console.(`Self-healing click: Primary selector '${selector}' failed, used '${usedSelector}' (${strategy})`);
       }
 
       try {
@@ -57,7 +57,7 @@ export async function handleClick(args: ClickArgs) {
         const boundingBox = await element.boundingBox();
 
         if (!boundingBox) {
-          console.warn(`Element ${usedSelector} has no bounding box, attempting JavaScript click`);
+          // console.(`Element ${usedSelector} has no bounding box, attempting JavaScript click`);
           await pageInstance.$eval(usedSelector, (el: any) => el.click());
         } else {
           if (waitForNavigation) {
@@ -140,7 +140,7 @@ export async function handleType(args: TypeArgs) {
 
       if (strategy !== 'primary') {
         strategyMessage = `\n🔄 Self-healing: Used ${strategy} fallback selector: ${usedSelector}`;
-        console.warn(`Self-healing type: Primary selector '${selector}' failed, used '${usedSelector}' (${strategy})`);
+        // console.(`Self-healing type: Primary selector '${selector}' failed, used '${usedSelector}' (${strategy})`);
       }
 
       try {
@@ -216,7 +216,7 @@ export async function handleSolveCaptcha(args: SolveCaptchaArgs) {
 
     // Note: This is a placeholder implementation
     // The actual captcha solving would depend on the specific service/API used
-    console.error(`🔄 Attempting to solve ${type} captcha...`);
+    // console.(`🔄 Attempting to solve ${type} captcha...`);
 
     return {
       content: [
@@ -317,6 +317,6 @@ async function randomScroll(page: any) {
       }
     });
   } catch (error) {
-    console.warn('Random scroll failed (non-fatal):', error);
+    // console.('Random scroll failed (non-fatal):', error);
   }
 }

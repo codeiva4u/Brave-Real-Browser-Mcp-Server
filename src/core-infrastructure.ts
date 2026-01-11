@@ -35,7 +35,7 @@ export async function withBrowserRetry<T>(
         lastError = error instanceof Error ? error : new Error(String(error));
         const errorType = categorizeError(lastError);
 
-        console.error(`Attempt ${attempt}/${maxRetries} failed (${errorType}) in context ${context}:`, lastError.message);
+        // Silent for MCP compatibility
 
         // Check if this is a recoverable error that might need browser cleanup
         const recoverableErrors = [
@@ -52,11 +52,11 @@ export async function withBrowserRetry<T>(
         if (errorType === BrowserErrorType.SESSION_CLOSED ||
           errorType === BrowserErrorType.TARGET_CLOSED ||
           errorType === BrowserErrorType.FRAME_DETACHED) {
-          console.warn(`Browser session error detected (${errorType}), cleaning up browser state...`);
+          // Silent for MCP compatibility
           try {
             await closeBrowser();
           } catch (cleanupError) {
-            console.error('Error during browser cleanup:', cleanupError);
+            // Silent for MCP compatibility
           }
         }
 
@@ -206,12 +206,12 @@ export const MCP_SERVER_CONFIG = {
 export function setupProcessCleanup(cleanupCallback: () => Promise<void>): void {
   // Handle process termination gracefully
   const cleanup = async () => {
-    console.error('🧹 Cleaning up before exit...');
+    // Silent for MCP compatibility
     try {
       await cleanupCallback();
-      console.error('✅ Cleanup completed');
+      // Silent for MCP compatibility
     } catch (error) {
-      console.error('❌ Error during cleanup:', error);
+      // Silent for MCP compatibility
     }
     process.exit(0);
   };
@@ -219,11 +219,11 @@ export function setupProcessCleanup(cleanupCallback: () => Promise<void>): void 
   process.on('SIGINT', cleanup);
   process.on('SIGTERM', cleanup);
   process.on('uncaughtException', async (error) => {
-    console.error('❌ Uncaught exception:', error);
+    // Silent for MCP compatibility
     await cleanup();
   });
   process.on('unhandledRejection', async (reason) => {
-    console.error('❌ Unhandled rejection:', reason);
+    // Silent for MCP compatibility
     await cleanup();
   });
 }
