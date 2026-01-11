@@ -40,7 +40,6 @@
     "@modelcontextprotocol/sdk": "latest",
     "@types/turndown": "latest",
     "brave-real-browser": "*",
-    "dotenv": "latest",
     "turndown": "latest"
   },
   "peerDependencies": {

@@ -1,9 +1,44 @@
 import { connect } from 'brave-real-browser';
 import * as net from 'net';
-import * as dotenv from 'dotenv';
+import * as fs from 'fs';
+import * as path from 'path';
+import { fileURLToPath } from 'url';
 
-// Load environment variables from .env file
-dotenv.config();
+// ESM compatibility
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load environment variables from .env file (manually, completely silent)
+function loadEnvFile(): void {
+  const envPaths = [
+    path.join(process.cwd(), '.env'),
+    path.join(__dirname, '..', '.env'),
+    path.join(__dirname, '.env')
+  ];
+
+  for (const envPath of envPaths) {
+    try {
+      if (fs.existsSync(envPath)) {
+        const envContent = fs.readFileSync(envPath, 'utf-8');
+        envContent.split('\n').forEach(line => {
+          const trimmed = line.trim();
+          if (trimmed && !trimmed.startsWith('#')) {
+            const [key, ...valueParts] = trimmed.split('=');
+            const value = valueParts.join('=').replace(/^["']|["']$/g, '');
+            if (key && !process.env[key]) {
+              process.env[key] = value;
+            }
+          }
+        });
+        break;
+      }
+    } catch (error) {
+      // Silently ignore .env loading errors
+    }
+  }
+}
+
+loadEnvFile();
 
 // Content prioritization configuration
 export interface ContentPriorityConfig {

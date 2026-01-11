@@ -355,11 +355,11 @@ async function main(): Promise<void> {
     await server.connect(transport);
     debug('Server connected to transport successfully');
 
-    // Startup messages - only in debug mode to avoid MCP protocol interference
-    debug('🚀 Brave Real Browser MCP Server started successfully');
-    debug('📋 Available tools:', TOOLS.map(t => t.name).join(', '));
-    debug('🔧 Workflow validation: Active');
-    debug('💡 Content priority mode: Enabled (use get_content for better reliability)');
+    // Startup messages - visible to user via stderr (MCP protocol allows stderr for logs)
+    console.error('🚀 Brave Real Browser MCP Server started successfully');
+    console.error('📋 Available tools:', TOOLS.map(t => t.name).join(', '));
+    console.error('🔧 Workflow validation: Active');
+    console.error('💡 Content priority mode: Enabled (use get_content for better reliability)');
 
     debug('Server is now ready and waiting for requests...');
 
