@@ -1,14 +1,10 @@
 #!/usr/bin/env node
 
 /**
- * CRITICAL: Patch console.log to redirect to stderr
+ * CRITICAL: Patch console.log and stdout to redirect to stderr
  * This ensures MCP stdio transport only receives valid JSON-RPC messages on stdout.
- * All other logs (startup info, debug logs) should go to stderr.
  */
-const originalConsoleLog = console.log;
-console.log = function (...args) {
-  console.error(...args);
-};
+import './patch-console.js';
 
 // Debug logging - only enabled if DEBUG=true environment variable is set
 const DEBUG_ENABLED = process.env.DEBUG === 'true';
