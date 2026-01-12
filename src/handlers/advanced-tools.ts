@@ -240,14 +240,17 @@ export async function handleUrlRedirectTracer(
         request.continue();
     };
 
-    page.on('request', redirectHandler);
-
     try {
+        await page.setRequestInterception(true);
+        page.on('request', redirectHandler);
+
         await page.goto(args.url, { waitUntil: 'networkidle2' });
         chain.push(page.url());
     } finally {
         page.off('request', redirectHandler);
-        await page.setRequestInterception(false);
+        try {
+            await page.setRequestInterception(false);
+        } catch (e) { }
     }
 
     const uniqueChain = [...new Set(chain)];
@@ -696,52 +699,58 @@ export async function handleDeepAnalysis(
         });
     }
 
-    // Collect network
-    if (args.includeNetwork !== false) {
-        await page.setRequestInterception(true);
-        page.on('request', (req) => {
-            networkRequests.push({
-                url: req.url(),
-                method: req.method(),
-                resourceType: req.resourceType(),
+    try {
+        // Collect network
+        if (args.includeNetwork !== false) {
+            await page.setRequestInterception(true);
+            page.on('request', (req) => {
+                networkRequests.push({
+                    url: req.url(),
+                    method: req.method(),
+                    resourceType: req.resourceType(),
+                });
+                req.continue();
             });
-            req.continue();
-        });
+        }
+
+        // Wait for specified duration
+        await new Promise((r) => setTimeout(r, duration));
+
+        // Get DOM stats
+        let domStats = {};
+        if (args.includeDom !== false) {
+            domStats = await page.evaluate(() => ({
+                totalElements: document.querySelectorAll('*').length,
+                images: document.querySelectorAll('img').length,
+                links: document.querySelectorAll('a').length,
+                forms: document.querySelectorAll('form').length,
+                scripts: document.querySelectorAll('script').length,
+                iframes: document.querySelectorAll('iframe').length,
+            }));
+        }
+
+        // Take screenshot
+        let screenshot: string | undefined;
+        if (args.includeScreenshot) {
+            const buffer = await page.screenshot({ encoding: 'base64' });
+            screenshot = buffer as string;
+        }
+
+        return {
+            console: consoleLogs,
+            network: networkRequests.slice(0, 100),
+            domStats,
+            screenshot,
+        };
+    } finally {
+        if (args.includeNetwork !== false) {
+            try {
+                await page.setRequestInterception(false);
+            } catch (e) {
+                // Ignore
+            }
+        }
     }
-
-    // Wait for specified duration
-    await new Promise((r) => setTimeout(r, duration));
-
-    // Get DOM stats
-    let domStats = {};
-    if (args.includeDom !== false) {
-        domStats = await page.evaluate(() => ({
-            totalElements: document.querySelectorAll('*').length,
-            images: document.querySelectorAll('img').length,
-            links: document.querySelectorAll('a').length,
-            forms: document.querySelectorAll('form').length,
-            scripts: document.querySelectorAll('script').length,
-            iframes: document.querySelectorAll('iframe').length,
-        }));
-    }
-
-    // Take screenshot
-    let screenshot: string | undefined;
-    if (args.includeScreenshot) {
-        const buffer = await page.screenshot({ encoding: 'base64' });
-        screenshot = buffer as string;
-    }
-
-    if (args.includeNetwork !== false) {
-        await page.setRequestInterception(false);
-    }
-
-    return {
-        console: consoleLogs,
-        network: networkRequests.slice(0, 100),
-        domStats,
-        screenshot,
-    };
 }
 
 /**
@@ -754,8 +763,6 @@ export async function handleNetworkRecorder(
     const requests: any[] = [];
     const duration = args.duration || 10000;
     let totalSize = 0;
-
-    await page.setRequestInterception(true);
 
     const requestHandler = async (request: any) => {
         const url = request.url();
@@ -783,22 +790,27 @@ export async function handleNetworkRecorder(
         request.continue();
     };
 
-    page.on('request', requestHandler);
+    try {
+        await page.setRequestInterception(true);
+        page.on('request', requestHandler);
 
-    page.on('response', async (response) => {
+        page.on('response', async (response) => {
+            try {
+                const headers = response.headers();
+                const size = parseInt(headers['content-length'] || '0', 10);
+                totalSize += size;
+            } catch {
+                // Ignore errors
+            }
+        });
+
+        await new Promise((r) => setTimeout(r, duration));
+    } finally {
+        page.off('request', requestHandler);
         try {
-            const headers = response.headers();
-            const size = parseInt(headers['content-length'] || '0', 10);
-            totalSize += size;
-        } catch {
-            // Ignore errors
-        }
-    });
-
-    await new Promise((r) => setTimeout(r, duration));
-
-    page.off('request', requestHandler);
-    await page.setRequestInterception(false);
+            await page.setRequestInterception(false);
+        } catch (e) { }
+    }
 
     return {
         requests: requests.slice(0, 500),
@@ -817,8 +829,6 @@ export async function handleApiFinder(
     const apis: { url: string; method: string; type: string }[] = [];
     const patterns = args.patterns || ['/api/', '/v1/', '/v2/', '/graphql', '/rest/', '.json'];
 
-    await page.setRequestInterception(true);
-
     const requestHandler = (request: any) => {
         const url = request.url();
         const isApi = patterns.some((p) => url.includes(p));
@@ -834,16 +844,27 @@ export async function handleApiFinder(
         request.continue();
     };
 
-    page.on('request', requestHandler);
+    try {
+        await page.setRequestInterception(true);
+        page.on('request', requestHandler);
 
-    // Trigger some interactions to discover more APIs
-    await page.evaluate(() => {
-        window.scrollTo(0, document.body.scrollHeight / 2);
-    });
-    await new Promise((r) => setTimeout(r, 3000));
-
-    page.off('request', requestHandler);
-    await page.setRequestInterception(false);
+        // Trigger some interactions to discover more APIs
+        await page.evaluate(() => {
+            window.scrollTo(0, document.body.scrollHeight / 2);
+        });
+        await new Promise((r) => setTimeout(r, 3000));
+    } catch (error) {
+        // Log error but prioritize returning what we found
+        console.error('Error in api_finder:', error);
+    } finally {
+        page.off('request', requestHandler);
+        // Safely disable interception
+        try {
+            await page.setRequestInterception(false);
+        } catch (e) {
+            // Ignore if already disabled or browser closed
+        }
+    }
 
     // Remove duplicates
     const uniqueApis = apis.filter(
@@ -1098,19 +1119,37 @@ export async function handleElementScreenshot(
 
     if (args.path) {
         options.path = args.path;
-        await element.screenshot(options);
-        return {
-            success: true,
-            path: args.path,
-            dimensions: { width: Math.round(boundingBox.width), height: Math.round(boundingBox.height) },
-        };
+        try {
+            await element.screenshot(options);
+            return {
+                success: true,
+                path: args.path,
+                dimensions: { width: Math.round(boundingBox.width), height: Math.round(boundingBox.height) },
+            };
+        } catch (error) {
+            return {
+                success: false,
+                dimensions: { width: 0, height: 0 },
+                // @ts-ignore
+                error: `Screenshot failed: ${error.message}`
+            };
+        }
     } else {
-        const buffer = await element.screenshot({ ...options, encoding: 'base64' });
-        return {
-            success: true,
-            base64: buffer as string,
-            dimensions: { width: Math.round(boundingBox.width), height: Math.round(boundingBox.height) },
-        };
+        try {
+            const buffer = await element.screenshot({ ...options, encoding: 'base64' });
+            return {
+                success: true,
+                base64: buffer as string,
+                dimensions: { width: Math.round(boundingBox.width), height: Math.round(boundingBox.height) },
+            };
+        } catch (error) {
+            return {
+                success: false,
+                dimensions: { width: 0, height: 0 },
+                // @ts-ignore
+                error: `Screenshot failed: ${error.message}`
+            };
+        }
     }
 }
 
@@ -1664,8 +1703,6 @@ export async function handleM3u8Parser(
     // Intercept network requests to find m3u8 files
     const m3u8Urls: string[] = [];
 
-    await page.setRequestInterception(true);
-
     const requestHandler = (request: any) => {
         const url = request.url();
         if (url.includes('.m3u8') || url.includes('manifest') || url.includes('playlist')) {
@@ -1674,35 +1711,47 @@ export async function handleM3u8Parser(
         request.continue();
     };
 
-    page.on('request', requestHandler);
+    try {
+        await page.setRequestInterception(true);
+        page.on('request', requestHandler);
 
-    // Wait for network activity
-    await new Promise(r => setTimeout(r, 3000));
+        // Wait for network activity
+        await new Promise(r => setTimeout(r, 3000));
+    } catch (error) {
+        console.error('Error in m3u8_parser interception:', error);
+    } finally {
+        page.off('request', requestHandler);
+        try {
+            await page.setRequestInterception(false);
+        } catch (e) {
+            // Ignore
+        }
+    }
 
     // Also check for m3u8 in page source
-    const pageM3u8 = await page.evaluate(() => {
-        const scripts = Array.from(document.querySelectorAll('script'));
-        const urls: string[] = [];
-        scripts.forEach(script => {
-            const content = script.textContent || '';
-            const matches = content.match(/https?:\/\/[^\s"']+\.m3u8[^\s"']*/g);
-            if (matches) urls.push(...matches);
+    try {
+        const pageM3u8 = await page.evaluate(() => {
+            const scripts = Array.from(document.querySelectorAll('script'));
+            const urls: string[] = [];
+            scripts.forEach(script => {
+                const content = script.textContent || '';
+                const matches = content.match(/https?:\/\/[^\s"']+\.m3u8[^\s"']*/g);
+                if (matches) urls.push(...matches);
+            });
+
+            // Check video sources
+            const videos = Array.from(document.querySelectorAll('video source'));
+            videos.forEach(source => {
+                const src = source.getAttribute('src') || '';
+                if (src.includes('.m3u8')) urls.push(src);
+            });
+
+            return urls;
         });
-
-        // Check video sources
-        const videos = Array.from(document.querySelectorAll('video source'));
-        videos.forEach(source => {
-            const src = source.getAttribute('src') || '';
-            if (src.includes('.m3u8')) urls.push(src);
-        });
-
-        return urls;
-    });
-
-    m3u8Urls.push(...pageM3u8);
-
-    page.off('request', requestHandler);
-    await page.setRequestInterception(false);
+        m3u8Urls.push(...pageM3u8);
+    } catch (e) {
+        // Ignore evaluation errors
+    }
 
     // Parse unique URLs
     const uniqueUrls = [...new Set(m3u8Urls)];
@@ -1849,7 +1898,12 @@ export async function handleCookieManager(
     page: Page,
     args: CookieManagerArgs
 ): Promise<{ success: boolean; cookies?: any[]; message: string; count?: number }> {
-    const client = await page.target().createCDPSession();
+    let client;
+    try {
+        client = await page.target().createCDPSession();
+    } catch (error) {
+        return { success: false, message: `Failed to connect to browser session: ${error}` };
+    }
 
     switch (args.action) {
         case 'get': {
