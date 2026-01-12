@@ -620,7 +620,7 @@ export const TOOLS = [
       properties: {
         action: { type: 'string', enum: ['get', 'set', 'delete', 'export', 'import', 'clear'], description: 'Cookie action to perform' },
         domain: { type: 'string', description: 'Domain to filter cookies' },
-        cookies: { type: 'array', description: 'Cookies to set (for set/import action)' },
+        cookies: { type: 'array', items: { type: 'object' }, description: 'Cookies to set (for set/import action)' },
         name: { type: 'string', description: 'Cookie name (for get/delete action)' },
         filePath: { type: 'string', description: 'File path for export/import' },
         format: { type: 'string', enum: ['json', 'netscape'], description: 'Export/Import format', default: 'json' },
