@@ -327,8 +327,8 @@ export const TOOLS = [
           },
           additionalProperties: false,
         },
-        required: ['filePath'],
       },
+      required: ['filePath'],
     },
   },
   // ============================================================
