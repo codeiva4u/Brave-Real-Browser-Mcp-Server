@@ -13,30 +13,33 @@ export async function handleNavigate(args: NavigateArgs) {
       }
 
       const { url, waitUntil = 'domcontentloaded' } = args;
-      
+
       // console.(`🔄 Navigating to: ${url}`);
-      
+
       // Navigate with retry logic
       let lastError: Error | null = null;
       let success = false;
       const maxRetries = 3;
-      
+
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
           await withTimeout(async () => {
-            await pageInstance.goto(url, { 
+            await pageInstance.goto(url, {
               waitUntil: waitUntil as any,
-              timeout: 60000 
+              timeout: 60000
             });
-          }, 60000, 'page-navigation');
-          
+
+            // Auto-handle Cloudflare challenges if detected
+            await waitForCloudflareBypass(pageInstance);
+          }, 90000, 'page-navigation');
+
           // console.(`✅ Navigation successful to: ${url}`);
           success = true;
           break;
         } catch (error) {
           lastError = error instanceof Error ? error : new Error(String(error));
           // console.(`❌ Navigation attempt ${attempt}/${maxRetries} failed:`, lastError.message);
-          
+
           if (attempt < maxRetries) {
             const delay = 1000 * Math.pow(2, attempt - 1);
             // console.(`⏳ Waiting ${delay}ms before retry...`);
@@ -44,7 +47,7 @@ export async function handleNavigate(args: NavigateArgs) {
           }
         }
       }
-      
+
       if (!success && lastError) {
         throw lastError;
       }
@@ -77,32 +80,32 @@ export async function handleWait(args: WaitArgs) {
       }
 
       const { type, value, timeout = 30000 } = args;
-      
+
       // Validate timeout parameter
       if (typeof timeout !== 'number' || isNaN(timeout) || timeout < 0) {
         throw new Error('Timeout parameter must be a positive number');
       }
-      
+
       const startTime = Date.now();
-      
+
       // console.(`⏳ Waiting for ${type}: ${value} (timeout: ${timeout}ms)`);
 
       try {
         switch (type) {
           case 'selector':
-            await pageInstance.waitForSelector(value, { 
+            await pageInstance.waitForSelector(value, {
               timeout,
-              visible: true 
+              visible: true
             });
             break;
-            
+
           case 'navigation':
-            await pageInstance.waitForNavigation({ 
+            await pageInstance.waitForNavigation({
               timeout,
-              waitUntil: 'networkidle2' 
+              waitUntil: 'networkidle2'
             });
             break;
-            
+
           case 'timeout':
             const waitTime = parseInt(value, 10);
             if (isNaN(waitTime) || waitTime < 0) {
@@ -110,7 +113,7 @@ export async function handleWait(args: WaitArgs) {
             }
             await new Promise(resolve => setTimeout(resolve, Math.min(waitTime, timeout)));
             break;
-            
+
           default:
             throw new Error(`Unsupported wait type: ${type}`);
         }
@@ -143,35 +146,66 @@ async function withWorkflowValidation<T>(
 ): Promise<T> {
   // Validate workflow state before execution
   const validation = validateWorkflow(toolName, args);
-  
+
   if (!validation.isValid) {
     let errorMessage = validation.errorMessage || `Tool '${toolName}' is not allowed in current workflow state.`;
-    
+
     if (validation.suggestedAction) {
       errorMessage += `\n\n💡 Next Steps: ${validation.suggestedAction}`;
     }
-    
+
     // Add workflow context for debugging
     const workflowSummary = workflowValidator.getValidationSummary();
     errorMessage += `\n\n🔍 ${workflowSummary}`;
-    
+
     // Record failed execution
     recordExecution(toolName, args, false, errorMessage);
-    
+
     throw new Error(errorMessage);
   }
-  
+
   try {
     // Execute the operation
     const result = await operation();
-    
+
     // Record successful execution
     recordExecution(toolName, args, true);
-    
+
     return result;
   } catch (error) {
     // Record failed execution
     recordExecution(toolName, args, false, error instanceof Error ? error.message : String(error));
     throw error;
+  }
+}
+
+/**
+ * Helper to wait for Cloudflare/Turnstile challenges to resolve
+ */
+async function waitForCloudflareBypass(pageInstance: any) {
+  try {
+    // Initial stable wait
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    const maxWait = 40000;
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < maxWait) {
+      const isChallenge = await pageInstance.evaluate(() => {
+        const bodyText = (document.body?.innerText || '').toLowerCase();
+        // Strict checks to avoid false positives on normal sites
+        return bodyText.includes('verifying you are human') ||
+          bodyText.includes('checking your browser before accessing');
+      });
+
+      if (!isChallenge) {
+        return; // Not a challenge page, or passed
+      }
+
+      // Still blocked, wait
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+  } catch (error) {
+    // Ignore bypass errors, continue to result
   }
 }
