@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+/**
+ * CRITICAL: Patch console.log to redirect to stderr
+ * This ensures MCP stdio transport only receives valid JSON-RPC messages on stdout.
+ * All other logs (startup info, debug logs) should go to stderr.
+ */
+const originalConsoleLog = console.log;
+console.log = function (...args) {
+  console.error(...args);
+};
+
 // Debug logging - only enabled if DEBUG=true environment variable is set
 const DEBUG_ENABLED = process.env.DEBUG === 'true';
 const debug = (...args: unknown[]) => {
@@ -189,7 +199,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
       case TOOL_NAMES.RANDOM_SCROLL:
         return await handleRandomScroll();
 
-      case TOOL_NAMES.FIND_SELECTOR:
+      case TOOL_NAMES.FIND_ELEMENT:
         return await handleFindSelector(args as unknown as FindSelectorArgs);
 
       case TOOL_NAMES.SAVE_CONTENT_AS_MARKDOWN:
@@ -200,21 +210,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
         if (!page) throw new Error('Browser not initialized. Call browser_init first.');
         return { content: [{ type: 'text', text: JSON.stringify(await handleBreadcrumbNavigator(page, args || {})) }] };
 
-      case TOOL_NAMES.URL_REDIRECT_TRACER:
+      case TOOL_NAMES.REDIRECT_TRACER:
         if (!page) throw new Error('Browser not initialized. Call browser_init first.');
         return { content: [{ type: 'text', text: JSON.stringify(await handleUrlRedirectTracer(page, args as any)) }] };
-
-      case TOOL_NAMES.MULTI_LAYER_REDIRECT_TRACE:
-        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
-        return { content: [{ type: 'text', text: JSON.stringify(await handleMultiLayerRedirectTrace(page, args as any)) }] };
 
       case TOOL_NAMES.SEARCH_CONTENT:
         if (!page) throw new Error('Browser not initialized. Call browser_init first.');
         return { content: [{ type: 'text', text: JSON.stringify(await handleSearchContent(page, args as any)) }] };
 
-      case TOOL_NAMES.FIND_ELEMENT_ADVANCED:
-        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
-        return { content: [{ type: 'text', text: JSON.stringify(await handleFindElementAdvanced(page, args || {})) }] };
+
 
       case TOOL_NAMES.EXTRACT_JSON:
         if (!page) throw new Error('Browser not initialized. Call browser_init first.');
@@ -252,9 +256,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
         if (!page) throw new Error('Browser not initialized. Call browser_init first.');
         return { content: [{ type: 'text', text: JSON.stringify(await handleAjaxContentWaiter(page, args || {})) }] };
 
-      case TOOL_NAMES.ADVANCED_VIDEO_EXTRACTION:
-        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
-        return { content: [{ type: 'text', text: JSON.stringify(await handleAdvancedVideoExtraction(page, args || {})) }] };
+
 
       case TOOL_NAMES.MEDIA_EXTRACTOR:
         if (!page) throw new Error('Browser not initialized. Call browser_init first.');
@@ -272,13 +274,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
         if (!page) throw new Error('Browser not initialized. Call browser_init first.');
         return { content: [{ type: 'text', text: JSON.stringify(await handleLinkHarvester(page, args || {})) }] };
 
-      case TOOL_NAMES.IMAGE_EXTRACTOR_ADVANCED:
-        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
-        return { content: [{ type: 'text', text: JSON.stringify(await handleImageExtractorAdvanced(page, args || {})) }] };
 
-      case TOOL_NAMES.SMART_SELECTOR_GENERATOR:
-        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
-        return { content: [{ type: 'text', text: JSON.stringify(await handleSmartSelectorGenerator(page, args as any)) }] };
 
       case TOOL_NAMES.CONTENT_CLASSIFICATION:
         if (!page) throw new Error('Browser not initialized. Call browser_init first.');
@@ -297,9 +293,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
         if (!page) throw new Error('Browser not initialized. Call browser_init first.');
         return { content: [{ type: 'text', text: JSON.stringify(await handleM3u8Parser(page, args || {})) }] };
 
-      case TOOL_NAMES.SUBTITLE_EXTRACTOR:
-        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
-        return { content: [{ type: 'text', text: JSON.stringify(await handleSubtitleExtractor(page, args || {})) }] };
+
 
       case TOOL_NAMES.COOKIE_MANAGER:
         if (!page) throw new Error('Browser not initialized. Call browser_init first.');
@@ -310,9 +304,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
         if (!page) throw new Error('Browser not initialized. Call browser_init first.');
         return { content: [{ type: 'text', text: JSON.stringify(await handleFileDownloader(page, args as any)) }] };
 
-      case TOOL_NAMES.BULK_DOWNLOADER:
-        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
-        return { content: [{ type: 'text', text: JSON.stringify(await handleBulkDownloader(page, args as any)) }] };
+
 
       default:
         throw new Error(`Unknown tool: ${name}`);

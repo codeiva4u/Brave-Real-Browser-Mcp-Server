@@ -233,7 +233,7 @@ export async function getDynamicUserAgents(): Promise<{ windows: string; macos: 
       linux: generateUserAgentLinux(chromeVersion),
       current: getUserAgentForPlatform(chromeVersion)
     };
-    console.log(`[stealth-utils] Dynamic User-Agents loaded with Chrome ${chromeVersion}`);
+    console.error(`[stealth-utils] Dynamic User-Agents loaded with Chrome ${chromeVersion}`);
   }
   return cachedDynamicUserAgents;
 }

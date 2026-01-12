@@ -15,7 +15,7 @@ async function pageController({ browser, page, proxy, turnstile, xvfbsession, pi
         solveStatus = false
         if (killProcess === true) {
             if (xvfbsession) try { xvfbsession.stopSync() } catch (err) { }
-            if (brave) try { brave.kill() } catch (err) { console.log(err); }
+            if (brave) try { brave.kill() } catch (err) { console.error(err); }
             if (pid) try { kill(pid, 'SIGKILL', () => { }) } catch (err) { }
         }
     });

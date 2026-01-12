@@ -40,7 +40,7 @@ export interface FindElementAdvancedArgs {
     xpath?: string;
     cssSelector?: string;
     contains?: string;
-    attributes?: Record<string, string>;
+    attributes?: string;
 }
 
 export interface ExtractJsonArgs {
@@ -464,6 +464,49 @@ export async function handleFindElementAdvanced(
             return results;
         }, args.contains);
         elements.push(...containsElements.map((e: any) => ({
+            selector: e.id ? `#${e.id}` : e.className ? `.${e.className.split(' ')[0]}` : e.tag,
+            text: e.text,
+            tag: e.tag,
+        })));
+    }
+
+    if (args.attributes) {
+        let attributes: Record<string, string> = {};
+        try {
+            attributes = JSON.parse(args.attributes);
+        } catch (e) {
+            // Ignore invalid JSON
+        }
+
+        // Use Puppeteer evaluation to find elements with matching attributes
+        const attributeElements = await page.evaluate((attrs: Record<string, string>) => {
+            const results: any[] = [];
+            const allElements = document.querySelectorAll('*');
+
+            for (let i = 0; i < allElements.length && results.length < 50; i++) {
+                const el = allElements[i];
+                let match = true;
+
+                for (const [key, value] of Object.entries(attrs)) {
+                    if (el.getAttribute(key) !== value) {
+                        match = false;
+                        break;
+                    }
+                }
+
+                if (match) {
+                    results.push({
+                        text: el.textContent?.trim()?.substring(0, 100) || '',
+                        tag: el.tagName.toLowerCase(),
+                        id: el.id || '',
+                        className: typeof el.className === 'string' ? el.className : '',
+                    });
+                }
+            }
+            return results;
+        }, attributes);
+
+        elements.push(...attributeElements.map((e: any) => ({
             selector: e.id ? `#${e.id}` : e.className ? `.${e.className.split(' ')[0]}` : e.tag,
             text: e.text,
             tag: e.tag,
@@ -1924,7 +1967,7 @@ export interface FileDownloaderArgs {
     savePath: string;
     filename?: string;
     overwrite?: boolean;
-    headers?: Record<string, string>;
+    headers?: string;
     timeout?: number;
 }
 
@@ -1934,7 +1977,7 @@ export interface BulkDownloaderArgs {
     concurrency?: number;
     overwrite?: boolean;
     skipErrors?: boolean;
-    headers?: Record<string, string>;
+    headers?: string;
 }
 
 /**
@@ -1984,7 +2027,7 @@ export async function handleFileDownloader(
             timeout,
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                ...(args.headers || {}),
+                ...(args.headers ? JSON.parse(args.headers) : {}),
             },
         };
 

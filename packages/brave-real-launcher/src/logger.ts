@@ -16,7 +16,7 @@ export interface Logger {
 
 class BraveLauncherLogger implements Logger {
   private logLevel: 'silent' | 'error' | 'warn' | 'info' | 'verbose' = 'silent';
-  
+
   private readonly levels = {
     silent: 0,
     error: 1,
@@ -53,7 +53,7 @@ class BraveLauncherLogger implements Logger {
 
   log(prefix: string, message: string, ...args: any[]): void {
     if (this.shouldLog('info')) {
-      console.log(this.formatMessage(prefix, message, 'INFO', ...args));
+      console.error(this.formatMessage(prefix, message, 'INFO', ...args));
     }
   }
 
@@ -71,7 +71,7 @@ class BraveLauncherLogger implements Logger {
 
   verbose(prefix: string, message: string, ...args: any[]): void {
     if (this.shouldLog('verbose')) {
-      console.log(this.formatMessage(prefix, message, 'VERBOSE', ...args));
+      console.error(this.formatMessage(prefix, message, 'VERBOSE', ...args));
     }
   }
 

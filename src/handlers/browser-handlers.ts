@@ -11,11 +11,21 @@ export async function handleBrowserInit(args: BrowserInitArgs) {
       if (args.contentPriority) {
         updateContentPriorityConfig(args.contentPriority);
       }
-      
+
+      // Parse connectOption if it's a string
+      if (typeof args.connectOption === 'string') {
+        try {
+          (args as any).connectOption = JSON.parse(args.connectOption);
+        } catch (e) {
+          console.error('[BrowserHandler] Failed to parse connectOption JSON:', e);
+          (args as any).connectOption = {};
+        }
+      }
+
       await initializeBrowser(args);
-      
+
       const config = getContentPriorityConfig();
-      const configMessage = config.prioritizeContent 
+      const configMessage = config.prioritizeContent
         ? '\n\n💡 Content Priority Mode: get_content is prioritized for better reliability. Use get_content for page analysis instead of screenshots.'
         : '';
 
@@ -24,7 +34,7 @@ export async function handleBrowserInit(args: BrowserInitArgs) {
         '  • Then: Use get_content to analyze page content\n' +
         '  • Finally: Use find_selector and interaction tools\n\n' +
         '✅ Workflow validation is now active - prevents blind selector guessing';
-      
+
       return {
         content: [
           {
@@ -42,10 +52,10 @@ export async function handleBrowserClose() {
   return await withWorkflowValidation('browser_close', {}, async () => {
     return await withErrorHandling(async () => {
       await closeBrowser();
-      
+
       // Reset workflow state when browser is closed
       workflowValidator.reset();
-      
+
       return {
         content: [
           {
@@ -66,31 +76,31 @@ async function withWorkflowValidation<T>(
 ): Promise<T> {
   // Validate workflow state before execution
   const validation = validateWorkflow(toolName, args);
-  
+
   if (!validation.isValid) {
     let errorMessage = validation.errorMessage || `Tool '${toolName}' is not allowed in current workflow state.`;
-    
+
     if (validation.suggestedAction) {
       errorMessage += `\n\n💡 Next Steps: ${validation.suggestedAction}`;
     }
-    
+
     // Add workflow context for debugging
     const workflowSummary = workflowValidator.getValidationSummary();
     errorMessage += `\n\n🔍 ${workflowSummary}`;
-    
+
     // Record failed execution
     recordExecution(toolName, args, false, errorMessage);
-    
+
     throw new Error(errorMessage);
   }
-  
+
   try {
     // Execute the operation
     const result = await operation();
-    
+
     // Record successful execution
     recordExecution(toolName, args, true);
-    
+
     return result;
   } catch (error) {
     // Record failed execution

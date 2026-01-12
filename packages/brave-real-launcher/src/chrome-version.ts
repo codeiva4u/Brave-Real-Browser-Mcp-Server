@@ -41,12 +41,12 @@ export async function getLatestChromeVersion(): Promise<string> {
             if (data?.[0]?.version) {
                 cachedVersion = data[0].version;
                 cacheTimestamp = Date.now();
-                console.log(`[chrome-version] Fetched latest stable version: ${cachedVersion}`);
+                console.error(`[chrome-version] Fetched latest stable version: ${cachedVersion}`);
                 return cachedVersion;
             }
         }
     } catch (err) {
-        console.log(`[chrome-version] Primary API failed: ${(err as Error).message}`);
+        console.error(`[chrome-version] Primary API failed: ${(err as Error).message}`);
     }
 
     // Fallback API - Chrome for Testing
@@ -65,16 +65,16 @@ export async function getLatestChromeVersion(): Promise<string> {
             if (data?.channels?.Stable?.version) {
                 cachedVersion = data.channels.Stable.version;
                 cacheTimestamp = Date.now();
-                console.log(`[chrome-version] Fetched from fallback API: ${cachedVersion}`);
+                console.error(`[chrome-version] Fetched from fallback API: ${cachedVersion}`);
                 return cachedVersion;
             }
         }
     } catch (err) {
-        console.log(`[chrome-version] Fallback API failed: ${(err as Error).message}`);
+        console.error(`[chrome-version] Fallback API failed: ${(err as Error).message}`);
     }
 
     // Use cached version if available, else fallback
-    console.log(`[chrome-version] Using fallback version: ${cachedVersion || FALLBACK_VERSION}`);
+    console.error(`[chrome-version] Using fallback version: ${cachedVersion || FALLBACK_VERSION}`);
     return cachedVersion || FALLBACK_VERSION;
 }
 
