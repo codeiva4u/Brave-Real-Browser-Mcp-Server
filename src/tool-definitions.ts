@@ -83,6 +83,7 @@ export const TOOLS = [
               description: 'Custom path to Brave executable',
             },
           },
+          additionalProperties: false,
         },
         contentPriority: {
           type: 'object',
