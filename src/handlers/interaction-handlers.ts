@@ -204,7 +204,7 @@ export async function handleType(args: TypeArgs) {
   });
 }
 
-// Solve captcha handler
+// Solve captcha handler - Enhanced with actual detection and graceful handling
 export async function handleSolveCaptcha(args: SolveCaptchaArgs) {
   return await withErrorHandling(async () => {
     const pageInstance = getPageInstance();
@@ -213,21 +213,128 @@ export async function handleSolveCaptcha(args: SolveCaptchaArgs) {
     }
 
     const { type } = args;
+    const timeout = 30000; // 30 second timeout
 
-    // Note: This is a placeholder implementation
-    // The actual captcha solving would depend on the specific service/API used
-    // console.(`🔄 Attempting to solve ${type} captcha...`);
+    try {
+      // Auto-detect or use provided type
+      let detectedType = type;
+      if (!detectedType) {
+        detectedType = await pageInstance.evaluate(() => {
+          if (document.querySelector('.g-recaptcha, [data-sitekey]')) return 'recaptcha';
+          if (document.querySelector('.h-captcha, [data-hcaptcha-sitekey]')) return 'hCaptcha';
+          if (document.querySelector('.cf-turnstile, [data-turnstile-sitekey]')) return 'turnstile';
+          return 'unknown';
+        });
+      }
 
-    return {
-      content: [
-        {
+      // Turnstile - handled automatically by brave-real-browser
+      if (detectedType === 'turnstile') {
+        const startTime = Date.now();
+        while (Date.now() - startTime < timeout) {
+          const token = await pageInstance.evaluate(() => {
+            const input = document.querySelector('[name="cf-turnstile-response"]') as HTMLInputElement;
+            return input?.value || null;
+          });
+          if (token && token.length > 20) {
+            return {
+              content: [{
+                type: 'text',
+                text: `✅ Turnstile captcha solved automatically by Brave anti-detection.\nToken received (${token.length} chars)`,
+              }],
+            };
+          }
+          await sleep(1000);
+        }
+        return {
+          content: [{
+            type: 'text',
+            text: `⚠️ Turnstile captcha detected but auto-solve timed out after ${timeout / 1000}s. The captcha may require manual intervention.`,
+          }],
+        };
+      }
+
+      // reCAPTCHA - try clicking checkbox
+      if (detectedType === 'recaptcha') {
+        try {
+          const frames = pageInstance.frames();
+          const recaptchaFrame = frames.find((f: any) => f.url().includes('recaptcha'));
+          if (recaptchaFrame) {
+            const checkbox = await recaptchaFrame.$('.recaptcha-checkbox-border');
+            if (checkbox) {
+              await checkbox.click();
+              await sleep(2000);
+              const checked = await recaptchaFrame.evaluate(() => {
+                return document.querySelector('.recaptcha-checkbox-checked') !== null;
+              });
+              if (checked) {
+                return {
+                  content: [{
+                    type: 'text',
+                    text: `✅ reCAPTCHA checkbox clicked successfully. Verification may continue automatically.`,
+                  }],
+                };
+              }
+            }
+          }
+        } catch (frameError) {
+          // Frame access failed, return graceful message
+        }
+        return {
+          content: [{
+            type: 'text',
+            text: `⚠️ reCAPTCHA detected. Attempted checkbox click. Check page for challenge status.`,
+          }],
+        };
+      }
+
+      // hCaptcha
+      if (detectedType === 'hCaptcha') {
+        try {
+          const frames = pageInstance.frames();
+          const hcaptchaFrame = frames.find((f: any) => f.url().includes('hcaptcha'));
+          if (hcaptchaFrame) {
+            const checkbox = await hcaptchaFrame.$('#checkbox');
+            if (checkbox) {
+              await checkbox.click();
+              await sleep(2000);
+              return {
+                content: [{
+                  type: 'text',
+                  text: `✅ hCaptcha checkbox clicked. Check page for challenge status.`,
+                }],
+              };
+            }
+          }
+        } catch (frameError) {
+          // Frame access failed
+        }
+        return {
+          content: [{
+            type: 'text',
+            text: `⚠️ hCaptcha detected. Attempted interaction. Check page for status.`,
+          }],
+        };
+      }
+
+      return {
+        content: [{
           type: 'text',
-          text: `Attempted to solve ${type} captcha. Check page to verify success.`,
-        },
-      ],
-    };
+          text: `ℹ️ Captcha type: ${detectedType}. Brave anti-detection features are active. Check page for captcha status.`,
+        }],
+      };
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      return {
+        content: [{
+          type: 'text',
+          text: `⚠️ Captcha handling completed with warning: ${errorMessage}\nBrave anti-detection is still active.`,
+        }],
+      };
+    }
   }, 'Failed to solve captcha');
 }
+
 
 // Random scroll handler
 export async function handleRandomScroll() {

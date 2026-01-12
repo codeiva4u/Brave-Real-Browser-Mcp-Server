@@ -260,10 +260,11 @@ export async function handleFindSelector(args: FindSelectorArgs) {
             });
           }
 
+
           // Sort by confidence score
           return elements.sort((a, b) => b.confidence - a.confidence);
         },
-        text,
+        text, // Use the text argument from args
         searchSelectors,
         exact
       );

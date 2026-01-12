@@ -6,6 +6,12 @@ import { withErrorHandling, withTimeout } from '../system-utils.js';
 import { validateWorkflow, recordExecution, workflowValidator } from '../workflow-validation.js';
 import { SaveContentAsMarkdownArgs } from '../tool-definitions.js';
 
+// MCP CallToolResult type definition
+interface CallToolResult {
+  content: Array<{ type: string; text: string }>;
+  isError?: boolean;
+}
+
 // Path validation and security functions
 function validateFilePath(filePath: string): void {
   // Check file extension
@@ -124,7 +130,8 @@ function cleanupMarkdownWhitespace(content: string): string {
 }
 
 // Main handler function for saving content as markdown
-export async function handleSaveContentAsMarkdown(args: SaveContentAsMarkdownArgs) {
+// Export the handler function
+export async function handleSaveContentAsMarkdown(args: SaveContentAsMarkdownArgs): Promise<CallToolResult> {
   return await withWorkflowValidation('save_content_as_markdown', args, async () => {
     return await withErrorHandling(async () => {
       const pageInstance = getPageInstance();

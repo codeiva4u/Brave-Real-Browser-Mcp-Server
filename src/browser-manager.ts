@@ -414,49 +414,86 @@ export async function initializeBrowser(options?: any) {
   }
 }
 
-// Close browser function
+// Close browser function - Enhanced with timeout protection
 export async function closeBrowser() {
-  if (browserInstance) {
+  if (!browserInstance) {
+    // Already closed or never initialized
+    browserInstance = null;
+    pageInstance = null;
+    return;
+  }
+
+  const browser = browserInstance;
+  // Clear references immediately to prevent double-close attempts
+  browserInstance = null;
+  pageInstance = null;
+
+  try {
+    // Try to get pages with timeout
+    let pages: any[] = [];
     try {
-      const pages = await browserInstance.pages();
-      for (const page of pages) {
-        try {
-          await page.close();
-        } catch (error) {
-          // console.('Error closing page:', error);
-        }
+      pages = await withTimeout(
+        async () => browser.pages?.() || [],
+        5000,
+        'browser-pages-list'
+      );
+    } catch (error) {
+      // Could not get pages, continue with close
+    }
+
+    // Close each page with individual timeout
+    for (const page of pages) {
+      try {
+        await withTimeout(
+          async () => page.close?.(),
+          2000,
+          'page-close'
+        );
+      } catch (error) {
+        // Ignore individual page close errors
       }
+    }
 
-      await browserInstance.close();
+    // Try graceful browser close with timeout
+    try {
+      await withTimeout(
+        async () => browser.close?.(),
+        10000,
+        'browser-close'
+      );
+    } catch (error) {
+      // Graceful close failed, will force kill
+    }
 
-      if (browserInstance.process() != null) {
-        try {
-          browserInstance.process().kill('SIGTERM');
-          await new Promise(resolve => setTimeout(resolve, 1000));
+    // Force kill process if still running
+    try {
+      const process = browser.process?.();
+      if (process && !process.killed) {
+        process.kill('SIGTERM');
+        await new Promise(resolve => setTimeout(resolve, 1000));
 
-          if (browserInstance.process() != null && !browserInstance.process().killed) {
-            browserInstance.process().kill('SIGKILL');
-          }
-        } catch (error) {
-          // console.('Error force-killing browser process:', error);
+        const processAfterTerm = browser.process?.();
+        if (processAfterTerm && !processAfterTerm.killed) {
+          processAfterTerm.kill('SIGKILL');
         }
       }
     } catch (error) {
-      // console.('Error closing browser:', error);
+      // Ignore force kill errors - process may already be gone
+    }
 
-      if (browserInstance && browserInstance.process() != null) {
-        try {
-          browserInstance.process().kill('SIGKILL');
-        } catch (killError) {
-          // console.('Error force-killing browser process with SIGKILL:', killError);
-        }
+  } catch (error) {
+    // Final cleanup - try force kill
+    try {
+      const process = browser.process?.();
+      if (process) {
+        process.kill('SIGKILL');
       }
-    } finally {
-      browserInstance = null;
-      pageInstance = null;
+    } catch (killError) {
+      // Ignore - nothing more we can do
     }
   }
 }
+
 
 // Force kill all Brave Browser processes system-wide
 export async function forceKillAllBraveProcesses() {
