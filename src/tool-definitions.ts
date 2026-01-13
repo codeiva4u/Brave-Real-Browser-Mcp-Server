@@ -735,9 +735,14 @@ export interface SolveCaptchaArgs {
 }
 
 export interface FindSelectorArgs {
-  text: string;
+  text?: string;
+  selector?: string;
+  xpath?: string;
+  attributes?: string;
+  description?: string;
   elementType?: string;
   exact?: boolean;
+  context?: string;
 }
 
 export interface SaveContentAsMarkdownArgs {
