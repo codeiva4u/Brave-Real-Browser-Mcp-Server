@@ -222,29 +222,33 @@ export async function handleBreadcrumbNavigator(
 }
 
 /**
- * Trace standard URL redirects
+ * Trace standard URL redirects - Uses response events to avoid interception crashes
  */
 export async function handleUrlRedirectTracer(
     page: Page,
     args: UrlRedirectTracerArgs
-): Promise<{ chain: string[]; finalUrl: string; totalRedirects: number }> {
+): Promise<{ chain: string[]; finalUrl: string; totalRedirects: number; error?: string }> {
     const maxRedirects = args.maxRedirects || 10;
-    const chain: string[] = [];
+    const chain: string[] = [args.url];
+    const TIMEOUT_MS = 30000; // 30 second timeout
 
-    const redirectHandler = (request: any) => {
+    // Use response events instead of request interception to avoid crashes
+    const responseHandler = (response: any) => {
         try {
-            // Check if request is already handled
-            if (request.isInterceptResolutionHandled && request.isInterceptResolutionHandled()) {
-                return;
+            const status = response.status();
+            const url = response.url();
+            // Track redirects (3xx status codes)
+            if (status >= 300 && status < 400 && chain.length < maxRedirects) {
+                const location = response.headers()['location'];
+                if (location) {
+                    chain.push(location);
+                }
             }
-
-            if (request.isNavigationRequest()) {
-                chain.push(request.url());
-            }
-
-            // Only continue if not already handled
-            if (!request.isInterceptResolutionHandled || !request.isInterceptResolutionHandled()) {
-                request.continue().catch(() => { });
+            // Also track successful navigations
+            if (status >= 200 && status < 300) {
+                if (!chain.includes(url)) {
+                    chain.push(url);
+                }
             }
         } catch (e) {
             // Ignore errors in handler
@@ -252,30 +256,59 @@ export async function handleUrlRedirectTracer(
     };
 
     try {
+        page.on('response', responseHandler);
+
+        // Navigate with timeout protection
+        const navigationPromise = page.goto(args.url, {
+            waitUntil: 'networkidle2',
+            timeout: TIMEOUT_MS
+        }).catch((err: Error) => {
+            // Handle navigation errors gracefully
+            return { error: err.message };
+        });
+
+        const result = await Promise.race([
+            navigationPromise,
+            new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Navigation timeout')), TIMEOUT_MS)
+            )
+        ]).catch((err: Error) => ({ error: err.message }));
+
+        // Get final URL safely
+        let finalUrl = args.url;
         try {
-            await page.setRequestInterception(true);
+            finalUrl = page.url() || args.url;
+            if (!chain.includes(finalUrl)) {
+                chain.push(finalUrl);
+            }
         } catch (e) {
-            // Interception might already be enabled
+            // Use original URL if page.url() fails
         }
 
-        page.on('request', redirectHandler);
+        const uniqueChain = [...new Set(chain)];
 
-        await page.goto(args.url, { waitUntil: 'networkidle2' });
-        chain.push(page.url());
+        return {
+            chain: uniqueChain,
+            finalUrl,
+            totalRedirects: Math.max(0, uniqueChain.length - 1),
+            error: (result as any)?.error
+        };
+    } catch (error) {
+        // Return partial results on error instead of crashing
+        const uniqueChain = [...new Set(chain)];
+        return {
+            chain: uniqueChain,
+            finalUrl: chain[chain.length - 1] || args.url,
+            totalRedirects: Math.max(0, uniqueChain.length - 1),
+            error: error instanceof Error ? error.message : String(error)
+        };
     } finally {
-        page.off('request', redirectHandler);
         try {
-            await page.setRequestInterception(false);
-        } catch (e) { }
+            page.off('response', responseHandler);
+        } catch (e) {
+            // Ignore cleanup errors
+        }
     }
-
-    const uniqueChain = [...new Set(chain)];
-
-    return {
-        chain: uniqueChain,
-        finalUrl: page.url(),
-        totalRedirects: uniqueChain.length - 1,
-    };
 }
 
 /**
@@ -699,6 +732,7 @@ export async function handleProgressTracker(
 
 /**
  * Deep analysis - Logs, Network, DOM, and Screenshot
+ * Uses response events instead of request interception to avoid crashes
  */
 export async function handleDeepAnalysis(
     page: Page,
@@ -708,25 +742,37 @@ export async function handleDeepAnalysis(
     const networkRequests: any[] = [];
     const duration = args.duration || 5000;
 
-    // Collect console logs
-    if (args.includeConsole !== false) {
-        page.on('console', (msg) => {
+    // Console log handler
+    const consoleHandler = (msg: any) => {
+        try {
             consoleLogs.push(`[${msg.type()}] ${msg.text()}`);
-        });
-    }
+        } catch (e) {
+            // Ignore
+        }
+    };
+
+    // Response handler - safer than request interception
+    const responseHandler = (response: any) => {
+        try {
+            networkRequests.push({
+                url: response.url(),
+                status: response.status(),
+                resourceType: response.request()?.resourceType?.() || 'unknown',
+            });
+        } catch (e) {
+            // Ignore
+        }
+    };
 
     try {
-        // Collect network
+        // Collect console logs
+        if (args.includeConsole !== false) {
+            page.on('console', consoleHandler);
+        }
+
+        // Collect network using response events (safer than request interception)
         if (args.includeNetwork !== false) {
-            await page.setRequestInterception(true);
-            page.on('request', (req) => {
-                networkRequests.push({
-                    url: req.url(),
-                    method: req.method(),
-                    resourceType: req.resourceType(),
-                });
-                req.continue();
-            });
+            page.on('response', responseHandler);
         }
 
         // Wait for specified duration
@@ -735,21 +781,29 @@ export async function handleDeepAnalysis(
         // Get DOM stats
         let domStats = {};
         if (args.includeDom !== false) {
-            domStats = await page.evaluate(() => ({
-                totalElements: document.querySelectorAll('*').length,
-                images: document.querySelectorAll('img').length,
-                links: document.querySelectorAll('a').length,
-                forms: document.querySelectorAll('form').length,
-                scripts: document.querySelectorAll('script').length,
-                iframes: document.querySelectorAll('iframe').length,
-            }));
+            try {
+                domStats = await page.evaluate(() => ({
+                    totalElements: document.querySelectorAll('*').length,
+                    images: document.querySelectorAll('img').length,
+                    links: document.querySelectorAll('a').length,
+                    forms: document.querySelectorAll('form').length,
+                    scripts: document.querySelectorAll('script').length,
+                    iframes: document.querySelectorAll('iframe').length,
+                }));
+            } catch (e) {
+                domStats = { error: 'Failed to get DOM stats' };
+            }
         }
 
         // Take screenshot
         let screenshot: string | undefined;
         if (args.includeScreenshot) {
-            const buffer = await page.screenshot({ encoding: 'base64' });
-            screenshot = buffer as string;
+            try {
+                const buffer = await page.screenshot({ encoding: 'base64' });
+                screenshot = buffer as string;
+            } catch (e) {
+                // Screenshot failed, continue without it
+            }
         }
 
         return {
@@ -759,18 +813,22 @@ export async function handleDeepAnalysis(
             screenshot,
         };
     } finally {
-        if (args.includeNetwork !== false) {
-            try {
-                await page.setRequestInterception(false);
-            } catch (e) {
-                // Ignore
+        // Clean up event listeners
+        try {
+            if (args.includeConsole !== false) {
+                page.off('console', consoleHandler);
             }
+            if (args.includeNetwork !== false) {
+                page.off('response', responseHandler);
+            }
+        } catch (e) {
+            // Ignore cleanup errors
         }
     }
 }
 
 /**
- * Record full network traffic
+ * Record full network traffic - Uses response events to avoid crashes
  */
 export async function handleNetworkRecorder(
     page: Page,
@@ -780,41 +838,39 @@ export async function handleNetworkRecorder(
     const duration = args.duration || 10000;
     let totalSize = 0;
 
-    const requestHandler = (request: any) => {
+    // Response handler - safer than request interception
+    const responseHandler = (response: any) => {
         try {
-            // Check if request is already handled to prevent crash
-            if (request.isInterceptResolutionHandled && request.isInterceptResolutionHandled()) {
-                return;
-            }
-
-            const url = request.url();
+            const url = response.url();
             if (args.filterUrl && !url.includes(args.filterUrl)) {
-                if (!request.isInterceptResolutionHandled || !request.isInterceptResolutionHandled()) {
-                    request.continue().catch(() => { });
-                }
                 return;
             }
 
             const entry: any = {
                 url,
-                method: request.method(),
-                resourceType: request.resourceType(),
+                status: response.status(),
+                resourceType: response.request()?.resourceType?.() || 'unknown',
                 timestamp: Date.now(),
             };
 
             if (args.includeHeaders) {
-                entry.headers = request.headers();
+                try {
+                    entry.headers = response.headers();
+                } catch (e) {
+                    entry.headers = {};
+                }
             }
 
-            if (args.includeBody) {
-                entry.postData = request.postData();
-            }
-
+            // Note: Response body requires async handling, skip for stability
             requests.push(entry);
 
-            // Only continue if not already handled
-            if (!request.isInterceptResolutionHandled || !request.isInterceptResolutionHandled()) {
-                request.continue().catch(() => { });
+            // Track size from headers
+            try {
+                const headers = response.headers();
+                const size = parseInt(headers['content-length'] || '0', 10);
+                totalSize += size;
+            } catch {
+                // Ignore
             }
         } catch {
             // Ignore all errors in handler to prevent crash
@@ -822,32 +878,16 @@ export async function handleNetworkRecorder(
     };
 
     try {
-        try {
-            await page.setRequestInterception(true);
-        } catch (e) {
-            // Interception might already be enabled
-        }
-
-        page.on('request', requestHandler);
-
-        page.on('response', (response) => {
-            try {
-                const headers = response.headers();
-                const size = parseInt(headers['content-length'] || '0', 10);
-                totalSize += size;
-            } catch {
-                // Ignore errors
-            }
-        });
-
+        page.on('response', responseHandler);
         await new Promise((r) => setTimeout(r, duration));
     } catch (e) {
         // Capture setup errors
     } finally {
-        page.off('request', requestHandler);
         try {
-            await page.setRequestInterception(false);
-        } catch (e) { }
+            page.off('response', responseHandler);
+        } catch (e) {
+            // Ignore cleanup errors
+        }
     }
 
     return {
@@ -858,7 +898,7 @@ export async function handleNetworkRecorder(
 }
 
 /**
- * Discover hidden API endpoints
+ * Discover hidden API endpoints - Uses response events to avoid crashes
  */
 export async function handleApiFinder(
     page: Page,
@@ -867,28 +907,23 @@ export async function handleApiFinder(
     const apis: { url: string; method: string; type: string }[] = [];
     const patterns = args.patterns || ['/api/', '/v1/', '/v2/', '/graphql', '/rest/', '.json'];
 
-    const requestHandler = (request: any) => {
+    // Response handler - safer than request interception
+    const responseHandler = (response: any) => {
         try {
-            // Check if request is already handled
-            if (request.isInterceptResolutionHandled && request.isInterceptResolutionHandled()) {
-                return;
-            }
+            const request = response.request();
+            if (!request) return;
 
-            const url = request.url();
+            const url = response.url();
+            const resourceType = request.resourceType?.() || 'unknown';
             const isApi = patterns.some((p) => url.includes(p));
-            const isXhr = request.resourceType() === 'xhr' || request.resourceType() === 'fetch';
+            const isXhr = resourceType === 'xhr' || resourceType === 'fetch';
 
             if (isApi || (args.includeInternal !== false && isXhr)) {
                 apis.push({
                     url,
-                    method: request.method(),
-                    type: request.resourceType(),
+                    method: request.method?.() || 'GET',
+                    type: resourceType,
                 });
-            }
-
-            // Only continue if not already handled
-            if (!request.isInterceptResolutionHandled || !request.isInterceptResolutionHandled()) {
-                request.continue().catch(() => { });
             }
         } catch (e) {
             // Ignore errors in handler
@@ -896,24 +931,24 @@ export async function handleApiFinder(
     };
 
     try {
-        await page.setRequestInterception(true);
-        page.on('request', requestHandler);
+        page.on('response', responseHandler);
 
         // Trigger some interactions to discover more APIs
-        await page.evaluate(() => {
-            window.scrollTo(0, document.body.scrollHeight / 2);
-        });
+        try {
+            await page.evaluate(() => {
+                window.scrollTo(0, document.body.scrollHeight / 2);
+            });
+        } catch (e) {
+            // Ignore scroll errors
+        }
         await new Promise((r) => setTimeout(r, 3000));
     } catch (error) {
-        // Log error but prioritize returning what we found
-        console.error('Error in api_finder:', error);
+        // Capture errors but continue
     } finally {
-        page.off('request', requestHandler);
-        // Safely disable interception
         try {
-            await page.setRequestInterception(false);
+            page.off('response', responseHandler);
         } catch (e) {
-            // Ignore if already disabled or browser closed
+            // Ignore cleanup errors
         }
     }
 
