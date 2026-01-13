@@ -157,16 +157,8 @@ export async function handleSaveContentAsMarkdown(args: SaveContentAsMarkdownArg
         throw new Error(`Failed to create directory: ${dirPath}. ${error instanceof Error ? error.message : String(error)}`);
       }
 
-      // Check if file already exists
-      try {
-        await fs.access(filePath);
-        throw new Error(`File already exists: ${filePath}. Please choose a different path or delete the existing file.`);
-      } catch (error) {
-        // File doesn't exist, which is what we want
-        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-          throw error;
-        }
-      }
+      // File existence check removed to allow overwriting
+      // ensure directory is there (already checked above)
 
       // Extract content from page
       let content: string;

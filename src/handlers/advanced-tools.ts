@@ -231,17 +231,33 @@ export async function handleUrlRedirectTracer(
     const maxRedirects = args.maxRedirects || 10;
     const chain: string[] = [];
 
-    await page.setRequestInterception(true);
-
     const redirectHandler = (request: any) => {
-        if (request.isNavigationRequest()) {
-            chain.push(request.url());
+        try {
+            // Check if request is already handled
+            if (request.isInterceptResolutionHandled && request.isInterceptResolutionHandled()) {
+                return;
+            }
+
+            if (request.isNavigationRequest()) {
+                chain.push(request.url());
+            }
+
+            // Only continue if not already handled
+            if (!request.isInterceptResolutionHandled || !request.isInterceptResolutionHandled()) {
+                request.continue().catch(() => { });
+            }
+        } catch (e) {
+            // Ignore errors in handler
         }
-        request.continue();
     };
 
     try {
-        await page.setRequestInterception(true);
+        try {
+            await page.setRequestInterception(true);
+        } catch (e) {
+            // Interception might already be enabled
+        }
+
         page.on('request', redirectHandler);
 
         await page.goto(args.url, { waitUntil: 'networkidle2' });
@@ -764,37 +780,57 @@ export async function handleNetworkRecorder(
     const duration = args.duration || 10000;
     let totalSize = 0;
 
-    const requestHandler = async (request: any) => {
-        const url = request.url();
-        if (args.filterUrl && !url.includes(args.filterUrl)) {
-            request.continue();
-            return;
+    const requestHandler = (request: any) => {
+        try {
+            // Check if request is already handled to prevent crash
+            if (request.isInterceptResolutionHandled && request.isInterceptResolutionHandled()) {
+                return;
+            }
+
+            const url = request.url();
+            if (args.filterUrl && !url.includes(args.filterUrl)) {
+                if (!request.isInterceptResolutionHandled || !request.isInterceptResolutionHandled()) {
+                    request.continue().catch(() => { });
+                }
+                return;
+            }
+
+            const entry: any = {
+                url,
+                method: request.method(),
+                resourceType: request.resourceType(),
+                timestamp: Date.now(),
+            };
+
+            if (args.includeHeaders) {
+                entry.headers = request.headers();
+            }
+
+            if (args.includeBody) {
+                entry.postData = request.postData();
+            }
+
+            requests.push(entry);
+
+            // Only continue if not already handled
+            if (!request.isInterceptResolutionHandled || !request.isInterceptResolutionHandled()) {
+                request.continue().catch(() => { });
+            }
+        } catch {
+            // Ignore all errors in handler to prevent crash
         }
-
-        const entry: any = {
-            url,
-            method: request.method(),
-            resourceType: request.resourceType(),
-            timestamp: Date.now(),
-        };
-
-        if (args.includeHeaders) {
-            entry.headers = request.headers();
-        }
-
-        if (args.includeBody) {
-            entry.postData = request.postData();
-        }
-
-        requests.push(entry);
-        request.continue();
     };
 
     try {
-        await page.setRequestInterception(true);
+        try {
+            await page.setRequestInterception(true);
+        } catch (e) {
+            // Interception might already be enabled
+        }
+
         page.on('request', requestHandler);
 
-        page.on('response', async (response) => {
+        page.on('response', (response) => {
             try {
                 const headers = response.headers();
                 const size = parseInt(headers['content-length'] || '0', 10);
@@ -805,6 +841,8 @@ export async function handleNetworkRecorder(
         });
 
         await new Promise((r) => setTimeout(r, duration));
+    } catch (e) {
+        // Capture setup errors
     } finally {
         page.off('request', requestHandler);
         try {
@@ -830,18 +868,31 @@ export async function handleApiFinder(
     const patterns = args.patterns || ['/api/', '/v1/', '/v2/', '/graphql', '/rest/', '.json'];
 
     const requestHandler = (request: any) => {
-        const url = request.url();
-        const isApi = patterns.some((p) => url.includes(p));
-        const isXhr = request.resourceType() === 'xhr' || request.resourceType() === 'fetch';
+        try {
+            // Check if request is already handled
+            if (request.isInterceptResolutionHandled && request.isInterceptResolutionHandled()) {
+                return;
+            }
 
-        if (isApi || (args.includeInternal !== false && isXhr)) {
-            apis.push({
-                url,
-                method: request.method(),
-                type: request.resourceType(),
-            });
+            const url = request.url();
+            const isApi = patterns.some((p) => url.includes(p));
+            const isXhr = request.resourceType() === 'xhr' || request.resourceType() === 'fetch';
+
+            if (isApi || (args.includeInternal !== false && isXhr)) {
+                apis.push({
+                    url,
+                    method: request.method(),
+                    type: request.resourceType(),
+                });
+            }
+
+            // Only continue if not already handled
+            if (!request.isInterceptResolutionHandled || !request.isInterceptResolutionHandled()) {
+                request.continue().catch(() => { });
+            }
+        } catch (e) {
+            // Ignore errors in handler
         }
-        request.continue();
     };
 
     try {
@@ -1704,11 +1755,24 @@ export async function handleM3u8Parser(
     const m3u8Urls: string[] = [];
 
     const requestHandler = (request: any) => {
-        const url = request.url();
-        if (url.includes('.m3u8') || url.includes('manifest') || url.includes('playlist')) {
-            m3u8Urls.push(url);
+        try {
+            // Check if request is already handled
+            if (request.isInterceptResolutionHandled && request.isInterceptResolutionHandled()) {
+                return;
+            }
+
+            const url = request.url();
+            if (url.includes('.m3u8') || url.includes('manifest') || url.includes('playlist')) {
+                m3u8Urls.push(url);
+            }
+
+            // Only continue if not already handled
+            if (!request.isInterceptResolutionHandled || !request.isInterceptResolutionHandled()) {
+                request.continue().catch(() => { });
+            }
+        } catch (e) {
+            // Ignore errors in handler
         }
-        request.continue();
     };
 
     try {

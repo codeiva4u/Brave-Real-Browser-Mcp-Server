@@ -8,14 +8,60 @@
 import * as childProcess from 'child_process';
 import * as fs from 'fs';
 import * as net from 'net';
+import * as path from 'path';
 import * as braveFinder from './brave-finder.js';
-import {getRandomPort} from './random-port.js';
-import {DEFAULT_FLAGS} from './flags.js';
-import {makeTmpDir, defaults, delay, getPlatform, toWin32Path, InvalidUserDataDirectoryError, UnsupportedPlatformError, BraveNotInstalledError} from './utils.js';
-import {ChildProcess} from 'child_process';
-import {spawn, spawnSync} from 'child_process';
+import { getRandomPort } from './random-port.js';
+import { DEFAULT_FLAGS } from './flags.js';
+import { makeTmpDir, defaults, delay, getPlatform, toWin32Path, InvalidUserDataDirectoryError, UnsupportedPlatformError, BraveNotInstalledError } from './utils.js';
+import { ChildProcess } from 'child_process';
+import { spawn, spawnSync } from 'child_process';
 import log from './logger.js';
-import {XvfbSupport, XvfbOptions} from './xvfb-support.js';
+import { XvfbSupport, XvfbOptions } from './xvfb-support.js';
+import { fileURLToPath } from 'url';
+
+// Load .env file for HEADLESS and other environment variables
+// Works with both CJS and ESM
+function loadEnvFile(): void {
+  const envPaths = [
+    path.join(process.cwd(), '.env'),
+  ];
+
+  // Try to find project root by looking for package.json
+  let currentDir = process.cwd();
+  for (let i = 0; i < 5; i++) {
+    const envPath = path.join(currentDir, '.env');
+    if (fs.existsSync(envPath) && !envPaths.includes(envPath)) {
+      envPaths.push(envPath);
+    }
+    const parentDir = path.dirname(currentDir);
+    if (parentDir === currentDir) break;
+    currentDir = parentDir;
+  }
+
+  for (const envPath of envPaths) {
+    try {
+      if (fs.existsSync(envPath)) {
+        const envContent = fs.readFileSync(envPath, 'utf-8');
+        envContent.split('\n').forEach(line => {
+          const trimmed = line.trim();
+          if (trimmed && !trimmed.startsWith('#')) {
+            const [key, ...valueParts] = trimmed.split('=');
+            const value = valueParts.join('=').replace(/^["']|["']$/g, '');
+            if (key && !process.env[key]) {
+              process.env[key] = value;
+            }
+          }
+        });
+        break;
+      }
+    } catch (error) {
+      // Silently ignore .env loading errors
+    }
+  }
+}
+
+// Load .env FIRST before anything else
+loadEnvFile();
 
 const isWsl = getPlatform() === 'wsl';
 const isWindows = getPlatform() === 'win32';
@@ -23,11 +69,11 @@ const _SIGINT = 'SIGINT';
 const _SIGINT_EXIT_CODE = 130;
 const _SUPPORTED_PLATFORMS = new Set(['darwin', 'linux', 'win32', 'wsl']);
 
-type SupportedPlatforms = 'darwin'|'linux'|'win32'|'wsl';
+type SupportedPlatforms = 'darwin' | 'linux' | 'win32' | 'wsl';
 
 const instances = new Set<Launcher>();
 
-type JSONLike =|{[property: string]: JSONLike}|readonly JSONLike[]|string|number|boolean|null;
+type JSONLike = | { [property: string]: JSONLike } | readonly JSONLike[] | string | number | boolean | null;
 
 export interface Options {
   startingUrl?: string;
@@ -37,12 +83,12 @@ export interface Options {
   portStrictMode?: boolean;
   handleSIGINT?: boolean;
   chromePath?: string;
-  userDataDir?: string|boolean;
-  logLevel?: 'verbose'|'info'|'error'|'warn'|'silent';
+  userDataDir?: string | boolean;
+  logLevel?: 'verbose' | 'info' | 'error' | 'warn' | 'silent';
   ignoreDefaultFlags?: boolean;
   connectionPollInterval?: number;
   maxConnectionRetries?: number;
-  envVars?: {[key: string]: string|undefined};
+  envVars?: { [key: string]: string | undefined };
   // New Brave-specific options
   headless?: boolean;
   autoDetectDisplay?: boolean;
@@ -58,13 +104,13 @@ export interface LaunchedBrave {
   pid: number;
   port: number;
   process: ChildProcess;
-  remoteDebuggingPipes: RemoteDebuggingPipes|null;
+  remoteDebuggingPipes: RemoteDebuggingPipes | null;
   xvfb?: XvfbSupport;
   kill: () => void;
 }
 
 // Keep legacy interface for compatibility
-export interface LaunchedChrome extends LaunchedBrave {}
+export interface LaunchedChrome extends LaunchedBrave { }
 
 export interface ModuleOverrides {
   fs?: typeof fs;
@@ -82,10 +128,10 @@ async function launch(opts: Options = {}): Promise<LaunchedBrave> {
   // Auto-detect and setup Xvfb if needed on Linux
   let xvfb: XvfbSupport | undefined;
   if (getPlatform() === 'linux') {
-    const shouldEnableXvfb = opts.enableXvfb !== false && 
-                            (opts.enableXvfb === true || 
-                             opts.autoDetectDisplay !== false && XvfbSupport.shouldUseXvfb());
-    
+    const shouldEnableXvfb = opts.enableXvfb !== false &&
+      (opts.enableXvfb === true ||
+        opts.autoDetectDisplay !== false && XvfbSupport.shouldUseXvfb());
+
     if (shouldEnableXvfb) {
       try {
         xvfb = await XvfbSupport.create(opts.xvfbOptions);
@@ -172,13 +218,13 @@ class Launcher {
   private fs: typeof fs;
   private spawn: typeof childProcess.spawn;
   private useDefaultProfile: boolean;
-  private envVars: {[key: string]: string|undefined};
+  private envVars: { [key: string]: string | undefined };
   private headless: boolean;
 
   chromeProcess?: childProcess.ChildProcess;
   userDataDir?: string;
   port?: number;
-  remoteDebuggingPipes: RemoteDebuggingPipes|null = null;
+  remoteDebuggingPipes: RemoteDebuggingPipes | null = null;
   pid?: number;
 
   constructor(private opts: Options = {}, moduleOverrides: ModuleOverrides = {}) {
@@ -214,7 +260,7 @@ class Launcher {
 
     // Using startsWith because it could also be --remote-debugging-pipe=cbor
     this.useRemoteDebuggingPipe =
-        this.chromeFlags.some(f => f.startsWith('--remote-debugging-pipe'));
+      this.chromeFlags.some(f => f.startsWith('--remote-debugging-pipe'));
   }
 
   private get flags() {
@@ -235,7 +281,8 @@ class Launcher {
     }
 
     // Handle headless mode - prefer explicit option over environment variable
-    if (this.headless || process.env.HEADLESS) {
+    // FIX: Only enable headless when HEADLESS env is explicitly 'true', not just truthy
+    if (this.headless || process.env.HEADLESS?.toLowerCase() === 'true') {
       flags.push('--headless');
       // Add additional headless-friendly flags
       if (!this.chromeFlags.some(flag => flag.startsWith('--disable-gpu'))) {
@@ -301,7 +348,7 @@ class Launcher {
 
     const profileDir = `${this.userDataDir}/Default`;
     if (!this.fs.existsSync(profileDir)) {
-      this.fs.mkdirSync(profileDir, {recursive: true});
+      this.fs.mkdirSync(profileDir, { recursive: true });
     }
 
     const preferenceFile = `${profileDir}/Preferences`;
@@ -310,10 +357,10 @@ class Launcher {
         // overwrite existing file
         const file = this.fs.readFileSync(preferenceFile, 'utf-8');
         const content = JSON.parse(file);
-        this.fs.writeFileSync(preferenceFile, JSON.stringify({...content, ...this.prefs}), 'utf-8');
+        this.fs.writeFileSync(preferenceFile, JSON.stringify({ ...content, ...this.prefs }), 'utf-8');
       } else {
         // create new Preference file
-        this.fs.writeFileSync(preferenceFile, JSON.stringify({...this.prefs}), 'utf-8');
+        this.fs.writeFileSync(preferenceFile, JSON.stringify({ ...this.prefs }), 'utf-8');
       }
     } catch (err) {
       log.log('ChromeLauncher', `Failed to set browser prefs: ${err.message}`);
@@ -328,8 +375,8 @@ class Launcher {
       try {
         await this.isDebuggerReady();
         log.log(
-            'BraveLauncher',
-            `Found existing Brave already running using port ${this.port}, using that.`);
+          'BraveLauncher',
+          `Found existing Brave already running using port ${this.port}, using that.`);
         return;
       } catch (err) {
         if (this.portStrictMode) {
@@ -337,8 +384,8 @@ class Launcher {
         }
 
         log.log(
-            'BraveLauncher',
-            `No debugging port found on port ${this.port}, launching a new Brave.`);
+          'BraveLauncher',
+          `No debugging port found on port ${this.port}, launching a new Brave.`);
       }
     }
     if (this.chromePath === undefined) {
@@ -380,15 +427,15 @@ class Launcher {
       }
 
       log.verbose(
-          'ChromeLauncher', `Launching with command:\n"${execPath}" ${this.flags.join(' ')}`);
+        'ChromeLauncher', `Launching with command:\n"${execPath}" ${this.flags.join(' ')}`);
       this.chromeProcess = this.spawn(execPath, this.flags, {
         // On non-windows platforms, `detached: true` makes child process a leader of a new
         // process group, making it possible to kill child process tree with `.kill(-pid)` command.
         // @see https://nodejs.org/api/child_process.html#child_process_options_detached
         detached: process.platform !== 'win32',
         stdio: this.useRemoteDebuggingPipe ?
-            ['ignore', this.outFile, this.errFile, 'pipe', 'pipe'] :
-            ['ignore', this.outFile, this.errFile],
+          ['ignore', this.outFile, this.errFile, 'pipe', 'pipe'] :
+          ['ignore', this.outFile, this.errFile],
         env: this.envVars
       });
 
@@ -403,8 +450,8 @@ class Launcher {
       }
 
       log.verbose(
-          'ChromeLauncher',
-          `Chrome running with pid ${this.chromeProcess.pid} on port ${this.port}.`);
+        'ChromeLauncher',
+        `Chrome running with pid ${this.chromeProcess.pid} on port ${this.port}.`);
       return this.chromeProcess.pid;
     })();
 
@@ -461,22 +508,22 @@ class Launcher {
         log.log('ChromeLauncher', waitStatus);
 
         launcher.isDebuggerReady()
-            .then(() => {
-              log.log('ChromeLauncher', waitStatus + `${log.greenify(log.tick)}`);
-              resolve();
-            })
-            .catch(err => {
-              if (retries > launcher.maxConnectionRetries) {
-                log.error('ChromeLauncher', err.message);
-                const stderr =
-                    this.fs.readFileSync(`${this.userDataDir}/chrome-err.log`, {encoding: 'utf-8'});
-                log.error(
-                    'ChromeLauncher', `Logging contents of ${this.userDataDir}/chrome-err.log`);
-                log.error('ChromeLauncher', stderr);
-                return reject(err);
-              }
-              delay(launcher.connectionPollInterval).then(poll);
-            });
+          .then(() => {
+            log.log('ChromeLauncher', waitStatus + `${log.greenify(log.tick)}`);
+            resolve();
+          })
+          .catch(err => {
+            if (retries > launcher.maxConnectionRetries) {
+              log.error('ChromeLauncher', err.message);
+              const stderr =
+                this.fs.readFileSync(`${this.userDataDir}/chrome-err.log`, { encoding: 'utf-8' });
+              log.error(
+                'ChromeLauncher', `Logging contents of ${this.userDataDir}/chrome-err.log`);
+              log.error('ChromeLauncher', stderr);
+              return reject(err);
+            }
+            delay(launcher.connectionPollInterval).then(poll);
+          });
       };
       poll();
     });
@@ -497,9 +544,9 @@ class Launcher {
       if (isWindows) {
         // https://github.com/GoogleChrome/chrome-launcher/issues/266
         const taskkillProc = spawnSync(
-            `taskkill /pid ${this.chromeProcess.pid} /T /F`, {shell: true, encoding: 'utf-8'});
+          `taskkill /pid ${this.chromeProcess.pid} /T /F`, { shell: true, encoding: 'utf-8' });
 
-        const {stderr} = taskkillProc;
+        const { stderr } = taskkillProc;
         if (stderr) log.error('ChromeLauncher', `taskkill stderr`, stderr);
       } else {
         if (this.chromeProcess.pid) {
@@ -532,9 +579,9 @@ class Launcher {
     // backwards support for node v12 + v14.14+
     // https://nodejs.org/api/deprecations.html#DEP0147
     const rmSync = this.fs.rmSync || this.fs.rmdirSync;
-    rmSync(this.userDataDir, {recursive: true, force: true, maxRetries: 10});
+    rmSync(this.userDataDir, { recursive: true, force: true, maxRetries: 10 });
   }
 };
 
 export default Launcher;
-export {Launcher, launch, killAll, getBravePath};
+export { Launcher, launch, killAll, getBravePath };

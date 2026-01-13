@@ -53,6 +53,7 @@ export class ExtensionManager {
 
     /**
      * Get uBlock Origin extension, downloading if necessary
+     * Only checks for updates once per day to avoid slow startup
      */
     async getUBlockOrigin(): Promise<ExtensionInfo | null> {
         try {
@@ -62,11 +63,13 @@ export class ExtensionManager {
             // Check if we need to update
             let needsUpdate = !fs.existsSync(extensionDir);
             let currentVersion = '0.0.0';
+            let lastChecked = 0;
 
             if (fs.existsSync(versionFile)) {
                 try {
                     const versionData = JSON.parse(fs.readFileSync(versionFile, 'utf-8'));
                     currentVersion = versionData.version;
+                    lastChecked = versionData.lastChecked || 0;
                 } catch (e) {
                     needsUpdate = true;
                 }
@@ -74,20 +77,33 @@ export class ExtensionManager {
                 needsUpdate = true;
             }
 
-            // Get latest version info
-            const latestInfo = await this.getLatestUBlockVersion();
+            // Only check for updates once per day (24 hours = 86400000 ms)
+            const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+            const shouldCheckForUpdate = this.autoUpdate && (Date.now() - lastChecked > ONE_DAY_MS);
 
-            if (latestInfo && this.autoUpdate) {
-                if (this.compareVersions(latestInfo.version, currentVersion) > 0) {
-                    needsUpdate = true;
-                    if (!this.silent) {
-                        log.log('ExtensionManager', `uBlock Origin update available: ${currentVersion} → ${latestInfo.version}`);
+            // Get latest version info only if needed (first install or daily check)
+            if (needsUpdate || shouldCheckForUpdate) {
+                const latestInfo = await this.getLatestUBlockVersion();
+
+                if (latestInfo) {
+                    if (needsUpdate || this.compareVersions(latestInfo.version, currentVersion) > 0) {
+                        if (!this.silent && !needsUpdate) {
+                            log.log('ExtensionManager', `uBlock Origin update available: ${currentVersion} → ${latestInfo.version}`);
+                        }
+                        await this.downloadAndExtractUBlock(latestInfo.downloadUrl, extensionDir, latestInfo.version);
+                    } else {
+                        // No update needed, just update lastChecked timestamp
+                        this.updateLastCheckedTimestamp(versionFile, currentVersion);
+                        if (!this.silent) {
+                            log.verbose('ExtensionManager', `uBlock Origin v${currentVersion} is up to date`);
+                        }
                     }
                 }
-            }
-
-            if (needsUpdate && latestInfo) {
-                await this.downloadAndExtractUBlock(latestInfo.downloadUrl, extensionDir, latestInfo.version);
+            } else {
+                // Using cached version, skip update check
+                if (!this.silent) {
+                    log.verbose('ExtensionManager', `Using cached uBlock Origin v${currentVersion} (next check in ${Math.round((ONE_DAY_MS - (Date.now() - lastChecked)) / 3600000)}h)`);
+                }
             }
 
             // Find the extension manifest
@@ -109,6 +125,21 @@ export class ExtensionManager {
                 log.error('ExtensionManager', `Failed to get uBlock Origin: ${error.message}`);
             }
             return null;
+        }
+    }
+
+    /**
+     * Update lastChecked timestamp without re-downloading
+     */
+    private updateLastCheckedTimestamp(versionFile: string, version: string): void {
+        try {
+            fs.writeFileSync(versionFile, JSON.stringify({
+                version,
+                downloadedAt: new Date().toISOString(),
+                lastChecked: Date.now()
+            }));
+        } catch (e) {
+            // Ignore write errors
         }
     }
 
@@ -189,9 +220,13 @@ export class ExtensionManager {
         // Extract the zip
         await this.extractZip(zipPath, targetDir);
 
-        // Save version info
+        // Save version info with lastChecked timestamp
         const versionFile = path.join(targetDir, 'version.json');
-        fs.writeFileSync(versionFile, JSON.stringify({ version, downloadedAt: new Date().toISOString() }));
+        fs.writeFileSync(versionFile, JSON.stringify({
+            version,
+            downloadedAt: new Date().toISOString(),
+            lastChecked: Date.now()
+        }));
 
         // Cleanup zip
         try {

@@ -107,11 +107,18 @@ export class WorkflowValidator {
       'type': [WorkflowState.CONTENT_ANALYZED, WorkflowState.SELECTOR_AVAILABLE],
       'wait': [WorkflowState.PAGE_LOADED, WorkflowState.CONTENT_ANALYZED, WorkflowState.SELECTOR_AVAILABLE],
       'solve_captcha': [WorkflowState.PAGE_LOADED, WorkflowState.CONTENT_ANALYZED, WorkflowState.SELECTOR_AVAILABLE],
-      'random_scroll': [WorkflowState.PAGE_LOADED, WorkflowState.CONTENT_ANALYZED, WorkflowState.SELECTOR_AVAILABLE]
+      'random_scroll': [WorkflowState.PAGE_LOADED, WorkflowState.CONTENT_ANALYZED, WorkflowState.SELECTOR_AVAILABLE],
+      'save_content_as_markdown': [WorkflowState.CONTENT_ANALYZED, WorkflowState.SELECTOR_AVAILABLE],
+      // Allow advanced tools in analyzed state
+      'search_content': [WorkflowState.CONTENT_ANALYZED, WorkflowState.SELECTOR_AVAILABLE],
+      'extract_json': [WorkflowState.CONTENT_ANALYZED, WorkflowState.SELECTOR_AVAILABLE],
+      'scrape_meta_tags': [WorkflowState.PAGE_LOADED, WorkflowState.CONTENT_ANALYZED],
+      'link_harvester': [WorkflowState.PAGE_LOADED, WorkflowState.CONTENT_ANALYZED],
+      'deep_analysis': [WorkflowState.PAGE_LOADED, WorkflowState.CONTENT_ANALYZED]
     };
 
     const allowedStates = toolPrerequisites[toolName];
-    
+
     if (!allowedStates) {
       return {
         isValid: false,
@@ -180,7 +187,7 @@ export class WorkflowValidator {
    */
   recordToolExecution(toolName: string, args: any, success: boolean, errorMessage?: string): void {
     const timestamp = Date.now();
-    
+
     // Record tool call
     this.context.toolCallHistory.push({
       toolName,
@@ -235,7 +242,7 @@ export class WorkflowValidator {
       case 'get_content':
         // Always mark as attempted
         this.context.contentAnalysisAttempted = true;
-        
+
         // Mark as analyzed since we only get here on success
         newState = WorkflowState.CONTENT_ANALYZED;
         this.context.contentAnalyzed = true;
@@ -314,7 +321,7 @@ export class WorkflowValidator {
   getValidationSummary(): string {
     const context = this.getContext();
     const recentCalls = context.toolCallHistory.slice(-5);
-    
+
     return `
 Workflow Validation Summary:
 - Current State: ${context.currentState}

@@ -19,6 +19,51 @@ import log from './logger.js';
 import { ExtensionManager, ExtensionInfo } from './extension-manager.js';
 import { BraveInstaller } from './brave-installer.js';
 import { STEALTH_FLAGS, getStealthFlags, getDynamicStealthFlags, getDynamicUserAgents } from './stealth-utils.js';
+import { fileURLToPath } from 'url';
+
+// Load .env file for HEADLESS and other environment variables
+// Works with both CJS and ESM
+function loadEnvFile(): void {
+  const envPaths = [
+    path.join(process.cwd(), '.env'),
+  ];
+
+  // Try to find project root by looking for package.json
+  let currentDir = process.cwd();
+  for (let i = 0; i < 5; i++) {
+    const envPath = path.join(currentDir, '.env');
+    if (fs.existsSync(envPath) && !envPaths.includes(envPath)) {
+      envPaths.push(envPath);
+    }
+    const parentDir = path.dirname(currentDir);
+    if (parentDir === currentDir) break;
+    currentDir = parentDir;
+  }
+
+  for (const envPath of envPaths) {
+    try {
+      if (fs.existsSync(envPath)) {
+        const envContent = fs.readFileSync(envPath, 'utf-8');
+        envContent.split('\n').forEach(line => {
+          const trimmed = line.trim();
+          if (trimmed && !trimmed.startsWith('#')) {
+            const [key, ...valueParts] = trimmed.split('=');
+            const value = valueParts.join('=').replace(/^["']|["']$/g, '');
+            if (key && !process.env[key]) {
+              process.env[key] = value;
+            }
+          }
+        });
+        break;
+      }
+    } catch (error) {
+      // Silently ignore .env loading errors
+    }
+  }
+}
+
+// Load .env FIRST before anything else
+loadEnvFile();
 
 const isWsl = getPlatform() === 'wsl';
 const isWindows = getPlatform() === 'win32';

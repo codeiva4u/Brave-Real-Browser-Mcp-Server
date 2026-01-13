@@ -26,6 +26,8 @@
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
     "test:ci": "vitest run --coverage",
+    "test:e2e": "vitest run --config vitest.e2e.config.ts",
+    "test:integration": "npx tsx test/integration/test-all-tools.ts",
     "publish-all": "node scripts/publish-all.js",
     "publish-all:dry": "node scripts/publish-all.js --dry-run",
     "prepare-publish": "node scripts/prepare-publish.js",

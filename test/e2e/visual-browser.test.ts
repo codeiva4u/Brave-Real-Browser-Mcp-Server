@@ -59,21 +59,42 @@ describe.sequential('E2E Visual Browser Tests', () => {
       console.log('📍 TEST 1: NoPecha.com');
 
       const nav = await handleNavigate({
-        url: 'https://nopecha.com',
+        url: 'https://nopecha.com/demo/cloudflare',
         waitUntil: 'networkidle2' // Wait for network to be idle
       });
       expect(nav.content[0].text).toContain('Successfully navigated');
 
-      // Wait for captcha to solve (Cloudflare challenge needs time)
-      console.log('   ⏳ Waiting for page and captcha...');
-      await new Promise(resolve => setTimeout(resolve, 6000));
+      // Wait for Cloudflare WAF challenge to be solved (60 second timeout)
+      let verified = false;
+      const startTime = Date.now();
+      const WAF_TIMEOUT = 60000; // 60 seconds for captcha
 
-      // Get content after captcha solved
+      console.log('   ⏳ Waiting for Cloudflare challenge...');
+
+      while (!verified && (Date.now() - startTime) < WAF_TIMEOUT) {
+        try {
+          const content = await handleGetContent({ type: 'html' });
+          const html = content.content[0].text;
+          // Check if we passed the challenge - look for main content
+          if (html.includes('link_row') || html.includes('nopecha.com')) {
+            verified = true;
+            console.log('   ✓ Cloudflare challenge passed');
+          }
+        } catch (e) {
+          // Page might still be loading
+        }
+        if (!verified) {
+          await humanDelay(2000, 2500); // Wait 2 seconds before retry
+        }
+      }
+
+      // Get final content
       const content = await handleGetContent({ type: 'text' });
       expect(content.content[0].text.length).toBeGreaterThan(0);
+      expect(verified).toBe(true);
 
       await readPause();
-      console.log('   ✅ NoPecha.com loaded');
+      console.log('   ✅ NoPecha Cloudflare demo loaded');
     }, E2E_TIMEOUT);
   });
 

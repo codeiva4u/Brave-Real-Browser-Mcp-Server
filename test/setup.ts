@@ -2,6 +2,50 @@
 import { beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import { spawn } from 'child_process';
 import { platform } from 'os';
+import * as fs from 'fs';
+import * as path from 'path';
+import { fileURLToPath } from 'url';
+
+// ESM compatibility
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load .env file FIRST before any other setup
+function loadEnvFile(): void {
+  const envPaths = [
+    path.join(process.cwd(), '.env'),
+    path.join(__dirname, '..', '.env'),
+  ];
+
+  for (const envPath of envPaths) {
+    try {
+      if (fs.existsSync(envPath)) {
+        const envContent = fs.readFileSync(envPath, 'utf-8');
+        envContent.split('\n').forEach(line => {
+          const trimmed = line.trim();
+          if (trimmed && !trimmed.startsWith('#')) {
+            const [key, ...valueParts] = trimmed.split('=');
+            const value = valueParts.join('=').replace(/^["']|["']$/g, '');
+            if (key) {
+              // Load env var (don't override if already set via command line)
+              if (!process.env[key]) {
+                process.env[key] = value;
+              }
+            }
+          }
+        });
+        console.log(`📄 Loaded .env from: ${envPath}`);
+        console.log(`   HEADLESS=${process.env.HEADLESS}`);
+        break;
+      }
+    } catch (error) {
+      // Silently ignore .env loading errors
+    }
+  }
+}
+
+// Load .env FIRST
+loadEnvFile();
 
 // Mock environment variables for testing
 process.env.NODE_ENV = 'test';
@@ -27,7 +71,7 @@ if (!process.env.VITEST_HOOK_TIMEOUT) {
 // Chrome process cleanup utility
 async function killChromeProcesses(): Promise<void> {
   const isWindows = platform() === 'win32';
-  
+
   try {
     if (isWindows) {
       // Windows: Kill Chrome processes
@@ -44,7 +88,7 @@ async function killChromeProcesses(): Promise<void> {
         killProcess.on('error', () => resolve()); // Ignore errors
       });
     }
-    
+
     // Additional cleanup for zombie processes
     await new Promise<void>((resolve) => {
       const killChrome = spawn('pkill', ['-f', 'chrome'], { stdio: 'ignore' });
@@ -62,18 +106,18 @@ async function getChromeProcessCount(): Promise<number> {
   return new Promise((resolve) => {
     const psProcess = spawn('ps', ['aux'], { stdio: ['ignore', 'pipe', 'ignore'] });
     let output = '';
-    
+
     psProcess.stdout.on('data', (data) => {
       output += data.toString();
     });
-    
+
     psProcess.on('close', () => {
-      const chromeLines = output.split('\n').filter(line => 
+      const chromeLines = output.split('\n').filter(line =>
         line.includes('chrome') || line.includes('Google Chrome')
       );
       resolve(chromeLines.length);
     });
-    
+
     psProcess.on('error', () => resolve(0)); // Default to 0 on error
   });
 }
@@ -81,13 +125,13 @@ async function getChromeProcessCount(): Promise<number> {
 // Global test setup
 beforeAll(async () => {
   console.log('🧪 Starting TDD test session - cleaning up Chrome processes...');
-  
+
   // Clean up any existing Chrome processes before starting tests
   await killChromeProcesses();
-  
+
   // Wait for processes to be cleaned up
   await new Promise(resolve => setTimeout(resolve, 1000));
-  
+
   const processCount = await getChromeProcessCount();
   console.log(`📊 Chrome processes after cleanup: ${processCount}`);
 });
@@ -96,7 +140,7 @@ beforeAll(async () => {
 afterEach(async () => {
   // Kill any Chrome processes that might have been left behind
   await killChromeProcesses();
-  
+
   // Small delay to ensure cleanup
   await new Promise(resolve => setTimeout(resolve, 500));
 });
@@ -104,14 +148,14 @@ afterEach(async () => {
 // Final cleanup after all tests
 afterAll(async () => {
   console.log('🧹 TDD test session complete - final Chrome cleanup...');
-  
+
   // Final cleanup
   await killChromeProcesses();
-  
+
   // Verify cleanup
   const finalProcessCount = await getChromeProcessCount();
   console.log(`✅ Final Chrome processes: ${finalProcessCount}`);
-  
+
   if (finalProcessCount > 0) {
     console.warn('⚠️  Warning: Some Chrome processes may still be running');
   }

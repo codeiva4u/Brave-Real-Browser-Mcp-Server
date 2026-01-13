@@ -99,116 +99,9 @@ export async function handleFindSelector(args: FindSelectorArgs) {
             text: string;
             tagName: string;
             confidence: number;
-            rect: { x: number; y: number; width: number; height: number };
           }> = [];
 
-          // Authentication patterns for special handling
-          const authPatterns = [
-            /^(log\s*in|sign\s*in|log\s*on|sign\s*on)$/i,
-            /^(login|signin|authenticate|enter)$/i,
-            /continue with (google|github|facebook|twitter|microsoft)/i,
-            /sign in with/i
-          ];
-
-          const isAuthSearch = authPatterns.some(pattern => pattern.test(searchText));
-
-          // Utility class patterns to ignore (but not remove completely)
-          const utilityPatterns = [
-            /^(m|p|mt|mb|ml|mr|pt|pb|pl|pr|mx|my|px|py)-?\d+$/,
-            /^(text|bg|border)-(primary|secondary|danger|warning|info|success|light|dark|white|black)$/,
-            /^(d|display)-(none|block|inline|flex|grid)$/,
-            /^(w|h)-\d+$/,
-            /^(btn|button)-(sm|md|lg|xl)$/
-          ];
-
-          function isUtilityClass(className: string): boolean {
-            return utilityPatterns.some(pattern => pattern.test(className));
-          }
-
-          function isMeaningfulClass(className: string): boolean {
-            // Keep classes that seem semantic/meaningful
-            const meaningfulPatterns = [
-              /^(nav|menu|header|footer|sidebar|content|main|article)/,
-              /^(form|input|button|link|modal|dialog)/,
-              /^(auth|login|signin|signup|register)/,
-              /^(search|filter|sort|toggle)/,
-              /(container|wrapper|section|panel|card)$/
-            ];
-
-            return meaningfulPatterns.some(pattern => pattern.test(className.toLowerCase()));
-          }
-
-          function generateSimpleSelector(element: Element): string {
-            // Prioritize ID
-            if (element.id && /^[a-zA-Z][\w-]*$/.test(element.id)) {
-              return `#${CSS.escape(element.id)}`;
-            }
-
-            // Try data attributes
-            const dataAttrs = Array.from(element.attributes)
-              .filter(attr => attr.name.startsWith('data-') && attr.value)
-              .map(attr => `[${attr.name}="${CSS.escape(attr.value)}"]`);
-
-            if (dataAttrs.length > 0) {
-              return element.tagName.toLowerCase() + dataAttrs[0];
-            }
-
-            // Use meaningful classes
-            if (element.className && typeof element.className === 'string') {
-              const classes = element.className.trim().split(/\s+/)
-                .filter(cls => cls && (isMeaningfulClass(cls) || !isUtilityClass(cls)))
-                .slice(0, 2); // Limit to 2 classes for simplicity
-
-              if (classes.length > 0) {
-                return element.tagName.toLowerCase() + '.' + classes.map(c => CSS.escape(c)).join('.');
-              }
-            }
-
-            // Fallback to tag + text content for small text
-            const textContent = element.textContent?.trim() || '';
-            if (textContent.length > 0 && textContent.length <= 30) {
-              return `${element.tagName.toLowerCase()}:contains("${textContent}")`;
-            }
-
-            return element.tagName.toLowerCase();
-          }
-
-          function calculateElementScore(element: Element, searchText: string): number {
-            let score = 0;
-            const elementText = element.textContent?.trim() || '';
-            const lowerSearchText = searchText.toLowerCase();
-            const lowerElementText = elementText.toLowerCase();
-
-            // Exact match bonus
-            if (lowerElementText === lowerSearchText) score += 100;
-
-            // Contains match
-            else if (lowerElementText.includes(lowerSearchText)) score += 50;
-
-            // Word boundary match bonus
-            const wordRegex = new RegExp(`\\b${lowerSearchText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`);
-            if (wordRegex.test(lowerElementText)) score += 25;
-
-            // Interactive elements bonus
-            if (['button', 'a', 'input'].includes(element.tagName.toLowerCase())) score += 20;
-
-            // Role attribute bonus
-            if (element.getAttribute('role')) score += 10;
-
-            // ID bonus
-            if (element.id) score += 15;
-
-            // Clickable bonus
-            if (element.getAttribute('onclick') || element.getAttribute('href')) score += 10;
-
-            // Penalize utility classes
-            if (element.className && typeof element.className === 'string') {
-              const utilityCount = element.className.split(/\s+/).filter(isUtilityClass).length;
-              score -= utilityCount * 5;
-            }
-
-            return score;
-          }
+          const lowerSearchText = searchText.toLowerCase();
 
           // Search through specified selectors
           for (const baseSelector of selectors) {
@@ -216,53 +109,42 @@ export async function handleFindSelector(args: FindSelectorArgs) {
 
             candidates.forEach(element => {
               const elementText = element.textContent?.trim() || '';
-              const ariaLabel = element.getAttribute('aria-label') || '';
-              const title = element.getAttribute('title') || '';
-              const placeholder = element.getAttribute('placeholder') || '';
-
-              const searchableText = [elementText, ariaLabel, title, placeholder].join(' ').toLowerCase();
-              const lowerSearchText = searchText.toLowerCase();
+              const lowerElementText = elementText.toLowerCase();
 
               let matches = false;
               if (isExact) {
-                matches = elementText.toLowerCase() === lowerSearchText ||
-                  ariaLabel.toLowerCase() === lowerSearchText;
+                matches = lowerElementText === lowerSearchText;
               } else {
-                matches = searchableText.includes(lowerSearchText);
-              }
-
-              // Special handling for authentication searches
-              if (isAuthSearch && !matches) {
-                const href = (element as HTMLAnchorElement).href || '';
-                const hasAuthRoute = href.includes('login') || href.includes('signin') ||
-                  href.includes('auth') || href.includes('oauth');
-                if (hasAuthRoute) matches = true;
+                matches = lowerElementText.includes(lowerSearchText);
               }
 
               if (matches) {
-                const rect = element.getBoundingClientRect();
-                const selector = generateSimpleSelector(element);
-                const confidence = calculateElementScore(element, searchText);
+                // Generate simple selector
+                let selector = element.tagName.toLowerCase();
+                if (element.id) {
+                  selector += '#' + element.id;
+                } else if (element.className && typeof element.className === 'string') {
+                  const cls = element.className.trim().split(/\s+/)[0];
+                  if (cls) selector += '.' + cls;
+                }
+
+                // Calculate dummy confidence / score based on match
+                let confidence = 100;
+                if (lowerElementText === lowerSearchText) confidence = 100;
+                else confidence = 80;
 
                 elements.push({
                   selector,
-                  text: elementText,
+                  text: elementText.substring(0, 100),
                   tagName: element.tagName.toLowerCase(),
-                  confidence,
-                  rect: {
-                    x: rect.x,
-                    y: rect.y,
-                    width: rect.width,
-                    height: rect.height
-                  }
+                  confidence
                 });
               }
             });
           }
 
-
-          // Sort by confidence score
-          return elements.sort((a, b) => b.confidence - a.confidence);
+          // Return top 10 unique
+          return elements.slice(0, 10);
         },
         text, // Use the text argument from args
         searchSelectors,

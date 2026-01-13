@@ -5,9 +5,9 @@
  */
 'use strict';
 
-import {join} from 'path';
+import { join } from 'path';
 import childProcess from 'child_process';
-import {mkdirSync} from 'fs';
+import { mkdirSync } from 'fs';
 import isWsl from 'is-wsl';
 import which from 'which';
 import log from './logger.js';
@@ -20,7 +20,7 @@ export const enum LaunchErrorCodes {
   ERR_LAUNCHER_XVFB_NOT_FOUND = 'ERR_LAUNCHER_XVFB_NOT_FOUND',
 }
 
-export function defaults<T>(val: T|undefined, def: T): T {
+export function defaults<T>(val: T | undefined, def: T): T {
   return typeof val === 'undefined' ? def : val;
 }
 
@@ -38,7 +38,7 @@ export class LauncherError extends Error {
 
 export class BravePathNotSetError extends LauncherError {
   message =
-      'The BRAVE_PATH environment variable must be set to a Brave Browser executable or Brave Browser not found.';
+    'The BRAVE_PATH environment variable must be set to a Brave Browser executable or Brave Browser not found.';
   code = LaunchErrorCodes.ERR_LAUNCHER_PATH_NOT_SET;
 }
 
@@ -153,14 +153,14 @@ export class XvfbManager {
     if (this.xvfbProcess) {
       this.xvfbProcess.kill();
       this.xvfbProcess = undefined;
-      
+
       // Restore original DISPLAY
       if (this.originalDisplay !== undefined) {
         process.env.DISPLAY = this.originalDisplay;
       } else {
         delete process.env.DISPLAY;
       }
-      
+
       log.verbose('BraveLauncher', 'Xvfb stopped');
     }
   }
@@ -177,10 +177,10 @@ export class XvfbManager {
 
   private async waitForDisplay(timeout: number = 10000): Promise<void> {
     const startTime = Date.now();
-    
+
     while (Date.now() - startTime < timeout) {
       try {
-        childProcess.execSync(`xdpyinfo -display ${this.display}`, { 
+        childProcess.execSync(`xdpyinfo -display ${this.display}`, {
           stdio: 'ignore',
           timeout: 1000
         });
@@ -189,7 +189,7 @@ export class XvfbManager {
         await delay(100);
       }
     }
-    
+
     throw new Error(`Xvfb did not start within ${timeout}ms`);
   }
 }
@@ -205,7 +205,8 @@ export function detectDesktopEnvironment(): 'headless' | 'gui' {
   }
 
   // Check for known headless indicators
-  if (process.env.CI || process.env.GITHUB_ACTIONS || process.env.HEADLESS) {
+  // FIX: Only treat HEADLESS as indicator when explicitly 'true', not just truthy
+  if (process.env.CI || process.env.GITHUB_ACTIONS || process.env.HEADLESS?.toLowerCase() === 'true') {
     return 'headless';
   }
 
@@ -221,7 +222,7 @@ function toWinDirFormat(dir: string = ''): string {
 
   const driveLetter = results[1];
   return dir.replace(`/mnt/${driveLetter}/`, `${driveLetter.toUpperCase()}:\\\\`)
-      .replace(/\//g, '\\\\');
+    .replace(/\//g, '\\\\');
 }
 
 export function toWin32Path(dir: string = ''): string {
@@ -256,7 +257,7 @@ export function getWSLLocalAppDataPath(path: string): string {
   const results = userRegExp.exec(path) || [];
 
   return toWSLPath(
-      `${results[1]}:\\\\Users\\\\${results[2]}\\\\AppData\\\\Local`, getLocalAppDataPath(path));
+    `${results[1]}:\\\\Users\\\\${results[2]}\\\\AppData\\\\Local`, getLocalAppDataPath(path));
 }
 
 function makeUnixTmpDir() {
@@ -265,12 +266,12 @@ function makeUnixTmpDir() {
 
 function makeWin32TmpDir() {
   const winTmpPath = process.env.TEMP || process.env.TMP ||
-      (process.env.SystemRoot || process.env.windir) + '\\\\temp';
+    (process.env.SystemRoot || process.env.windir) + '\\\\temp';
   const randomNumber = Math.floor(Math.random() * 9e7 + 1e7);
   const tmpdir = join(winTmpPath, 'lighthouse.' + randomNumber);
 
-  mkdirSync(tmpdir, {recursive: true});
+  mkdirSync(tmpdir, { recursive: true });
   return tmpdir;
 }
 
-export {childProcess as _childProcessForTesting};
+export { childProcess as _childProcessForTesting };

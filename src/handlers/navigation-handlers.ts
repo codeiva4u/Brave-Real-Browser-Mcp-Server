@@ -187,23 +187,49 @@ async function waitForCloudflareBypass(pageInstance: any) {
     // Initial stable wait
     await new Promise(resolve => setTimeout(resolve, 2000));
 
-    const maxWait = 40000;
+    const maxWait = 60000;
     const startTime = Date.now();
 
     while (Date.now() - startTime < maxWait) {
       const isChallenge = await pageInstance.evaluate(() => {
         const bodyText = (document.body?.innerText || '').toLowerCase();
         // Strict checks to avoid false positives on normal sites
-        return bodyText.includes('verifying you are human') ||
-          bodyText.includes('checking your browser before accessing');
+        const hasChallengeText = bodyText.includes('verifying you are human') ||
+          bodyText.includes('checking your browser before accessing') ||
+          bodyText.includes('just a moment');
+
+        // Also check for challenge iframes
+        const hasChallengeFrames = !!document.querySelector('iframe[src*="cloudflare"]') ||
+          !!document.querySelector('iframe[src*="turnstile"]');
+
+        return hasChallengeText && hasChallengeFrames;
       });
 
       if (!isChallenge) {
-        return; // Not a challenge page, or passed
+        // Double check state remains stable
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        const stillChallenge = await pageInstance.evaluate(() => {
+          const bodyText = (document.body?.innerText || '').toLowerCase();
+          return bodyText.includes('verifying you are human');
+        });
+
+        if (!stillChallenge) return; // Not a challenge page, or passed
+      }
+
+      // Simulate human behavior: Random small mouse movements
+      try {
+        // Move mouse slightly to simulate presence
+        await pageInstance.mouse.move(
+          100 + Math.random() * 200,
+          100 + Math.random() * 200,
+          { steps: 5 }
+        );
+      } catch (e) {
+        // Ignore mouse errors (e.g. if target closed)
       }
 
       // Still blocked, wait
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 2000));
     }
   } catch (error) {
     // Ignore bypass errors, continue to result
