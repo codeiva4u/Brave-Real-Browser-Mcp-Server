@@ -141,7 +141,9 @@ npm install
 npm run build
 
 # Test
-npm test
+npm test              # Unit tests
+npm run test:e2e      # E2E tests
+npm run test:ci       # CI tests with coverage
 
 # Run locally
 npm run dev
