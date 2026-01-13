@@ -108,29 +108,40 @@ export async function handleFindSelector(args: FindSelectorArgs) {
 
       // Priority 2: XPath expression search
       if (xpath) {
-        const elements = await pageInstance.$x(xpath);
-        if (elements.length > 0) {
-          const elementInfo = await pageInstance.evaluate((xp: string) => {
+        const elementInfo = await pageInstance.evaluate((xp: string) => {
+          try {
             const result = document.evaluate(xp, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
             const el = result.singleNodeValue as Element | null;
-            return el ? {
-              selector: xp,
+            if (!el) return null;
+
+            let selector = el.tagName.toLowerCase();
+            if ((el as HTMLElement).id) {
+              selector += '#' + (el as HTMLElement).id;
+            } else if (el.className && typeof el.className === 'string') {
+              const cls = el.className.trim().split(/\s+/)[0];
+              if (cls) selector += '.' + cls;
+            }
+
+            return {
+              selector: selector,
               text: el.textContent?.trim().substring(0, 100) || '',
               tagName: el.tagName?.toLowerCase() || 'unknown'
-            } : null;
-          }, xpath);
-
-          if (elementInfo) {
-            return {
-              content: [{
-                type: 'text',
-                text: `Found element via XPath: ${xpath}\nText: "${elementInfo.text}"\nTag: ${elementInfo.tagName}\nConfidence: 95\n\n` +
-                  '🔄 Workflow Status: Element located\n' +
-                  '  • Next step: Use interaction tools with XPath or convert to CSS selector\n\n' +
-                  '✅ XPath element discovery complete'
-              }]
             };
+          } catch (e) {
+            return null;
           }
+        }, xpath);
+
+        if (elementInfo) {
+          return {
+            content: [{
+              type: 'text',
+              text: `Found element via XPath: ${xpath}\nSelector: ${elementInfo.selector}\nText: "${elementInfo.text}"\nTag: ${elementInfo.tagName}\nConfidence: 95\n\n` +
+                '🔄 Workflow Status: Element located\n' +
+                '  • Next step: Use interaction tools with the CSS selector above\n\n' +
+                '✅ XPath element discovery complete'
+            }]
+          };
         }
         throw new Error(`Element not found with XPath: ${xpath}`);
       }
