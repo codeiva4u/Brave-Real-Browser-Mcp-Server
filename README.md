@@ -497,7 +497,7 @@ AI: I'll set up the browser with your proxy configuration.
 
 ## Available Tools
 
-This server provides **40 powerful tools** organized into categories for comprehensive browser automation.
+This server provides **33 powerful tools** organized into categories for comprehensive browser automation.
 
 ---
 
@@ -534,7 +534,7 @@ This server provides **40 powerful tools** organized into categories for compreh
 
 ---
 
-### 📝 Content Extraction Tools (6 tools)
+### 📝 Content Extraction Tools (5 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -543,7 +543,6 @@ This server provides **40 powerful tools** organized into categories for compreh
 | `extract_json` | Extract embedded JSON data (LD+JSON, __NEXT_DATA__, window variables) |
 | `scrape_meta_tags` | Extract SEO, Open Graph, and Twitter meta tags |
 | `extract_schema` | Extract Schema.org structured data (JSON-LD and Microdata) |
-| `content_classification` | Classify page type (e-commerce, blog, news, social-media, documentation) |
 
 ---
 
@@ -578,12 +577,11 @@ This server provides **40 powerful tools** organized into categories for compreh
 
 ---
 
-### 📷 Screenshot & Recording Tools (2 tools)
+### 📷 Screenshot Tools (1 tool)
 
 | Tool | Description |
 |------|-------------|
 | `element_screenshot` | Capture screenshot of specific elements by selector |
-| `video_recording` | Start/stop browser session video recording |
 
 ---
 
@@ -595,12 +593,11 @@ This server provides **40 powerful tools** organized into categories for compreh
 
 ---
 
-### 🛡️ Anti-Detection & Security Tools (2 tools)
+### 🛡️ Anti-Detection Tools (1 tool)
 
 | Tool | Description |
 |------|-------------|
 | `solve_captcha` | Solve CAPTCHAs (reCAPTCHA, hCaptcha, Turnstile) with auto-detection |
-| `ad_protection_detector` | Detect anti-adblock systems on pages |
 
 ---
 
@@ -610,6 +607,16 @@ This server provides **40 powerful tools** organized into categories for compreh
 |------|-------------|
 | `random_scroll` | Perform natural random scrolling to avoid bot detection |
 | `progress_tracker` | Track automation progress for multi-step tasks |
+
+---
+
+### 🎬 Streaming & Download Tools (3 tools)
+
+| Tool | Description |
+|------|-------------|
+| `iframe_handler` | Extract content from nested iframes including embedded video players |
+| `popup_handler` | Handle popups, new tabs, and ad overlays during navigation |
+| `stream_extractor` | Master tool: Extract direct download/stream URLs with automatic countdown waiting and format detection |
 
 ---
 

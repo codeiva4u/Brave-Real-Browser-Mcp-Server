@@ -478,17 +478,6 @@ export const TOOLS = [
     },
   },
   {
-    name: 'ad_protection_detector',
-    description: 'Detect anti-adblock systems on the page',
-    inputSchema: {
-      type: 'object',
-      additionalProperties: false,
-      properties: {
-        checkTypes: { type: 'array', items: { type: 'string' }, description: 'Types of protection to check' },
-      },
-    },
-  },
-  {
     name: 'ajax_content_waiter',
     description: 'Wait for dynamic AJAX/JavaScript content to load',
     inputSchema: {
@@ -533,20 +522,6 @@ export const TOOLS = [
     },
   },
   {
-    name: 'video_recording',
-    description: 'Start or stop browser session video recording',
-    inputSchema: {
-      type: 'object',
-      additionalProperties: false,
-      properties: {
-        action: { type: 'string', enum: ['start', 'stop'], description: 'Recording action' },
-        path: { type: 'string', description: 'File path for recording' },
-        fps: { type: 'number', description: 'Frames per second', default: 30 },
-      },
-      required: ['action'],
-    },
-  },
-  {
     name: 'link_harvester',
     description: 'Harvest all links from page with filtering options',
     inputSchema: {
@@ -557,17 +532,6 @@ export const TOOLS = [
         includeExternal: { type: 'boolean', description: 'Include external links', default: true },
         includeInternal: { type: 'boolean', description: 'Include internal links', default: true },
         maxLinks: { type: 'number', description: 'Maximum links to return' },
-      },
-    },
-  },
-  {
-    name: 'content_classification',
-    description: 'Classify page content type (e-commerce, blog, news, etc.)',
-    inputSchema: {
-      type: 'object',
-      additionalProperties: false,
-      properties: {
-        categories: { type: 'array', items: { type: 'string' }, description: 'Categories to check' },
       },
     },
   },
@@ -651,26 +615,8 @@ export const TOOLS = [
     },
   },
   // ============================================================
-  // ENHANCED STREAMING/DOWNLOAD TOOLS (5 new tools)
+  // ENHANCED STREAMING/DOWNLOAD TOOLS
   // ============================================================
-  {
-    name: 'countdown_waiter',
-    description: 'Wait for countdown timers on download pages and auto-click when ready',
-    inputSchema: {
-      type: 'object',
-      additionalProperties: false,
-      properties: {
-        maxWait: { type: 'number', description: 'Maximum seconds to wait for countdown', default: 120 },
-        autoClickSelector: { type: 'string', description: 'CSS selector of button to click after countdown' },
-        skipAds: { type: 'boolean', description: 'Try to skip intermediate ad pages', default: true },
-        detectPatterns: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'Custom regex patterns to detect countdown (e.g., ["\\d+ seconds", "wait \\d+"])',
-        },
-      },
-    },
-  },
   {
     name: 'iframe_handler',
     description: 'Extract content from nested iframes including embedded video players',
@@ -698,20 +644,6 @@ export const TOOLS = [
         waitForTarget: { type: 'boolean', description: 'Wait for new tab/popup to open', default: false },
         targetIndex: { type: 'number', description: 'Index of tab to switch to' },
         timeout: { type: 'number', description: 'Timeout for waiting operations in ms', default: 10000 },
-      },
-    },
-  },
-  {
-    name: 'cloudflare_bypass',
-    description: 'Handle Cloudflare protection pages and challenges',
-    inputSchema: {
-      type: 'object',
-      additionalProperties: false,
-      properties: {
-        timeout: { type: 'number', description: 'Max wait time for challenge completion in ms', default: 30000 },
-        retries: { type: 'number', description: 'Number of retry attempts', default: 3 },
-        humanSimulation: { type: 'boolean', description: 'Enable human-like behavior simulation', default: true },
-        waitForSelector: { type: 'string', description: 'Selector to confirm bypass success' },
       },
     },
   },
@@ -762,23 +694,18 @@ export const TOOL_NAMES = {
   DEEP_ANALYSIS: 'deep_analysis',
   NETWORK_RECORDER: 'network_recorder',
   API_FINDER: 'api_finder',
-  AD_PROTECTION_DETECTOR: 'ad_protection_detector',
   AJAX_CONTENT_WAITER: 'ajax_content_waiter',
   MEDIA_EXTRACTOR: 'media_extractor',
   ELEMENT_SCREENSHOT: 'element_screenshot',
-  VIDEO_RECORDING: 'video_recording',
   LINK_HARVESTER: 'link_harvester',
-  CONTENT_CLASSIFICATION: 'content_classification',
   BATCH_ELEMENT_SCRAPER: 'batch_element_scraper',
   EXTRACT_SCHEMA: 'extract_schema',
   M3U8_PARSER: 'm3u8_parser',
   COOKIE_MANAGER: 'cookie_manager',
   FILE_DOWNLOADER: 'file_downloader',
-  // New enhanced tools
-  COUNTDOWN_WAITER: 'countdown_waiter',
+  // Enhanced tools
   IFRAME_HANDLER: 'iframe_handler',
   POPUP_HANDLER: 'popup_handler',
-  CLOUDFLARE_BYPASS: 'cloudflare_bypass',
   STREAM_EXTRACTOR: 'stream_extractor',
 } as const;
 

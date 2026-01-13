@@ -2786,21 +2786,35 @@ export async function handleStreamExtractor(
         await page.goto(args.url, { waitUntil: 'domcontentloaded', timeout: 30000 });
     }
 
-    // Handle Cloudflare if enabled
+    // Handle Cloudflare if enabled (inline logic)
     if (args.bypassCloudflare) {
-        const cfResult = await handleCloudflareBypass(page, { timeout: 15000, humanSimulation: true });
-        if (!cfResult.bypassed) {
-            return {
-                success: false,
-                directUrls: [],
-                message: 'Cloudflare bypass failed',
-            };
+        const cfPatterns = ['Checking your browser', 'Just a moment', 'cf-browser-verification'];
+        const isCloudflare = async () => {
+            try {
+                const content = await page.content();
+                return cfPatterns.some((p: string) => content.includes(p));
+            } catch { return false; }
+        };
+
+        // Wait up to 15 seconds for Cloudflare to pass
+        const startCf = Date.now();
+        while (await isCloudflare() && Date.now() - startCf < 15000) {
+            await new Promise(r => setTimeout(r, 1000));
         }
     }
 
-    // Handle countdown if enabled
+    // Handle countdown if enabled (inline logic)
     if (args.waitForCountdown) {
-        await handleCountdownWaiter(page, { maxWait: 60 });
+        const maxWait = 60;
+        const startTime = Date.now();
+        while ((Date.now() - startTime) / 1000 < maxWait) {
+            const hasCountdown = await page.evaluate(() => {
+                const text = document.body?.innerText || '';
+                return /\d+\s*seconds?|wait\s*\d+|please\s*wait|countdown/gi.test(text);
+            });
+            if (!hasCountdown) break;
+            await new Promise(r => setTimeout(r, 1000));
+        }
     }
 
     // Extract URLs from page
