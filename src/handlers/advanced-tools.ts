@@ -2322,3 +2322,557 @@ export async function handleBulkDownloader(
         message: `Downloaded ${downloaded}/${args.files.length} files. ${failed} failed.`,
     };
 }
+
+// ============================================================
+// NEW ENHANCED STREAMING/DOWNLOAD TOOLS (5 new handlers)
+// ============================================================
+
+export interface CountdownWaiterArgs {
+    maxWait?: number;
+    autoClickSelector?: string;
+    skipAds?: boolean;
+    detectPatterns?: string[];
+}
+
+export interface IframeHandlerArgs {
+    action?: 'list' | 'enter' | 'extract' | 'exitAll';
+    selector?: string;
+    frameIndex?: number;
+    maxDepth?: number;
+    extractSelector?: string;
+}
+
+export interface PopupHandlerArgs {
+    action?: 'block' | 'allow' | 'close' | 'switch' | 'list' | 'closeAll';
+    autoCloseAds?: boolean;
+    waitForTarget?: boolean;
+    targetIndex?: number;
+    timeout?: number;
+}
+
+export interface CloudflareBypassArgs {
+    timeout?: number;
+    retries?: number;
+    humanSimulation?: boolean;
+    waitForSelector?: string;
+}
+
+export interface StreamExtractorArgs {
+    url?: string;
+    maxRedirects?: number;
+    waitForCountdown?: boolean;
+    bypassCloudflare?: boolean;
+    formats?: string[];
+    quality?: string;
+}
+
+/**
+ * Wait for countdown timers and auto-click download button
+ */
+export async function handleCountdownWaiter(
+    page: Page,
+    args: CountdownWaiterArgs
+): Promise<{ success: boolean; waitedSeconds: number; clicked: boolean; message: string }> {
+    const maxWait = args.maxWait || 120;
+    const startTime = Date.now();
+    let waitedSeconds = 0;
+    let clicked = false;
+
+    // Default countdown patterns
+    const patterns = args.detectPatterns || [
+        '\\d+\\s*seconds?',
+        'wait\\s*\\d+',
+        'please\\s*wait',
+        'countdown',
+        '\\d+\\s*sec',
+    ];
+
+    const combinedPattern = new RegExp(patterns.join('|'), 'gi');
+
+    // Function to detect countdown on page
+    const detectCountdown = async (): Promise<{ hasCountdown: boolean; value: number }> => {
+        return await page.evaluate((pattern: string) => {
+            const bodyText = document.body?.innerText || '';
+            const regex = new RegExp(pattern, 'gi');
+            const matches = bodyText.match(regex);
+
+            if (matches && matches.length > 0) {
+                // Try to extract numeric value
+                const numMatch = matches[0].match(/\d+/);
+                const value = numMatch ? parseInt(numMatch[0], 10) : 0;
+                return { hasCountdown: true, value };
+            }
+            return { hasCountdown: false, value: 0 };
+        }, combinedPattern.source);
+    };
+
+    // Wait for countdown to complete
+    let lastValue = -1;
+    while ((Date.now() - startTime) / 1000 < maxWait) {
+        const result = await detectCountdown();
+
+        if (result.hasCountdown && result.value > 0) {
+            if (result.value !== lastValue) {
+                lastValue = result.value;
+            }
+            await new Promise(r => setTimeout(r, 1000));
+            waitedSeconds = Math.floor((Date.now() - startTime) / 1000);
+        } else if (result.hasCountdown && result.value === 0) {
+            // Countdown finished
+            break;
+        } else if (!result.hasCountdown && lastValue > 0) {
+            // Countdown was there but now gone - likely completed
+            break;
+        } else {
+            // No countdown detected, wait briefly and check again
+            await new Promise(r => setTimeout(r, 500));
+            waitedSeconds = Math.floor((Date.now() - startTime) / 1000);
+            if (waitedSeconds > 5 && !result.hasCountdown) {
+                // No countdown after 5 seconds, proceed
+                break;
+            }
+        }
+    }
+
+    // Click the button if selector provided
+    if (args.autoClickSelector) {
+        try {
+            await page.waitForSelector(args.autoClickSelector, { timeout: 5000 });
+            await page.click(args.autoClickSelector);
+            clicked = true;
+        } catch {
+            // Button not found or not clickable
+        }
+    }
+
+    return {
+        success: true,
+        waitedSeconds,
+        clicked,
+        message: clicked
+            ? `Waited ${waitedSeconds}s and clicked download button`
+            : `Waited ${waitedSeconds}s, no button clicked`,
+    };
+}
+
+/**
+ * Handle nested iframes for content extraction
+ */
+export async function handleIframeHandler(
+    page: Page,
+    args: IframeHandlerArgs
+): Promise<{ success: boolean; iframes: any[]; content?: string; message: string }> {
+    const action = args.action || 'list';
+    const maxDepth = args.maxDepth || 3;
+
+    // List all iframes
+    const listIframes = async (depth = 0): Promise<any[]> => {
+        if (depth >= maxDepth) return [];
+
+        const frames = page.frames();
+        const iframeInfo: any[] = [];
+
+        for (let i = 0; i < frames.length; i++) {
+            const frame = frames[i];
+            try {
+                const info = await frame.evaluate(() => ({
+                    url: window.location.href,
+                    title: document.title,
+                    hasVideo: document.querySelectorAll('video, iframe[src*="player"], iframe[src*="embed"]').length > 0,
+                }));
+                iframeInfo.push({
+                    index: i,
+                    name: frame.name(),
+                    url: info.url,
+                    title: info.title,
+                    hasVideo: info.hasVideo,
+                    depth,
+                });
+            } catch {
+                iframeInfo.push({
+                    index: i,
+                    name: frame.name(),
+                    url: 'inaccessible',
+                    depth,
+                });
+            }
+        }
+        return iframeInfo;
+    };
+
+    if (action === 'list') {
+        const iframes = await listIframes();
+        return {
+            success: true,
+            iframes,
+            message: `Found ${iframes.length} frames/iframes`,
+        };
+    }
+
+    if (action === 'enter' || action === 'extract') {
+        const frames = page.frames();
+        let targetFrame: any = null;
+
+        if (args.frameIndex !== undefined && args.frameIndex < frames.length) {
+            targetFrame = frames[args.frameIndex];
+        } else if (args.selector) {
+            // Find iframe by selector and get its content frame
+            const iframeHandle = await page.$(args.selector);
+            if (iframeHandle) {
+                targetFrame = await iframeHandle.contentFrame();
+            }
+        }
+
+        if (!targetFrame) {
+            return {
+                success: false,
+                iframes: [],
+                message: 'Target frame not found',
+            };
+        }
+
+        if (action === 'extract' && args.extractSelector) {
+            try {
+                const content = await targetFrame.evaluate((sel: string) => {
+                    const el = document.querySelector(sel);
+                    return el ? el.outerHTML : null;
+                }, args.extractSelector);
+
+                return {
+                    success: !!content,
+                    iframes: [],
+                    content: content || undefined,
+                    message: content ? 'Content extracted from iframe' : 'Selector not found in iframe',
+                };
+            } catch (error) {
+                return {
+                    success: false,
+                    iframes: [],
+                    message: `Error extracting: ${error instanceof Error ? error.message : String(error)}`,
+                };
+            }
+        }
+
+        return {
+            success: true,
+            iframes: await listIframes(),
+            message: 'Frame accessed successfully',
+        };
+    }
+
+    return {
+        success: false,
+        iframes: [],
+        message: 'Invalid action',
+    };
+}
+
+/**
+ * Handle popups and new tabs
+ */
+export async function handlePopupHandler(
+    page: Page,
+    args: PopupHandlerArgs
+): Promise<{ success: boolean; pages: any[]; message: string }> {
+    const action = args.action || 'list';
+    const timeout = args.timeout || 10000;
+    const browser = page.browser();
+
+    if (!browser) {
+        return { success: false, pages: [], message: 'Browser not available' };
+    }
+
+    const pages = await browser.pages();
+    const pageInfo = pages.map((p: any, i: number) => ({
+        index: i,
+        url: p.url(),
+        title: '', // Will be filled if needed
+        isCurrent: p === page,
+    }));
+
+    if (action === 'list') {
+        return {
+            success: true,
+            pages: pageInfo,
+            message: `Found ${pages.length} open tabs/pages`,
+        };
+    }
+
+    if (action === 'closeAll') {
+        let closed = 0;
+        for (const p of pages) {
+            if (p !== page) {
+                try {
+                    await p.close();
+                    closed++;
+                } catch {
+                    // Ignore
+                }
+            }
+        }
+        return {
+            success: true,
+            pages: [],
+            message: `Closed ${closed} popup/tab(s)`,
+        };
+    }
+
+    if (action === 'close' && args.targetIndex !== undefined) {
+        if (args.targetIndex >= 0 && args.targetIndex < pages.length) {
+            try {
+                await pages[args.targetIndex].close();
+                return {
+                    success: true,
+                    pages: [],
+                    message: `Closed tab at index ${args.targetIndex}`,
+                };
+            } catch (error) {
+                return {
+                    success: false,
+                    pages: [],
+                    message: `Failed to close tab: ${error instanceof Error ? error.message : String(error)}`,
+                };
+            }
+        }
+    }
+
+    if (action === 'switch' && args.targetIndex !== undefined) {
+        if (args.targetIndex >= 0 && args.targetIndex < pages.length) {
+            await pages[args.targetIndex].bringToFront();
+            return {
+                success: true,
+                pages: pageInfo,
+                message: `Switched to tab ${args.targetIndex}`,
+            };
+        }
+    }
+
+    if (args.waitForTarget) {
+        try {
+            await new Promise<void>((resolve, reject) => {
+                const timeoutId = setTimeout(() => reject(new Error('Timeout waiting for popup')), timeout);
+                browser.once('targetcreated', () => {
+                    clearTimeout(timeoutId);
+                    resolve();
+                });
+            });
+            const newPages = await browser.pages();
+            return {
+                success: true,
+                pages: newPages.map((p: any, i: number) => ({
+                    index: i,
+                    url: p.url(),
+                    isCurrent: p === page,
+                })),
+                message: 'New popup/tab detected',
+            };
+        } catch {
+            return {
+                success: false,
+                pages: pageInfo,
+                message: 'No new popup detected within timeout',
+            };
+        }
+    }
+
+    return {
+        success: true,
+        pages: pageInfo,
+        message: 'Popup handler executed',
+    };
+}
+
+/**
+ * Handle Cloudflare protection pages
+ */
+export async function handleCloudflareBypass(
+    page: Page,
+    args: CloudflareBypassArgs
+): Promise<{ success: boolean; bypassed: boolean; attempts: number; message: string }> {
+    const timeout = args.timeout || 30000;
+    const retries = args.retries || 3;
+    let attempts = 0;
+    let bypassed = false;
+
+    // Cloudflare detection patterns
+    const cfPatterns = [
+        'Checking your browser',
+        'Just a moment',
+        'Attention Required',
+        'cf-browser-verification',
+        'cf_chl_opt',
+    ];
+
+    const isCloudflare = async (): Promise<boolean> => {
+        try {
+            const content = await page.content();
+            return cfPatterns.some(p => content.includes(p));
+        } catch {
+            return false;
+        }
+    };
+
+    const waitForBypass = async (): Promise<boolean> => {
+        const startTime = Date.now();
+        while (Date.now() - startTime < timeout) {
+            if (!(await isCloudflare())) {
+                return true;
+            }
+
+            // Human simulation
+            if (args.humanSimulation) {
+                await page.mouse.move(
+                    100 + Math.random() * 200,
+                    100 + Math.random() * 200
+                );
+            }
+
+            await new Promise(r => setTimeout(r, 1000));
+        }
+        return false;
+    };
+
+    // Check if currently on Cloudflare page
+    if (await isCloudflare()) {
+        for (attempts = 1; attempts <= retries; attempts++) {
+            bypassed = await waitForBypass();
+            if (bypassed) break;
+
+            // Reload and try again
+            if (attempts < retries) {
+                await page.reload({ waitUntil: 'domcontentloaded' });
+            }
+        }
+    } else {
+        bypassed = true; // Not on Cloudflare page
+    }
+
+    // Check success selector if provided
+    if (bypassed && args.waitForSelector) {
+        try {
+            await page.waitForSelector(args.waitForSelector, { timeout: 5000 });
+        } catch {
+            bypassed = false;
+        }
+    }
+
+    return {
+        success: bypassed,
+        bypassed,
+        attempts,
+        message: bypassed
+            ? 'Cloudflare bypass successful'
+            : `Cloudflare bypass failed after ${attempts} attempts`,
+    };
+}
+
+/**
+ * Master tool: Extract direct stream/download URLs
+ */
+export async function handleStreamExtractor(
+    page: Page,
+    args: StreamExtractorArgs
+): Promise<{
+    success: boolean;
+    directUrls: { url: string; format: string; quality?: string; size?: string }[];
+    message: string
+}> {
+    const formats = args.formats || ['mp4', 'mkv', 'm3u8', 'mp3', 'webm'];
+    const maxRedirects = args.maxRedirects || 10;
+    const directUrls: { url: string; format: string; quality?: string; size?: string }[] = [];
+
+    // Navigate if URL provided
+    if (args.url) {
+        await page.goto(args.url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    }
+
+    // Handle Cloudflare if enabled
+    if (args.bypassCloudflare) {
+        const cfResult = await handleCloudflareBypass(page, { timeout: 15000, humanSimulation: true });
+        if (!cfResult.bypassed) {
+            return {
+                success: false,
+                directUrls: [],
+                message: 'Cloudflare bypass failed',
+            };
+        }
+    }
+
+    // Handle countdown if enabled
+    if (args.waitForCountdown) {
+        await handleCountdownWaiter(page, { maxWait: 60 });
+    }
+
+    // Extract URLs from page
+    const extractedUrls = await page.evaluate((fmts: string[]) => {
+        const urls: string[] = [];
+        const patterns = fmts.map(f => new RegExp(`https?://[^"'\\s]+\\.${f}([?#][^"'\\s]*)?`, 'gi'));
+
+        // Check page HTML
+        const html = document.documentElement.innerHTML;
+        patterns.forEach(pattern => {
+            const matches = html.match(pattern);
+            if (matches) urls.push(...matches);
+        });
+
+        // Check video/audio sources
+        document.querySelectorAll('video source, audio source, video, audio').forEach(el => {
+            const src = el.getAttribute('src');
+            if (src && fmts.some(f => src.includes(`.${f}`))) {
+                urls.push(src);
+            }
+        });
+
+        // Check links
+        document.querySelectorAll('a[href]').forEach(el => {
+            const href = (el as HTMLAnchorElement).href;
+            if (href && fmts.some(f => href.includes(`.${f}`))) {
+                urls.push(href);
+            }
+        });
+
+        // Check iframes for embedded players
+        document.querySelectorAll('iframe').forEach(iframe => {
+            const src = iframe.src;
+            if (src && (src.includes('player') || src.includes('embed'))) {
+                urls.push(`iframe:${src}`);
+            }
+        });
+
+        return [...new Set(urls)];
+    }, formats);
+
+    // Process found URLs
+    for (const url of extractedUrls) {
+        const format = formats.find(f => url.includes(`.${f}`)) || 'unknown';
+        directUrls.push({
+            url,
+            format,
+            quality: args.quality || 'auto',
+        });
+    }
+
+    // Check network requests for media URLs
+    const networkUrls = await page.evaluate((fmts: string[]) => {
+        // Check performance entries for loaded resources
+        const resources = performance.getEntriesByType('resource') as PerformanceResourceTiming[];
+        return resources
+            .filter(r => fmts.some(f => r.name.includes(`.${f}`)))
+            .map(r => r.name);
+    }, formats);
+
+    for (const url of networkUrls) {
+        if (!directUrls.some(d => d.url === url)) {
+            const format = formats.find(f => url.includes(`.${f}`)) || 'unknown';
+            directUrls.push({ url, format });
+        }
+    }
+
+    return {
+        success: directUrls.length > 0,
+        directUrls,
+        message: directUrls.length > 0
+            ? `Found ${directUrls.length} direct URL(s)`
+            : 'No direct URLs found',
+    };
+}

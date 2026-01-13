@@ -71,14 +71,90 @@ export async function handleFindSelector(args: FindSelectorArgs) {
         attributes,
         description,
         exact = false,
-        context
+        context,
+        shadowDOM = false,
+        searchFrames = false
       } = args || {};
 
       // Ensure elementType has a fallback value
       const elementType = (args as any)?.elementType || '*';
 
-      // Priority 1: Direct CSS selector search
+      // Helper: Search in Shadow DOM
+      const searchInShadowDOM = async (sel: string) => {
+        return await pageInstance.evaluate((selector: string) => {
+          const results: Array<{ selector: string; text: string; tagName: string; inShadow: boolean }> = [];
+
+          const searchShadowRoots = (root: Document | ShadowRoot | Element, depth = 0) => {
+            if (depth > 5) return; // Max depth to prevent infinite loops
+
+            const elements = root.querySelectorAll(selector);
+            elements.forEach(el => {
+              let sel = el.tagName.toLowerCase();
+              if ((el as HTMLElement).id) {
+                sel += '#' + (el as HTMLElement).id;
+              } else if (el.className && typeof el.className === 'string') {
+                const cls = el.className.trim().split(/\s+/)[0];
+                if (cls) sel += '.' + cls;
+              }
+              results.push({
+                selector: sel,
+                text: el.textContent?.trim().substring(0, 100) || '',
+                tagName: el.tagName.toLowerCase(),
+                inShadow: root !== document
+              });
+            });
+
+            // Search in shadow roots
+            const allElements = root.querySelectorAll('*');
+            allElements.forEach(el => {
+              if ((el as HTMLElement).shadowRoot) {
+                searchShadowRoots((el as HTMLElement).shadowRoot!, depth + 1);
+              }
+            });
+          };
+
+          searchShadowRoots(document);
+          return results;
+        }, sel);
+      };
+
+      // Helper: Search across frames
+      const searchAcrossFrames = async (sel: string) => {
+        const results: Array<{ selector: string; text: string; tagName: string; frameIndex: number }> = [];
+        const frames = pageInstance.frames();
+
+        for (let i = 0; i < frames.length; i++) {
+          try {
+            const frameResults = await frames[i].evaluate((selector: string) => {
+              const elements = document.querySelectorAll(selector);
+              return Array.from(elements).slice(0, 5).map(el => {
+                let sel = el.tagName.toLowerCase();
+                if ((el as HTMLElement).id) sel += '#' + (el as HTMLElement).id;
+                else if (el.className && typeof el.className === 'string') {
+                  const cls = el.className.trim().split(/\s+/)[0];
+                  if (cls) sel += '.' + cls;
+                }
+                return {
+                  selector: sel,
+                  text: el.textContent?.trim().substring(0, 100) || '',
+                  tagName: el.tagName.toLowerCase()
+                };
+              });
+            }, sel);
+
+            frameResults.forEach((r: any) => results.push({ ...r, frameIndex: i }));
+          } catch {
+            // Frame may be inaccessible, skip
+          }
+        }
+        return results;
+      };
+
+      // Priority 1: Direct CSS selector search (with Shadow DOM and Frame support)
       if (selector) {
+        let allResults: any[] = [];
+
+        // Standard search
         const elements = await pageInstance.$$(selector);
         if (elements.length > 0) {
           const elementInfo = await pageInstance.evaluate((sel: string) => {
@@ -86,22 +162,40 @@ export async function handleFindSelector(args: FindSelectorArgs) {
             return el ? {
               selector: sel,
               text: el.textContent?.trim().substring(0, 100) || '',
-              tagName: el.tagName.toLowerCase()
+              tagName: el.tagName.toLowerCase(),
+              inShadow: false,
+              frameIndex: 0
             } : null;
           }, selector);
+          if (elementInfo) allResults.push(elementInfo);
+        }
 
-          if (elementInfo) {
-            return {
-              content: [{
-                type: 'text',
-                text: `Found element: ${elementInfo.selector}\nText: "${elementInfo.text}"\nConfidence: 100\n\n` +
-                  '🔄 Workflow Status: Element located\n' +
-                  '  • Next step: Use interaction tools (click, type) with this selector\n' +
-                  '  • Selector is validated and ready for automation\n\n' +
-                  '✅ Element discovery complete - ready for interactions'
-              }]
-            };
-          }
+        // Shadow DOM search
+        if (shadowDOM && allResults.length === 0) {
+          const shadowResults = await searchInShadowDOM(selector);
+          allResults = allResults.concat(shadowResults);
+        }
+
+        // Cross-frame search
+        if (searchFrames && allResults.length === 0) {
+          const frameResults = await searchAcrossFrames(selector);
+          allResults = allResults.concat(frameResults);
+        }
+
+        if (allResults.length > 0) {
+          const best = allResults[0];
+          const location = best.inShadow ? ' (in Shadow DOM)' :
+            (best.frameIndex > 0 ? ` (in Frame ${best.frameIndex})` : '');
+          return {
+            content: [{
+              type: 'text',
+              text: `Found element: ${best.selector}${location}\nText: "${best.text}"\nConfidence: 100\n\n` +
+                '🔄 Workflow Status: Element located\n' +
+                '  • Next step: Use interaction tools (click, type) with this selector\n' +
+                '  • Selector is validated and ready for automation\n\n' +
+                '✅ Element discovery complete - ready for interactions'
+            }]
+          };
         }
         throw new Error(`Element not found with selector: ${selector}`);
       }

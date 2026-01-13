@@ -86,6 +86,12 @@ import {
   // Download tools
   handleFileDownloader,
   handleBulkDownloader,
+  // New enhanced streaming/download tools
+  handleCountdownWaiter,
+  handleIframeHandler,
+  handlePopupHandler,
+  handleCloudflareBypass,
+  handleStreamExtractor,
 } from './handlers/advanced-tools.js';
 
 // State for video recording
@@ -300,7 +306,26 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
         if (!page) throw new Error('Browser not initialized. Call browser_init first.');
         return { content: [{ type: 'text', text: JSON.stringify(await handleFileDownloader(page, args as any)) }] };
 
+      // New enhanced streaming/download tools
+      case TOOL_NAMES.COUNTDOWN_WAITER:
+        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
+        return { content: [{ type: 'text', text: JSON.stringify(await handleCountdownWaiter(page, args as any)) }] };
 
+      case TOOL_NAMES.IFRAME_HANDLER:
+        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
+        return { content: [{ type: 'text', text: JSON.stringify(await handleIframeHandler(page, args as any)) }] };
+
+      case TOOL_NAMES.POPUP_HANDLER:
+        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
+        return { content: [{ type: 'text', text: JSON.stringify(await handlePopupHandler(page, args as any)) }] };
+
+      case TOOL_NAMES.CLOUDFLARE_BYPASS:
+        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
+        return { content: [{ type: 'text', text: JSON.stringify(await handleCloudflareBypass(page, args as any)) }] };
+
+      case TOOL_NAMES.STREAM_EXTRACTOR:
+        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
+        return { content: [{ type: 'text', text: JSON.stringify(await handleStreamExtractor(page, args as any)) }] };
 
       default:
         throw new Error(`Unknown tool: ${name}`);

@@ -263,7 +263,7 @@ export const TOOLS = [
   },
   {
     name: 'find_element',
-    description: 'Find elements using text, CSS selector, XPath, attributes, or AI-powered description',
+    description: 'Find elements using text, CSS selector, XPath, attributes, or AI-powered description. Supports Shadow DOM and cross-frame search.',
     inputSchema: {
       type: 'object',
       additionalProperties: false,
@@ -276,6 +276,8 @@ export const TOOLS = [
         elementType: { type: 'string', description: 'HTML element type (e.g., button, a, div)', default: '*' },
         exact: { type: 'boolean', description: 'Exact text match', default: false },
         context: { type: 'string', description: 'Additional context for AI search' },
+        shadowDOM: { type: 'boolean', description: 'Search inside Shadow DOM elements', default: false },
+        searchFrames: { type: 'boolean', description: 'Search across all iframes/frames', default: false },
       },
     },
   },
@@ -648,6 +650,92 @@ export const TOOLS = [
       required: ['url', 'savePath'],
     },
   },
+  // ============================================================
+  // ENHANCED STREAMING/DOWNLOAD TOOLS (5 new tools)
+  // ============================================================
+  {
+    name: 'countdown_waiter',
+    description: 'Wait for countdown timers on download pages and auto-click when ready',
+    inputSchema: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        maxWait: { type: 'number', description: 'Maximum seconds to wait for countdown', default: 120 },
+        autoClickSelector: { type: 'string', description: 'CSS selector of button to click after countdown' },
+        skipAds: { type: 'boolean', description: 'Try to skip intermediate ad pages', default: true },
+        detectPatterns: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Custom regex patterns to detect countdown (e.g., ["\\d+ seconds", "wait \\d+"])',
+        },
+      },
+    },
+  },
+  {
+    name: 'iframe_handler',
+    description: 'Extract content from nested iframes including embedded video players',
+    inputSchema: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        action: { type: 'string', enum: ['list', 'enter', 'extract', 'exitAll'], description: 'Action to perform on iframes' },
+        selector: { type: 'string', description: 'CSS selector of target iframe' },
+        frameIndex: { type: 'number', description: 'Index of iframe to enter (0-based)' },
+        maxDepth: { type: 'number', description: 'Maximum nesting depth to traverse', default: 3 },
+        extractSelector: { type: 'string', description: 'Selector to extract content from within iframe' },
+      },
+    },
+  },
+  {
+    name: 'popup_handler',
+    description: 'Handle popups, new tabs, and ad overlays during navigation',
+    inputSchema: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        action: { type: 'string', enum: ['block', 'allow', 'close', 'switch', 'list', 'closeAll'], description: 'Popup handling action' },
+        autoCloseAds: { type: 'boolean', description: 'Automatically close detected ad popups', default: true },
+        waitForTarget: { type: 'boolean', description: 'Wait for new tab/popup to open', default: false },
+        targetIndex: { type: 'number', description: 'Index of tab to switch to' },
+        timeout: { type: 'number', description: 'Timeout for waiting operations in ms', default: 10000 },
+      },
+    },
+  },
+  {
+    name: 'cloudflare_bypass',
+    description: 'Handle Cloudflare protection pages and challenges',
+    inputSchema: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        timeout: { type: 'number', description: 'Max wait time for challenge completion in ms', default: 30000 },
+        retries: { type: 'number', description: 'Number of retry attempts', default: 3 },
+        humanSimulation: { type: 'boolean', description: 'Enable human-like behavior simulation', default: true },
+        waitForSelector: { type: 'string', description: 'Selector to confirm bypass success' },
+      },
+    },
+  },
+  {
+    name: 'stream_extractor',
+    description: 'Master tool: Extract direct download/stream URLs from any page with automatic redirect following, countdown waiting, and format detection',
+    inputSchema: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        url: { type: 'string', description: 'Source page URL to extract from' },
+        maxRedirects: { type: 'number', description: 'Maximum redirects to follow', default: 10 },
+        waitForCountdown: { type: 'boolean', description: 'Wait for countdown timers', default: true },
+        bypassCloudflare: { type: 'boolean', description: 'Handle Cloudflare if detected', default: true },
+        formats: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Preferred formats to extract',
+          default: ['mp4', 'mkv', 'm3u8', 'mp3'],
+        },
+        quality: { type: 'string', description: 'Preferred quality (highest, lowest, 1080p, 720p)', default: 'highest' },
+      },
+    },
+  },
 ];
 
 // Tool name constants for type safety
@@ -686,6 +774,12 @@ export const TOOL_NAMES = {
   M3U8_PARSER: 'm3u8_parser',
   COOKIE_MANAGER: 'cookie_manager',
   FILE_DOWNLOADER: 'file_downloader',
+  // New enhanced tools
+  COUNTDOWN_WAITER: 'countdown_waiter',
+  IFRAME_HANDLER: 'iframe_handler',
+  POPUP_HANDLER: 'popup_handler',
+  CLOUDFLARE_BYPASS: 'cloudflare_bypass',
+  STREAM_EXTRACTOR: 'stream_extractor',
 } as const;
 
 // Type definitions for tool inputs
@@ -743,6 +837,8 @@ export interface FindSelectorArgs {
   elementType?: string;
   exact?: boolean;
   context?: string;
+  shadowDOM?: boolean;
+  searchFrames?: boolean;
 }
 
 export interface SaveContentAsMarkdownArgs {
