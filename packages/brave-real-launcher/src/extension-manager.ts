@@ -220,6 +220,9 @@ export class ExtensionManager {
         // Extract the zip
         await this.extractZip(zipPath, targetDir);
 
+        // Inject custom anti-redirect filters
+        await this.injectCustomFilters(targetDir);
+
         // Save version info with lastChecked timestamp
         const versionFile = path.join(targetDir, 'version.json');
         fs.writeFileSync(versionFile, JSON.stringify({
@@ -384,6 +387,72 @@ export class ExtensionManager {
                 log.log('ExtensionManager', 'Extension cache cleaned');
             }
         }
+    }
+
+    /**
+     * Inject custom anti-redirect filters into uBlock Origin
+     * Creates user filters in uBlock's assets directory
+     */
+    private async injectCustomFilters(extensionDir: string): Promise<void> {
+        try {
+            // Find the uBlock0 subdirectory
+            const manifestPath = this.findManifest(extensionDir);
+            if (!manifestPath) return;
+
+            const extPath = path.dirname(manifestPath);
+            const assetsDir = path.join(extPath, 'assets', 'user');
+
+            // Create user assets directory if needed
+            if (!fs.existsSync(assetsDir)) {
+                fs.mkdirSync(assetsDir, { recursive: true });
+            }
+
+            // Try to read custom filters from bundled file
+            const customFiltersPath = path.join(__dirname, '..', 'assets', 'ublock-custom-filters.txt');
+            let customFilters = '';
+
+            if (fs.existsSync(customFiltersPath)) {
+                customFilters = fs.readFileSync(customFiltersPath, 'utf-8');
+            } else {
+                customFilters = this.getDefaultCustomFilters();
+            }
+
+            // Write to user filters file
+            const userFiltersPath = path.join(assetsDir, 'user-filters.txt');
+            fs.writeFileSync(userFiltersPath, customFilters);
+
+            if (!this.silent) {
+                log.verbose('ExtensionManager', 'Custom anti-redirect filters injected into uBlock Origin');
+            }
+        } catch (e) {
+            // Non-fatal error
+            if (!this.silent) {
+                log.verbose('ExtensionManager', `Failed to inject custom filters: ${(e as Error).message}`);
+            }
+        }
+    }
+
+    /**
+     * Get default custom filters if external file not found
+     */
+    private getDefaultCustomFilters(): string {
+        return `! Brave Real Browser - Default Anti-Redirect Filters
+! Block popup/redirect domains
+||profitableratecpm.com^$all
+||engridfanlike.com^$all
+||pubfuture.com^$all
+||clickadu.com^$all
+||popads.net^$all
+
+! Block third-party popups
+*$popup,third-party
+
+! Scriptlet injections
+*##+js(nowoif)
+*##+js(nostif, redirect)
+*##+js(aopw, popunder)
+*##+js(aopw, ExoLoader)
+`;
     }
 }
 

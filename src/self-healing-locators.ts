@@ -45,19 +45,108 @@ export interface ElementInfo {
 export class SelfHealingLocators {
   private readonly MAX_FALLBACKS = 10;
   private readonly MIN_CONFIDENCE = 0.3;
-  
+
   // High-confidence attribute selectors
   private readonly HIGH_CONFIDENCE_ATTRIBUTES = [
     'id', 'data-testid', 'data-test-id', 'data-cy', 'data-test',
     'aria-label', 'aria-labelledby', 'name', 'data-automation',
     'data-qa', 'data-selector'
   ];
-  
+
   // Medium-confidence attribute selectors
   private readonly MEDIUM_CONFIDENCE_ATTRIBUTES = [
     'class', 'aria-role', 'title', 'placeholder', 'alt',
     'href', 'src', 'type', 'value', 'data-*'
   ];
+
+  /**
+   * Parse Playwright-style :has-text() selector
+   * Example: "button:has-text('HubCloud')" -> { tagName: 'button', text: 'HubCloud' }
+   * Also supports: "button:contains('text')" and ":text('value')"
+   */
+  parseTextSelector(selector: string): { tagName?: string; text: string } | null {
+    // Match :has-text("text") or :has-text('text')
+    const hasTextMatch = selector.match(/^([a-zA-Z]*)(?:\.[^\s:]+)*:has-text\(["']([^"']+)["']\)/i);
+    if (hasTextMatch) {
+      return {
+        tagName: hasTextMatch[1] || undefined,
+        text: hasTextMatch[2]
+      };
+    }
+
+    // Match :contains("text") jQuery-style
+    const containsMatch = selector.match(/^([a-zA-Z]*)(?:\.[^\s:]+)*:contains\(["']([^"']+)["']\)/i);
+    if (containsMatch) {
+      return {
+        tagName: containsMatch[1] || undefined,
+        text: containsMatch[2]
+      };
+    }
+
+    // Match :text("value") Playwright-style
+    const textMatch = selector.match(/:text\(["']([^"']+)["']\)/i);
+    if (textMatch) {
+      return {
+        tagName: undefined,
+        text: textMatch[1]
+      };
+    }
+
+    return null;
+  }
+
+  /**
+   * Find element by text content (for :has-text() support)
+   */
+  async findByText(pageInstance: any, text: string, tagName?: string): Promise<any | null> {
+    try {
+      const element = await pageInstance.evaluateHandle((searchText: string, tag?: string) => {
+        const selector = tag || '*';
+        const elements = Array.from(document.querySelectorAll(selector));
+
+        // Find element that contains or exactly matches the text
+        const found = elements.find(el => {
+          // Skip script and style elements
+          if (el.tagName === 'SCRIPT' || el.tagName === 'STYLE') return false;
+
+          const textContent = el.textContent?.trim() || '';
+          const directText = Array.from(el.childNodes)
+            .filter(n => n.nodeType === Node.TEXT_NODE)
+            .map(n => n.textContent?.trim())
+            .join('');
+
+          // Check direct text first (more accurate)
+          if (directText.includes(searchText) || directText === searchText) return true;
+
+          // Check if element's own text contains the search text
+          // but avoid matching parent elements that contain the text in children
+          if (el.children.length === 0 && textContent.includes(searchText)) return true;
+
+          // For buttons/links with nested elements (icons, spans), check full text
+          if (['BUTTON', 'A', 'DIV'].includes(el.tagName) && textContent.includes(searchText)) {
+            return true;
+          }
+
+          return false;
+        });
+
+        return found || null;
+      }, text, tagName);
+
+      const asElement = element.asElement();
+      if (asElement) {
+        // Verify element is visible
+        const box = await asElement.boundingBox();
+        if (box && box.width > 0 && box.height > 0) {
+          return asElement;
+        }
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
 
   /**
    * Generate fallback selectors for a failed primary selector
@@ -68,11 +157,11 @@ export class SelfHealingLocators {
     expectedText?: string
   ): Promise<SelectorFallback[]> {
     const fallbacks: SelectorFallback[] = [];
-    
+
     try {
       // First, try to understand what the primary selector was targeting
       const elementInfo = await this.analyzeFailedSelector(pageInstance, primarySelector, expectedText);
-      
+
       if (elementInfo) {
         // Generate fallbacks based on element information
         fallbacks.push(...this.generateAttributeFallbacks(elementInfo));
@@ -83,15 +172,15 @@ export class SelfHealingLocators {
         // Primary selector completely failed, generate exploratory fallbacks
         fallbacks.push(...await this.generateExploratoryFallbacks(pageInstance, primarySelector, expectedText));
       }
-      
+
       // Sort by confidence and limit results
       const sortedFallbacks = fallbacks
         .filter(f => f.confidence >= this.MIN_CONFIDENCE)
         .sort((a, b) => b.confidence - a.confidence)
         .slice(0, this.MAX_FALLBACKS);
-      
+
       return sortedFallbacks;
-      
+
     } catch (error) {
       // console.('Fallback generation failed:', error);
       return [];
@@ -106,7 +195,20 @@ export class SelfHealingLocators {
     primarySelector: string,
     expectedText?: string
   ): Promise<{ element: any; usedSelector: string; strategy: string } | null> {
-    
+
+    // Check if selector uses :has-text(), :contains(), or :text() syntax
+    const textSelector = this.parseTextSelector(primarySelector);
+    if (textSelector) {
+      const element = await this.findByText(pageInstance, textSelector.text, textSelector.tagName);
+      if (element) {
+        return {
+          element,
+          usedSelector: `${textSelector.tagName || '*'}[text*="${textSelector.text}"]`,
+          strategy: 'text-content'
+        };
+      }
+    }
+
     // First try the primary selector
     try {
       const primaryElement = await pageInstance.$(primarySelector);
@@ -120,27 +222,28 @@ export class SelfHealingLocators {
     } catch (error) {
       // Continue to fallbacks
     }
-    
+
+
     // Generate and try fallback selectors
     const fallbacks = await this.generateFallbacks(pageInstance, primarySelector, expectedText);
-    
+
     for (const fallback of fallbacks) {
       try {
         const element = await pageInstance.$(fallback.selector);
         if (element) {
           // Verify element is reasonable match if we have expected text
           if (expectedText) {
-            const elementText = await element.evaluate((el: any) => 
+            const elementText = await element.evaluate((el: any) =>
               (el.textContent || el.value || el.placeholder || '').toLowerCase()
             );
-            
+
             if (!elementText.includes(expectedText.toLowerCase())) {
               continue; // Skip this fallback if text doesn't match
             }
           }
-          
+
           // console.(`Self-healing: Found element using fallback selector '${fallback.selector}' (${fallback.type}, confidence: ${fallback.confidence})`);
-          
+
           return {
             element,
             usedSelector: fallback.selector,
@@ -152,7 +255,7 @@ export class SelfHealingLocators {
         continue;
       }
     }
-    
+
     return null;
   }
 
@@ -164,7 +267,7 @@ export class SelfHealingLocators {
     selector: string,
     expectedText?: string
   ): Promise<ElementInfo | null> {
-    
+
     try {
       // Try to find similar elements or get page context
       const analysis = await pageInstance.evaluate(
@@ -179,7 +282,7 @@ export class SelfHealingLocators {
             classValues: sel.match(/\.([^#.\[\s]+)/g)?.map(c => c.slice(1)) || [],
             attributes: []
           };
-          
+
           // If we have expected text, search for elements containing it
           if (text) {
             const candidates = Array.from(document.querySelectorAll('*'))
@@ -188,14 +291,14 @@ export class SelfHealingLocators {
                 const value = (el as any).value || '';
                 const placeholder = (el as any).placeholder || '';
                 const ariaLabel = el.getAttribute('aria-label') || '';
-                
+
                 return textContent.includes(text.toLowerCase()) ||
-                       value.toLowerCase().includes(text.toLowerCase()) ||
-                       placeholder.toLowerCase().includes(text.toLowerCase()) ||
-                       ariaLabel.toLowerCase().includes(text.toLowerCase());
+                  value.toLowerCase().includes(text.toLowerCase()) ||
+                  placeholder.toLowerCase().includes(text.toLowerCase()) ||
+                  ariaLabel.toLowerCase().includes(text.toLowerCase());
               })
               .slice(0, 5); // Limit candidates
-            
+
             // Return info about the first promising candidate
             if (candidates.length > 0) {
               const el = candidates[0];
@@ -218,15 +321,15 @@ export class SelfHealingLocators {
               };
             }
           }
-          
+
           return null;
         },
         selector,
         expectedText
       );
-      
+
       return analysis;
-      
+
     } catch (error) {
       // console.('Selector analysis failed:', error);
       return null;
@@ -238,7 +341,7 @@ export class SelfHealingLocators {
    */
   private generateAttributeFallbacks(elementInfo: ElementInfo): SelectorFallback[] {
     const fallbacks: SelectorFallback[] = [];
-    
+
     // High-confidence attributes
     for (const attr of this.HIGH_CONFIDENCE_ATTRIBUTES) {
       const value = (elementInfo as any)[attr.replace(/-([a-z])/g, (g) => g[1].toUpperCase())];
@@ -250,7 +353,7 @@ export class SelfHealingLocators {
           description: `Using ${attr} attribute`,
           strategy: `attribute-${attr}`
         });
-        
+
         // Also try tag + attribute combination
         if (elementInfo.tagName) {
           fallbacks.push({
@@ -263,7 +366,7 @@ export class SelfHealingLocators {
         }
       }
     }
-    
+
     // ID-based fallbacks (highest priority)
     if (elementInfo.id) {
       fallbacks.push({
@@ -274,7 +377,7 @@ export class SelfHealingLocators {
         strategy: 'id'
       });
     }
-    
+
     // Name attribute
     if (elementInfo.name) {
       fallbacks.push({
@@ -284,7 +387,7 @@ export class SelfHealingLocators {
         description: 'Using name attribute',
         strategy: 'name'
       });
-      
+
       if (elementInfo.tagName) {
         fallbacks.push({
           selector: `${elementInfo.tagName}[name="${elementInfo.name}"]`,
@@ -295,7 +398,7 @@ export class SelfHealingLocators {
         });
       }
     }
-    
+
     // Class-based fallbacks (lower confidence due to potential changes)
     if (elementInfo.className) {
       const classes = elementInfo.className.split(/\s+/).filter(Boolean);
@@ -307,7 +410,7 @@ export class SelfHealingLocators {
           description: `Using class ${cls}`,
           strategy: 'class'
         });
-        
+
         if (elementInfo.tagName) {
           fallbacks.push({
             selector: `${elementInfo.tagName}.${cls}`,
@@ -319,7 +422,7 @@ export class SelfHealingLocators {
         }
       }
     }
-    
+
     return fallbacks;
   }
 
@@ -328,11 +431,11 @@ export class SelfHealingLocators {
    */
   private generateTextFallbacks(elementInfo: ElementInfo): SelectorFallback[] {
     const fallbacks: SelectorFallback[] = [];
-    
+
     // Text content fallbacks
     if (elementInfo.textContent && elementInfo.textContent.trim()) {
       const text = elementInfo.textContent.trim();
-      
+
       // Exact text match
       fallbacks.push({
         selector: `//*[text()='${text}']`,
@@ -341,7 +444,7 @@ export class SelfHealingLocators {
         description: `Using exact text: "${text}"`,
         strategy: 'text-exact'
       });
-      
+
       // Partial text match
       if (text.length > 10) {
         const shortText = text.slice(0, 20);
@@ -353,7 +456,7 @@ export class SelfHealingLocators {
           strategy: 'text-partial'
         });
       }
-      
+
       // Tag + text combination
       if (elementInfo.tagName) {
         fallbacks.push({
@@ -365,7 +468,7 @@ export class SelfHealingLocators {
         });
       }
     }
-    
+
     // Placeholder text
     if (elementInfo.placeholder) {
       fallbacks.push({
@@ -376,7 +479,7 @@ export class SelfHealingLocators {
         strategy: 'placeholder'
       });
     }
-    
+
     // Value attribute
     if (elementInfo.value) {
       fallbacks.push({
@@ -387,7 +490,7 @@ export class SelfHealingLocators {
         strategy: 'value'
       });
     }
-    
+
     return fallbacks;
   }
 
@@ -396,7 +499,7 @@ export class SelfHealingLocators {
    */
   private generateSemanticFallbacks(elementInfo: ElementInfo): SelectorFallback[] {
     const fallbacks: SelectorFallback[] = [];
-    
+
     // ARIA label
     if (elementInfo.ariaLabel) {
       fallbacks.push({
@@ -407,7 +510,7 @@ export class SelfHealingLocators {
         strategy: 'aria-label'
       });
     }
-    
+
     // ARIA role
     if (elementInfo.ariaRole) {
       fallbacks.push({
@@ -417,7 +520,7 @@ export class SelfHealingLocators {
         description: `Using ARIA role: "${elementInfo.ariaRole}"`,
         strategy: 'aria-role'
       });
-      
+
       if (elementInfo.tagName) {
         fallbacks.push({
           selector: `${elementInfo.tagName}[role="${elementInfo.ariaRole}"]`,
@@ -428,7 +531,7 @@ export class SelfHealingLocators {
         });
       }
     }
-    
+
     // Title attribute
     if (elementInfo.title) {
       fallbacks.push({
@@ -439,7 +542,7 @@ export class SelfHealingLocators {
         strategy: 'title'
       });
     }
-    
+
     // Alt text for images
     if (elementInfo.alt) {
       fallbacks.push({
@@ -450,7 +553,7 @@ export class SelfHealingLocators {
         strategy: 'alt'
       });
     }
-    
+
     // Input type
     if (elementInfo.type && elementInfo.tagName === 'input') {
       fallbacks.push({
@@ -461,7 +564,7 @@ export class SelfHealingLocators {
         strategy: 'input-type'
       });
     }
-    
+
     return fallbacks;
   }
 
@@ -470,11 +573,11 @@ export class SelfHealingLocators {
    */
   private generatePositionFallbacks(elementInfo: ElementInfo): SelectorFallback[] {
     const fallbacks: SelectorFallback[] = [];
-    
+
     // These are lower confidence as positions can change
     if (elementInfo.position) {
       const { parentSelector, childIndex, siblingIndex } = elementInfo.position;
-      
+
       if (parentSelector && childIndex !== undefined) {
         fallbacks.push({
           selector: `${parentSelector} > *:nth-child(${childIndex + 1})`,
@@ -484,7 +587,7 @@ export class SelfHealingLocators {
           strategy: 'nth-child'
         });
       }
-      
+
       if (elementInfo.tagName && siblingIndex !== undefined) {
         fallbacks.push({
           selector: `${elementInfo.tagName}:nth-of-type(${siblingIndex + 1})`,
@@ -495,7 +598,7 @@ export class SelfHealingLocators {
         });
       }
     }
-    
+
     return fallbacks;
   }
 
@@ -508,11 +611,11 @@ export class SelfHealingLocators {
     expectedText?: string
   ): Promise<SelectorFallback[]> {
     const fallbacks: SelectorFallback[] = [];
-    
+
     try {
       // Analyze the selector structure to understand intent
       const selectorAnalysis = this.analyzeSelectorStructure(primarySelector);
-      
+
       // Generate similar selectors based on structure
       if (selectorAnalysis.hasId) {
         // Try variations without ID
@@ -527,7 +630,7 @@ export class SelfHealingLocators {
           });
         }
       }
-      
+
       if (selectorAnalysis.hasClass) {
         // Try with fewer classes
         const classes = selectorAnalysis.classValues;
@@ -543,17 +646,17 @@ export class SelfHealingLocators {
           }
         }
       }
-      
+
       // If we have expected text, search broadly
       if (expectedText) {
         const textBasedFallbacks = await this.findByTextContent(pageInstance, expectedText);
         fallbacks.push(...textBasedFallbacks);
       }
-      
+
     } catch (error) {
       // console.('Exploratory fallback generation failed:', error);
     }
-    
+
     return fallbacks;
   }
 
@@ -583,7 +686,7 @@ export class SelfHealingLocators {
    */
   private async findByTextContent(pageInstance: any, text: string): Promise<SelectorFallback[]> {
     const fallbacks: SelectorFallback[] = [];
-    
+
     try {
       const candidates = await pageInstance.evaluate((searchText: string) => {
         const elements = Array.from(document.querySelectorAll('*'))
@@ -591,10 +694,10 @@ export class SelfHealingLocators {
             const textContent = (el.textContent || '').toLowerCase();
             const value = (el as any).value || '';
             const placeholder = (el as any).placeholder || '';
-            
+
             return textContent.includes(searchText.toLowerCase()) ||
-                   value.toLowerCase().includes(searchText.toLowerCase()) ||
-                   placeholder.toLowerCase().includes(searchText.toLowerCase());
+              value.toLowerCase().includes(searchText.toLowerCase()) ||
+              placeholder.toLowerCase().includes(searchText.toLowerCase());
           })
           .slice(0, 5)
           .map(el => ({
@@ -603,10 +706,10 @@ export class SelfHealingLocators {
             className: el.className || null,
             textContent: (el.textContent || '').trim().slice(0, 30)
           }));
-        
+
         return elements;
       }, text);
-      
+
       for (const candidate of candidates) {
         if (candidate.id) {
           fallbacks.push({
@@ -617,7 +720,7 @@ export class SelfHealingLocators {
             strategy: 'text-search-id'
           });
         }
-        
+
         if (candidate.className) {
           const firstClass = candidate.className.split(/\s+/)[0];
           fallbacks.push({
@@ -628,7 +731,7 @@ export class SelfHealingLocators {
             strategy: 'text-search-class'
           });
         }
-        
+
         fallbacks.push({
           selector: candidate.tagName,
           type: 'text',
@@ -637,11 +740,11 @@ export class SelfHealingLocators {
           strategy: 'text-search-tag'
         });
       }
-      
+
     } catch (error) {
       // console.('Text-based search failed:', error);
     }
-    
+
     return fallbacks;
   }
 
@@ -654,18 +757,18 @@ export class SelfHealingLocators {
     expectedText?: string
   ): Promise<string> {
     const fallbacks = await this.generateFallbacks(pageInstance, primarySelector, expectedText);
-    
+
     if (fallbacks.length === 0) {
       return `No fallback selectors generated for: ${primarySelector}`;
     }
-    
+
     const summary = fallbacks
       .slice(0, 5) // Top 5 fallbacks
-      .map((fb, index) => 
+      .map((fb, index) =>
         `${index + 1}. ${fb.selector} (${fb.type}, confidence: ${fb.confidence}, ${fb.strategy})`
       )
       .join('\n');
-    
+
     return `\nSelf-Healing Fallback Selectors for: ${primarySelector}\n${summary}`;
   }
 }

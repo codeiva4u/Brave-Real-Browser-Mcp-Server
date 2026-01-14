@@ -25,13 +25,13 @@ try {
   const launcher = require('../dist/index.js');
   const requiredExports = ['launch', 'getBravePath', 'BraveLauncher', 'XvfbManager', 'braveFinder'];
   const availableExports = Object.keys(launcher);
-  
+
   const missing = requiredExports.filter(exp => !availableExports.includes(exp));
   if (missing.length > 0) {
     console.log('❌ Missing exports:', missing);
     process.exit(1);
   }
-  
+
   console.log('✅ All required exports available:', requiredExports.length);
 } catch (error) {
   console.log('❌ Module loading failed:', error.message);
@@ -44,7 +44,7 @@ try {
   const { getPlatform } = require('../dist/index.js');
   const platform = getPlatform();
   const supportedPlatforms = ['win32', 'darwin', 'linux', 'wsl'];
-  
+
   if (supportedPlatforms.includes(platform)) {
     console.log('✅ Platform detection successful:', platform);
   } else {
@@ -61,7 +61,7 @@ console.log('\n📋 Test 4: Browser detection (optional)');
 try {
   const { braveFinder, getPlatform } = require('../dist/index.js');
   const platform = getPlatform();
-  
+
   let installations;
   if (platform === 'win32') {
     installations = braveFinder.win32();
@@ -72,7 +72,7 @@ try {
   } else {
     installations = [];
   }
-  
+
   console.log('✅ Browser detection completed - found:', installations.length, 'installation(s)');
   if (installations.length > 0) {
     console.log('   Primary installation:', installations[0]);
@@ -86,8 +86,10 @@ try {
 console.log('\n📋 Test 5: TypeScript definitions');
 try {
   const fs = require('fs');
-  const typesExist = fs.existsSync('../dist/index.d.ts');
-  
+  const path = require('path');
+  const typesPath = path.join(__dirname, '..', 'dist', 'index.d.ts');
+  const typesExist = fs.existsSync(typesPath);
+
   if (typesExist) {
     console.log('✅ TypeScript definitions available');
   } else {
