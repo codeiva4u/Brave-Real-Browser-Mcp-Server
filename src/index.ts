@@ -1,10 +1,29 @@
 #!/usr/bin/env node
 
 /**
- * CRITICAL: Patch console.log and stdout to redirect to stderr
- * This ensures MCP stdio transport only receives valid JSON-RPC messages on stdout.
+ * Brave Real Browser MCP Server
+ * Multi-transport support: STDIO, SSE (Server-Sent Events), and HTTP Streaming
+ * With Auto-sync, Session Management, and Progress Notifications
+ * 
+ * Environment Variables:
+ * - MCP_TRANSPORT: 'stdio' | 'sse' | 'http-stream' (default: 'stdio')
+ * - MCP_PORT: HTTP server port (default: 3000)
+ * - MCP_HOST: HTTP server host (default: 'localhost')
+ * - MCP_PATH: MCP endpoint path (default: '/mcp')
+ * - MCP_CORS: Enable CORS (default: 'true')
+ * - MCP_SESSION_TIMEOUT: Session timeout in ms (default: 1800000)
+ * - MCP_AUTO_SYNC: Enable auto-sync (default: 'true')
+ * - MCP_PROGRESS: Enable progress notifications (default: 'true')
+ * - DEBUG: Enable debug logging (default: 'false')
  */
-import './patch-console.js';
+
+// Only patch console for STDIO transport to avoid interference with HTTP transports
+const transportType = process.env.MCP_TRANSPORT || 'stdio';
+if (transportType === 'stdio') {
+  // CRITICAL: Patch console.log and stdout to redirect to stderr
+  // This ensures MCP stdio transport only receives valid JSON-RPC messages on stdout.
+  await import('./patch-console.js');
+}
 
 // Debug logging - only enabled if DEBUG=true environment variable is set
 const DEBUG_ENABLED = process.env.DEBUG === 'true';
@@ -18,6 +37,7 @@ const debug = (...args: unknown[]) => {
 debug(`Process starting - PID: ${process.pid}, Node: ${process.version}, Platform: ${process.platform}`);
 debug(`Working directory: ${process.cwd()}`);
 debug(`Command args: ${process.argv.join(' ')}`);
+debug(`Transport type: ${transportType}`);
 
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
@@ -32,11 +52,27 @@ import {
   CallToolRequest,
 } from '@modelcontextprotocol/sdk/types.js';
 
+// Import transport modules
+import {
+  TransportFactory,
+  createTransportFactory,
+  parseTransportConfig,
+  getSessionManager,
+  getProgressNotifier,
+  getSharedEventBus,
+  getContextEnricher,
+  getSSELSPStreamer,
+  type TransportConfig,
+  type MCPToolCalledEvent,
+  type MCPToolCompletedEvent,
+  type MCPToolFailedEvent,
+} from './transport/index.js';
+
 debug('MCP SDK imports completed successfully');
 
 // Import extracted modules
 debug('Loading tool definitions...');
-import { TOOLS, SERVER_INFO, CAPABILITIES, TOOL_NAMES, NavigateArgs, ClickArgs, TypeArgs, WaitArgs, SolveCaptchaArgs, FindSelectorArgs, SaveContentAsMarkdownArgs } from './tool-definitions.js';
+import { TOOLS, SERVER_INFO, CAPABILITIES, EXTENDED_CAPABILITIES, TOOL_NAMES, NavigateArgs, ClickArgs, TypeArgs, WaitArgs, SolveCaptchaArgs, FindSelectorArgs, SaveContentAsMarkdownArgs } from './tool-definitions.js';
 debug('Loading system utils...');
 import { withErrorHandling } from './system-utils.js';
 debug('Loading browser manager...');
@@ -96,6 +132,16 @@ debug('All modules loaded successfully');
 debug(`Server info: ${JSON.stringify(SERVER_INFO)}`);
 debug(`Available tools: ${TOOLS.length} tools loaded`);
 
+// Initialize LSP integration
+const eventBus = getSharedEventBus();
+const contextEnricher = getContextEnricher(eventBus);
+const sseLSPStreamer = getSSELSPStreamer(eventBus);
+
+// Setup SSE LSP streamer with progress notifier
+sseLSPStreamer.setProgressNotifier(getProgressNotifier());
+
+debug('LSP integration initialized');
+
 // Initialize MCP server
 debug('Creating MCP server instance...');
 const server = new Server(SERVER_INFO, { capabilities: CAPABILITIES });
@@ -117,10 +163,20 @@ server.setRequestHandler(InitializeRequestSchema, async (request: InitializeRequ
     debug(`Client info: ${JSON.stringify(clientInfo)}`);
   }
 
+  // Get current transport type
+  const currentTransport = process.env.MCP_TRANSPORT || 'stdio';
+  
   const response = {
     protocolVersion: clientProtocolVersion, // Match client version for compatibility
     capabilities: CAPABILITIES,
-    serverInfo: SERVER_INFO,
+    serverInfo: {
+      ...SERVER_INFO,
+      // Include extended capabilities in server info for client awareness
+      metadata: {
+        transport: currentTransport,
+        ...EXTENDED_CAPABILITIES,
+      },
+    },
   };
   debug(`Sending initialize response: ${JSON.stringify(response)}`);
 
@@ -162,6 +218,16 @@ debug('Registering tool call handler...');
 server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest) => {
   const { name, arguments: args } = request.params;
   debug(`Tool call received: ${name} with args: ${JSON.stringify(args)}`);
+
+  // Publish MCP tool called event to event bus
+  eventBus.publish({
+    type: 'mcp:toolCalled',
+    data: {
+      toolName: name,
+      args: args || {},
+      timestamp: Date.now(),
+    },
+  } as any);
 
   // Get page from browser manager for advanced tools
   const { getPageInstance } = await import('./browser-manager.js');
@@ -307,6 +373,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
     const errorMessage = error instanceof Error ? error.message : String(error);
     debug(`Tool ${name} failed:`, errorMessage);
 
+    // Publish MCP tool failed event
+    eventBus.publish({
+      type: 'mcp:toolFailed',
+      data: {
+        toolName: name,
+        error: errorMessage,
+        stackTrace: error instanceof Error ? error.stack : undefined,
+        timestamp: Date.now(),
+      },
+    } as any);
+
     return {
       content: [
         {
@@ -319,9 +396,47 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
   }
 });
 
+// Helper function to enrich tool response with LSP context
+async function enrichResponseWithLSP(
+  toolName: string,
+  response: any
+): Promise<any> {
+  try {
+    const enriched = await contextEnricher.enrichMCPResponse(
+      toolName,
+      response,
+      {}
+    );
+
+    // Add LSP context as additional information
+    if (enriched.additionalData.suggestions && enriched.additionalData.suggestions.length > 0) {
+      const originalText = response.content?.[0]?.text || '';
+      const context = contextEnricher.formatEnrichedContext(enriched.enrichedContext);
+
+      return {
+        ...response,
+        content: [
+          {
+            type: 'text',
+            text: `${originalText}\n\n---\n📊 **LSP Context**\n${context}`,
+          },
+        ],
+      };
+    }
+
+    return response;
+  } catch (error) {
+    // If enrichment fails, return original response
+    return response;
+  }
+}
+
 // Main function to start the server
 async function main(): Promise<void> {
   debug('Main function starting...');
+  
+  const config = parseTransportConfig();
+  debug(`Transport configuration: ${JSON.stringify(config)}`);
 
   // Setup process cleanup handlers
   debug('Setting up process cleanup handlers...');
@@ -331,7 +446,32 @@ async function main(): Promise<void> {
     await forceKillAllBraveProcesses();
   });
 
-  // Create and start the server transport
+  // Create transport factory
+  const transportFactory = createTransportFactory(config);
+  
+  // Start appropriate transport based on configuration
+  switch (config.type) {
+    case 'stdio':
+      await startStdioTransport();
+      break;
+      
+    case 'sse':
+      await startSSETransport(transportFactory);
+      break;
+      
+    case 'http-stream':
+      await startHTTPStreamTransport(transportFactory);
+      break;
+      
+    default:
+      throw new Error(`Unknown transport type: ${config.type}`);
+  }
+
+  debug('Main function completed - server should be running');
+}
+
+// STDIO Transport (original behavior)
+async function startStdioTransport(): Promise<void> {
   debug('Creating StdioServerTransport...');
   const transport = new StdioServerTransport();
   debug('StdioServerTransport created successfully');
@@ -343,6 +483,7 @@ async function main(): Promise<void> {
 
     // Startup messages
     console.error('🚀 Brave Real Browser MCP Server started successfully');
+    console.error('📡 Transport: STDIO');
     console.error('📋 Available tools:', TOOLS.map(t => t.name).join(', '));
     console.error('🔧 Workflow validation: Active');
     console.error('💡 Content priority mode: Enabled (use get_content for better reliability)');
@@ -364,8 +505,87 @@ async function main(): Promise<void> {
     });
 
   }, 'Failed to start MCP server');
+}
 
-  debug('Main function completed - server should be running');
+// SSE Transport (Server-Sent Events for streaming)
+async function startSSETransport(transportFactory: TransportFactory): Promise<void> {
+  debug('Starting SSE Transport...');
+  
+  await withErrorHandling(async () => {
+    await transportFactory.startSSEServer(server, {
+      onConnect: (sessionId) => {
+        debug(`SSE client connected: ${sessionId}`);
+        console.error(`🔗 Client connected: ${sessionId}`);
+      },
+      onDisconnect: (sessionId) => {
+        debug(`SSE client disconnected: ${sessionId}`);
+        console.error(`🔌 Client disconnected: ${sessionId}`);
+      },
+      onError: (error) => {
+        debug(`SSE error: ${error.message}`);
+        console.error(`❌ SSE Error: ${error.message}`);
+      },
+    });
+
+    // Startup messages
+    console.error('🚀 Brave Real Browser MCP Server started successfully');
+    console.error('📡 Transport: SSE (Server-Sent Events)');
+    console.error('📋 Available tools:', TOOLS.map(t => t.name).join(', '));
+    console.error('🔧 Workflow validation: Active');
+    console.error('🔄 Auto-sync: Enabled');
+    console.error('📊 Progress notifications: Enabled');
+    console.error('💡 Content priority mode: Enabled');
+
+    // Keep the process alive
+    const heartbeat = setInterval(() => {
+      debug(`Heartbeat - SSE Server alive at ${new Date().toISOString()}`);
+    }, 30000);
+
+    process.on('exit', () => {
+      debug('Process exiting - clearing heartbeat and stopping SSE server');
+      clearInterval(heartbeat);
+      transportFactory.cleanup();
+    });
+
+  }, 'Failed to start SSE MCP server');
+}
+
+// HTTP Stream Transport (LSP compatible)
+async function startHTTPStreamTransport(transportFactory: TransportFactory): Promise<void> {
+  debug('Starting HTTP Stream Transport...');
+  
+  await withErrorHandling(async () => {
+    await transportFactory.startHTTPStreamServer(server, {
+      onRequest: (sessionId, method) => {
+        debug(`HTTP request: ${method} from session ${sessionId}`);
+      },
+      onError: (error) => {
+        debug(`HTTP Stream error: ${error.message}`);
+        console.error(`❌ HTTP Stream Error: ${error.message}`);
+      },
+    });
+
+    // Startup messages
+    console.error('🚀 Brave Real Browser MCP Server started successfully');
+    console.error('📡 Transport: HTTP Streamable (LSP Compatible)');
+    console.error('📋 Available tools:', TOOLS.map(t => t.name).join(', '));
+    console.error('🔧 Workflow validation: Active');
+    console.error('🔄 Auto-sync: Enabled');
+    console.error('📊 Progress notifications: Enabled');
+    console.error('💡 Content priority mode: Enabled');
+
+    // Keep the process alive
+    const heartbeat = setInterval(() => {
+      debug(`Heartbeat - HTTP Stream Server alive at ${new Date().toISOString()}`);
+    }, 30000);
+
+    process.on('exit', () => {
+      debug('Process exiting - clearing heartbeat and stopping HTTP Stream server');
+      clearInterval(heartbeat);
+      transportFactory.cleanup();
+    });
+
+  }, 'Failed to start HTTP Stream MCP server');
 }
 
 // Enhanced error handling with debug info

@@ -4,17 +4,27 @@ import { validateWorkflow, recordExecution, workflowValidator } from '../workflo
 import { selfHealingLocators } from '../self-healing-locators.js';
 import { ClickArgs, TypeArgs, SolveCaptchaArgs } from '../tool-definitions.js';
 import { setTimeout as sleep } from 'node:timers/promises';
+import { getProgressNotifier } from '../transport/progress-notifier.js';
 
-// Click handler
+// Click handler with real-time progress
 export async function handleClick(args: ClickArgs) {
+  const progressNotifier = getProgressNotifier();
+  const progressToken = `click-${Date.now()}`;
+  const tracker = progressNotifier.createTracker(progressToken);
+  
   return await withWorkflowValidation('click', args, async () => {
     return await withErrorHandling(async () => {
+      tracker.start(100, '🖱️ Starting click operation...');
+      
       const pageInstance = getPageInstance();
       if (!pageInstance) {
+        tracker.fail('Browser not initialized');
         throw new Error('Browser not initialized. Call browser_init first.');
       }
 
       const { selector, waitForNavigation = false } = args;
+      
+      tracker.setProgress(10, `🔍 Finding element: ${selector}`);
 
       // Try to find element using self-healing locators
       const elementResult = await selfHealingLocators.findElementWithFallbacks(
@@ -23,6 +33,7 @@ export async function handleClick(args: ClickArgs) {
       );
 
       if (!elementResult) {
+        tracker.fail('Element not found');
         const fallbackSummary = await selfHealingLocators.getFallbackSummary(pageInstance, selector);
 
         throw new Error(
@@ -41,15 +52,18 @@ export async function handleClick(args: ClickArgs) {
         );
       }
 
+      tracker.setProgress(40, '✅ Element found, preparing to click...');
+
       const { element, usedSelector, strategy } = elementResult;
       let strategyMessage = '';
 
       if (strategy !== 'primary') {
         strategyMessage = `\n🔄 Self-healing: Used ${strategy} fallback selector: ${usedSelector}`;
-        // console.(`Self-healing click: Primary selector '${selector}' failed, used '${usedSelector}' (${strategy})`);
+        tracker.setProgress(50, `🔄 Using fallback selector: ${usedSelector}`);
       }
 
       try {
+        tracker.setProgress(60, '⏳ Waiting for element to be ready...');
         // Wait for element to be ready
         await pageInstance.waitForSelector(usedSelector, { timeout: 5000 });
 
@@ -57,18 +71,23 @@ export async function handleClick(args: ClickArgs) {
         const boundingBox = await element.boundingBox();
 
         if (!boundingBox) {
-          // console.(`Element ${usedSelector} has no bounding box, attempting JavaScript click`);
+          tracker.setProgress(70, '🔧 No bounding box, using JavaScript click...');
           await pageInstance.$eval(usedSelector, (el: any) => el.click());
         } else {
+          tracker.setProgress(70, '🖱️ Clicking element...');
           if (waitForNavigation) {
+            tracker.setProgress(75, '🔄 Clicking and waiting for navigation...');
             await Promise.all([
               pageInstance.waitForNavigation({ waitUntil: 'networkidle2' }),
               pageInstance.click(usedSelector),
             ]);
+            tracker.setProgress(90, '✅ Navigation completed');
           } else {
             await pageInstance.click(usedSelector);
           }
         }
+
+        tracker.complete('🎉 Click completed successfully');
 
         return {
           content: [
@@ -80,9 +99,11 @@ export async function handleClick(args: ClickArgs) {
         };
 
       } catch (clickError) {
+        tracker.setProgress(85, '⚠️ Click failed, trying JavaScript fallback...');
         // Final fallback: JavaScript click
         try {
           await pageInstance.$eval(usedSelector, (el: any) => el.click());
+          tracker.complete('🎉 Click completed via JavaScript fallback');
           return {
             content: [
               {
@@ -92,6 +113,7 @@ export async function handleClick(args: ClickArgs) {
             ],
           };
         } catch (jsClickError) {
+          tracker.fail('Click failed completely');
           throw new Error(
             `Click failed on element found by self-healing locators: ${usedSelector}. ` +
             `Original error: ${clickError instanceof Error ? clickError.message : String(clickError)}. ` +
@@ -103,16 +125,25 @@ export async function handleClick(args: ClickArgs) {
   });
 }
 
-// Type handler
+// Type handler with real-time progress
 export async function handleType(args: TypeArgs) {
+  const progressNotifier = getProgressNotifier();
+  const progressToken = `type-${Date.now()}`;
+  const tracker = progressNotifier.createTracker(progressToken);
+  
   return await withWorkflowValidation('type', args, async () => {
     return await withErrorHandling(async () => {
+      tracker.start(100, '⌨️ Starting type operation...');
+      
       const pageInstance = getPageInstance();
       if (!pageInstance) {
+        tracker.fail('Browser not initialized');
         throw new Error('Browser not initialized. Call browser_init first.');
       }
 
       const { selector, text, delay = 100 } = args;
+      
+      tracker.setProgress(10, `🔍 Finding input element: ${selector}`);
 
       // Try to find element using self-healing locators
       const elementResult = await selfHealingLocators.findElementWithFallbacks(
@@ -121,6 +152,7 @@ export async function handleType(args: TypeArgs) {
       );
 
       if (!elementResult) {
+        tracker.fail('Input element not found');
         const fallbackSummary = await selfHealingLocators.getFallbackSummary(pageInstance, selector);
 
         throw new Error(
@@ -135,21 +167,26 @@ export async function handleType(args: TypeArgs) {
         );
       }
 
+      tracker.setProgress(30, '✅ Input element found');
+
       const { element, usedSelector, strategy } = elementResult;
       let strategyMessage = '';
 
       if (strategy !== 'primary') {
         strategyMessage = `\n🔄 Self-healing: Used ${strategy} fallback selector: ${usedSelector}`;
-        // console.(`Self-healing type: Primary selector '${selector}' failed, used '${usedSelector}' (${strategy})`);
+        tracker.setProgress(35, `🔄 Using fallback selector: ${usedSelector}`);
       }
 
       try {
+        tracker.setProgress(40, '⏳ Waiting for element to be ready...');
         // Wait for element to be ready and interactable
         await pageInstance.waitForSelector(usedSelector, { timeout: 5000 });
 
+        tracker.setProgress(50, '🎯 Focusing on element...');
         // Focus on the element first
         await element.focus();
 
+        tracker.setProgress(55, '🗑️ Clearing existing content...');
         // Clear existing content
         await pageInstance.evaluate((sel: string) => {
           const el = document.querySelector(sel) as HTMLInputElement | HTMLTextAreaElement;
@@ -159,8 +196,21 @@ export async function handleType(args: TypeArgs) {
           }
         }, usedSelector);
 
-        // Type the new text
-        await pageInstance.type(usedSelector, text, { delay });
+        tracker.setProgress(60, `⌨️ Typing ${text.length} characters...`);
+        
+        // Type with progress updates
+        const totalChars = text.length;
+        for (let i = 0; i < totalChars; i++) {
+          await pageInstance.type(usedSelector, text[i], { delay });
+          
+          // Update progress every 10 characters
+          if (i % 10 === 0 || i === totalChars - 1) {
+            const typeProgress = 60 + Math.round((i / totalChars) * 30);
+            tracker.setProgress(typeProgress, `⌨️ Typed ${i + 1}/${totalChars} characters`);
+          }
+        }
+
+        tracker.complete('🎉 Text input completed successfully');
 
         return {
           content: [
@@ -172,6 +222,7 @@ export async function handleType(args: TypeArgs) {
         };
 
       } catch (typeError) {
+        tracker.setProgress(85, '⚠️ Type failed, trying JavaScript fallback...');
         // Fallback: Direct value assignment
         try {
           await pageInstance.evaluate((sel: string, inputText: string) => {
@@ -183,6 +234,8 @@ export async function handleType(args: TypeArgs) {
             }
           }, usedSelector, text);
 
+          tracker.complete('🎉 Text input completed via JavaScript fallback');
+
           return {
             content: [
               {
@@ -193,6 +246,7 @@ export async function handleType(args: TypeArgs) {
           };
 
         } catch (fallbackError) {
+          tracker.fail('Type operation failed completely');
           throw new Error(
             `Type operation failed on element found by self-healing locators: ${usedSelector}. ` +
             `Original error: ${typeError instanceof Error ? typeError.message : String(typeError)}. ` +
@@ -204,11 +258,18 @@ export async function handleType(args: TypeArgs) {
   });
 }
 
-// Solve captcha handler - Enhanced with actual detection and graceful handling
+// Solve captcha handler with real-time progress
 export async function handleSolveCaptcha(args: SolveCaptchaArgs) {
+  const progressNotifier = getProgressNotifier();
+  const progressToken = `captcha-${Date.now()}`;
+  const tracker = progressNotifier.createTracker(progressToken);
+  
   return await withErrorHandling(async () => {
+    tracker.start(100, '🔐 Starting captcha detection...');
+    
     const pageInstance = getPageInstance();
     if (!pageInstance) {
+      tracker.fail('Browser not initialized');
       throw new Error('Browser not initialized. Call browser_init first.');
     }
 
@@ -216,6 +277,8 @@ export async function handleSolveCaptcha(args: SolveCaptchaArgs) {
     const timeout = 30000; // 30 second timeout
 
     try {
+      tracker.setProgress(10, '🔍 Detecting captcha type...');
+      
       // Auto-detect or use provided type
       let detectedType = type;
       if (!detectedType) {
@@ -226,16 +289,24 @@ export async function handleSolveCaptcha(args: SolveCaptchaArgs) {
           return 'unknown';
         });
       }
+      
+      tracker.setProgress(20, `🎯 Detected captcha: ${detectedType}`);
 
       // Turnstile - handled automatically by brave-real-browser
       if (detectedType === 'turnstile') {
+        tracker.setProgress(30, '🛡️ Solving Turnstile captcha...');
         const startTime = Date.now();
         while (Date.now() - startTime < timeout) {
+          const elapsed = Date.now() - startTime;
+          const progress = 30 + Math.round((elapsed / timeout) * 50);
+          tracker.setProgress(progress, `⏳ Waiting for Turnstile... (${Math.round(elapsed/1000)}s)`);
+          
           const token = await pageInstance.evaluate(() => {
             const input = document.querySelector('[name="cf-turnstile-response"]') as HTMLInputElement;
             return input?.value || null;
           });
           if (token && token.length > 20) {
+            tracker.complete('🎉 Turnstile captcha solved!');
             return {
               content: [{
                 type: 'text',

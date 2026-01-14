@@ -1,17 +1,13 @@
 # Brave Real Browser MCP Server
 
-> **AI assistants को powerful, detection-resistant browser automation capabilities देता है**
+> **AI assistants के लिए powerful, anti-detection browser automation - Unified MCP+LSP+SSE ecosystem**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![npm version](https://img.shields.io/npm/v/brave-real-browser-mcp-server.svg)](https://www.npmjs.com/package/brave-real-browser-mcp-server)
 
 ## 🚀 Quick Start
 
-### Step 1: Configure Claude Desktop / Cursor / Gemini
-
-**Windows:** `%APPDATA%\Claude\claude_desktop_config.json`  
-**Mac:** `~/Library/Application Support/Claude/`  
-**Linux:** `~/.config/Claude/`
+### Option 1: NPX (Recommended for AI IDEs)
 
 ```json
 {
@@ -24,129 +20,182 @@
 }
 ```
 
-### Step 2: Restart your AI assistant
+**Config locations:**
+- **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+- **Mac:** `~/Library/Application Support/Claude/`
+- **Linux:** `~/.config/Claude/`
 
-### Step 3: Test it!
-> "Initialize a browser and navigate to google.com, then get the page content"
+### Option 2: Unified Server (Full Features)
+
+```bash
+npm run dev
+```
 
 ---
 
 ## ✨ Features
 
-- **Stealth by default** - Anti-detection features built-in
-- **Brave Browser auto-detection** - No manual path configuration needed
-- **33 powerful tools** - Complete browser automation toolkit
-- **Captcha handling** - reCAPTCHA, hCaptcha, Turnstile support
-- **Proxy support** - Built-in proxy configuration
-- **uBlock Origin** - Ad blocking enabled by default
+| Feature | Description |
+|---------|-------------|
+| **33 MCP Tools** | Complete browser automation toolkit |
+| **Unified Server** | MCP + SSE + LSP in one command |
+| **Stealth Mode** | 50+ anti-detection features |
+| **Captcha Solving** | reCAPTCHA, hCaptcha, Turnstile |
+| **Brave Browser** | Auto-detection, uBlock Origin built-in |
+| **TypeScript Analyzer** | Full Compiler API integration |
+| **Real-time Streaming** | SSE for live progress updates |
+| **Auto-Sync** | SharedEventBus connects all protocols |
 
 ---
 
-## 🛠️ Available Tools (33)
+## 🌐 Unified MCP+LSP+SSE Ecosystem
 
-### Core Browser (4)
+**एक command से सब active:**
+
+```bash
+npm run dev
+```
+
+### Output:
+```
+🦁 Brave Real Browser - Unified Server v2.22.0
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📡 HTTP Server: http://localhost:3000
+
+🛠️  Available MCP Tools:
+   🚀 browser_init    🔴 browser_close   🌐 navigate
+   📄 get_content     🔍 find_element    🖱️ click
+   ⌨️ type           🤖 solve_captcha   🎬 media_extractor
+   ... and 24 more tools
+
+🔗 SharedEventBus: Auto-syncing MCP ↔ LSP ↔ SSE
+📋 Total: 33 MCP tools | TypeScript Analyzer Active
+✅ Ready! All protocols unified and auto-synced.
+```
+
+### All Endpoints:
+
+| Category | Endpoint | Purpose |
+|----------|----------|---------|
+| **MCP** | `POST /mcp` | MCP over HTTP |
+| **MCP** | `GET /mcp/sse` | SSE real-time streaming |
+| **MCP** | `POST /mcp/message` | SSE message handler |
+| **LSP** | `POST /lsp/completion` | Autocomplete |
+| **LSP** | `POST /lsp/hover` | Hover documentation |
+| **LSP** | `POST /lsp/analyze` | TypeScript analysis |
+| **LSP** | `POST /lsp/definition` | Go to definition |
+| **LSP** | `POST /lsp/references` | Find references |
+| **Other** | `GET /health` | Health check |
+| **Other** | `GET /events` | Event bus stats |
+
+---
+
+## 🛠️ All 33 MCP Tools
+
+### Browser Management
 | Tool | Description |
 |------|-------------|
-| `browser_init` | Initialize stealth browser with anti-detection |
-| `navigate` | Navigate to any URL |
-| `get_content` | Extract page content (HTML/text) |
+| `browser_init` | Initialize Brave browser with stealth |
 | `browser_close` | Close browser instance |
 
-### Interaction (4)
+### Navigation
 | Tool | Description |
 |------|-------------|
-| `click` | Click on elements |
-| `type` | Type text into inputs |
+| `navigate` | Navigate to URL |
 | `wait` | Wait for conditions |
-| `press_key` | Simulate keyboard |
 
-### Element Discovery (4)
+### Content
 | Tool | Description |
 |------|-------------|
-| `find_element` | Find elements (text, CSS, XPath, AI-powered) |
-| `find_element_advanced` | Advanced element finding |
-| `smart_selector_generator` | AI-powered selector generation |
-| `batch_element_scraper` | Scrape lists of elements |
+| `get_content` | Get page HTML/text |
+| `find_element` | Find by selector/text/AI |
+| `save_content_as_markdown` | Save as markdown file |
 
-### Content Extraction (5)
+### Interaction
 | Tool | Description |
 |------|-------------|
-| `save_content_as_markdown` | Save page as markdown |
-| `search_content` | Search patterns in page |
-| `extract_json` | Extract embedded JSON |
-| `scrape_meta_tags` | Extract meta tags |
-| `extract_schema` | Extract Schema.org data |
-
-### Navigation (3)
-| Tool | Description |
-|------|-------------|
-| `breadcrumb_navigator` | Navigate via breadcrumbs |
-| `redirect_tracer` | Trace URL redirects |
-| `m3u8_parser` | Parse HLS/m3u8 streams |
-
-### Network & API (4)
-| Tool | Description |
-|------|-------------|
-| `network_recorder` | Record network traffic |
-| `api_finder` | Discover hidden APIs |
-| `ajax_content_waiter` | Wait for AJAX content |
-| `deep_analysis` | Comprehensive page analysis |
-
-### Media (3)
-| Tool | Description |
-|------|-------------|
-| `media_extractor` | Extract video/audio |
-| `file_downloader` | Download files |
-| `element_screenshot` | Screenshot elements |
-
-### Streaming & Download (3)
-| Tool | Description |
-|------|-------------|
-| `iframe_handler` | Extract from nested iframes |
-| `popup_handler` | Handle popups and new tabs |
-| `stream_extractor` | Extract direct download URLs |
-
-### Utility (3)
-| Tool | Description |
-|------|-------------|
-| `link_harvester` | Harvest all links |
+| `click` | Click on element |
+| `type` | Type text into input |
+| `press_key` | Keyboard press |
 | `random_scroll` | Natural scrolling |
 | `solve_captcha` | Solve CAPTCHAs |
 
+### Media Extraction
+| Tool | Description |
+|------|-------------|
+| `media_extractor` | Extract video/audio |
+| `m3u8_parser` | Parse HLS streams |
+| `stream_extractor` | Direct download URLs |
+
+### Advanced
+| Tool | Description |
+|------|-------------|
+| `search_content` | Search patterns |
+| `extract_json` | Extract embedded JSON |
+| `scrape_meta_tags` | Meta/OG tags |
+| `deep_analysis` | Full page analysis |
+| `network_recorder` | Record traffic |
+| `api_finder` | Discover APIs |
+| `ajax_content_waiter` | Wait for AJAX |
+| `link_harvester` | Harvest links |
+| `batch_element_scraper` | Batch scrape |
+| `extract_schema` | Schema.org data |
+| `element_screenshot` | Screenshot element |
+| `breadcrumb_navigator` | Navigate breadcrumbs |
+| `redirect_tracer` | Trace redirects |
+| `progress_tracker` | Track progress |
+| `cookie_manager` | Manage cookies |
+| `file_downloader` | Download files |
+| `iframe_handler` | Handle iframes |
+| `popup_handler` | Handle popups |
+
 ---
 
-## ⚙️ Browser Options
-
-```json
-{
-  "headless": false,
-  "proxy": "http://proxy:8080",
-  "disableXvfb": false
-}
-```
-
----
-
-## 🔧 Development
+## 📋 Commands
 
 ```bash
-# Clone
-git clone https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server.git
-cd Brave-Real-Browser-Mcp-Server
-
 # Install
 npm install
 
 # Build
 npm run build
 
-# Test
-npm test              # Unit tests
-npm run test:e2e      # E2E tests
-npm run test:ci       # CI tests with coverage
+# Development (Unified - Recommended!)
+npm run dev           # MCP + SSE + LSP on port 3000
 
-# Run locally
-npm run dev
+# Alternate modes
+npm run dev:stdio     # STDIO only (for AI IDEs)
+npm run dev:sse       # SSE standalone
+npm run dev:http      # HTTP Stream standalone
+
+# Production
+npm start             # Unified server
+npm run start:stdio   # STDIO mode
+
+# Tests
+npm test
+npm run test:e2e
+```
+
+---
+
+## ⚙️ Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MCP_PORT` | `3000` | Server port |
+| `MCP_HOST` | `localhost` | Server host |
+| `DEBUG` | `false` | Debug logging |
+
+---
+
+## 🔧 Browser Options
+
+```json
+{
+  "headless": false,
+  "proxy": "http://proxy:8080"
+}
 ```
 
 ---
@@ -154,15 +203,23 @@ npm run dev
 ## 📋 Prerequisites
 
 - **Node.js** >= 18.0.0
-- **Brave Browser** (automatically detected)
-
-> **Note:** Brave Browser is automatically detected. No manual configuration needed!
+- **Brave Browser** (auto-detected)
 
 ---
 
-## 🤝 Contributing
+## 🐛 Troubleshooting
 
-Contributions welcome! Please read our contributing guidelines.
+### Port in use
+```bash
+MCP_PORT=3001 npm run dev
+```
+
+### Debug mode
+```bash
+DEBUG=true npm run dev
+```
+
+---
 
 ## 📄 License
 

@@ -2,13 +2,21 @@ import { getBrowserInstance, getPageInstance, getContentPriorityConfig } from '.
 import { withErrorHandling, withTimeout } from '../system-utils.js';
 import { validateWorkflow, recordExecution, workflowValidator } from '../workflow-validation.js';
 import { GetContentArgs, FindSelectorArgs } from '../tool-definitions.js';
+import { getProgressNotifier } from '../transport/progress-notifier.js';
 
-// Get content handler
+// Get content handler with real-time progress
 export async function handleGetContent(args: GetContentArgs) {
+  const progressNotifier = getProgressNotifier();
+  const progressToken = `get-content-${Date.now()}`;
+  const tracker = progressNotifier.createTracker(progressToken);
+  
   return await withWorkflowValidation('get_content', args, async () => {
     return await withErrorHandling(async () => {
+      tracker.start(100, '📄 Starting content extraction...');
+      
       const pageInstance = getPageInstance();
       if (!pageInstance) {
+        tracker.fail('Browser not initialized');
         throw new Error('Browser not initialized. Call browser_init first.');
       }
 
@@ -17,31 +25,41 @@ export async function handleGetContent(args: GetContentArgs) {
       let content: string;
 
       if (selector) {
+        tracker.setProgress(20, `🔍 Finding element: ${selector}`);
         // Get content from specific element
         const element = await pageInstance.$(selector);
         if (!element) {
+          tracker.fail('Element not found');
           throw new Error(`Element not found: ${selector}. Use find_selector to locate elements first.`);
         }
 
+        tracker.setProgress(40, '📝 Extracting element content...');
         if (type === 'text') {
           content = await pageInstance.$eval(selector, (el: any) => el.innerText || el.textContent || '');
         } else {
           content = await pageInstance.$eval(selector, (el: any) => el.outerHTML || '');
         }
+        tracker.setProgress(70, `✅ Extracted ${content.length} characters from element`);
       } else {
+        tracker.setProgress(20, '📄 Extracting full page content...');
         // Get full page content
         if (type === 'text') {
           content = await pageInstance.evaluate(() => document.body?.innerText || document.documentElement?.innerText || document.body?.textContent || '');
         } else {
           content = await pageInstance.content();
         }
+        tracker.setProgress(70, `✅ Extracted ${content.length} characters from page`);
       }
+
+      tracker.setProgress(90, '📋 Preparing response...');
 
       // Return content directly - LLM handles its own token limits
       const workflowMessage = '\n\n🔄 Workflow Status: Content analyzed\n' +
         '  • Next step: Use find_selector to locate specific elements\n' +
         '  • Then: Use interaction tools (click, type) for automation\n\n' +
         '✅ Content available for element discovery and interactions';
+
+      tracker.complete(`🎉 Content extracted successfully (${content.length} chars)`);
 
       return {
         content: [
@@ -55,12 +73,19 @@ export async function handleGetContent(args: GetContentArgs) {
   });
 }
 
-// Find selector handler
+// Find selector handler with real-time progress
 export async function handleFindSelector(args: FindSelectorArgs) {
+  const progressNotifier = getProgressNotifier();
+  const progressToken = `find-selector-${Date.now()}`;
+  const tracker = progressNotifier.createTracker(progressToken);
+  
   return await withWorkflowValidation('find_selector', args, async () => {
     return await withErrorHandling(async () => {
+      tracker.start(100, '🔍 Starting element search...');
+      
       const pageInstance = getPageInstance();
       if (!pageInstance) {
+        tracker.fail('Browser not initialized');
         throw new Error('Browser not initialized. Call browser_init first.');
       }
 
@@ -78,6 +103,8 @@ export async function handleFindSelector(args: FindSelectorArgs) {
 
       // Ensure elementType has a fallback value
       const elementType = (args as any)?.elementType || '*';
+      
+      tracker.setProgress(10, '🔧 Preparing search strategies...');
 
       // Helper: Search in Shadow DOM
       const searchInShadowDOM = async (sel: string) => {

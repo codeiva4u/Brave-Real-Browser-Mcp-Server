@@ -2,18 +2,27 @@ import { initializeBrowser, closeBrowser, getBrowserInstance, getPageInstance, g
 import { withErrorHandling } from '../system-utils.js';
 import { validateWorkflow, recordExecution, workflowValidator } from '../workflow-validation.js';
 import { BrowserInitArgs } from '../tool-definitions.js';
+import { getProgressNotifier } from '../transport/progress-notifier.js';
 
-// Browser initialization handler
+// Browser initialization handler with real-time progress
 export async function handleBrowserInit(args: BrowserInitArgs) {
+  const progressNotifier = getProgressNotifier();
+  const progressToken = `browser-init-${Date.now()}`;
+  const tracker = progressNotifier.createTracker(progressToken);
+  
   return await withWorkflowValidation('browser_init', args, async () => {
     return await withErrorHandling(async () => {
+      tracker.start(100, '🚀 Starting browser initialization...');
+      
       // Update content priority configuration if provided
       if (args.contentPriority) {
+        tracker.setProgress(10, '⚙️ Applying content priority settings...');
         updateContentPriorityConfig(args.contentPriority);
       }
 
       // Parse connectOption if it's a string
       if (typeof args.connectOption === 'string') {
+        tracker.setProgress(15, '📝 Parsing connection options...');
         try {
           (args as any).connectOption = JSON.parse(args.connectOption);
         } catch (e) {
@@ -22,7 +31,15 @@ export async function handleBrowserInit(args: BrowserInitArgs) {
         }
       }
 
+      tracker.setProgress(20, '🔍 Detecting Brave Browser...');
+      tracker.setProgress(30, '🛡️ Applying anti-detection features...');
+      tracker.setProgress(40, '🔌 Loading stealth plugins...');
+      tracker.setProgress(50, '🚀 Launching browser...');
+      
       await initializeBrowser(args);
+      
+      tracker.setProgress(80, '📄 Creating new page...');
+      tracker.setProgress(90, '✅ Browser ready!');
 
       const config = getContentPriorityConfig();
       const configMessage = config.prioritizeContent
@@ -34,6 +51,8 @@ export async function handleBrowserInit(args: BrowserInitArgs) {
         '  • Then: Use get_content to analyze page content\n' +
         '  • Finally: Use find_selector and interaction tools\n\n' +
         '✅ Workflow validation is now active - prevents blind selector guessing';
+
+      tracker.complete('🎉 Browser initialized successfully');
 
       return {
         content: [
@@ -47,14 +66,28 @@ export async function handleBrowserInit(args: BrowserInitArgs) {
   });
 }
 
-// Browser close handler
+// Browser close handler with real-time progress
 export async function handleBrowserClose() {
+  const progressNotifier = getProgressNotifier();
+  const progressToken = `browser-close-${Date.now()}`;
+  const tracker = progressNotifier.createTracker(progressToken);
+  
   return await withWorkflowValidation('browser_close', {}, async () => {
     return await withErrorHandling(async () => {
+      tracker.start(100, '🔄 Closing browser...');
+      
+      tracker.setProgress(20, '💾 Saving session state...');
+      tracker.setProgress(40, '🧹 Cleaning up processes...');
+      
       await closeBrowser();
-
+      
+      tracker.setProgress(70, '🔄 Resetting workflow state...');
+      
       // Reset workflow state when browser is closed
       workflowValidator.reset();
+      
+      tracker.setProgress(90, '✅ Browser closed!');
+      tracker.complete('🎉 Browser closed successfully');
 
       return {
         content: [

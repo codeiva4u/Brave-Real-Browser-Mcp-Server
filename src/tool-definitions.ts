@@ -3,14 +3,23 @@
 // Server metadata
 export const SERVER_INFO = {
   name: 'brave-real-browser-mcp-server',
-  version: '1.4.0',
+  version: '2.22.0',
 };
 
-// MCP capabilities
+// MCP capabilities with LSP-compatible streaming support
 export const CAPABILITIES = {
   tools: {},
   resources: {},
   prompts: {},
+};
+
+// Extended capabilities for streaming and auto-sync (for documentation/client info)
+export const EXTENDED_CAPABILITIES = {
+  streaming: true,
+  sessionManagement: true,
+  autoSync: true,
+  progressNotifications: true,
+  transports: ['stdio', 'sse', 'http-stream'],
 };
 
 // Circuit breaker and retry configuration constants

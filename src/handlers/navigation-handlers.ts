@@ -2,19 +2,31 @@ import { getBrowserInstance, getPageInstance } from '../browser-manager.js';
 import { withErrorHandling, withTimeout } from '../system-utils.js';
 import { validateWorkflow, recordExecution, workflowValidator } from '../workflow-validation.js';
 import { NavigateArgs, WaitArgs } from '../tool-definitions.js';
+import { getProgressNotifier } from '../transport/progress-notifier.js';
+import { getSharedEventBus } from '../transport/index.js';
 
-// Navigation handler
+// Get event bus instance
+const eventBus = getSharedEventBus();
+
+// Navigation handler with real-time progress
 export async function handleNavigate(args: NavigateArgs) {
+  const progressNotifier = getProgressNotifier();
+  const progressToken = `navigate-${Date.now()}`;
+  const tracker = progressNotifier.createTracker(progressToken);
+  
   return await withWorkflowValidation('navigate', args, async () => {
     return await withErrorHandling(async () => {
+      tracker.start(100, '🚀 Starting navigation...');
+      
       const pageInstance = getPageInstance();
       if (!pageInstance) {
+        tracker.fail('Browser not initialized');
         throw new Error('Browser not initialized. Call browser_init first.');
       }
 
       const { url, waitUntil = 'domcontentloaded' } = args;
-
-      // console.(`🔄 Navigating to: ${url}`);
+      
+      tracker.setProgress(10, `📍 Navigating to: ${url}`);
 
       // Navigate with retry logic
       let lastError: Error | null = null;
@@ -23,33 +35,55 @@ export async function handleNavigate(args: NavigateArgs) {
 
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
+          tracker.setProgress(20 + (attempt - 1) * 20, `🔄 Attempt ${attempt}/${maxRetries}...`);
+          
           await withTimeout(async () => {
             await pageInstance.goto(url, {
               waitUntil: waitUntil as any,
               timeout: 60000
             });
-
+            
+            tracker.setProgress(60, '🛡️ Checking for Cloudflare...');
             // Auto-handle Cloudflare challenges if detected
-            await waitForCloudflareBypass(pageInstance);
+            await waitForCloudflareBypass(pageInstance, tracker);
           }, 90000, 'page-navigation');
 
-          // console.(`✅ Navigation successful to: ${url}`);
+          tracker.setProgress(80, '✅ Navigation successful');
           success = true;
           break;
         } catch (error) {
           lastError = error instanceof Error ? error : new Error(String(error));
-          // console.(`❌ Navigation attempt ${attempt}/${maxRetries} failed:`, lastError.message);
+          tracker.setProgress(20 + attempt * 20, `❌ Attempt ${attempt} failed: ${lastError.message}`);
 
           if (attempt < maxRetries) {
             const delay = 1000 * Math.pow(2, attempt - 1);
-            // console.(`⏳ Waiting ${delay}ms before retry...`);
+            tracker.setProgress(25 + attempt * 20, `⏳ Retrying in ${delay}ms...`);
             await new Promise(resolve => setTimeout(resolve, delay));
           }
         }
       }
 
       if (!success && lastError) {
+        tracker.fail(lastError.message);
         throw lastError;
+      }
+
+      tracker.setProgress(90, '📄 Page loaded, preparing response...');
+
+      // Publish browser state update to event bus
+      try {
+        eventBus.publish({
+          type: 'sync:browserStateUpdated',
+          data: {
+            currentUrl: url,
+            cookies: [],
+            localStorage: {},
+            viewportSize: { width: 1920, height: 1080 },
+            timestamp: Date.now(),
+          },
+        } as any);
+      } catch (error) {
+        // Ignore event bus errors
       }
 
       const workflowMessage = '\n\n🔄 Workflow Status: Page loaded\n' +
@@ -57,6 +91,8 @@ export async function handleNavigate(args: NavigateArgs) {
         '  • Then: Use find_selector to locate elements\n' +
         '  • Finally: Use interaction tools (click, type)\n\n' +
         '✅ Ready for content analysis and interactions';
+
+      tracker.complete('🎉 Navigation completed successfully');
 
       return {
         content: [
@@ -70,12 +106,19 @@ export async function handleNavigate(args: NavigateArgs) {
   });
 }
 
-// Wait handler with multiple wait types
+// Wait handler with real-time progress
 export async function handleWait(args: WaitArgs) {
+  const progressNotifier = getProgressNotifier();
+  const progressToken = `wait-${Date.now()}`;
+  const tracker = progressNotifier.createTracker(progressToken);
+  
   return await withWorkflowValidation('wait', args, async () => {
     return await withErrorHandling(async () => {
+      tracker.start(100, '⏳ Starting wait operation...');
+      
       const pageInstance = getPageInstance();
       if (!pageInstance) {
+        tracker.fail('Browser not initialized');
         throw new Error('Browser not initialized. Call browser_init first.');
       }
 
@@ -83,43 +126,62 @@ export async function handleWait(args: WaitArgs) {
 
       // Validate timeout parameter
       if (typeof timeout !== 'number' || isNaN(timeout) || timeout < 0) {
+        tracker.fail('Invalid timeout');
         throw new Error('Timeout parameter must be a positive number');
       }
 
       const startTime = Date.now();
-
-      // console.(`⏳ Waiting for ${type}: ${value} (timeout: ${timeout}ms)`);
+      tracker.setProgress(10, `⏳ Waiting for ${type}: ${value}`);
 
       try {
         switch (type) {
           case 'selector':
+            tracker.setProgress(20, `🔍 Looking for selector: ${value}`);
             await pageInstance.waitForSelector(value, {
               timeout,
               visible: true
             });
+            tracker.setProgress(80, '✅ Selector found');
             break;
 
           case 'navigation':
+            tracker.setProgress(20, '🔄 Waiting for navigation...');
             await pageInstance.waitForNavigation({
               timeout,
               waitUntil: 'networkidle2'
             });
+            tracker.setProgress(80, '✅ Navigation completed');
             break;
 
           case 'timeout':
             const waitTime = parseInt(value, 10);
             if (isNaN(waitTime) || waitTime < 0) {
+              tracker.fail('Invalid wait time');
               throw new Error('Timeout value must be a number');
             }
-            await new Promise(resolve => setTimeout(resolve, Math.min(waitTime, timeout)));
+            
+            // Update progress during timeout wait
+            const actualWait = Math.min(waitTime, timeout);
+            const updateInterval = Math.max(100, actualWait / 20);
+            let elapsed = 0;
+            
+            while (elapsed < actualWait) {
+              await new Promise(resolve => setTimeout(resolve, updateInterval));
+              elapsed += updateInterval;
+              const progress = 20 + Math.round((elapsed / actualWait) * 60);
+              tracker.setProgress(progress, `⏱️ Waited ${elapsed}ms / ${actualWait}ms`);
+            }
+            
+            tracker.setProgress(80, '✅ Wait completed');
             break;
 
           default:
+            tracker.fail(`Unknown wait type: ${type}`);
             throw new Error(`Unsupported wait type: ${type}`);
         }
 
         const duration = Date.now() - startTime;
-        // console.(`✅ Wait completed in ${duration}ms`);
+        tracker.complete(`✅ Wait completed in ${duration}ms`);
 
         return {
           content: [
@@ -131,7 +193,7 @@ export async function handleWait(args: WaitArgs) {
         };
       } catch (error) {
         const duration = Date.now() - startTime;
-        // console.(`❌ Wait failed after ${duration}ms:`, error);
+        tracker.fail(`Wait failed after ${duration}ms`);
         throw error;
       }
     }, 'Wait operation failed');
@@ -182,7 +244,7 @@ async function withWorkflowValidation<T>(
 /**
  * Helper to wait for Cloudflare/Turnstile challenges to resolve
  */
-async function waitForCloudflareBypass(pageInstance: any) {
+async function waitForCloudflareBypass(pageInstance: any, tracker?: any) {
   try {
     // Initial stable wait
     await new Promise(resolve => setTimeout(resolve, 2000));
@@ -213,8 +275,16 @@ async function waitForCloudflareBypass(pageInstance: any) {
           return bodyText.includes('verifying you are human');
         });
 
-        if (!stillChallenge) return; // Not a challenge page, or passed
+        if (!stillChallenge) {
+          tracker?.setProgress(70, '✅ No Cloudflare challenge detected');
+          return; // Not a challenge page, or passed
+        }
       }
+
+      // Update progress while waiting for Cloudflare
+      const elapsed = Date.now() - startTime;
+      const progress = 60 + Math.round((elapsed / maxWait) * 15);
+      tracker?.setProgress(progress, `🛡️ Waiting for Cloudflare... (${Math.round(elapsed/1000)}s)`);
 
       // Simulate human behavior: Random small mouse movements
       try {
@@ -231,6 +301,8 @@ async function waitForCloudflareBypass(pageInstance: any) {
       // Still blocked, wait
       await new Promise(resolve => setTimeout(resolve, 2000));
     }
+    
+    tracker?.setProgress(75, '⚠️ Cloudflare check timeout');
   } catch (error) {
     // Ignore bypass errors, continue to result
   }

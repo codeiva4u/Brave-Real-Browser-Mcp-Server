@@ -194,11 +194,18 @@ export function handleToolResponse<T>(
 // MCP server configuration constants
 export const MCP_SERVER_CONFIG = {
   name: 'brave-real-browser-mcp-server',
-  version: '1.4.0',
+  version: '2.22.0',
   capabilities: {
     tools: {},
     resources: {},
     prompts: {},
+  },
+  extendedCapabilities: {
+    streaming: true,
+    sessionManagement: true,
+    autoSync: true,
+    progressNotifications: true,
+    transports: ['stdio', 'sse', 'http-stream'],
   },
 } as const;
 
