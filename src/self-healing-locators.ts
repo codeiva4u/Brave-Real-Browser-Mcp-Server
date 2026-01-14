@@ -223,6 +223,19 @@ export class SelfHealingLocators {
       // Continue to fallbacks
     }
 
+    // 💡 NEW: Try to interpret the selector as direct text content
+    // This allows users to pass "Submit" or "Download" and have it work "smoothly"
+    if (!primarySelector.includes('[') && !primarySelector.includes('#') && !primarySelector.includes('.')) {
+       const textElement = await this.findByText(pageInstance, primarySelector);
+       if (textElement) {
+         return {
+           element: textElement,
+           usedSelector: `//*[text()[contains(., "${primarySelector}")]]`,
+           strategy: 'implicit-text-match'
+         };
+       }
+    }
+
 
     // Generate and try fallback selectors
     const fallbacks = await this.generateFallbacks(pageInstance, primarySelector, expectedText);

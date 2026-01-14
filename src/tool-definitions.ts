@@ -164,7 +164,7 @@ export const TOOLS = [
       properties: {
         selector: {
           type: 'string',
-          description: 'CSS selector of element to click',
+          description: 'CSS selector of element to click. Also supports direct text content (e.g., "Download") for AI convenience.',
         },
         waitForNavigation: {
           type: 'boolean',
