@@ -7,6 +7,7 @@
   "workspaces": [
     "packages/brave-real-launcher",
     "packages/brave-real-puppeteer-core",
+    "packages/brave-real-blocker",
     "packages/brave-real-browser"
   ],
   "scripts": {

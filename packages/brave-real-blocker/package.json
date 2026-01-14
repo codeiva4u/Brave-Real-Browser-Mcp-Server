@@ -1,0 +1,46 @@
+{
+    "name": "brave-real-blocker",
+    "version": "1.0.0",
+    "description": "Advanced uBlock Origin management and stealth features for Brave Real Browser",
+    "main": "./dist/index.js",
+    "module": "./dist/index.mjs",
+    "types": "./dist/index.d.ts",
+    "scripts": {
+        "build": "tsup",
+        "dev": "tsup --watch",
+        "test": "vitest run",
+        "visual-test": "npx tsx test/visual-test.ts",
+        "lint": "eslint src/**/*.ts",
+        "clean": "rimraf dist"
+    },
+    "keywords": [
+        "brave",
+        "ublock",
+        "adblocker",
+        "stealth",
+        "privacy"
+    ],
+    "author": "withlinda13",
+    "license": "MIT",
+    "dependencies": {
+        "@cliqz/adblocker-puppeteer": "^1.23.8",
+        "adm-zip": "^0.5.10",
+        "cross-fetch": "^4.1.0",
+        "fs-extra": "^11.2.0",
+        "got": "^13.0.0"
+    },
+    "devDependencies": {
+        "@types/adm-zip": "^0.5.5",
+        "@types/fs-extra": "^11.0.4",
+        "@types/node": "^20.0.0",
+        "brave-real-browser": "*",
+        "brave-real-puppeteer-core": "^24.39.2",
+        "puppeteer-core": "^24.35.0",
+        "tsup": "^8.0.0",
+        "typescript": "^5.0.0",
+        "vitest": "^1.0.0"
+    },
+    "publishConfig": {
+        "access": "public"
+    }
+}

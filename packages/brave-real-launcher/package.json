@@ -51,6 +51,7 @@
     "ts-node": "^10.9.1"
   },
   "dependencies": {
+    "brave-real-blocker": "*",
     "@types/which": "^3.0.4",
     "escape-string-regexp": "^4.0.0",
     "is-wsl": "^2.2.0",

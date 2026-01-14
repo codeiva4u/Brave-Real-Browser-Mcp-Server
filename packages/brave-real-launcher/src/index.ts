@@ -27,7 +27,7 @@ export { DEFAULT_FLAGS } from './flags.js';
 export { getRandomPort } from './random-port.js';
 
 // Extension Manager for loading extensions like uBlock Origin
-export { ExtensionManager, ExtensionInfo, ExtensionManagerOptions } from './extension-manager.js';
+
 
 // Brave Installer for auto-installing Brave browser
 export { BraveInstaller, InstallerOptions, InstallResult } from './brave-installer.js';

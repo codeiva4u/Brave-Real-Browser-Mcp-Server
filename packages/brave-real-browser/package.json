@@ -36,6 +36,7 @@
   "author": "codeiva4u",
   "license": "ISC",
   "dependencies": {
+    "brave-real-blocker": "^1.0.0",
     "brave-real-puppeteer-core": "*",
     "ghost-cursor": "^1.4.1",
     "puppeteer-extra": "^3.3.6",

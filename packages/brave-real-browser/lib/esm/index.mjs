@@ -1,6 +1,7 @@
 import { launch, BraveLauncher, DEFAULT_FLAGS } from "brave-real-launcher";
 import * as puppeteer from "brave-real-puppeteer-core";
 import { pageController } from "./module/pageController.mjs";
+import { BraveBlocker } from "brave-real-blocker";
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -98,6 +99,12 @@ export async function connect({
     braveFlags,
     ...customConfig,
   });
+
+  const braveBlocker = new BraveBlocker({
+    enableStealth: true,
+    enableScriptlets: true
+  });
+  await braveBlocker.init();
   let pextra = null;
   if (plugins.length > 0) {
     const { addExtra } = await import("puppeteer-extra");
@@ -116,6 +123,7 @@ export async function connect({
   });
 
   let [page] = await browser.pages();
+  if (page) await braveBlocker.enable(page);
 
   let xvfbsession = null;
   let pageControllerConfig = {
@@ -137,6 +145,7 @@ export async function connect({
   browser.on("targetcreated", async (target) => {
     if (target.type() === "page") {
       let newPage = await target.page();
+      if (newPage) await braveBlocker.enable(newPage);
       pageControllerConfig.page = newPage;
       newPage = await pageController(pageControllerConfig);
     }

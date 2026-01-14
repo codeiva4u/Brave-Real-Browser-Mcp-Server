@@ -1,0 +1,5 @@
+dist
+node_modules
+execution-log.txt
+*.png
+*.html

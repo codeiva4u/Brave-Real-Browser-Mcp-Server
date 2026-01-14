@@ -16,7 +16,7 @@ import { makeTmpDir, defaults, delay, getPlatform, toWin32Path, InvalidUserDataD
 import { ChildProcess } from 'child_process';
 import { spawn, spawnSync } from 'child_process';
 import log from './logger.js';
-import { ExtensionManager, ExtensionInfo } from './extension-manager.js';
+
 import { BraveInstaller } from './brave-installer.js';
 import { STEALTH_FLAGS, getStealthFlags, getDynamicStealthFlags, getDynamicUserAgents } from './stealth-utils.js';
 import { fileURLToPath } from 'url';
@@ -97,7 +97,7 @@ export interface Options {
   enableXvfb?: boolean;
   // Extension options
   extensions?: string[];
-  autoLoadUBlock?: boolean;
+
   // Auto-install option
   autoInstall?: boolean;
   // Stealth mode options
@@ -116,7 +116,7 @@ export interface LaunchedBrave {
   remoteDebuggingPipes: RemoteDebuggingPipes | null;
   kill: () => void;
   xvfbManager?: XvfbManager;
-  extensions?: ExtensionInfo[];
+
 }
 
 export interface ModuleOverrides {
@@ -156,7 +156,7 @@ async function launch(opts: Options = {}): Promise<LaunchedBrave> {
     process: instance.braveProcess!,
     remoteDebuggingPipes: instance.remoteDebuggingPipes,
     xvfbManager: instance.xvfbManager,
-    extensions: instance.loadedExtensions,
+
     kill,
   };
 }
@@ -209,12 +209,12 @@ class Launcher {
   private xvfbOptions: XvfbOptions;
   // New features
   private extensions: string[];
-  private autoLoadUBlock: boolean;
+
   private autoInstall: boolean;
   private enableStealth: boolean;
   private userAgent?: string;
-  private extensionManager?: ExtensionManager;
-  loadedExtensions: ExtensionInfo[] = [];
+
+
 
   braveProcess?: childProcess.ChildProcess;
   userDataDir?: string;
@@ -245,7 +245,7 @@ class Launcher {
     this.xvfbOptions = defaults(this.opts.xvfbOptions, {});
     // New features initialization
     this.extensions = defaults(this.opts.extensions, []);
-    this.autoLoadUBlock = defaults(this.opts.autoLoadUBlock, false);
+
     this.autoInstall = defaults(this.opts.autoInstall, true);
     this.enableStealth = defaults(this.opts.enableStealth, true);
     this.userAgent = this.opts.userAgent;
@@ -321,9 +321,9 @@ class Launcher {
     const paths: string[] = [...this.extensions];
 
     // Add loaded extension paths
-    for (const ext of this.loadedExtensions) {
-      if (ext.path && !paths.includes(ext.path)) {
-        paths.push(ext.path);
+    for (const ext of this.extensions) {
+      if (ext && !paths.includes(ext)) {
+        paths.push(ext);
       }
     }
 
@@ -398,30 +398,7 @@ class Launcher {
     }
   }
 
-  /**
-   * Load uBlock Origin extension
-   */
-  private async loadUBlockOrigin(): Promise<void> {
-    try {
-      log.verbose('BraveLauncher', 'Loading uBlock Origin extension...');
 
-      this.extensionManager = new ExtensionManager({
-        autoUpdate: true,
-        silent: this.opts.logLevel === 'silent'
-      });
-
-      const ublock = await this.extensionManager.getUBlockOrigin();
-
-      if (ublock) {
-        this.loadedExtensions.push(ublock);
-        log.log('BraveLauncher', `uBlock Origin v${ublock.version} loaded from ${ublock.path}`);
-      } else {
-        log.warn('BraveLauncher', 'Failed to load uBlock Origin');
-      }
-    } catch (error) {
-      log.error('BraveLauncher', `Error loading uBlock Origin: ${error.message}`);
-    }
-  }
 
   prepare() {
     const platform = getPlatform() as SupportedPlatforms;
@@ -563,10 +540,7 @@ class Launcher {
       }
     }
 
-    // Load uBlock Origin if requested
-    if (this.autoLoadUBlock) {
-      await this.loadUBlockOrigin();
-    }
+
 
     if (this.requestedPort !== 0) {
       this.port = this.requestedPort;

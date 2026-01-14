@@ -68,14 +68,156 @@ async function pageController({ browser, page, proxy, turnstile, xvfbsession, pi
         }
     });
 
-    // === AGGRESSIVE POPUP + REDIRECT BLOCKER SCRIPT ===
+    // === AGGRESSIVE STEALTH + POPUP BLOCKER ===
+    // Use CDP for earliest possible injection
+    const client = await page.target().createCDPSession();
+    await client.send('Page.enable');
+
+    // Inject native dialogs fix via CDP - runs before page scripts
+    await client.send('Page.addScriptToEvaluateOnNewDocument', {
+        source: `
+            (function() {
+                ['alert', 'confirm', 'prompt'].forEach(function(fnName) {
+                    const originalFn = window[fnName];
+                    if (!originalFn) return;
+                    
+                    const wrapper = {
+                        [fnName]: function() {
+                            return originalFn.apply(this, arguments);
+                        }
+                    }[fnName];
+                    
+                    const nativeToString = function() { 
+                        return 'function ' + fnName + '() { [native code] }'; 
+                    };
+                    Object.defineProperty(nativeToString, 'toString', {
+                        value: function() { return 'function toString() { [native code] }'; },
+                        writable: true,
+                        configurable: true
+                    });
+                    Object.defineProperty(wrapper, 'toString', {
+                        value: nativeToString,
+                        writable: true,
+                        configurable: true
+                    });
+                    Object.defineProperty(wrapper, 'name', {
+                        value: fnName,
+                        writable: false,
+                        configurable: true
+                    });
+                    Object.defineProperty(wrapper, 'length', {
+                        value: originalFn.length,
+                        writable: false,
+                        configurable: true
+                    });
+                    
+                    try {
+                        Object.defineProperty(Window.prototype, fnName, {
+                            value: wrapper,
+                            writable: true,
+                            enumerable: true,
+                            configurable: true
+                        });
+                    } catch(e) {}
+                    
+                    try {
+                        if (Object.prototype.hasOwnProperty.call(window, fnName)) {
+                            delete window[fnName];
+                        }
+                    } catch(e) {}
+                });
+            })();
+        `
+    });
+
     await page.evaluateOnNewDocument(() => {
+        // ========== NATIVE DIALOGS FIX (MUST BE FIRST) ==========
+        // Fix alert, confirm, prompt to pass SannySoft detection
+        (function () {
+            ['alert', 'confirm', 'prompt'].forEach(function (fnName) {
+                const originalFn = window[fnName];
+                if (!originalFn) return;
+
+                // Create a native-looking wrapper
+                const wrapper = {
+                    [fnName]: function () {
+                        return originalFn.apply(this, arguments);
+                    }
+                }[fnName];
+
+                // Make toString return native code string
+                const nativeToString = function () {
+                    return 'function ' + fnName + '() { [native code] }';
+                };
+                Object.defineProperty(nativeToString, 'toString', {
+                    value: function () { return 'function toString() { [native code] }'; },
+                    writable: true,
+                    configurable: true
+                });
+                Object.defineProperty(wrapper, 'toString', {
+                    value: nativeToString,
+                    writable: true,
+                    configurable: true
+                });
+                Object.defineProperty(wrapper, 'name', {
+                    value: fnName,
+                    writable: false,
+                    configurable: true
+                });
+                Object.defineProperty(wrapper, 'length', {
+                    value: originalFn.length,
+                    writable: false,
+                    configurable: true
+                });
+
+                // Put it on Window.prototype with correct descriptors
+                try {
+                    Object.defineProperty(Window.prototype, fnName, {
+                        value: wrapper,
+                        writable: true,
+                        enumerable: true,
+                        configurable: true
+                    });
+                } catch (e) { }
+
+                // Delete the own property from window instance
+                try {
+                    if (Object.prototype.hasOwnProperty.call(window, fnName)) {
+                        delete window[fnName];
+                    }
+                } catch (e) { }
+            });
+        })();
+
         // MouseEvent fixes for bot detection
         Object.defineProperty(MouseEvent.prototype, 'screenX', {
             get: function () { return this.clientX + window.screenX; }
         });
         Object.defineProperty(MouseEvent.prototype, 'screenY', {
             get: function () { return this.clientY + window.screenY; }
+        });
+
+        // ========== PERMISSIONS FIX (for SannySoft "prompt" detection) ==========
+        // Override navigator.permissions.query to return 'granted' instead of 'prompt'
+        const originalQuery = navigator.permissions.query.bind(navigator.permissions);
+        Object.defineProperty(navigator.permissions, 'query', {
+            value: function (permissionDesc) {
+                return originalQuery(permissionDesc).then(function (result) {
+                    // Create a mock result that looks like granted
+                    if (result.state === 'prompt') {
+                        return {
+                            state: 'granted',
+                            onchange: null,
+                            addEventListener: function () { },
+                            removeEventListener: function () { },
+                            dispatchEvent: function () { return true; }
+                        };
+                    }
+                    return result;
+                });
+            },
+            writable: true,
+            configurable: true
         });
 
         // ========== POPUP BLOCKER ==========
@@ -162,6 +304,62 @@ async function pageController({ browser, page, proxy, turnstile, xvfbsession, pi
             console.log('[popup-blocker] Aggressive popup + redirect blocking enabled');
         })();
     });
+
+    // === IMMEDIATE FIX FOR CURRENT PAGE ===
+    // evaluateOnNewDocument only works for NEXT navigations
+    // We need to also fix the current page immediately
+    await page.evaluate(() => {
+        // Native Dialogs Fix for current page
+        ['alert', 'confirm', 'prompt'].forEach(function (fnName) {
+            const originalFn = window[fnName];
+            if (!originalFn) return;
+
+            const wrapper = {
+                [fnName]: function () {
+                    return originalFn.apply(this, arguments);
+                }
+            }[fnName];
+
+            const nativeToString = function () {
+                return 'function ' + fnName + '() { [native code] }';
+            };
+            Object.defineProperty(nativeToString, 'toString', {
+                value: function () { return 'function toString() { [native code] }'; },
+                writable: true,
+                configurable: true
+            });
+            Object.defineProperty(wrapper, 'toString', {
+                value: nativeToString,
+                writable: true,
+                configurable: true
+            });
+            Object.defineProperty(wrapper, 'name', {
+                value: fnName,
+                writable: false,
+                configurable: true
+            });
+            Object.defineProperty(wrapper, 'length', {
+                value: originalFn.length,
+                writable: false,
+                configurable: true
+            });
+
+            try {
+                Object.defineProperty(Window.prototype, fnName, {
+                    value: wrapper,
+                    writable: true,
+                    enumerable: true,
+                    configurable: true
+                });
+            } catch (e) { }
+
+            try {
+                if (Object.prototype.hasOwnProperty.call(window, fnName)) {
+                    delete window[fnName];
+                }
+            } catch (e) { }
+        });
+    }).catch(() => { }); // Ignore errors on about:blank pages
 
     const cursor = createCursor(page);
     page.realCursor = cursor

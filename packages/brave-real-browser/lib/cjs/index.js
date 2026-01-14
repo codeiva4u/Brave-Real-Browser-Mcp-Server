@@ -1,6 +1,7 @@
 // brave-real-puppeteer-core patches puppeteer-core at install time
 // So we require the patched puppeteer-core directly
 let puppeteer = require("puppeteer-core");
+const { BraveBlocker } = require("brave-real-blocker");
 const { pageController } = require("./module/pageController.js");
 const fs = require('fs');
 const path = require('path');
@@ -98,8 +99,15 @@ async function connect({
   const brave = await launch({
     ignoreDefaultFlags: true,
     braveFlags,
+    braveFlags,
     ...customConfig,
   });
+
+  const braveBlocker = new BraveBlocker({
+    enableStealth: true,
+    enableScriptlets: true
+  });
+  await braveBlocker.init();
 
   if (plugins.length > 0) {
     const { addExtra } = await import("puppeteer-extra");
@@ -118,6 +126,7 @@ async function connect({
   });
 
   let [page] = await browser.pages();
+  if (page) await braveBlocker.enable(page);
 
   let xvfbsession = null;
   let pageControllerConfig = {
@@ -139,6 +148,7 @@ async function connect({
   browser.on("targetcreated", async (target) => {
     if (target.type() === "page") {
       let newPage = await target.page();
+      if (newPage) await braveBlocker.enable(newPage);
       pageControllerConfig.page = newPage;
       newPage = await pageController(pageControllerConfig);
     }

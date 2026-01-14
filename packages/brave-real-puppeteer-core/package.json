@@ -61,6 +61,7 @@
   ],
   "homepage": "https://rebrowser.net",
   "main": "index.js",
+  "types": "index.d.ts",
   "exports": {
     ".": {
       "import": "./index.js",

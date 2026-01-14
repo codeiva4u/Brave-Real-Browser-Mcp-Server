@@ -34,6 +34,70 @@ export const STEALTH_FLAGS: ReadonlyArray<string> = [
  */
 export const STEALTH_SCRIPTS = {
   /**
+   * Fix native dialogs (alert, confirm, prompt) to pass SannySoft detection
+   * Puppeteer overrides these on window instance, we restore them to Window.prototype
+   */
+  nativeDialogsFix: `
+    (function() {
+      // This must run BEFORE any other scripts
+      ['alert', 'confirm', 'prompt'].forEach(function(fnName) {
+        // Get the original function from window (Puppeteer puts it there)
+        const originalFn = window[fnName];
+        if (!originalFn) return;
+        
+        // Create a native-looking wrapper
+        const wrapper = {
+          [fnName]: function() {
+            return originalFn.apply(this, arguments);
+          }
+        }[fnName];
+        
+        // Make toString return native code string
+        const nativeToString = function() { 
+          return 'function ' + fnName + '() { [native code] }'; 
+        };
+        Object.defineProperty(nativeToString, 'toString', {
+          value: function() { return 'function toString() { [native code] }'; },
+          writable: true,
+          configurable: true
+        });
+        Object.defineProperty(wrapper, 'toString', {
+          value: nativeToString,
+          writable: true,
+          configurable: true
+        });
+        Object.defineProperty(wrapper, 'name', {
+          value: fnName,
+          writable: false,
+          configurable: true
+        });
+        Object.defineProperty(wrapper, 'length', {
+          value: originalFn.length,
+          writable: false,
+          configurable: true
+        });
+        
+        // Put it on Window.prototype with correct descriptors
+        try {
+          Object.defineProperty(Window.prototype, fnName, {
+            value: wrapper,
+            writable: true,
+            enumerable: true,
+            configurable: true
+          });
+        } catch(e) {}
+        
+        // Delete the own property from window instance so it uses prototype
+        try {
+          if (Object.prototype.hasOwnProperty.call(window, fnName)) {
+            delete window[fnName];
+          }
+        } catch(e) {}
+      });
+    })();
+  `,
+
+  /**
    * Override navigator.webdriver to return undefined
    */
   webdriverOverride: `
@@ -316,6 +380,7 @@ export const STEALTH_SCRIPTS = {
    */
   get fullStealth(): string {
     return [
+      this.nativeDialogsFix,  // MUST be first to fix prompt before other scripts
       this.webdriverOverride,
       this.pluginsOverride,
       this.languagesOverride,
