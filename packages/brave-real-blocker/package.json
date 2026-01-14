@@ -22,6 +22,9 @@
     ],
     "author": "withlinda13",
     "license": "MIT",
+    "files": [
+        "dist"
+    ],
     "dependencies": {
         "@cliqz/adblocker-puppeteer": "^1.23.8",
         "adm-zip": "^0.5.10",
