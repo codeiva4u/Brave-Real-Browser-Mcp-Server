@@ -590,7 +590,6 @@ async function main() {
             console.error('   🍪 cookie_manager        - Manage cookies');
             console.error('   📥 file_downloader       - Download files');
             console.error('   🖼️  iframe_handler        - Handle iframes');
-            console.error('   🚫 popup_handler         - Handle popups/ads');
             console.error('');
             console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
             console.error('');

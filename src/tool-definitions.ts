@@ -641,21 +641,7 @@ export const TOOLS = [
       },
     },
   },
-  {
-    name: 'popup_handler',
-    description: 'Handle popups, new tabs, and ad overlays during navigation',
-    inputSchema: {
-      type: 'object',
-      additionalProperties: false,
-      properties: {
-        action: { type: 'string', enum: ['block', 'allow', 'close', 'switch', 'list', 'closeAll'], description: 'Popup handling action' },
-        autoCloseAds: { type: 'boolean', description: 'Automatically close detected ad popups', default: true },
-        waitForTarget: { type: 'boolean', description: 'Wait for new tab/popup to open', default: false },
-        targetIndex: { type: 'number', description: 'Index of tab to switch to' },
-        timeout: { type: 'number', description: 'Timeout for waiting operations in ms', default: 10000 },
-      },
-    },
-  },
+
   {
     name: 'stream_extractor',
     description: 'Master tool: Extract direct download/stream URLs from any page with automatic redirect following, countdown waiting, and format detection',
@@ -714,7 +700,6 @@ export const TOOL_NAMES = {
   FILE_DOWNLOADER: 'file_downloader',
   // Enhanced tools
   IFRAME_HANDLER: 'iframe_handler',
-  POPUP_HANDLER: 'popup_handler',
   STREAM_EXTRACTOR: 'stream_extractor',
 } as const;
 

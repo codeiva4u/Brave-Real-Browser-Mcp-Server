@@ -345,15 +345,6 @@ const TOOL_DEFINITIONS: Record<string, {
       { name: 'selector', type: 'string', description: 'CSS selector of target iframe', required: false },
     ],
   },
-  popup_handler: {
-    name: 'popup_handler',
-    description: 'Handle popups, new tabs, and ad overlays during navigation',
-    category: 'Advanced',
-    parameters: [
-      { name: 'action', type: 'string', description: 'Popup handling action', required: false, enum: ['block', 'allow', 'close', 'switch', 'list', 'closeAll'] },
-      { name: 'autoCloseAds', type: 'boolean', description: 'Automatically close detected ad popups', required: false, default: true },
-    ],
-  },
 };
 
 // ============================================================

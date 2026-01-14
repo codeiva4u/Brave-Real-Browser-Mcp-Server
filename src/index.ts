@@ -121,7 +121,6 @@ import {
   handleBulkDownloader,
   // Enhanced streaming/download tools
   handleIframeHandler,
-  handlePopupHandler,
   handleStreamExtractor,
 } from './handlers/advanced-tools.js';
 
@@ -165,7 +164,7 @@ server.setRequestHandler(InitializeRequestSchema, async (request: InitializeRequ
 
   // Get current transport type
   const currentTransport = process.env.MCP_TRANSPORT || 'stdio';
-  
+
   const response = {
     protocolVersion: clientProtocolVersion, // Match client version for compatibility
     capabilities: CAPABILITIES,
@@ -358,10 +357,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
         if (!page) throw new Error('Browser not initialized. Call browser_init first.');
         return { content: [{ type: 'text', text: JSON.stringify(await handleIframeHandler(page, args as any)) }] };
 
-      case TOOL_NAMES.POPUP_HANDLER:
-        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
-        return { content: [{ type: 'text', text: JSON.stringify(await handlePopupHandler(page, args as any)) }] };
-
       case TOOL_NAMES.STREAM_EXTRACTOR:
         if (!page) throw new Error('Browser not initialized. Call browser_init first.');
         return { content: [{ type: 'text', text: JSON.stringify(await handleStreamExtractor(page, args as any)) }] };
@@ -434,7 +429,7 @@ async function enrichResponseWithLSP(
 // Main function to start the server
 async function main(): Promise<void> {
   debug('Main function starting...');
-  
+
   const config = parseTransportConfig();
   debug(`Transport configuration: ${JSON.stringify(config)}`);
 
@@ -448,21 +443,21 @@ async function main(): Promise<void> {
 
   // Create transport factory
   const transportFactory = createTransportFactory(config);
-  
+
   // Start appropriate transport based on configuration
   switch (config.type) {
     case 'stdio':
       await startStdioTransport();
       break;
-      
+
     case 'sse':
       await startSSETransport(transportFactory);
       break;
-      
+
     case 'http-stream':
       await startHTTPStreamTransport(transportFactory);
       break;
-      
+
     default:
       throw new Error(`Unknown transport type: ${config.type}`);
   }
@@ -510,7 +505,7 @@ async function startStdioTransport(): Promise<void> {
 // SSE Transport (Server-Sent Events for streaming)
 async function startSSETransport(transportFactory: TransportFactory): Promise<void> {
   debug('Starting SSE Transport...');
-  
+
   await withErrorHandling(async () => {
     await transportFactory.startSSEServer(server, {
       onConnect: (sessionId) => {
@@ -553,7 +548,7 @@ async function startSSETransport(transportFactory: TransportFactory): Promise<vo
 // HTTP Stream Transport (LSP compatible)
 async function startHTTPStreamTransport(transportFactory: TransportFactory): Promise<void> {
   debug('Starting HTTP Stream Transport...');
-  
+
   await withErrorHandling(async () => {
     await transportFactory.startHTTPStreamServer(server, {
       onRequest: (sessionId, method) => {
