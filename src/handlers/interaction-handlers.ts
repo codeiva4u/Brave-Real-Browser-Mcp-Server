@@ -11,11 +11,11 @@ export async function handleClick(args: ClickArgs) {
   const progressNotifier = getProgressNotifier();
   const progressToken = `click-${Date.now()}`;
   const tracker = progressNotifier.createTracker(progressToken);
-  
+
   return await withWorkflowValidation('click', args, async () => {
     return await withErrorHandling(async () => {
       tracker.start(100, '🖱️ Starting click operation...');
-      
+
       const pageInstance = getPageInstance();
       if (!pageInstance) {
         tracker.fail('Browser not initialized');
@@ -23,7 +23,7 @@ export async function handleClick(args: ClickArgs) {
       }
 
       const { selector, waitForNavigation = false } = args;
-      
+
       tracker.setProgress(10, `🔍 Finding element: ${selector}`);
 
       // Try to find element using self-healing locators
@@ -62,32 +62,53 @@ export async function handleClick(args: ClickArgs) {
         tracker.setProgress(50, `🔄 Using fallback selector: ${usedSelector}`);
       }
 
+      // Text-based strategies have special __TEXT__: prefix or are strategy-identified
+      // These have invalid CSS selectors, so we skip waitForSelector and use element directly
+      const isTextBasedStrategy = ['text-content', 'implicit-text-match', 'text', 'text-exact', 'text-partial', 'tag-text'].includes(strategy) ||
+        usedSelector.startsWith('__TEXT__:');
+
+      // Clean display selector for output (remove __TEXT__: prefix)
+      const displaySelector = usedSelector.startsWith('__TEXT__:')
+        ? usedSelector.replace('__TEXT__:', 'text:')
+        : usedSelector;
+
+
       try {
         tracker.setProgress(60, '⏳ Waiting for element to be ready...');
-        // Wait for element to be ready
-        await pageInstance.waitForSelector(usedSelector, { timeout: 5000 });
+
+        // Only wait for selector if it's a valid CSS selector (not text-based)
+        if (!isTextBasedStrategy) {
+          await pageInstance.waitForSelector(usedSelector, { timeout: 5000 });
+        }
 
         // Check element visibility and interaction options
         const boundingBox = await element.boundingBox();
 
         if (!boundingBox) {
           tracker.setProgress(70, '🔧 No bounding box, using JavaScript click...');
-          await pageInstance.$eval(usedSelector, (el: any) => el.click());
+          // For text-based strategies, use element.evaluate to click
+          if (isTextBasedStrategy) {
+            await element.evaluate((el: any) => el.click());
+          } else {
+            await pageInstance.$eval(usedSelector, (el: any) => el.click());
+          }
         } else {
           tracker.setProgress(70, '🖱️ Clicking element...');
           if (waitForNavigation) {
             tracker.setProgress(75, '🔄 Clicking and waiting for navigation...');
             await Promise.all([
               pageInstance.waitForNavigation({ waitUntil: 'networkidle2' }),
-              pageInstance.click(usedSelector),
+              element.click(), // Use element.click() for all strategies
             ]);
             tracker.setProgress(90, '✅ Navigation completed');
           } else {
-            await pageInstance.click(usedSelector);
+            // Use element.click() directly - works for all strategies
+            await element.click();
           }
         }
 
         tracker.complete('🎉 Click completed successfully');
+
 
         return {
           content: [
@@ -102,8 +123,14 @@ export async function handleClick(args: ClickArgs) {
         tracker.setProgress(85, '⚠️ Click failed, trying JavaScript fallback...');
         // Final fallback: JavaScript click
         try {
-          await pageInstance.$eval(usedSelector, (el: any) => el.click());
+          // For text-based strategies, use element.evaluate instead of $eval
+          if (isTextBasedStrategy) {
+            await element.evaluate((el: any) => el.click());
+          } else {
+            await pageInstance.$eval(usedSelector, (el: any) => el.click());
+          }
           tracker.complete('🎉 Click completed via JavaScript fallback');
+
           return {
             content: [
               {
@@ -130,11 +157,11 @@ export async function handleType(args: TypeArgs) {
   const progressNotifier = getProgressNotifier();
   const progressToken = `type-${Date.now()}`;
   const tracker = progressNotifier.createTracker(progressToken);
-  
+
   return await withWorkflowValidation('type', args, async () => {
     return await withErrorHandling(async () => {
       tracker.start(100, '⌨️ Starting type operation...');
-      
+
       const pageInstance = getPageInstance();
       if (!pageInstance) {
         tracker.fail('Browser not initialized');
@@ -142,7 +169,7 @@ export async function handleType(args: TypeArgs) {
       }
 
       const { selector, text, delay = 100 } = args;
-      
+
       tracker.setProgress(10, `🔍 Finding input element: ${selector}`);
 
       // Try to find element using self-healing locators
@@ -197,12 +224,12 @@ export async function handleType(args: TypeArgs) {
         }, usedSelector);
 
         tracker.setProgress(60, `⌨️ Typing ${text.length} characters...`);
-        
+
         // Type with progress updates
         const totalChars = text.length;
         for (let i = 0; i < totalChars; i++) {
           await pageInstance.type(usedSelector, text[i], { delay });
-          
+
           // Update progress every 10 characters
           if (i % 10 === 0 || i === totalChars - 1) {
             const typeProgress = 60 + Math.round((i / totalChars) * 30);
@@ -263,10 +290,10 @@ export async function handleSolveCaptcha(args: SolveCaptchaArgs) {
   const progressNotifier = getProgressNotifier();
   const progressToken = `captcha-${Date.now()}`;
   const tracker = progressNotifier.createTracker(progressToken);
-  
+
   return await withErrorHandling(async () => {
     tracker.start(100, '🔐 Starting captcha detection...');
-    
+
     const pageInstance = getPageInstance();
     if (!pageInstance) {
       tracker.fail('Browser not initialized');
@@ -278,7 +305,7 @@ export async function handleSolveCaptcha(args: SolveCaptchaArgs) {
 
     try {
       tracker.setProgress(10, '🔍 Detecting captcha type...');
-      
+
       // Auto-detect or use provided type
       let detectedType = type;
       if (!detectedType) {
@@ -289,7 +316,7 @@ export async function handleSolveCaptcha(args: SolveCaptchaArgs) {
           return 'unknown';
         });
       }
-      
+
       tracker.setProgress(20, `🎯 Detected captcha: ${detectedType}`);
 
       // Turnstile - handled automatically by brave-real-browser
@@ -299,8 +326,8 @@ export async function handleSolveCaptcha(args: SolveCaptchaArgs) {
         while (Date.now() - startTime < timeout) {
           const elapsed = Date.now() - startTime;
           const progress = 30 + Math.round((elapsed / timeout) * 50);
-          tracker.setProgress(progress, `⏳ Waiting for Turnstile... (${Math.round(elapsed/1000)}s)`);
-          
+          tracker.setProgress(progress, `⏳ Waiting for Turnstile... (${Math.round(elapsed / 1000)}s)`);
+
           const token = await pageInstance.evaluate(() => {
             const input = document.querySelector('[name="cf-turnstile-response"]') as HTMLInputElement;
             return input?.value || null;
