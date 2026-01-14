@@ -90,6 +90,31 @@ npm run dev
 
 ---
 
+## 🛡️ Ad Blocking & Stealth (brave-real-blocker)
+
+**Auto-enabled on all pages via ecosystem chain:**
+
+```
+brave-real-launcher
+    └── brave-real-puppeteer-core
+            └── brave-real-browser
+                    └── brave-real-blocker (auto-enabled)
+                            └── brave-real-browser-mcp-server
+```
+
+| Feature | Description |
+|---------|-------------|
+| **AdBlocking** | Network-level ad/tracker blocking |
+| **Stealth** | Native function masking (prompt, alert, confirm) |
+| **RedirectBlocking** | Popup, window.open interception, tracking param removal |
+| **ScriptletInjection** | Anti-adblock bypass |
+| **CosmeticFiltering** | Element hiding |
+
+> ℹ️ No configuration needed - blocker activates automatically on browser launch.
+
+---
+
+
 ## 🛠️ All 33 MCP Tools
 
 ### Browser Management

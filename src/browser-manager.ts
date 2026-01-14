@@ -365,24 +365,9 @@ export async function initializeBrowser(options?: any) {
       // console.('   Mode: GUI (visible browser)');
     }
 
-    // Brave-real-browser handles everything automatically
-    // Enable uBlock Origin for ad/popup blocking
-    // Add adblocker plugin for additional protection
-
-    // Dynamically import adblocker plugin
-    let adblockerPlugin = null;
-    try {
-      const adblockerModule = await import('puppeteer-extra-plugin-adblocker');
-      const AdblockerPlugin = (adblockerModule.default || adblockerModule) as any;
-      if (typeof AdblockerPlugin === 'function') {
-        adblockerPlugin = AdblockerPlugin({
-          blockTrackers: true,
-          blockTrackersAndAnnoyances: true,
-        });
-      }
-    } catch (e) {
-      // Adblocker plugin not available, continue without it
-    }
+    // Note: brave-real-blocker is automatically loaded by brave-real-browser
+    // It provides: AdBlocking, Stealth, RedirectBlocking, Scriptlets, CosmeticFiltering
+    // No need for additional puppeteer-extra-plugin-adblocker
 
     const connectOptions: any = {
       headless: headlessMode,
@@ -390,12 +375,13 @@ export async function initializeBrowser(options?: any) {
       connectOption: {
         defaultViewport: null // Full window content, no viewport restriction
       },
-      plugins: adblockerPlugin ? [adblockerPlugin] : [],  // Add adblocker plugin
+      plugins: [],  // brave-real-blocker handles ad blocking internally
       customConfig: {
         autoLoadUBlock: true,  // Enable uBlock Origin in brave-real-launcher
       },
       ...options, // Pass-through all user options
     };
+
 
     // Ensure headless is set correctly (overriding any conflicting option)
     connectOptions.headless = headlessMode;
