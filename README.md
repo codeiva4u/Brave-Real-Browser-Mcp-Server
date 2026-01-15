@@ -20,7 +20,7 @@
 }
 ```
 
-## Local MCP Setup 
+## (Local AI IDEs) 
 
 ```json
 {
