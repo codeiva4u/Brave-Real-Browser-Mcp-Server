@@ -133,10 +133,7 @@ mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
                 if (!page) throw new Error('Browser not initialized');
                 result = { content: [{ type: 'text', text: JSON.stringify(await advancedTools.handleSearchContent(page, args as any)) }] };
                 break;
-            case TOOL_NAMES.MEDIA_EXTRACTOR:
-                if (!page) throw new Error('Browser not initialized');
-                result = { content: [{ type: 'text', text: JSON.stringify(await advancedTools.handleMediaExtractor(page, args || {})) }] };
-                break;
+            // MEDIA_EXTRACTOR case REMOVED - merged into STREAM_EXTRACTOR
             case TOOL_NAMES.STREAM_EXTRACTOR:
                 if (!page) throw new Error('Browser not initialized');
                 result = { content: [{ type: 'text', text: JSON.stringify(await advancedTools.handleStreamExtractor(page, args as any)) }] };
@@ -567,10 +564,9 @@ async function main() {
             console.error('   📜 random_scroll         - Natural scrolling');
             console.error('   🤖 solve_captcha         - Solve CAPTCHAs');
             console.error('');
-            console.error('   Media Extraction:');
-            console.error('   🎬 media_extractor       - Extract video/audio');
-            console.error('   📺 m3u8_parser           - Parse HLS streams');
-            console.error('   🎥 stream_extractor      - Master stream extraction');
+            console.error('   Media & Streaming:');
+            console.error('   🎬 stream_extractor      - Master: Extract video/audio/m3u8/mp4');
+            console.error('   🖼️  iframe_handler        - Handle nested iframes (deep_scrape)');
             console.error('');
             console.error('   Advanced Tools:');
             console.error('   🔎 search_content        - Search patterns in page');

@@ -315,10 +315,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
         return { content: [{ type: 'text', text: JSON.stringify(await handleAjaxContentWaiter(page, args || {})) }] };
 
 
-
-      case TOOL_NAMES.MEDIA_EXTRACTOR:
-        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
-        return { content: [{ type: 'text', text: JSON.stringify(await handleMediaExtractor(page, args || {})) }] };
+      // MEDIA_EXTRACTOR case REMOVED - merged into STREAM_EXTRACTOR
 
       case TOOL_NAMES.ELEMENT_SCREENSHOT:
         if (!page) throw new Error('Browser not initialized. Call browser_init first.');
@@ -336,10 +333,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
         if (!page) throw new Error('Browser not initialized. Call browser_init first.');
         return { content: [{ type: 'text', text: JSON.stringify(await handleExtractSchema(page, args || {})) }] };
 
-      // Streaming & Media Tools
-      case TOOL_NAMES.M3U8_PARSER:
-        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
-        return { content: [{ type: 'text', text: JSON.stringify(await handleM3u8Parser(page, args || {})) }] };
+
+      // M3U8_PARSER case REMOVED - merged into STREAM_EXTRACTOR
+
 
 
 

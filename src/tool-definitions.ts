@@ -500,21 +500,7 @@ export const TOOLS = [
       },
     },
   },
-  {
-    name: 'media_extractor',
-    description: 'Extract media (audio/video) from page with quality options and ad-bypass',
-    inputSchema: {
-      type: 'object',
-      additionalProperties: false,
-      properties: {
-        mediaType: { type: 'string', enum: ['video', 'audio', 'all'], description: 'Type of media to extract', default: 'all' },
-        includeEmbedded: { type: 'boolean', description: 'Include embedded iframes', default: true },
-        quality: { type: 'string', description: 'Preferred quality (highest, lowest, 1080p, 720p)' },
-        format: { type: 'string', description: 'Preferred format (mp4, webm, m3u8)' },
-        bypassAds: { type: 'boolean', description: 'Attempt to bypass video ads', default: false },
-      },
-    },
-  },
+  // media_extractor REMOVED - functionality merged into stream_extractor
   {
     name: 'element_screenshot',
     description: 'Capture screenshot of a specific element',
@@ -569,23 +555,7 @@ export const TOOLS = [
       },
     },
   },
-  // ============================================================
-  // STREAMING & MEDIA TOOLS (3 new tools)
-  // ============================================================
-  {
-    name: 'm3u8_parser',
-    description: 'Parse and extract HLS/m3u8 streaming URLs with quality options',
-    inputSchema: {
-      type: 'object',
-      additionalProperties: false,
-      properties: {
-        url: { type: 'string', description: 'URL of the page or m3u8 file' },
-        extractAll: { type: 'boolean', description: 'Extract all quality variants', default: true },
-        preferQuality: { type: 'string', description: 'Preferred quality (1080p, 720p, 480p, best, worst)', default: 'best' },
-        includeAudio: { type: 'boolean', description: 'Include audio-only streams', default: true },
-      },
-    },
-  },
+  // m3u8_parser REMOVED - functionality merged into stream_extractor
   {
     name: 'cookie_manager',
     description: 'Manage browser cookies for premium accounts and sessions',
@@ -695,12 +665,12 @@ export const TOOL_NAMES = {
   NETWORK_RECORDER: 'network_recorder',
   API_FINDER: 'api_finder',
   AJAX_CONTENT_WAITER: 'ajax_content_waiter',
-  MEDIA_EXTRACTOR: 'media_extractor',
+  // MEDIA_EXTRACTOR: 'media_extractor', // REMOVED - merged into STREAM_EXTRACTOR
   ELEMENT_SCREENSHOT: 'element_screenshot',
   LINK_HARVESTER: 'link_harvester',
   BATCH_ELEMENT_SCRAPER: 'batch_element_scraper',
   EXTRACT_SCHEMA: 'extract_schema',
-  M3U8_PARSER: 'm3u8_parser',
+  // M3U8_PARSER: 'm3u8_parser', // REMOVED - merged into STREAM_EXTRACTOR
   COOKIE_MANAGER: 'cookie_manager',
   FILE_DOWNLOADER: 'file_downloader',
   // Enhanced tools
