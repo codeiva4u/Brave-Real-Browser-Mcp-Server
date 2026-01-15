@@ -829,27 +829,96 @@ export async function handleDeepAnalysis(
 
 /**
  * Record full network traffic - Uses response events to avoid crashes
+ * ULTRA POWERFUL: API detection, media URLs, smart categorization
  */
 export async function handleNetworkRecorder(
     page: Page,
     args: NetworkRecorderArgs
-): Promise<{ requests: any[]; count: number; totalSize: number }> {
+): Promise<{
+    requests: any[];
+    count: number;
+    totalSize: number;
+    categories?: Record<string, number>;
+    apis?: { url: string; method: string; type: string }[];
+    mediaUrls?: string[];
+}> {
     const requests: any[] = [];
     const duration = args.duration || 10000;
     let totalSize = 0;
+    const categories: Record<string, number> = {};
+    const apis: { url: string; method: string; type: string }[] = [];
+    const mediaUrls: string[] = [];
+    const seen = new Set<string>();
+
+    // ============================================================
+    // SMART CATEGORIZATION HELPER
+    // ============================================================
+    const categorizeUrl = (url: string, resourceType: string): string => {
+        const urlLower = url.toLowerCase();
+
+        // API endpoints
+        if (/\/api\/|\/v\d+\/|\.json(\?|$)|graphql/i.test(url)) return 'api';
+
+        // Media
+        if (/\.(mp4|webm|m3u8|ts|mp3|flac|ogg)/i.test(url)) return 'media';
+        if (resourceType === 'media' || resourceType === 'video' || resourceType === 'audio') return 'media';
+
+        // Images
+        if (/\.(jpg|jpeg|png|gif|webp|svg|ico)/i.test(url) || resourceType === 'image') return 'image';
+
+        // Scripts
+        if (/\.js(\?|$)/i.test(url) || resourceType === 'script') return 'script';
+
+        // Styles
+        if (/\.css(\?|$)/i.test(url) || resourceType === 'stylesheet') return 'style';
+
+        // Fonts
+        if (/\.(woff2?|ttf|eot|otf)/i.test(url) || resourceType === 'font') return 'font';
+
+        // XHR/Fetch
+        if (resourceType === 'xhr' || resourceType === 'fetch') return 'xhr';
+
+        // Documents
+        if (resourceType === 'document') return 'document';
+
+        return 'other';
+    };
 
     // Response handler - safer than request interception
     const responseHandler = (response: any) => {
         try {
             const url = response.url();
+
+            // Dedup
+            if (seen.has(url)) return;
+            seen.add(url);
+
             if (args.filterUrl && !url.includes(args.filterUrl)) {
                 return;
+            }
+
+            const resourceType = response.request()?.resourceType?.() || 'unknown';
+            const method = response.request()?.method?.() || 'GET';
+            const category = categorizeUrl(url, resourceType);
+
+            categories[category] = (categories[category] || 0) + 1;
+
+            // Collect API endpoints
+            if (category === 'api' || resourceType === 'xhr' || resourceType === 'fetch') {
+                apis.push({ url, method, type: resourceType });
+            }
+
+            // Collect media URLs
+            if (category === 'media' || /\.(mp4|webm|m3u8|ts|mp3)/i.test(url)) {
+                mediaUrls.push(url);
             }
 
             const entry: any = {
                 url,
                 status: response.status(),
-                resourceType: response.request()?.resourceType?.() || 'unknown',
+                resourceType,
+                category,
+                method,
                 timestamp: Date.now(),
             };
 
@@ -861,7 +930,6 @@ export async function handleNetworkRecorder(
                 }
             }
 
-            // Note: Response body requires async handling, skip for stability
             requests.push(entry);
 
             // Track size from headers
@@ -894,7 +962,11 @@ export async function handleNetworkRecorder(
         requests: requests.slice(0, 500),
         count: requests.length,
         totalSize,
-    };
+        categories,
+        apis: apis.length > 0 ? apis : undefined,
+        mediaUrls: mediaUrls.length > 0 ? mediaUrls : undefined,
+        message: `📡 Recorded ${requests.length} requests (${Math.round(totalSize / 1024)}KB) | APIs: ${apis.length} | Media: ${mediaUrls.length}`
+    } as any;
 }
 
 /**
@@ -1019,18 +1091,99 @@ export async function handleAdProtectionDetector(
 
 /**
  * Wait for dynamic AJAX loading
+ * ULTRA POWERFUL: Infinite scroll, lazy load, mutation observer
  */
 export async function handleAjaxContentWaiter(
     page: Page,
     args: AjaxContentWaiterArgs
-): Promise<{ loaded: boolean; waitTime: number; content?: string }> {
+): Promise<{ loaded: boolean; waitTime: number; content?: string; newElementsCount?: number; scrollDepth?: number }> {
     const timeout = args.timeout || 30000;
     const pollInterval = args.pollInterval || 500;
     const startTime = Date.now();
 
     let content: string | undefined;
     let loaded = false;
+    let newElementsCount = 0;
+    let scrollDepth = 0;
 
+    // ============================================================
+    // 1. MUTATION OBSERVER: Track DOM changes in real-time
+    // ============================================================
+    const setupMutationObserver = async () => {
+        return await page.evaluate(() => {
+            return new Promise<{ added: number; modified: number }>((resolve) => {
+                let added = 0;
+                let modified = 0;
+                const observer = new MutationObserver((mutations) => {
+                    mutations.forEach(m => {
+                        added += m.addedNodes.length;
+                        if (m.type === 'attributes' || m.type === 'characterData') modified++;
+                    });
+                });
+                observer.observe(document.body, {
+                    childList: true,
+                    subtree: true,
+                    attributes: true,
+                    characterData: true
+                });
+
+                // Return after 2 seconds of observation
+                setTimeout(() => {
+                    observer.disconnect();
+                    resolve({ added, modified });
+                }, 2000);
+            });
+        });
+    };
+
+    // ============================================================
+    // 2. INFINITE SCROLL DETECTION
+    // ============================================================
+    const handleInfiniteScroll = async () => {
+        const initialHeight = await page.evaluate(() => document.body.scrollHeight);
+        const initialCount = await page.evaluate(() => document.querySelectorAll('*').length);
+
+        // Scroll to bottom
+        await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+        await new Promise(r => setTimeout(r, 1000));
+
+        // Check if new content loaded
+        const newHeight = await page.evaluate(() => document.body.scrollHeight);
+        const newCount = await page.evaluate(() => document.querySelectorAll('*').length);
+
+        return {
+            scrolled: newHeight > initialHeight,
+            newElements: newCount - initialCount,
+            scrollDepth: newHeight
+        };
+    };
+
+    // ============================================================
+    // 3. LAZY LOAD DETECTION
+    // ============================================================
+    const detectLazyLoad = async () => {
+        return await page.evaluate(() => {
+            const lazyElements: string[] = [];
+
+            // Check for common lazy load patterns
+            document.querySelectorAll('[data-src], [data-lazy], [loading="lazy"], .lazy, .lazyload').forEach(el => {
+                const dataSrc = el.getAttribute('data-src') || el.getAttribute('data-lazy');
+                if (dataSrc) lazyElements.push(dataSrc);
+            });
+
+            // Intersection Observer based lazy images
+            document.querySelectorAll('img[data-src], img.lazy').forEach(img => {
+                const dataSrc = (img as HTMLImageElement).dataset.src;
+                if (dataSrc) lazyElements.push(dataSrc);
+            });
+
+            return lazyElements;
+        });
+    };
+
+    // ============================================================
+    // 4. MAIN WAITING LOGIC
+    // ============================================================
     while (Date.now() - startTime < timeout) {
         if (args.selector) {
             const element = await page.$(args.selector);
@@ -1042,19 +1195,41 @@ export async function handleAjaxContentWaiter(
                 }
             }
         } else {
-            // Wait for network to be idle
-            await page.waitForNetworkIdle({ timeout: pollInterval }).catch(() => { });
-            loaded = true;
-            break;
+            // Smart waiting: Check for ongoing activity
+            const mutationResult = await setupMutationObserver();
+            newElementsCount = mutationResult.added;
+
+            if (mutationResult.added === 0 && mutationResult.modified === 0) {
+                // No DOM changes, content likely loaded
+                loaded = true;
+                break;
+            }
         }
+
+        // Try infinite scroll to load more content
+        const scrollResult = await handleInfiniteScroll();
+        if (scrollResult.scrolled) {
+            scrollDepth = scrollResult.scrollDepth;
+            newElementsCount += scrollResult.newElements;
+        }
+
         await new Promise((r) => setTimeout(r, pollInterval));
     }
+
+    // Detect any lazy-loaded content
+    const lazyElements = await detectLazyLoad();
 
     return {
         loaded,
         waitTime: Date.now() - startTime,
         content,
-    };
+        newElementsCount,
+        scrollDepth,
+        lazyElements: lazyElements.length > 0 ? lazyElements : undefined,
+        message: loaded
+            ? `✅ Content loaded in ${Date.now() - startTime}ms (${newElementsCount} new elements, scroll: ${scrollDepth}px)`
+            : `⏱️ Timeout after ${timeout}ms`
+    } as any;
 }
 
 /**
@@ -1282,26 +1457,130 @@ export async function handleVideoRecording(
 
 /**
  * Harvest all links from page
+ * ULTRA POWERFUL: Pagination detection, smart categorization, file types
  */
 export async function handleLinkHarvester(
     page: Page,
     args: LinkHarvesterArgs
-): Promise<{ links: { url: string; text: string; type: string }[]; internal: number; external: number }> {
+): Promise<{
+    links: { url: string; text: string; type: string; category?: string }[];
+    internal: number;
+    external: number;
+    pagination?: { nextPage?: string; prevPage?: string; totalPages?: number };
+    categories?: Record<string, number>;
+}> {
     const currentUrl = new URL(page.url());
 
-    const allLinks = await page.evaluate((filter) => {
-        return Array.from(document.querySelectorAll('a[href]')).map((a) => ({
-            url: (a as HTMLAnchorElement).href,
-            text: a.textContent?.trim()?.substring(0, 100) || '',
-        }));
-    }, args.filter);
+    // ============================================================
+    // 1. EXTRACT ALL LINKS WITH SMART CATEGORIZATION
+    // ============================================================
+    const allLinks = await page.evaluate(() => {
+        const links: { url: string; text: string; attrs: Record<string, string> }[] = [];
 
-    const processedLinks: { url: string; text: string; type: string }[] = [];
+        document.querySelectorAll('a[href]').forEach((a) => {
+            const anchor = a as HTMLAnchorElement;
+            links.push({
+                url: anchor.href,
+                text: a.textContent?.trim()?.substring(0, 100) || '',
+                attrs: {
+                    rel: anchor.rel || '',
+                    target: anchor.target || '',
+                    class: anchor.className || '',
+                    id: anchor.id || '',
+                    download: anchor.download || '',
+                }
+            });
+        });
+
+        return links;
+    });
+
+    // ============================================================
+    // 2. PAGINATION DETECTION
+    // ============================================================
+    const pagination = await page.evaluate(() => {
+        let nextPage: string | undefined;
+        let prevPage: string | undefined;
+        let totalPages: number | undefined;
+
+        // Common pagination selectors
+        const nextSelectors = [
+            'a[rel="next"]', 'a.next', 'a.pagination-next',
+            '[aria-label="Next"]', 'a:has-text("Next")', 'a:has-text(">")',
+            '.pagination a:last-child', 'a.page-link:last-child'
+        ];
+        const prevSelectors = [
+            'a[rel="prev"]', 'a.prev', 'a.pagination-prev',
+            '[aria-label="Previous"]', 'a:has-text("Prev")', 'a:has-text("<")'
+        ];
+
+        for (const sel of nextSelectors) {
+            try {
+                const el = document.querySelector(sel) as HTMLAnchorElement;
+                if (el?.href) { nextPage = el.href; break; }
+            } catch { /* invalid selector */ }
+        }
+
+        for (const sel of prevSelectors) {
+            try {
+                const el = document.querySelector(sel) as HTMLAnchorElement;
+                if (el?.href) { prevPage = el.href; break; }
+            } catch { /* invalid selector */ }
+        }
+
+        // Count page numbers
+        const pageNumbers = Array.from(document.querySelectorAll('.pagination a, .page-numbers a, nav a'))
+            .map(a => parseInt(a.textContent || '0', 10))
+            .filter(n => !isNaN(n) && n > 0);
+        if (pageNumbers.length > 0) {
+            totalPages = Math.max(...pageNumbers);
+        }
+
+        return { nextPage, prevPage, totalPages };
+    });
+
+    // ============================================================
+    // 3. SMART LINK CATEGORIZATION
+    // ============================================================
+    const categorizeLink = (url: string, text: string, attrs: any): string => {
+        const urlLower = url.toLowerCase();
+        const textLower = text.toLowerCase();
+
+        // File downloads
+        if (/\.(pdf|doc|docx|xls|xlsx|zip|rar|7z|tar|gz)(\?.*)?$/i.test(url)) return 'document';
+        if (/\.(mp4|mkv|avi|mov|webm|flv)(\?.*)?$/i.test(url)) return 'video';
+        if (/\.(mp3|wav|flac|aac|ogg)(\?.*)?$/i.test(url)) return 'audio';
+        if (/\.(jpg|jpeg|png|gif|webp|svg|bmp)(\?.*)?$/i.test(url)) return 'image';
+        if (attrs.download) return 'download';
+
+        // Navigation
+        if (/\/(next|page|p)\/\d+|[?&]page=\d+/i.test(url)) return 'pagination';
+        if (textLower.includes('next') || textLower.includes('prev')) return 'pagination';
+
+        // Social
+        if (/facebook|twitter|instagram|linkedin|youtube|tiktok/i.test(url)) return 'social';
+
+        // Common patterns
+        if (/login|signin|sign-in/i.test(url)) return 'auth';
+        if (/register|signup|sign-up/i.test(url)) return 'auth';
+        if (/search|query|q=/i.test(url)) return 'search';
+        if (/contact|about|faq|help/i.test(url)) return 'info';
+
+        return 'navigation';
+    };
+
+    const processedLinks: { url: string; text: string; type: string; category: string }[] = [];
+    const categories: Record<string, number> = {};
+    const seen = new Set<string>();
     let internal = 0;
     let external = 0;
 
     for (const link of allLinks) {
         try {
+            // Dedup by URL
+            if (seen.has(link.url)) continue;
+            seen.add(link.url);
+
             const linkUrl = new URL(link.url);
             const isInternal = linkUrl.hostname === currentUrl.hostname;
 
@@ -1312,10 +1591,14 @@ export async function handleLinkHarvester(
             if (isInternal && args.includeInternal === false) continue;
             if (!isInternal && args.includeExternal === false) continue;
 
+            const category = categorizeLink(link.url, link.text, link.attrs);
+            categories[category] = (categories[category] || 0) + 1;
+
             processedLinks.push({
                 url: link.url,
                 text: link.text,
                 type: isInternal ? 'internal' : 'external',
+                category,
             });
 
             if (isInternal) internal++;
@@ -1331,7 +1614,11 @@ export async function handleLinkHarvester(
         links: processedLinks,
         internal,
         external,
-    };
+        pagination: (pagination.nextPage || pagination.prevPage || pagination.totalPages) ? pagination : undefined,
+        categories,
+        message: `🔗 Found ${processedLinks.length} links (${internal} internal, ${external} external)` +
+            (pagination.nextPage ? ` | Next: ${pagination.nextPage}` : '')
+    } as any;
 }
 
 /**
