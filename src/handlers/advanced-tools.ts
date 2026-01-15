@@ -3478,6 +3478,10 @@ export interface WebCrawlerArgs {
     excludePattern?: string;
     extractSelectors?: Record<string, string>;
     followLinks?: boolean;
+    // Movie streaming specific options
+    blockPopups?: boolean;
+    blockOverlayAds?: boolean;
+    extractVideoLinks?: boolean;
     downloadMedia?: boolean;
     savePath?: string;
     proxyList?: string[];
@@ -3485,7 +3489,6 @@ export interface WebCrawlerArgs {
     retryDelayMs?: number;
     timeout?: number;
     mode?: 'browser' | 'http';
-    respectRobotsTxt?: boolean;
     userAgent?: string;
     headers?: Record<string, string>;
 }
@@ -3497,6 +3500,11 @@ interface CrawlResult {
     title?: string;
     extractedData?: Record<string, any>;
     links?: string[];
+    videoLinks?: {
+        url: string;
+        type: string; // m3u8, mp4, mkv, etc.
+        source: string; // jwplayer, dooplayer, iframe, ajax, etc.
+    }[];
     error?: string;
 }
 
@@ -3643,19 +3651,68 @@ export async function handleWebCrawler(
                 maxOpenPagesPerBrowser: 1,
             },
 
-            // Pre-navigation hook for rate limiting and proxy
+            // Pre-navigation hook for rate limiting, popup blocking, and movie streaming optimizations
             preNavigationHooks: [
                 async (crawlingContext: any) => {
                     await enforceRateLimit();
+                    const pg = crawlingContext.page;
 
                     // Set custom user agent if provided
                     if (args.userAgent) {
-                        await crawlingContext.page.setUserAgent(args.userAgent);
+                        await pg.setUserAgent(args.userAgent);
                     }
 
                     // Set custom headers if provided
                     if (args.headers) {
-                        await crawlingContext.page.setExtraHTTPHeaders(args.headers);
+                        await pg.setExtraHTTPHeaders(args.headers);
+                    }
+
+                    // Block popups and overlay ads (default: true for movie streaming)
+                    if (args.blockPopups !== false) {
+                        await pg.evaluateOnNewDocument(() => {
+                            // Block window.open popups
+                            window.open = () => null;
+
+                            // Block alert, confirm, prompt
+                            window.alert = () => { };
+                            window.confirm = () => true;
+                            window.prompt = () => null;
+
+                            // Block popup via createElement
+                            const origCreate = document.createElement.bind(document);
+                            document.createElement = (tag: string) => {
+                                if (tag.toLowerCase() === 'a' && arguments[1]?.target === '_blank') {
+                                    return origCreate('span');
+                                }
+                                return origCreate(tag);
+                            };
+                        });
+                    }
+
+                    // Block overlay ads and floating elements
+                    if (args.blockOverlayAds !== false) {
+                        await pg.evaluateOnNewDocument(() => {
+                            // Remove overlay ads after DOM load
+                            const removeOverlays = () => {
+                                const selectors = [
+                                    '[class*="popup"]', '[class*="modal"]', '[class*="overlay"]',
+                                    '[id*="popup"]', '[id*="modal"]', '[id*="overlay"]',
+                                    '[class*="ad-"]', '[class*="-ad"]', '[class*="advert"]',
+                                    '[class*="banner"]', '[class*="sticky"]', '[class*="float"]',
+                                    'div[style*="position: fixed"]', 'div[style*="z-index: 9"]',
+                                ];
+                                selectors.forEach(sel => {
+                                    document.querySelectorAll(sel).forEach(el => {
+                                        const style = window.getComputedStyle(el);
+                                        if (style.position === 'fixed' || style.zIndex > '1000') {
+                                            (el as HTMLElement).style.display = 'none';
+                                        }
+                                    });
+                                });
+                            };
+                            document.addEventListener('DOMContentLoaded', removeOverlays);
+                            setInterval(removeOverlays, 2000);
+                        });
                     }
                 },
             ],
@@ -3707,6 +3764,89 @@ export async function handleWebCrawler(
                                 // Selector not found
                             }
                         }
+                    }
+
+                    // Extract video links (JWPlayer, DooPlayer, iframes, ajax sources)
+                    if (args.extractVideoLinks !== false) {
+                        result.videoLinks = await crawlerPage.evaluate(() => {
+                            const videoLinks: { url: string; type: string; source: string }[] = [];
+                            const videoPatterns = /\.(m3u8|mp4|mkv|webm|avi|mov|flv|wmv|ts)(\?|$)/i;
+
+                            // 1. JWPlayer detection
+                            if ((window as any).jwplayer) {
+                                try {
+                                    const players = document.querySelectorAll('.jwplayer, [id*="jwplayer"]');
+                                    players.forEach((_, idx) => {
+                                        try {
+                                            const player = (window as any).jwplayer(idx);
+                                            if (player && player.getPlaylistItem) {
+                                                const item = player.getPlaylistItem();
+                                                if (item?.file) {
+                                                    videoLinks.push({ url: item.file, type: item.file.includes('.m3u8') ? 'm3u8' : 'mp4', source: 'jwplayer' });
+                                                }
+                                                if (item?.sources) {
+                                                    item.sources.forEach((s: any) => {
+                                                        if (s.file) videoLinks.push({ url: s.file, type: s.type || 'mp4', source: 'jwplayer' });
+                                                    });
+                                                }
+                                            }
+                                        } catch { }
+                                    });
+                                } catch { }
+                            }
+
+                            // 2. DooPlayer detection (common in movie sites)
+                            if ((window as any).dooPlayer || document.querySelector('[id*="doo"]')) {
+                                try {
+                                    const dooConfig = (window as any).dooPlayer?.config || (window as any).player_config;
+                                    if (dooConfig?.source) {
+                                        videoLinks.push({ url: dooConfig.source, type: 'm3u8', source: 'dooplayer' });
+                                    }
+                                } catch { }
+                            }
+
+                            // 3. Iframe video sources
+                            document.querySelectorAll('iframe').forEach(iframe => {
+                                const src = iframe.src || iframe.getAttribute('data-src') || '';
+                                if (src && (src.includes('embed') || src.includes('player') || src.includes('stream'))) {
+                                    videoLinks.push({ url: src, type: 'iframe', source: 'iframe' });
+                                }
+                            });
+
+                            // 4. Video tags
+                            document.querySelectorAll('video source, video').forEach(el => {
+                                const src = el.getAttribute('src') || (el as HTMLVideoElement).src;
+                                if (src && videoPatterns.test(src)) {
+                                    const ext = src.match(videoPatterns)?.[1] || 'mp4';
+                                    videoLinks.push({ url: src, type: ext, source: 'video-tag' });
+                                }
+                            });
+
+                            // 5. Hidden links in scripts (ajax pattern)
+                            document.querySelectorAll('script:not([src])').forEach(script => {
+                                const content = script.textContent || '';
+                                // m3u8/mp4 in script
+                                const matches = content.match(/https?:\/\/[^\s"'<>]+\.(m3u8|mp4|mkv)[^\s"'<>]*/gi);
+                                if (matches) {
+                                    matches.forEach(url => {
+                                        const ext = url.match(videoPatterns)?.[1] || 'mp4';
+                                        videoLinks.push({ url, type: ext, source: 'ajax-script' });
+                                    });
+                                }
+                            });
+
+                            // 6. Data attributes with video URLs
+                            document.querySelectorAll('[data-file], [data-source], [data-video], [data-stream]').forEach(el => {
+                                const url = el.getAttribute('data-file') || el.getAttribute('data-source') ||
+                                    el.getAttribute('data-video') || el.getAttribute('data-stream');
+                                if (url && (videoPatterns.test(url) || url.includes('m3u8'))) {
+                                    videoLinks.push({ url, type: url.includes('m3u8') ? 'm3u8' : 'mp4', source: 'data-attr' });
+                                }
+                            });
+
+                            // Deduplicate
+                            return [...new Map(videoLinks.map(v => [v.url, v])).values()];
+                        });
                     }
 
                     // Follow links if enabled and depth allows

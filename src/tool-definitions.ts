@@ -639,11 +639,11 @@ export const TOOLS = [
     },
   },
   // ============================================================
-  // WEB CRAWLER TOOL (Crawlee-inspired)
+  // WEB CRAWLER TOOL (Movie Streaming Optimized)
   // ============================================================
   {
     name: 'web_crawler',
-    description: 'Advanced web crawler with Crawlee-like features: URL queue (breadth/depth-first), proxy rotation, session management, auto-retry, rate limiting, concurrency control, and data extraction. Supports both browser and HTTP modes.',
+    description: 'Advanced web crawler optimized for movie downloading and streaming websites. Features: URL queue (breadth/depth-first), proxy rotation, auto-retry, rate limiting, JavaScript popup blocking, overlay ads blocking, and video link extraction. Uses brave-real-puppeteer-core with 50+ stealth features.',
     inputSchema: {
       type: 'object',
       additionalProperties: false,
@@ -651,7 +651,7 @@ export const TOOLS = [
         startUrls: {
           type: 'array',
           items: { type: 'string' },
-          description: 'Initial URLs to start crawling from'
+          description: 'Initial URLs to start crawling from (movie/streaming pages)'
         },
         maxDepth: {
           type: 'number',
@@ -696,9 +696,25 @@ export const TOOLS = [
           description: 'Follow discovered links',
           default: true
         },
+        // Movie streaming specific options
+        blockPopups: {
+          type: 'boolean',
+          description: 'Block JavaScript popup ads and window.open calls',
+          default: true
+        },
+        blockOverlayAds: {
+          type: 'boolean',
+          description: 'Block overlay ads, modal popups, and floating elements',
+          default: true
+        },
+        extractVideoLinks: {
+          type: 'boolean',
+          description: 'Auto-extract m3u8, mp4, mkv video links from pages',
+          default: true
+        },
         downloadMedia: {
           type: 'boolean',
-          description: 'Download images/videos/files',
+          description: 'Download video/audio files',
           default: false
         },
         savePath: {
@@ -730,11 +746,6 @@ export const TOOLS = [
           enum: ['browser', 'http'],
           description: 'Crawl mode (browser = Puppeteer, http = fast HTTP)',
           default: 'browser'
-        },
-        respectRobotsTxt: {
-          type: 'boolean',
-          description: 'Respect robots.txt rules',
-          default: true
         },
         userAgent: {
           type: 'string',
