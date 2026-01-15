@@ -122,6 +122,8 @@ import {
   // Enhanced streaming/download tools
   handleIframeHandler,
   handleStreamExtractor,
+  // Web crawler
+  handleWebCrawler,
 } from './handlers/advanced-tools.js';
 
 // State for video recording
@@ -356,6 +358,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
       case TOOL_NAMES.STREAM_EXTRACTOR:
         if (!page) throw new Error('Browser not initialized. Call browser_init first.');
         return { content: [{ type: 'text', text: JSON.stringify(await handleStreamExtractor(page, args as any)) }] };
+
+      // Web Crawler (Crawlee + brave-real-launcher)
+      case TOOL_NAMES.WEB_CRAWLER:
+        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
+        return { content: [{ type: 'text', text: JSON.stringify(await handleWebCrawler(page, args as any)) }] };
 
       default:
         throw new Error(`Unknown tool: ${name}`);

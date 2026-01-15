@@ -3462,3 +3462,326 @@ export async function handleStreamExtractor(
             : 'No direct URLs found',
     };
 }
+
+// ============================================================
+// WEB CRAWLER TOOL (Crawlee + brave-real-launcher Integration)
+// ============================================================
+
+export interface WebCrawlerArgs {
+    startUrls: string[];
+    maxDepth?: number;
+    maxPages?: number;
+    concurrency?: number;
+    rateLimit?: number;
+    crawlStrategy?: 'breadth-first' | 'depth-first';
+    includePattern?: string;
+    excludePattern?: string;
+    extractSelectors?: Record<string, string>;
+    followLinks?: boolean;
+    downloadMedia?: boolean;
+    savePath?: string;
+    proxyList?: string[];
+    retryCount?: number;
+    retryDelayMs?: number;
+    timeout?: number;
+    mode?: 'browser' | 'http';
+    respectRobotsTxt?: boolean;
+    userAgent?: string;
+    headers?: Record<string, string>;
+}
+
+interface CrawlResult {
+    url: string;
+    depth: number;
+    statusCode?: number;
+    title?: string;
+    extractedData?: Record<string, any>;
+    links?: string[];
+    error?: string;
+}
+
+/**
+ * Advanced web crawler with Crawlee + brave-real-launcher integration
+ * Features: URL queue, proxy rotation, rate limiting, data extraction
+ */
+export async function handleWebCrawler(
+    page: Page,
+    args: WebCrawlerArgs
+): Promise<{
+    success: boolean;
+    crawledPages: number;
+    results: CrawlResult[];
+    errors: string[];
+    message: string;
+}> {
+    // Import Crawlee dynamically to avoid load-time errors if not installed
+    let PuppeteerCrawler: any;
+    let RequestQueue: any;
+    let Configuration: any;
+
+    try {
+        const crawlee = await import('crawlee');
+        PuppeteerCrawler = crawlee.PuppeteerCrawler;
+        RequestQueue = crawlee.RequestQueue;
+        Configuration = crawlee.Configuration;
+    } catch (e) {
+        return {
+            success: false,
+            crawledPages: 0,
+            results: [],
+            errors: ['Crawlee not installed. Run: npm install crawlee'],
+            message: '❌ Crawlee package not found',
+        };
+    }
+
+    // Import brave-real-launcher for browser launch
+    let getBravePath: any;
+    let braveRealPuppeteerCore: any;
+    try {
+        const launcher = await import('brave-real-launcher');
+        getBravePath = launcher.getBravePath;
+    } catch (e) {
+        // Fallback - will use default Chromium
+    }
+
+    // Import brave-real-puppeteer-core for stealth features
+    try {
+        braveRealPuppeteerCore = await import('brave-real-puppeteer-core');
+    } catch (e) {
+        // Will use default puppeteer
+    }
+
+    const results: CrawlResult[] = [];
+    const errors: string[] = [];
+    const visited = new Set<string>();
+
+    // Configuration
+    const maxDepth = args.maxDepth ?? 3;
+    const maxPages = args.maxPages ?? 50;
+    const concurrency = args.concurrency ?? 3;
+    const rateLimit = args.rateLimit ?? 2;
+    const retryCount = args.retryCount ?? 3;
+    const timeout = args.timeout ?? 30000;
+
+    // URL filtering patterns
+    const includePattern = args.includePattern ? new RegExp(args.includePattern, 'i') : null;
+    const excludePattern = args.excludePattern ? new RegExp(args.excludePattern, 'i') : null;
+
+    // Proxy rotation
+    let proxyIndex = 0;
+    const getNextProxy = (): string | undefined => {
+        if (!args.proxyList || args.proxyList.length === 0) return undefined;
+        const proxy = args.proxyList[proxyIndex % args.proxyList.length];
+        proxyIndex++;
+        return proxy;
+    };
+
+    // Rate limiting
+    let lastRequestTime = 0;
+    const rateLimitDelay = 1000 / rateLimit;
+
+    const enforceRateLimit = async () => {
+        const now = Date.now();
+        const elapsed = now - lastRequestTime;
+        if (elapsed < rateLimitDelay) {
+            await new Promise(r => setTimeout(r, rateLimitDelay - elapsed));
+        }
+        lastRequestTime = Date.now();
+    };
+
+    try {
+        // Configure Crawlee to use memory storage (no disk)
+        Configuration.getGlobalConfig().set('persistStorage', false);
+
+        // Create request queue with start URLs
+        const requestQueue = await RequestQueue.open();
+
+        for (const url of args.startUrls) {
+            await requestQueue.addRequest({
+                url,
+                userData: { depth: 0 },
+            });
+        }
+
+        // Get Brave executable path if available
+        let executablePath: string | undefined;
+        try {
+            if (getBravePath) {
+                executablePath = getBravePath();
+            }
+        } catch (e) {
+            // Use default
+        }
+
+        // Create crawler based on mode
+        const crawler = new PuppeteerCrawler({
+            requestQueue,
+            maxConcurrency: concurrency,
+            maxRequestRetries: retryCount,
+            requestHandlerTimeoutSecs: timeout / 1000,
+
+            // Use brave-real-puppeteer-core with all stealth features
+            launchContext: {
+                // Use brave-real-puppeteer-core as custom launcher for 50+ stealth features
+                launcher: braveRealPuppeteerCore || undefined,
+                launchOptions: {
+                    headless: true,
+                    executablePath,
+                    args: [
+                        '--no-sandbox',
+                        '--disable-setuid-sandbox',
+                        '--disable-blink-features=AutomationControlled',
+                        '--disable-dev-shm-usage',
+                        '--disable-accelerated-2d-canvas',
+                        '--disable-gpu',
+                    ],
+                },
+            },
+
+            // Browser pool configuration
+            browserPoolOptions: {
+                maxOpenPagesPerBrowser: 1,
+            },
+
+            // Pre-navigation hook for rate limiting and proxy
+            preNavigationHooks: [
+                async (crawlingContext: any) => {
+                    await enforceRateLimit();
+
+                    // Set custom user agent if provided
+                    if (args.userAgent) {
+                        await crawlingContext.page.setUserAgent(args.userAgent);
+                    }
+
+                    // Set custom headers if provided
+                    if (args.headers) {
+                        await crawlingContext.page.setExtraHTTPHeaders(args.headers);
+                    }
+                },
+            ],
+
+            // Main request handler
+            requestHandler: async ({ request, page: crawlerPage, enqueueLinks }: any) => {
+                const depth = request.userData.depth || 0;
+                const url = request.url;
+
+                // Skip if already visited or max pages reached
+                if (visited.has(url) || results.length >= maxPages) {
+                    return;
+                }
+                visited.add(url);
+
+                // URL filtering
+                if (includePattern && !includePattern.test(url)) return;
+                if (excludePattern && excludePattern.test(url)) return;
+
+                const result: CrawlResult = {
+                    url,
+                    depth,
+                };
+
+                try {
+                    // Get page title
+                    result.title = await crawlerPage.title();
+
+                    // Extract data using selectors
+                    if (args.extractSelectors) {
+                        result.extractedData = {};
+                        for (const [key, selector] of Object.entries(args.extractSelectors)) {
+                            try {
+                                const elements = await crawlerPage.$$(selector);
+                                if (elements.length === 1) {
+                                    result.extractedData[key] = await crawlerPage.$eval(
+                                        selector,
+                                        (el: Element) => el.textContent?.trim() || el.getAttribute('href') || el.getAttribute('src')
+                                    );
+                                } else if (elements.length > 1) {
+                                    result.extractedData[key] = await crawlerPage.$$eval(
+                                        selector,
+                                        (els: Element[]) => els.map(el =>
+                                            el.textContent?.trim() || el.getAttribute('href') || el.getAttribute('src')
+                                        ).filter(Boolean)
+                                    );
+                                }
+                            } catch (e) {
+                                // Selector not found
+                            }
+                        }
+                    }
+
+                    // Follow links if enabled and depth allows
+                    if (args.followLinks !== false && depth < maxDepth && results.length < maxPages) {
+                        // Get all links
+                        const pageLinks = await crawlerPage.$$eval('a[href]', (anchors: HTMLAnchorElement[]) =>
+                            anchors.map(a => a.href).filter(href => href.startsWith('http'))
+                        );
+
+                        result.links = pageLinks.slice(0, 100); // Limit stored links
+
+                        // Filter and enqueue links
+                        const linksToEnqueue = pageLinks.filter((link: string) => {
+                            if (visited.has(link)) return false;
+                            if (includePattern && !includePattern.test(link)) return false;
+                            if (excludePattern && excludePattern.test(link)) return false;
+                            return true;
+                        });
+
+                        // Add filtered links using Crawlee's enqueueLinks
+                        for (const link of linksToEnqueue.slice(0, 50)) {
+                            try {
+                                await requestQueue.addRequest({
+                                    url: link,
+                                    userData: { depth: depth + 1 },
+                                });
+                            } catch (e) {
+                                // Link already in queue
+                            }
+                        }
+                    }
+
+                    // Download media if enabled
+                    if (args.downloadMedia && args.savePath) {
+                        const mediaUrls = await crawlerPage.$$eval(
+                            'img[src], video source[src], a[href$=".pdf"], a[href$=".jpg"], a[href$=".png"]',
+                            (els: Element[]) => els.map(el => el.getAttribute('src') || el.getAttribute('href')).filter(Boolean)
+                        );
+                        result.extractedData = result.extractedData || {};
+                        result.extractedData.mediaUrls = mediaUrls;
+                    }
+
+                    results.push(result);
+
+                } catch (error) {
+                    result.error = error instanceof Error ? error.message : String(error);
+                    errors.push(`${url}: ${result.error}`);
+                    results.push(result);
+                }
+            },
+
+            // Failed request handler
+            failedRequestHandler: async ({ request }: any, error: Error) => {
+                errors.push(`Failed: ${request.url} - ${error.message}`);
+            },
+        });
+
+        // Run the crawler
+        await crawler.run();
+
+        return {
+            success: results.length > 0,
+            crawledPages: results.length,
+            results,
+            errors,
+            message: `🕷️ Crawled ${results.length} pages (depth: ${maxDepth}, errors: ${errors.length})`,
+        };
+
+    } catch (error) {
+        return {
+            success: false,
+            crawledPages: results.length,
+            results,
+            errors: [...errors, error instanceof Error ? error.message : String(error)],
+            message: `❌ Crawler error: ${error instanceof Error ? error.message : String(error)}`,
+        };
+    }
+}

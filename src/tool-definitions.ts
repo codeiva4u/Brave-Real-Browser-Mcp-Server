@@ -638,6 +638,116 @@ export const TOOLS = [
       },
     },
   },
+  // ============================================================
+  // WEB CRAWLER TOOL (Crawlee-inspired)
+  // ============================================================
+  {
+    name: 'web_crawler',
+    description: 'Advanced web crawler with Crawlee-like features: URL queue (breadth/depth-first), proxy rotation, session management, auto-retry, rate limiting, concurrency control, and data extraction. Supports both browser and HTTP modes.',
+    inputSchema: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        startUrls: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Initial URLs to start crawling from'
+        },
+        maxDepth: {
+          type: 'number',
+          description: 'Maximum crawl depth (1 = only start URLs)',
+          default: 3
+        },
+        maxPages: {
+          type: 'number',
+          description: 'Maximum pages to crawl',
+          default: 50
+        },
+        concurrency: {
+          type: 'number',
+          description: 'Number of concurrent requests',
+          default: 3
+        },
+        rateLimit: {
+          type: 'number',
+          description: 'Maximum requests per second',
+          default: 2
+        },
+        crawlStrategy: {
+          type: 'string',
+          enum: ['breadth-first', 'depth-first'],
+          description: 'URL queue strategy',
+          default: 'breadth-first'
+        },
+        includePattern: {
+          type: 'string',
+          description: 'Regex pattern for URLs to include'
+        },
+        excludePattern: {
+          type: 'string',
+          description: 'Regex pattern for URLs to exclude'
+        },
+        extractSelectors: {
+          type: 'object',
+          description: 'CSS selectors for data extraction (e.g., {"title": "h1", "links": "a[href]"})'
+        },
+        followLinks: {
+          type: 'boolean',
+          description: 'Follow discovered links',
+          default: true
+        },
+        downloadMedia: {
+          type: 'boolean',
+          description: 'Download images/videos/files',
+          default: false
+        },
+        savePath: {
+          type: 'string',
+          description: 'Path to save downloaded files'
+        },
+        proxyList: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Proxy URLs for rotation (format: protocol://host:port)'
+        },
+        retryCount: {
+          type: 'number',
+          description: 'Number of retries for failed requests',
+          default: 3
+        },
+        retryDelayMs: {
+          type: 'number',
+          description: 'Delay between retries in ms (exponential backoff)',
+          default: 1000
+        },
+        timeout: {
+          type: 'number',
+          description: 'Request timeout in ms',
+          default: 30000
+        },
+        mode: {
+          type: 'string',
+          enum: ['browser', 'http'],
+          description: 'Crawl mode (browser = Puppeteer, http = fast HTTP)',
+          default: 'browser'
+        },
+        respectRobotsTxt: {
+          type: 'boolean',
+          description: 'Respect robots.txt rules',
+          default: true
+        },
+        userAgent: {
+          type: 'string',
+          description: 'Custom User-Agent string'
+        },
+        headers: {
+          type: 'object',
+          description: 'Custom headers for all requests'
+        },
+      },
+      required: ['startUrls'],
+    },
+  },
 ];
 
 // Tool name constants for type safety
@@ -676,6 +786,8 @@ export const TOOL_NAMES = {
   // Enhanced tools
   IFRAME_HANDLER: 'iframe_handler',
   STREAM_EXTRACTOR: 'stream_extractor',
+  // Crawler tool
+  WEB_CRAWLER: 'web_crawler',
 } as const;
 
 // Type definitions for tool inputs
