@@ -628,16 +628,21 @@ export const TOOLS = [
   // ============================================================
   {
     name: 'iframe_handler',
-    description: 'Extract content from nested iframes including embedded video players',
+    description: 'Extract content from nested iframes including embedded video players. Use action=deep_scrape for HTTP-based recursive crawling of complex streaming sites (5x faster than browser navigation)',
     inputSchema: {
       type: 'object',
       additionalProperties: false,
       properties: {
-        action: { type: 'string', enum: ['list', 'enter', 'extract', 'exitAll'], description: 'Action to perform on iframes' },
+        action: { type: 'string', enum: ['list', 'enter', 'extract', 'exitAll', 'deep_scrape'], description: 'Action to perform. deep_scrape: HTTP-based recursive iframe crawling for complex sites' },
         selector: { type: 'string', description: 'CSS selector of target iframe' },
         frameIndex: { type: 'number', description: 'Index of iframe to enter (0-based)' },
         maxDepth: { type: 'number', description: 'Maximum nesting depth to traverse', default: 3 },
         extractSelector: { type: 'string', description: 'Selector to extract content from within iframe' },
+        recursive: { type: 'boolean', description: 'Traverse nested iframes via HTTP (for deep_scrape)', default: true },
+        flatten: { type: 'boolean', description: 'Return flat list vs tree structure', default: true },
+        filterPattern: { type: 'string', description: 'Regex to filter iframe URLs (e.g., "multimoviesshg|streamhg")' },
+        extractVideoSources: { type: 'boolean', description: 'Auto-extract m3u8/mp4 video sources', default: true },
+        timeout: { type: 'number', description: 'HTTP request timeout in ms', default: 10000 },
       },
     },
   },

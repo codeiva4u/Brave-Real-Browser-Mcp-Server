@@ -2335,11 +2335,17 @@ export interface CountdownWaiterArgs {
 }
 
 export interface IframeHandlerArgs {
-    action?: 'list' | 'enter' | 'extract' | 'exitAll';
+    action?: 'list' | 'enter' | 'extract' | 'exitAll' | 'deep_scrape';
     selector?: string;
     frameIndex?: number;
     maxDepth?: number;
     extractSelector?: string;
+    // NEW: Enhanced parameters for complex websites
+    recursive?: boolean;           // Traverse nested iframes via HTTP
+    flatten?: boolean;             // Return flat list vs tree structure
+    filterPattern?: string;        // Regex to filter iframe URLs
+    extractVideoSources?: boolean; // Auto-extract m3u8/mp4 sources
+    timeout?: number;              // HTTP request timeout
 }
 
 export interface PopupHandlerArgs {
@@ -2558,6 +2564,146 @@ export async function handleIframeHandler(
             iframes: await listIframes(),
             message: 'Frame accessed successfully',
         };
+    }
+
+    // NEW: deep_scrape action - HTTP-based recursive iframe crawling
+    if (action === 'deep_scrape') {
+        const timeout = args.timeout || 10000;
+        const filterPattern = args.filterPattern ? new RegExp(args.filterPattern, 'i') : null;
+        const allIframes: any[] = [];
+        const videoSources: any[] = [];
+        const visited = new Set<string>();
+
+        // Helper: Fetch page content via HTTP
+        const fetchPageContent = async (url: string): Promise<string> => {
+            try {
+                const https = await import('https');
+                const http = await import('http');
+
+                return new Promise((resolve) => {
+                    const protocol = url.startsWith('https') ? https : http;
+                    const req = protocol.get(url, { timeout }, (res: any) => {
+                        let data = '';
+                        res.on('data', (chunk: string) => data += chunk);
+                        res.on('end', () => resolve(data));
+                    });
+                    req.on('error', () => resolve(''));
+                    req.on('timeout', () => { req.destroy(); resolve(''); });
+                });
+            } catch {
+                return '';
+            }
+        };
+
+        // Helper: Extract iframes and video sources from HTML
+        const extractFromHtml = (html: string, baseUrl: string): { iframes: string[]; videos: any[] } => {
+            const iframes: string[] = [];
+            const videos: any[] = [];
+
+            // Extract iframes
+            const iframeRegex = /<iframe[^>]*src=["']([^"']+)["'][^>]*>/gi;
+            let match;
+            while ((match = iframeRegex.exec(html)) !== null) {
+                let src = match[1];
+                // Handle relative URLs
+                if (src.startsWith('//')) src = 'https:' + src;
+                else if (src.startsWith('/')) {
+                    const urlObj = new URL(baseUrl);
+                    src = urlObj.origin + src;
+                }
+                iframes.push(src);
+            }
+
+            // Extract video sources (m3u8, mp4, etc.)
+            const videoPatterns = [
+                /https?:\/\/[^"'\s]+\.m3u8[^"'\s]*/gi,
+                /https?:\/\/[^"'\s]+\.mp4[^"'\s]*/gi,
+                /https?:\/\/[^"'\s]+\.webm[^"'\s]*/gi,
+                /file:\s*["']([^"']+\.m3u8[^"']*)["']/gi,
+                /source:\s*["']([^"']+\.m3u8[^"']*)["']/gi,
+            ];
+
+            for (const pattern of videoPatterns) {
+                let videoMatch;
+                while ((videoMatch = pattern.exec(html)) !== null) {
+                    const url = videoMatch[1] || videoMatch[0];
+                    videos.push({ url, type: url.includes('.m3u8') ? 'hls' : 'mp4' });
+                }
+            }
+
+            // Try to unpack obfuscated JS (p,a,c,k,e,d)
+            const packedMatch = html.match(/eval\(function\(p,a,c,k,e,[rd]\)[^{]+\{[^}]+\}[^)]+\('[^']+'/);
+            if (packedMatch) {
+                try {
+                    // Simple unpacking - extract strings
+                    const stringsMatch = html.match(/'([^']+)'\.split\('\|'\)/);
+                    if (stringsMatch) {
+                        const strings = stringsMatch[1].split('|');
+                        for (const s of strings) {
+                            if (s.includes('m3u8') || s.includes('master')) {
+                                // Find m3u8 URLs in unpacked content
+                                const m3u8Match = html.match(new RegExp(`https?://[^"'\\s]*${s}[^"'\\s]*`, 'i'));
+                                if (m3u8Match) {
+                                    videos.push({ url: m3u8Match[0], type: 'hls', unpacked: true });
+                                }
+                            }
+                        }
+                    }
+                } catch { /* ignore unpacking errors */ }
+            }
+
+            return { iframes, videos };
+        };
+
+        // Recursive crawler
+        const crawlIframe = async (url: string, depth: number): Promise<void> => {
+            if (depth >= maxDepth || visited.has(url)) return;
+            visited.add(url);
+
+            // Apply filter if specified
+            if (filterPattern && !filterPattern.test(url)) return;
+
+            const html = await fetchPageContent(url);
+            if (!html) return;
+
+            const { iframes, videos } = extractFromHtml(html, url);
+
+            // Add this iframe to results
+            allIframes.push({ depth, url, childCount: iframes.length });
+
+            // Add video sources
+            for (const video of videos) {
+                if (!videoSources.some(v => v.url === video.url)) {
+                    videoSources.push({ ...video, foundAt: url, depth });
+                }
+            }
+
+            // Recursively crawl child iframes
+            for (const iframeSrc of iframes) {
+                await crawlIframe(iframeSrc, depth + 1);
+            }
+        };
+
+        // Start from current page URL
+        const currentUrl = page.url();
+        await crawlIframe(currentUrl, 0);
+
+        // Also check browser frames
+        for (const frame of page.frames()) {
+            try {
+                const frameUrl = frame.url();
+                if (frameUrl && frameUrl !== 'about:blank' && !visited.has(frameUrl)) {
+                    await crawlIframe(frameUrl, 1);
+                }
+            } catch { /* ignore inaccessible frames */ }
+        }
+
+        return {
+            success: true,
+            iframes: args.flatten !== false ? allIframes : allIframes,
+            videoSources: args.extractVideoSources !== false ? videoSources : undefined,
+            message: `Deep scraped ${allIframes.length} iframes, found ${videoSources.length} video sources`,
+        } as any;
     }
 
     return {
