@@ -9,11 +9,11 @@ export async function handleGetContent(args: GetContentArgs) {
   const progressNotifier = getProgressNotifier();
   const progressToken = `get-content-${Date.now()}`;
   const tracker = progressNotifier.createTracker(progressToken);
-  
+
   return await withWorkflowValidation('get_content', args, async () => {
     return await withErrorHandling(async () => {
       tracker.start(100, '📄 Starting content extraction...');
-      
+
       const pageInstance = getPageInstance();
       if (!pageInstance) {
         tracker.fail('Browser not initialized');
@@ -78,11 +78,11 @@ export async function handleFindSelector(args: FindSelectorArgs) {
   const progressNotifier = getProgressNotifier();
   const progressToken = `find-selector-${Date.now()}`;
   const tracker = progressNotifier.createTracker(progressToken);
-  
+
   return await withWorkflowValidation('find_selector', args, async () => {
     return await withErrorHandling(async () => {
       tracker.start(100, '🔍 Starting element search...');
-      
+
       const pageInstance = getPageInstance();
       if (!pageInstance) {
         tracker.fail('Browser not initialized');
@@ -103,8 +103,47 @@ export async function handleFindSelector(args: FindSelectorArgs) {
 
       // Ensure elementType has a fallback value
       const elementType = (args as any)?.elementType || '*';
-      
+
       tracker.setProgress(10, '🔧 Preparing search strategies...');
+
+      // ============================================================
+      // FUZZY MATCHING: Levenshtein distance for typo tolerance
+      // ============================================================
+      const fuzzyMatch = (str1: string, str2: string, threshold = 0.7): { match: boolean; score: number } => {
+        const s1 = str1.toLowerCase();
+        const s2 = str2.toLowerCase();
+
+        // Exact match
+        if (s1 === s2) return { match: true, score: 1 };
+
+        // Contains match
+        if (s1.includes(s2) || s2.includes(s1)) return { match: true, score: 0.9 };
+
+        // Levenshtein distance
+        const len1 = s1.length;
+        const len2 = s2.length;
+        const matrix: number[][] = [];
+
+        for (let i = 0; i <= len1; i++) matrix[i] = [i];
+        for (let j = 0; j <= len2; j++) matrix[0][j] = j;
+
+        for (let i = 1; i <= len1; i++) {
+          for (let j = 1; j <= len2; j++) {
+            const cost = s1[i - 1] === s2[j - 1] ? 0 : 1;
+            matrix[i][j] = Math.min(
+              matrix[i - 1][j] + 1,      // deletion
+              matrix[i][j - 1] + 1,      // insertion
+              matrix[i - 1][j - 1] + cost // substitution
+            );
+          }
+        }
+
+        const distance = matrix[len1][len2];
+        const maxLen = Math.max(len1, len2);
+        const score = 1 - (distance / maxLen);
+
+        return { match: score >= threshold, score };
+      };
 
       // Helper: Search in Shadow DOM
       const searchInShadowDOM = async (sel: string) => {
