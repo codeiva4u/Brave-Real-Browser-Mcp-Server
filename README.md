@@ -20,6 +20,18 @@
 }
 ```
 
+## Local MCP Setup 
+
+```json
+{
+  "mcpServers": {
+    "brave-real-browser": {
+      "command": "node",
+      "args": ["c:\\Users\\Admin\\Desktop\\Workspace-For-Brave-Real-browser-Mcp-Server\\Brave-Real-Browser-Mcp-Server\\dist\\index.js"]
+    }
+  }
+}
+```
 **Config locations:**
 - **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
 - **Mac:** `~/Library/Application Support/Claude/`
