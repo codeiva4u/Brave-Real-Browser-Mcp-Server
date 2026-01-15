@@ -20,7 +20,7 @@
 }
 ```
 
-## (Local AI IDEs) 
+## Option 1: (Local AI IDEs) 
 
 ```json
 {
