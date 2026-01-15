@@ -2914,27 +2914,28 @@ export async function handleCloudflareBypass(
 
 /**
  * Master tool: Extract direct stream/download URLs
+ * ULTRA POWERFUL: Handles packed JS, JW Player, Video.js, HLS.js, obfuscated scripts
  */
 export async function handleStreamExtractor(
     page: Page,
     args: StreamExtractorArgs
 ): Promise<{
     success: boolean;
-    directUrls: { url: string; format: string; quality?: string; size?: string }[];
+    directUrls: { url: string; format: string; quality?: string; size?: string; source?: string }[];
     message: string
 }> {
-    const formats = args.formats || ['mp4', 'mkv', 'm3u8', 'mp3', 'webm'];
+    const formats = args.formats || ['mp4', 'mkv', 'm3u8', 'mp3', 'webm', 'flv', 'avi'];
     const maxRedirects = args.maxRedirects || 10;
-    const directUrls: { url: string; format: string; quality?: string; size?: string }[] = [];
+    const directUrls: { url: string; format: string; quality?: string; size?: string; source?: string }[] = [];
 
     // Navigate if URL provided
     if (args.url) {
         await page.goto(args.url, { waitUntil: 'domcontentloaded', timeout: 30000 });
     }
 
-    // Handle Cloudflare if enabled (inline logic)
+    // Handle Cloudflare if enabled
     if (args.bypassCloudflare) {
-        const cfPatterns = ['Checking your browser', 'Just a moment', 'cf-browser-verification'];
+        const cfPatterns = ['Checking your browser', 'Just a moment', 'cf-browser-verification', 'cf_chl_opt'];
         const isCloudflare = async () => {
             try {
                 const content = await page.content();
@@ -2942,79 +2943,217 @@ export async function handleStreamExtractor(
             } catch { return false; }
         };
 
-        // Wait up to 15 seconds for Cloudflare to pass
         const startCf = Date.now();
-        while (await isCloudflare() && Date.now() - startCf < 15000) {
+        while (await isCloudflare() && Date.now() - startCf < 20000) {
             await new Promise(r => setTimeout(r, 1000));
         }
     }
 
-    // Handle countdown if enabled (inline logic)
+    // Handle countdown if enabled
     if (args.waitForCountdown) {
-        const maxWait = 60;
+        const maxWait = 120;
         const startTime = Date.now();
         while ((Date.now() - startTime) / 1000 < maxWait) {
             const hasCountdown = await page.evaluate(() => {
                 const text = document.body?.innerText || '';
-                return /\d+\s*seconds?|wait\s*\d+|please\s*wait|countdown/gi.test(text);
+                return /\d+\s*seconds?|wait\s*\d+|please\s*wait|countdown|getting link/gi.test(text);
             });
             if (!hasCountdown) break;
             await new Promise(r => setTimeout(r, 1000));
         }
     }
 
-    // Extract URLs from page
-    const extractedUrls = await page.evaluate((fmts: string[]) => {
-        const urls: string[] = [];
-        const patterns = fmts.map(f => new RegExp(`https?://[^"'\\s]+\\.${f}([?#][^"'\\s]*)?`, 'gi'));
-
-        // Check page HTML
+    // ULTRA POWERFUL: Extract from all sources
+    const extractedData = await page.evaluate((fmts: string[]) => {
+        const urls: { url: string; source: string }[] = [];
         const html = document.documentElement.innerHTML;
-        patterns.forEach(pattern => {
-            const matches = html.match(pattern);
-            if (matches) urls.push(...matches);
-        });
 
-        // Check video/audio sources
-        document.querySelectorAll('video source, audio source, video, audio').forEach(el => {
-            const src = el.getAttribute('src');
-            if (src && fmts.some(f => src.includes(`.${f}`))) {
-                urls.push(src);
+        // ============================================================
+        // 1. PACKED JS UNPACKING (p,a,c,k,e,d)
+        // ============================================================
+        const unpackPackedJS = (packed: string): string => {
+            try {
+                // Find packed function pattern
+                const match = packed.match(/eval\(function\(p,a,c,k,e,[rd]\)\{[^}]+\}[^)]+\('[^']+'/);
+                if (!match) return '';
+
+                // Extract the encoded string and dictionary
+                const stringsMatch = packed.match(/'([^']+)'\.split\('\|'\)/);
+                if (!stringsMatch) return '';
+
+                const dict = stringsMatch[1].split('|');
+                let result = packed;
+
+                // Replace placeholders with actual values
+                for (let i = 0; i < dict.length; i++) {
+                    if (dict[i]) {
+                        const base36 = i.toString(36);
+                        result = result.replace(new RegExp(`\\b${base36}\\b`, 'g'), dict[i]);
+                    }
+                }
+                return result;
+            } catch { return ''; }
+        };
+
+        // Find and unpack all packed scripts
+        const scripts = document.querySelectorAll('script');
+        scripts.forEach(script => {
+            const content = script.textContent || '';
+            if (content.includes('eval(function(p,a,c,k,e,')) {
+                const unpacked = unpackPackedJS(content);
+                // Extract URLs from unpacked content
+                fmts.forEach(fmt => {
+                    const regex = new RegExp(`https?://[^"'\\s]+\\.${fmt}[^"'\\s]*`, 'gi');
+                    const matches = unpacked.match(regex);
+                    if (matches) matches.forEach(url => urls.push({ url, source: 'packed_js' }));
+                });
             }
         });
 
-        // Check links
+        // ============================================================
+        // 2. JW PLAYER DETECTION
+        // ============================================================
+        if ((window as any).jwplayer) {
+            try {
+                const player = (window as any).jwplayer();
+                if (player && player.getPlaylistItem) {
+                    const item = player.getPlaylistItem();
+                    if (item) {
+                        if (item.file) urls.push({ url: item.file, source: 'jwplayer' });
+                        if (item.sources) {
+                            item.sources.forEach((s: any) => {
+                                if (s.file) urls.push({ url: s.file, source: 'jwplayer' });
+                            });
+                        }
+                    }
+                }
+            } catch { /* ignore */ }
+        }
+
+        // JW Player setup patterns in scripts
+        const jwPatterns = [
+            /file:\s*["']([^"']+\.m3u8[^"']*?)["']/gi,
+            /file:\s*["']([^"']+\.mp4[^"']*?)["']/gi,
+            /sources:\s*\[\s*\{[^}]*file:\s*["']([^"']+)["']/gi,
+            /setup\([^)]*file:\s*["']([^"']+)["']/gi,
+        ];
+        jwPatterns.forEach(pattern => {
+            let match;
+            while ((match = pattern.exec(html)) !== null) {
+                urls.push({ url: match[1], source: 'jwplayer_setup' });
+            }
+        });
+
+        // ============================================================
+        // 3. VIDEO.JS DETECTION
+        // ============================================================
+        const videoJsPlayers = document.querySelectorAll('.video-js, [data-setup], video[id^="vjs"]');
+        videoJsPlayers.forEach(player => {
+            const video = player.querySelector('source') || player;
+            const src = video.getAttribute('src') || (player as any).src;
+            if (src) urls.push({ url: src, source: 'videojs' });
+        });
+
+        // ============================================================
+        // 4. HLS.JS DETECTION
+        // ============================================================
+        const hlsPatterns = [
+            /hls\.loadSource\(["']([^"']+)["']\)/gi,
+            /Hls\.loadSource\(["']([^"']+)["']\)/gi,
+            /source:\s*["']([^"']+\.m3u8[^"']*)["']/gi,
+            /src:\s*["']([^"']+\.m3u8[^"']*)["']/gi,
+        ];
+        hlsPatterns.forEach(pattern => {
+            let match;
+            while ((match = pattern.exec(html)) !== null) {
+                urls.push({ url: match[1], source: 'hlsjs' });
+            }
+        });
+
+        // ============================================================
+        // 5. PLYR DETECTION
+        // ============================================================
+        if ((window as any).Plyr) {
+            try {
+                const plyrPlayer = (window as any).player;
+                if (plyrPlayer && plyrPlayer.source) {
+                    urls.push({ url: plyrPlayer.source, source: 'plyr' });
+                }
+            } catch { /* ignore */ }
+        }
+
+        // ============================================================
+        // 6. DATA ATTRIBUTES
+        // ============================================================
+        document.querySelectorAll('[data-src], [data-video], [data-file], [data-stream]').forEach(el => {
+            const attrs = ['data-src', 'data-video', 'data-file', 'data-stream', 'data-link'];
+            attrs.forEach(attr => {
+                const val = el.getAttribute(attr);
+                if (val && fmts.some(f => val.includes(`.${f}`))) {
+                    urls.push({ url: val, source: 'data_attr' });
+                }
+            });
+        });
+
+        // ============================================================
+        // 7. STANDARD VIDEO/AUDIO ELEMENTS
+        // ============================================================
+        document.querySelectorAll('video, audio, source').forEach(el => {
+            const src = el.getAttribute('src');
+            if (src) urls.push({ url: src, source: 'html_media' });
+        });
+
+        // ============================================================
+        // 8. DIRECT LINKS
+        // ============================================================
         document.querySelectorAll('a[href]').forEach(el => {
             const href = (el as HTMLAnchorElement).href;
             if (href && fmts.some(f => href.includes(`.${f}`))) {
-                urls.push(href);
+                urls.push({ url: href, source: 'direct_link' });
             }
         });
 
-        // Check iframes for embedded players
+        // ============================================================
+        // 9. IFRAME PLAYERS
+        // ============================================================
         document.querySelectorAll('iframe').forEach(iframe => {
             const src = iframe.src;
-            if (src && (src.includes('player') || src.includes('embed'))) {
-                urls.push(`iframe:${src}`);
+            if (src && (src.includes('player') || src.includes('embed') || src.includes('video'))) {
+                urls.push({ url: `iframe:${src}`, source: 'iframe' });
             }
         });
 
-        return [...new Set(urls)];
+        // ============================================================
+        // 10. REGEX SCAN OF ENTIRE HTML
+        // ============================================================
+        fmts.forEach(fmt => {
+            const pattern = new RegExp(`https?://[^"'\\s<>]+\\.${fmt}[^"'\\s<>]*`, 'gi');
+            const matches = html.match(pattern);
+            if (matches) matches.forEach(url => urls.push({ url, source: 'regex_scan' }));
+        });
+
+        // Deduplicate
+        const seen = new Set<string>();
+        return urls.filter(u => {
+            if (seen.has(u.url)) return false;
+            seen.add(u.url);
+            return true;
+        });
     }, formats);
 
     // Process found URLs
-    for (const url of extractedUrls) {
-        const format = formats.find(f => url.includes(`.${f}`)) || 'unknown';
+    for (const item of extractedData) {
+        const format = formats.find(f => item.url.includes(`.${f}`)) || 'unknown';
         directUrls.push({
-            url,
+            url: item.url,
             format,
             quality: args.quality || 'auto',
+            source: item.source,
         });
     }
 
     // Check network requests for media URLs
     const networkUrls = await page.evaluate((fmts: string[]) => {
-        // Check performance entries for loaded resources
         const resources = performance.getEntriesByType('resource') as PerformanceResourceTiming[];
         return resources
             .filter(r => fmts.some(f => r.name.includes(`.${f}`)))
@@ -3024,7 +3163,7 @@ export async function handleStreamExtractor(
     for (const url of networkUrls) {
         if (!directUrls.some(d => d.url === url)) {
             const format = formats.find(f => url.includes(`.${f}`)) || 'unknown';
-            directUrls.push({ url, format });
+            directUrls.push({ url, format, source: 'network' });
         }
     }
 
@@ -3032,7 +3171,7 @@ export async function handleStreamExtractor(
         success: directUrls.length > 0,
         directUrls,
         message: directUrls.length > 0
-            ? `Found ${directUrls.length} direct URL(s)`
+            ? `🎬 Found ${directUrls.length} direct URL(s) from ${new Set(directUrls.map(d => d.source)).size} sources`
             : 'No direct URLs found',
     };
 }
