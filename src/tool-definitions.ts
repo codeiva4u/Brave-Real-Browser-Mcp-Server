@@ -156,6 +156,76 @@ export const TOOLS = [
     },
   },
   {
+    name: 'wait',
+    description: 'Wait for various conditions',
+    inputSchema: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        type: {
+          type: 'string',
+          enum: ['selector', 'navigation', 'timeout'],
+          description: 'Type of wait condition',
+        },
+        value: {
+          type: 'string',
+          description: 'Selector to wait for or timeout in ms',
+        },
+        timeout: {
+          type: 'number',
+          description: 'Maximum wait time in ms',
+          default: 30000,
+        },
+      },
+      required: ['type', 'value'],
+    },
+  },
+  {
+    name: 'dropdown_select',
+    description: 'Intelligent dropdown/select element handler. Supports native HTML select, custom dropdowns, autocomplete, and searchable selects with smart fallback strategies.',
+    inputSchema: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        selector: {
+          type: 'string',
+          description: 'CSS selector for the select/dropdown element',
+        },
+        value: {
+          type: 'string',
+          description: 'Value to select (option value attribute)',
+        },
+        text: {
+          type: 'string',
+          description: 'Visible text of option to select (alternative to value)',
+        },
+        index: {
+          type: 'number',
+          description: 'Index of option to select (0-based, alternative to value/text)',
+        },
+        searchText: {
+          type: 'string',
+          description: 'For searchable dropdowns: text to type before selecting',
+        },
+        waitForOptions: {
+          type: 'boolean',
+          description: 'Wait for dropdown options to load (useful for AJAX dropdowns)',
+          default: true,
+        },
+        clickToOpen: {
+          type: 'boolean',
+          description: 'Click to open dropdown before selecting (for custom dropdowns)',
+          default: false,
+        },
+        optionSelector: {
+          type: 'string',
+          description: 'CSS selector for dropdown options (for custom dropdowns)',
+        },
+      },
+      required: ['selector'],
+    },
+  },
+  {
     name: 'click',
     description: 'Click on an element',
     inputSchema: {
@@ -197,31 +267,6 @@ export const TOOLS = [
         },
       },
       required: ['selector', 'text'],
-    },
-  },
-  {
-    name: 'wait',
-    description: 'Wait for various conditions',
-    inputSchema: {
-      type: 'object',
-      additionalProperties: false,
-      properties: {
-        type: {
-          type: 'string',
-          enum: ['selector', 'navigation', 'timeout'],
-          description: 'Type of wait condition',
-        },
-        value: {
-          type: 'string',
-          description: 'Selector to wait for or timeout in ms',
-        },
-        timeout: {
-          type: 'number',
-          description: 'Maximum wait time in ms',
-          default: 30000,
-        },
-      },
-      required: ['type', 'value'],
     },
   },
   {
@@ -638,127 +683,6 @@ export const TOOLS = [
       },
     },
   },
-  // ============================================================
-  // WEB CRAWLER TOOL (Movie Streaming Optimized)
-  // ============================================================
-  {
-    name: 'web_crawler',
-    description: 'Advanced web crawler optimized for movie downloading and streaming websites. Features: URL queue (breadth/depth-first), proxy rotation, auto-retry, rate limiting, JavaScript popup blocking, overlay ads blocking, and video link extraction. Uses brave-real-puppeteer-core with 50+ stealth features.',
-    inputSchema: {
-      type: 'object',
-      additionalProperties: false,
-      properties: {
-        startUrls: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'Initial URLs to start crawling from (movie/streaming pages)'
-        },
-        maxDepth: {
-          type: 'number',
-          description: 'Maximum crawl depth (1 = only start URLs)',
-          default: 3
-        },
-        maxPages: {
-          type: 'number',
-          description: 'Maximum pages to crawl',
-          default: 50
-        },
-        concurrency: {
-          type: 'number',
-          description: 'Number of concurrent requests',
-          default: 3
-        },
-        rateLimit: {
-          type: 'number',
-          description: 'Maximum requests per second',
-          default: 2
-        },
-        crawlStrategy: {
-          type: 'string',
-          enum: ['breadth-first', 'depth-first'],
-          description: 'URL queue strategy',
-          default: 'breadth-first'
-        },
-        includePattern: {
-          type: 'string',
-          description: 'Regex pattern for URLs to include'
-        },
-        excludePattern: {
-          type: 'string',
-          description: 'Regex pattern for URLs to exclude'
-        },
-        extractSelectors: {
-          type: 'object',
-          description: 'CSS selectors for data extraction (e.g., {"title": "h1", "links": "a[href]"})'
-        },
-        followLinks: {
-          type: 'boolean',
-          description: 'Follow discovered links',
-          default: true
-        },
-        // Movie streaming specific options
-        blockPopups: {
-          type: 'boolean',
-          description: 'Block JavaScript popup ads and window.open calls',
-          default: true
-        },
-        blockOverlayAds: {
-          type: 'boolean',
-          description: 'Block overlay ads, modal popups, and floating elements',
-          default: true
-        },
-        extractVideoLinks: {
-          type: 'boolean',
-          description: 'Auto-extract m3u8, mp4, mkv video links from pages',
-          default: true
-        },
-        downloadMedia: {
-          type: 'boolean',
-          description: 'Download video/audio files',
-          default: false
-        },
-        savePath: {
-          type: 'string',
-          description: 'Path to save downloaded files'
-        },
-        proxyList: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'Proxy URLs for rotation (format: protocol://host:port)'
-        },
-        retryCount: {
-          type: 'number',
-          description: 'Number of retries for failed requests',
-          default: 3
-        },
-        retryDelayMs: {
-          type: 'number',
-          description: 'Delay between retries in ms (exponential backoff)',
-          default: 1000
-        },
-        timeout: {
-          type: 'number',
-          description: 'Request timeout in ms',
-          default: 30000
-        },
-        mode: {
-          type: 'string',
-          enum: ['browser', 'http'],
-          description: 'Crawl mode (browser = Puppeteer, http = fast HTTP)',
-          default: 'browser'
-        },
-        userAgent: {
-          type: 'string',
-          description: 'Custom User-Agent string'
-        },
-        headers: {
-          type: 'object',
-          description: 'Custom headers for all requests'
-        },
-      },
-      required: ['startUrls'],
-    },
-  },
 ];
 
 // Tool name constants for type safety
@@ -767,6 +691,7 @@ export const TOOL_NAMES = {
   NAVIGATE: 'navigate',
   GET_CONTENT: 'get_content',
   CLICK: 'click',
+  DROPDOWN_SELECT: 'dropdown_select',
   TYPE: 'type',
   WAIT: 'wait',
   BROWSER_CLOSE: 'browser_close',
@@ -797,8 +722,7 @@ export const TOOL_NAMES = {
   // Enhanced tools
   IFRAME_HANDLER: 'iframe_handler',
   STREAM_EXTRACTOR: 'stream_extractor',
-  // Crawler tool
-  WEB_CRAWLER: 'web_crawler',
+
 } as const;
 
 // Type definitions for tool inputs

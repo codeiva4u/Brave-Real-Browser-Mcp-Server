@@ -51,7 +51,6 @@
     "@modelcontextprotocol/sdk": "latest",
     "@types/turndown": "latest",
     "brave-real-browser": "*",
-    "crawlee": "^3.15.3",
     "puppeteer-core": "^24.35.0",
     "turndown": "latest",
     "vscode-languageserver": "^9.0.1",

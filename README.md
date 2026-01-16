@@ -11,10 +11,14 @@
 
 ```json
 {
+  {
   "mcpServers": {
     "brave-real-browser": {
       "command": "npx",
-      "args": ["brave-real-browser-mcp-server@latest"]
+      "args": ["brave-real-browser-mcp-server@latest"],
+      "env": {
+        "headless": "false"
+      }
     }
   }
 }

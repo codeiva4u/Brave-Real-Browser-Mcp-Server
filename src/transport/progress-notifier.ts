@@ -61,7 +61,7 @@ export class ProgressNotifier {
       total: 100,
       message: message || 'Starting operation...',
     };
-    
+
     this.activeOperations.set(progressToken, update);
     this.notify(update);
   }
@@ -79,7 +79,7 @@ export class ProgressNotifier {
     }
   ): void {
     const existing = this.activeOperations.get(progressToken);
-    
+
     const update: ProgressUpdate = {
       progressToken,
       progress,
@@ -97,7 +97,7 @@ export class ProgressNotifier {
    */
   completeOperation(progressToken: string | number, message?: string): void {
     const existing = this.activeOperations.get(progressToken);
-    
+
     const update: ProgressUpdate = {
       progressToken,
       progress: existing?.total ?? 100,

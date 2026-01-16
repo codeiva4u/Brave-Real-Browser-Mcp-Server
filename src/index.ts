@@ -84,7 +84,7 @@ import { setupProcessCleanup, MCP_SERVER_CONFIG } from './core-infrastructure.js
 debug('Loading handlers...');
 import { handleBrowserInit, handleBrowserClose } from './handlers/browser-handlers.js';
 import { handleNavigate, handleWait } from './handlers/navigation-handlers.js';
-import { handleClick, handleType, handleSolveCaptcha, handleRandomScroll } from './handlers/interaction-handlers.js';
+import { handleClick, handleSelect, handleType, handleSolveCaptcha, handleRandomScroll } from './handlers/interaction-handlers.js';
 import { handleGetContent, handleFindSelector } from './handlers/content-handlers.js';
 import { handleSaveContentAsMarkdown } from './handlers/file-handlers.js';
 
@@ -122,8 +122,6 @@ import {
   // Enhanced streaming/download tools
   handleIframeHandler,
   handleStreamExtractor,
-  // Web crawler
-  handleWebCrawler,
 } from './handlers/advanced-tools.js';
 
 // State for video recording
@@ -248,6 +246,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
       case TOOL_NAMES.CLICK:
         return await handleClick(args as unknown as ClickArgs);
 
+      case TOOL_NAMES.DROPDOWN_SELECT:
+        return await handleSelect(args as any);
+
       case TOOL_NAMES.TYPE:
         return await handleType(args as unknown as TypeArgs);
 
@@ -359,10 +360,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
         if (!page) throw new Error('Browser not initialized. Call browser_init first.');
         return { content: [{ type: 'text', text: JSON.stringify(await handleStreamExtractor(page, args as any)) }] };
 
-      // Web Crawler (Crawlee + brave-real-launcher)
-      case TOOL_NAMES.WEB_CRAWLER:
-        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
-        return { content: [{ type: 'text', text: JSON.stringify(await handleWebCrawler(page, args as any)) }] };
 
       default:
         throw new Error(`Unknown tool: ${name}`);

@@ -152,6 +152,219 @@ export async function handleClick(args: ClickArgs) {
   });
 }
 
+// Intelligent select handler for dropdowns, custom selects, and searchable inputs
+export interface SelectArgs {
+  selector: string;
+  value?: string;
+  text?: string;
+  index?: number;
+  searchText?: string;
+  waitForOptions?: boolean;
+  clickToOpen?: boolean;
+  optionSelector?: string;
+}
+
+export async function handleSelect(args: SelectArgs) {
+  const progressNotifier = getProgressNotifier();
+  const progressToken = `select-${Date.now()}`;
+  const tracker = progressNotifier.createTracker(progressToken);
+
+  return await withWorkflowValidation('select', args, async () => {
+    return await withErrorHandling(async () => {
+      tracker.start(100, '📋 Starting select operation...');
+
+      const pageInstance = getPageInstance();
+      if (!pageInstance) {
+        tracker.fail('Browser not initialized');
+        throw new Error('Browser not initialized. Call browser_init first.');
+      }
+
+      const {
+        selector,
+        value,
+        text,
+        index,
+        searchText,
+        waitForOptions = true,
+        clickToOpen = false,
+        optionSelector
+      } = args;
+
+      tracker.setProgress(10, `🔍 Finding select element: ${selector}`);
+
+      // Find the select/dropdown element
+      const elementResult = await selfHealingLocators.findElementWithFallbacks(
+        pageInstance,
+        selector
+      );
+
+      if (!elementResult) {
+        tracker.fail('Select element not found');
+        throw new Error(`Select element not found: ${selector}`);
+      }
+
+      const { element, usedSelector } = elementResult;
+
+      tracker.setProgress(25, '✅ Select element found, detecting type...');
+
+      // Detect select type: native <select> or custom dropdown
+      const selectType = await pageInstance.evaluate((sel: string) => {
+        const el = document.querySelector(sel);
+        if (!el) return 'not-found';
+        if (el.tagName.toLowerCase() === 'select') return 'native';
+        if (el.getAttribute('role') === 'listbox' || el.getAttribute('role') === 'combobox') return 'aria';
+        if (el.classList.toString().match(/select|dropdown|combo/i)) return 'custom';
+        return 'custom';
+      }, usedSelector);
+
+      tracker.setProgress(35, `🎯 Detected type: ${selectType}`);
+
+      // Handle native <select> elements
+      if (selectType === 'native') {
+        tracker.setProgress(50, '📋 Handling native <select> element...');
+
+        let selectResult: string[] = [];
+
+        if (value !== undefined) {
+          selectResult = await pageInstance.select(usedSelector, value);
+        } else if (text !== undefined) {
+          // Select by visible text
+          const optionValue = await pageInstance.evaluate((sel: string, targetText: string) => {
+            const select = document.querySelector(sel) as HTMLSelectElement;
+            if (!select) return null;
+            const option = Array.from(select.options).find(o =>
+              o.text.trim() === targetText.trim() ||
+              o.text.toLowerCase().includes(targetText.toLowerCase())
+            );
+            return option?.value || null;
+          }, usedSelector, text);
+
+          if (optionValue) {
+            selectResult = await pageInstance.select(usedSelector, optionValue);
+          } else {
+            throw new Error(`Option with text "${text}" not found`);
+          }
+        } else if (index !== undefined) {
+          // Select by index
+          const optionValue = await pageInstance.evaluate((sel: string, idx: number) => {
+            const select = document.querySelector(sel) as HTMLSelectElement;
+            return select?.options[idx]?.value || null;
+          }, usedSelector, index);
+
+          if (optionValue) {
+            selectResult = await pageInstance.select(usedSelector, optionValue);
+          } else {
+            throw new Error(`Option at index ${index} not found`);
+          }
+        }
+
+        tracker.complete('🎉 Native select completed successfully');
+        return {
+          content: [{
+            type: 'text',
+            text: `✅ Selected value in native dropdown: ${selector}\nSelected: ${selectResult.join(', ') || 'success'}`,
+          }],
+        };
+      }
+
+      // Handle custom dropdowns (React, Vue, etc.)
+      tracker.setProgress(50, '📋 Handling custom dropdown...');
+
+      // Click to open if needed
+      if (clickToOpen) {
+        tracker.setProgress(55, '🖱️ Opening dropdown...');
+        await element.click();
+        await sleep(300); // Wait for animation
+      }
+
+      // Wait for options to load (AJAX dropdowns)
+      if (waitForOptions) {
+        tracker.setProgress(60, '⏳ Waiting for options to load...');
+        await sleep(500);
+      }
+
+      // Handle searchable dropdowns
+      if (searchText) {
+        tracker.setProgress(65, `🔍 Searching: ${searchText}...`);
+        // Type search text into the input
+        await element.type(searchText, { delay: 50 });
+        await sleep(500); // Wait for search results
+      }
+
+      // Find and click the option
+      tracker.setProgress(75, '🎯 Selecting option...');
+
+      const finalOptionSelector = optionSelector ||
+        '[role="option"],' +
+        ' [class*="option"]:not([class*="disabled"]),' +
+        ' li[data-value],' +
+        ' li:not(.disabled),' +
+        ' .dropdown-item';
+
+      const targetValue = value || text;
+
+      const optionClicked = await pageInstance.evaluate((
+        optSel: string,
+        targetVal: string | undefined,
+        targetIndex: number | undefined
+      ) => {
+        const options = Array.from(document.querySelectorAll(optSel));
+
+        if (targetVal !== undefined) {
+          // Find by value or text
+          const option = options.find(opt =>
+            opt.getAttribute('value') === targetVal ||
+            opt.textContent?.trim() === targetVal ||
+            opt.textContent?.toLowerCase().includes(targetVal.toLowerCase())
+          );
+          if (option) {
+            (option as HTMLElement).click();
+            return true;
+          }
+        } else if (targetIndex !== undefined && options[targetIndex]) {
+          (options[targetIndex] as HTMLElement).click();
+          return true;
+        }
+        return false;
+      }, finalOptionSelector, targetValue, index);
+
+      if (!optionClicked) {
+        // Fallback: try clicking by text content
+        const textToFind = text || value || searchText;
+        if (textToFind) {
+          const clicked = await pageInstance.evaluate((searchText: string) => {
+            const allElements = Array.from(document.querySelectorAll('*'));
+            for (const el of allElements) {
+              if (el.textContent?.trim() === searchText ||
+                el.textContent?.toLowerCase().includes(searchText.toLowerCase())) {
+                const style = window.getComputedStyle(el);
+                if (style.display !== 'none' && style.visibility !== 'hidden') {
+                  (el as HTMLElement).click();
+                  return true;
+                }
+              }
+            }
+            return false;
+          }, textToFind);
+
+          if (!clicked) {
+            throw new Error(`Could not find or click option: ${textToFind}`);
+          }
+        }
+      }
+
+      tracker.complete('🎉 Custom dropdown selection completed');
+      return {
+        content: [{
+          type: 'text',
+          text: `✅ Selected option in custom dropdown: ${selector}\nType: ${selectType}\nTarget: ${value || text || `index:${index}`}`,
+        }],
+      };
+
+    }, 'Failed to select option');
+  });
+}
+
 // Type handler with real-time progress
 export async function handleType(args: TypeArgs) {
   const progressNotifier = getProgressNotifier();
