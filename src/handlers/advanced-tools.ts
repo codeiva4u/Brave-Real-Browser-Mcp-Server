@@ -162,6 +162,20 @@ export interface SolveCaptchaAdvancedArgs {
     timeout?: number;
 }
 
+/**
+ * Arguments for JS Scrape tool - Single-call JS-rendered content extraction
+ */
+export interface JsScrapeArgs {
+    url: string;
+    waitForSelector?: string;
+    waitForTimeout?: number;
+    extractSelector?: string;
+    extractAttributes?: string[];
+    returnType?: 'html' | 'text' | 'elements';
+    scrollToLoad?: boolean;
+    closeBrowserAfter?: boolean;
+}
+
 // ============================================================
 // HANDLER IMPLEMENTATIONS
 // ============================================================
@@ -3461,6 +3475,161 @@ export async function handleStreamExtractor(
             ? `🎬 Found ${directUrls.length} direct URL(s) from ${new Set(directUrls.map(d => d.source)).size} sources`
             : 'No direct URLs found',
     };
+}
+
+/**
+ * JS Scrape - Single-call JavaScript-rendered content extraction
+ * Combines navigation, waiting, scrolling, and content extraction in one call
+ * Perfect for scraping dynamic/AJAX-loaded content
+ */
+export async function handleJsScrape(
+    page: Page,
+    args: JsScrapeArgs
+): Promise<{
+    success: boolean;
+    url: string;
+    finalUrl: string;
+    title: string;
+    html?: string;
+    text?: string;
+    elements?: { tag: string; text: string; attributes: Record<string, string> }[];
+    elementCount: number;
+    error?: string;
+}> {
+    const waitForTimeout = args.waitForTimeout || 10000;
+    const returnType = args.returnType || 'html';
+
+    try {
+        // Step 1: Navigate to URL
+        await page.goto(args.url, {
+            waitUntil: 'domcontentloaded',
+            timeout: waitForTimeout
+        });
+
+        // Step 2: Wait for specific selector if provided
+        if (args.waitForSelector) {
+            try {
+                await page.waitForSelector(args.waitForSelector, {
+                    timeout: waitForTimeout,
+                    visible: true
+                });
+            } catch (e) {
+                // Continue even if selector not found - page might still have content
+            }
+        }
+
+        // Step 3: Scroll to trigger lazy loading if requested
+        if (args.scrollToLoad !== false) {
+            await page.evaluate(async () => {
+                const scrollStep = window.innerHeight;
+                const scrollDelay = 200;
+                let totalScrolled = 0;
+                const maxScroll = document.body.scrollHeight;
+
+                while (totalScrolled < maxScroll && totalScrolled < 5000) {
+                    window.scrollBy(0, scrollStep);
+                    totalScrolled += scrollStep;
+                    await new Promise(r => setTimeout(r, scrollDelay));
+                }
+
+                // Scroll back to top
+                window.scrollTo(0, 0);
+            });
+
+            // Wait for any lazy-loaded content
+            await new Promise(r => setTimeout(r, 1000));
+        }
+
+        // Step 4: Wait additional time for JavaScript to execute
+        await new Promise(r => setTimeout(r, 500));
+
+        // Step 5: Extract content based on returnType
+        const title = await page.title();
+        const finalUrl = page.url();
+
+        let html: string | undefined;
+        let text: string | undefined;
+        let elements: { tag: string; text: string; attributes: Record<string, string> }[] | undefined;
+        let elementCount = 0;
+
+        if (args.extractSelector) {
+            // Extract specific elements
+            const extractedData = await page.evaluate((selector: string, attrs: string[]) => {
+                const nodeList = document.querySelectorAll(selector);
+                const result: { tag: string; text: string; html: string; attributes: Record<string, string> }[] = [];
+
+                nodeList.forEach((el) => {
+                    const attrObj: Record<string, string> = {};
+                    (attrs || ['href', 'src', 'alt', 'title', 'data-*']).forEach(attrName => {
+                        if (attrName.endsWith('*')) {
+                            // Handle wildcard attributes like data-*
+                            const prefix = attrName.slice(0, -1);
+                            Array.from(el.attributes).forEach(attr => {
+                                if (attr.name.startsWith(prefix)) {
+                                    attrObj[attr.name] = attr.value;
+                                }
+                            });
+                        } else {
+                            const val = el.getAttribute(attrName);
+                            if (val) attrObj[attrName] = val;
+                        }
+                    });
+
+                    result.push({
+                        tag: el.tagName.toLowerCase(),
+                        text: el.textContent?.trim()?.substring(0, 500) || '',
+                        html: el.outerHTML.substring(0, 2000),
+                        attributes: attrObj
+                    });
+                });
+
+                return result;
+            }, args.extractSelector, args.extractAttributes || []);
+
+            elementCount = extractedData.length;
+
+            if (returnType === 'elements') {
+                elements = extractedData.map(e => ({
+                    tag: e.tag,
+                    text: e.text,
+                    attributes: e.attributes
+                }));
+            } else if (returnType === 'html') {
+                html = extractedData.map(e => e.html).join('\n');
+            } else {
+                text = extractedData.map(e => e.text).join('\n');
+            }
+        } else {
+            // Extract full page content
+            if (returnType === 'html') {
+                html = await page.evaluate(() => document.documentElement.outerHTML);
+            } else {
+                text = await page.evaluate(() => document.body?.textContent || '');
+            }
+            elementCount = 1;
+        }
+
+        return {
+            success: true,
+            url: args.url,
+            finalUrl,
+            title,
+            html,
+            text,
+            elements,
+            elementCount
+        };
+
+    } catch (error) {
+        return {
+            success: false,
+            url: args.url,
+            finalUrl: page.url() || args.url,
+            title: '',
+            elementCount: 0,
+            error: error instanceof Error ? error.message : String(error)
+        };
+    }
 }
 
 

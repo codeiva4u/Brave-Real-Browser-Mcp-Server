@@ -122,6 +122,7 @@ import {
   // Enhanced streaming/download tools
   handleIframeHandler,
   handleStreamExtractor,
+  handleJsScrape,
 } from './handlers/advanced-tools.js';
 
 // State for video recording
@@ -359,6 +360,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
       case TOOL_NAMES.STREAM_EXTRACTOR:
         if (!page) throw new Error('Browser not initialized. Call browser_init first.');
         return { content: [{ type: 'text', text: JSON.stringify(await handleStreamExtractor(page, args as any)) }] };
+
+      case TOOL_NAMES.JS_SCRAPE:
+        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
+        return { content: [{ type: 'text', text: JSON.stringify(await handleJsScrape(page, args as any)) }] };
 
 
       default:

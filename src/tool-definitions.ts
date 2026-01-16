@@ -779,6 +779,25 @@ export const TOOLS = [
       },
     },
   },
+  {
+    name: 'js_scrape',
+    description: 'Single-call JavaScript-rendered content extraction. Combines navigation, auto-wait, scrolling, and content extraction. Perfect for AJAX/dynamic pages that Jsoup cannot parse.',
+    inputSchema: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        url: { type: 'string', description: 'URL to scrape (required)' },
+        waitForSelector: { type: 'string', description: 'CSS selector to wait for before extracting content' },
+        waitForTimeout: { type: 'number', description: 'Maximum wait time in ms', default: 10000 },
+        extractSelector: { type: 'string', description: 'CSS selector for specific elements to extract (optional, extracts full page if not specified)' },
+        extractAttributes: { type: 'array', items: { type: 'string' }, description: 'Attributes to extract from elements (e.g., href, src, data-*)' },
+        returnType: { type: 'string', enum: ['html', 'text', 'elements'], description: 'Return format', default: 'html' },
+        scrollToLoad: { type: 'boolean', description: 'Scroll page to trigger lazy loading', default: true },
+        closeBrowserAfter: { type: 'boolean', description: 'Close browser after scraping', default: false },
+      },
+      required: ['url'],
+    },
+  },
 ];
 
 // Tool name constants for type safety
@@ -818,6 +837,7 @@ export const TOOL_NAMES = {
   // Enhanced tools
   IFRAME_HANDLER: 'iframe_handler',
   STREAM_EXTRACTOR: 'stream_extractor',
+  JS_SCRAPE: 'js_scrape',
 
 } as const;
 
