@@ -277,51 +277,6 @@ export const TOOLS = [
     },
   },
   {
-    name: 'dropdown_select',
-    description: 'Intelligent dropdown/select element handler. Supports native HTML select, custom dropdowns, autocomplete, and searchable selects with smart fallback strategies.',
-    inputSchema: {
-      type: 'object',
-      additionalProperties: false,
-      properties: {
-        selector: {
-          type: 'string',
-          description: 'CSS selector for the select/dropdown element',
-        },
-        value: {
-          type: 'string',
-          description: 'Value to select (option value attribute)',
-        },
-        text: {
-          type: 'string',
-          description: 'Visible text of option to select (alternative to value)',
-        },
-        index: {
-          type: 'number',
-          description: 'Index of option to select (0-based, alternative to value/text)',
-        },
-        searchText: {
-          type: 'string',
-          description: 'For searchable dropdowns: text to type before selecting',
-        },
-        waitForOptions: {
-          type: 'boolean',
-          description: 'Wait for dropdown options to load (useful for AJAX dropdowns)',
-          default: true,
-        },
-        clickToOpen: {
-          type: 'boolean',
-          description: 'Click to open dropdown before selecting (for custom dropdowns)',
-          default: false,
-        },
-        optionSelector: {
-          type: 'string',
-          description: 'CSS selector for dropdown options (for custom dropdowns)',
-        },
-      },
-      required: ['selector'],
-    },
-  },
-  {
     name: 'click',
     description: 'Click on an element',
     inputSchema: {
@@ -806,7 +761,6 @@ export const TOOL_NAMES = {
   NAVIGATE: 'navigate',
   GET_CONTENT: 'get_content',
   CLICK: 'click',
-  DROPDOWN_SELECT: 'dropdown_select',
   TYPE: 'type',
   WAIT: 'wait',
   BROWSER_CLOSE: 'browser_close',

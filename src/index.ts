@@ -84,7 +84,7 @@ import { setupProcessCleanup, MCP_SERVER_CONFIG } from './core-infrastructure.js
 debug('Loading handlers...');
 import { handleBrowserInit, handleBrowserClose } from './handlers/browser-handlers.js';
 import { handleNavigate, handleWait } from './handlers/navigation-handlers.js';
-import { handleClick, handleSelect, handleType, handleSolveCaptcha, handleRandomScroll } from './handlers/interaction-handlers.js';
+import { handleClick, handleType, handleSolveCaptcha, handleRandomScroll } from './handlers/interaction-handlers.js';
 import { handleGetContent, handleFindSelector } from './handlers/content-handlers.js';
 import { handleSaveContentAsMarkdown } from './handlers/file-handlers.js';
 
@@ -246,9 +246,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
 
       case TOOL_NAMES.CLICK:
         return await handleClick(args as unknown as ClickArgs);
-
-      case TOOL_NAMES.DROPDOWN_SELECT:
-        return await handleSelect(args as any);
 
       case TOOL_NAMES.TYPE:
         return await handleType(args as unknown as TypeArgs);
