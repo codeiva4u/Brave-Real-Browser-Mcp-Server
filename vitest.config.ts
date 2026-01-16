@@ -35,6 +35,14 @@ export default defineConfig({
       },
     },
 
+    // Reporter configuration - show all logs
+    reporters: ['verbose'],
+
+    // Show all console logs during tests
+    onConsoleLog(log) {
+      return true; // Always show console logs
+    },
+
     // Coverage configuration
     coverage: {
       provider: 'v8',
@@ -59,8 +67,6 @@ export default defineConfig({
       }
     },
 
-    // Reporter configuration removed for latest vitest compatibility
-
     // Allow only for CI environments
     allowOnly: !process.env.CI,
 
@@ -69,8 +75,10 @@ export default defineConfig({
       concurrent: true
     },
 
-    // Pool settings - use main thread for integration tests to allow process.chdir()
     // Pool settings - use forks for integration tests
-    pool: 'forks'
+    pool: 'forks',
+
+    // Disable silent mode - show all output
+    silent: false,
   }
 });
