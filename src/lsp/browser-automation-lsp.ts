@@ -376,6 +376,15 @@ connection.onInitialize(() => {
       codeActionProvider: {
         codeActionKinds: [CodeActionKind.QuickFix],
       },
+      // Advanced LSP Features
+      definitionProvider: true,
+      referencesProvider: true,
+      workspaceSymbolProvider: true,
+      documentSymbolProvider: true,
+      renameProvider: {
+        prepareProvider: true,
+      },
+      documentFormattingProvider: true,
     },
   };
 });
@@ -633,6 +642,274 @@ connection.onCodeAction((params: any) => {
 // ============================================================
 // HELPERS
 // ============================================================
+
+// Store document contents and tool locations
+const documentToolLocations = new Map<string, Array<{ name: string; range: any; uri: string }>>();
+
+function findToolLocations(document: any): Array<{ name: string; range: any; uri: string }> {
+  const text = document.getText();
+  const locations: Array<{ name: string; range: any; uri: string }> = [];
+
+  const toolCallPattern = /(\w+)\s*\(/g;
+  let match;
+
+  while ((match = toolCallPattern.exec(text)) !== null) {
+    const toolName = match[1];
+    if (TOOL_DEFINITIONS[toolName]) {
+      const startPos = document.positionAt(match.index);
+      const endPos = document.positionAt(match.index + toolName.length);
+      locations.push({
+        name: toolName,
+        range: { start: startPos, end: endPos },
+        uri: document.uri,
+      });
+    }
+  }
+
+  documentToolLocations.set(document.uri, locations);
+  return locations;
+}
+
+// ============================================================
+// GO TO DEFINITION
+// ============================================================
+
+connection.onDefinition((params: any) => {
+  const document = documents.get(params.textDocument.uri);
+  if (!document) return null;
+
+  const text = document.getText();
+  const offset = document.offsetAt(params.position);
+
+  // Find word at position
+  const wordStart = text.substring(0, offset).search(/\w+$/);
+  if (wordStart < 0) return null;
+  const wordEnd = offset + text.substring(offset).search(/[^\w]|$/);
+  const word = text.substring(wordStart, wordEnd);
+
+  const def = TOOL_DEFINITIONS[word];
+  if (def) {
+    // Return the first occurrence of this tool in the document
+    const pattern = new RegExp(`\\b${word}\\s*\\(`);
+    const match = text.match(pattern);
+    if (match && match.index !== undefined) {
+      const startPos = document.positionAt(match.index);
+      const endPos = document.positionAt(match.index + word.length);
+      return {
+        uri: params.textDocument.uri,
+        range: { start: startPos, end: endPos },
+      };
+    }
+  }
+
+  return null;
+});
+
+// ============================================================
+// FIND ALL REFERENCES
+// ============================================================
+
+connection.onReferences((params: any) => {
+  const document = documents.get(params.textDocument.uri);
+  if (!document) return [];
+
+  const text = document.getText();
+  const offset = document.offsetAt(params.position);
+
+  // Find word at position
+  const wordStart = text.substring(0, offset).search(/\w+$/);
+  if (wordStart < 0) return [];
+  const wordEnd = offset + text.substring(offset).search(/[^\w]|$/);
+  const word = text.substring(wordStart, wordEnd);
+
+  const references: any[] = [];
+
+  // Search in all open documents
+  documents.all().forEach((doc: any) => {
+    const docText = doc.getText();
+    const pattern = new RegExp(`\\b${word}\\b`, 'g');
+    let match;
+    while ((match = pattern.exec(docText)) !== null) {
+      const startPos = doc.positionAt(match.index);
+      const endPos = doc.positionAt(match.index + word.length);
+      references.push({
+        uri: doc.uri,
+        range: { start: startPos, end: endPos },
+      });
+    }
+  });
+
+  return references;
+});
+
+// ============================================================
+// DOCUMENT SYMBOLS
+// ============================================================
+
+connection.onDocumentSymbol((params: any) => {
+  const document = documents.get(params.textDocument.uri);
+  if (!document) return [];
+
+  const text = document.getText();
+  const symbols: any[] = [];
+
+  // Find all tool calls as symbols
+  const toolCallPattern = /(\w+)\s*\(\s*\{[^}]*\}\s*\)/g;
+  let match;
+
+  while ((match = toolCallPattern.exec(text)) !== null) {
+    const toolName = match[1];
+    if (TOOL_DEFINITIONS[toolName]) {
+      const startPos = document.positionAt(match.index);
+      const endPos = document.positionAt(match.index + match[0].length);
+      symbols.push({
+        name: toolName,
+        kind: 12, // Function
+        range: { start: startPos, end: endPos },
+        selectionRange: { start: startPos, end: document.positionAt(match.index + toolName.length) },
+        detail: TOOL_DEFINITIONS[toolName].category,
+      });
+    }
+  }
+
+  return symbols;
+});
+
+// ============================================================
+// WORKSPACE SYMBOLS
+// ============================================================
+
+connection.onWorkspaceSymbol((params: any) => {
+  const query = params.query.toLowerCase();
+  const symbols: any[] = [];
+
+  // Return all matching tool definitions
+  for (const [name, def] of Object.entries(TOOL_DEFINITIONS)) {
+    if (name.toLowerCase().includes(query) || def.description.toLowerCase().includes(query)) {
+      symbols.push({
+        name: name,
+        kind: 12, // Function
+        location: {
+          uri: 'brave-mcp://tools/' + name,
+          range: { start: { line: 0, character: 0 }, end: { line: 0, character: name.length } },
+        },
+        containerName: def.category,
+      });
+    }
+  }
+
+  return symbols;
+});
+
+// ============================================================
+// RENAME SYMBOL
+// ============================================================
+
+connection.onPrepareRename((params: any) => {
+  const document = documents.get(params.textDocument.uri);
+  if (!document) return null;
+
+  const text = document.getText();
+  const offset = document.offsetAt(params.position);
+
+  // Find word at position
+  const wordStart = text.substring(0, offset).search(/\w+$/);
+  if (wordStart < 0) return null;
+  const wordEnd = offset + text.substring(offset).search(/[^\w]|$/);
+  const word = text.substring(wordStart, wordEnd);
+
+  // Don't allow renaming built-in tools
+  if (TOOL_DEFINITIONS[word]) {
+    return { message: 'Cannot rename built-in MCP tool' };
+  }
+
+  const startPos = document.positionAt(wordStart);
+  const endPos = document.positionAt(wordEnd);
+  return { range: { start: startPos, end: endPos }, placeholder: word };
+});
+
+connection.onRenameRequest((params: any) => {
+  const document = documents.get(params.textDocument.uri);
+  if (!document) return null;
+
+  const text = document.getText();
+  const offset = document.offsetAt(params.position);
+
+  // Find word at position
+  const wordStart = text.substring(0, offset).search(/\w+$/);
+  if (wordStart < 0) return null;
+  const wordEnd = offset + text.substring(offset).search(/[^\w]|$/);
+  const oldName = text.substring(wordStart, wordEnd);
+  const newName = params.newName;
+
+  // Don't allow renaming built-in tools
+  if (TOOL_DEFINITIONS[oldName]) {
+    return null;
+  }
+
+  const changes: Record<string, any[]> = {};
+
+  // Replace all occurrences in all open documents
+  documents.all().forEach((doc: any) => {
+    const docText = doc.getText();
+    const pattern = new RegExp(`\\b${oldName}\\b`, 'g');
+    const edits: any[] = [];
+    let match;
+    while ((match = pattern.exec(docText)) !== null) {
+      const startPos = doc.positionAt(match.index);
+      const endPos = doc.positionAt(match.index + oldName.length);
+      edits.push({
+        range: { start: startPos, end: endPos },
+        newText: newName,
+      });
+    }
+    if (edits.length > 0) {
+      changes[doc.uri] = edits;
+    }
+  });
+
+  return { changes };
+});
+
+// ============================================================
+// FORMAT DOCUMENT
+// ============================================================
+
+connection.onDocumentFormatting((params: any) => {
+  const document = documents.get(params.textDocument.uri);
+  if (!document) return [];
+
+  const text = document.getText();
+  const edits: any[] = [];
+
+  // Format MCP tool calls consistently
+  let formatted = text
+    // Normalize tool call opening: tool({ 
+    .replace(/(\w+)\s*\(\s*\{\s*/g, '$1({ ')
+    // Normalize tool call closing: })
+    .replace(/\s*\}\s*\)/g, ' })')
+    // Fix parameter spacing: key: value
+    .replace(/(\w+)\s*:\s*/g, '$1: ')
+    // Remove trailing commas before }
+    .replace(/,\s*\}/g, ' }')
+    // Normalize await spacing
+    .replace(/await\s+/g, 'await ');
+
+  if (formatted !== text) {
+    edits.push({
+      range: {
+        start: { line: 0, character: 0 },
+        end: document.positionAt(text.length),
+      },
+      newText: formatted,
+    });
+  }
+
+  return edits;
+});
+
+// ============================================================
+// HELPERS
 
 function formatToolDoc(def: any): string {
   const parts: string[] = [];
