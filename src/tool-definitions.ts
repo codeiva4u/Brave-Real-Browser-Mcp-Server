@@ -9,9 +9,105 @@ export const SERVER_INFO = {
 // MCP capabilities with LSP-compatible streaming support
 export const CAPABILITIES = {
   tools: {},
-  resources: {},
-  prompts: {},
+  resources: { subscribe: true, listChanged: true },
+  prompts: { listChanged: true },
 };
+
+// MCP Resources - Dynamic browser state resources
+export const RESOURCES = [
+  {
+    uri: 'browser://state',
+    name: 'Browser State',
+    description: 'Current browser instance state including page URL, title, and session info',
+    mimeType: 'application/json',
+  },
+  {
+    uri: 'browser://page/content',
+    name: 'Page Content',
+    description: 'Current page HTML content',
+    mimeType: 'text/html',
+  },
+  {
+    uri: 'browser://page/text',
+    name: 'Page Text',
+    description: 'Current page text content (no HTML)',
+    mimeType: 'text/plain',
+  },
+  {
+    uri: 'browser://cookies',
+    name: 'Browser Cookies',
+    description: 'All cookies in current browser session',
+    mimeType: 'application/json',
+  },
+  {
+    uri: 'browser://network/requests',
+    name: 'Network Requests',
+    description: 'Recent network requests captured during browsing',
+    mimeType: 'application/json',
+  },
+  {
+    uri: 'browser://console/logs',
+    name: 'Console Logs',
+    description: 'Browser console log messages',
+    mimeType: 'application/json',
+  },
+];
+
+// MCP Prompts - Reusable automation workflows
+export const PROMPTS = [
+  {
+    name: 'scrape_website',
+    description: 'Scrape content from a website with automatic navigation and extraction',
+    arguments: [
+      { name: 'url', description: 'URL to scrape', required: true },
+      { name: 'selector', description: 'CSS selector for target content', required: false },
+      { name: 'outputFormat', description: 'Output format (json, markdown, text)', required: false },
+    ],
+  },
+  {
+    name: 'extract_download_links',
+    description: 'Extract all download links from a page with quality and size info',
+    arguments: [
+      { name: 'url', description: 'Page URL to extract from', required: true },
+      { name: 'fileTypes', description: 'File types to extract (mp4, mkv, pdf, etc.)', required: false },
+    ],
+  },
+  {
+    name: 'monitor_page_changes',
+    description: 'Monitor a page for changes and notify when content updates',
+    arguments: [
+      { name: 'url', description: 'URL to monitor', required: true },
+      { name: 'selector', description: 'Element to watch for changes', required: true },
+      { name: 'interval', description: 'Check interval in seconds', required: false },
+    ],
+  },
+  {
+    name: 'automate_login',
+    description: 'Automate login to a website with credentials',
+    arguments: [
+      { name: 'url', description: 'Login page URL', required: true },
+      { name: 'usernameSelector', description: 'Username field selector', required: true },
+      { name: 'passwordSelector', description: 'Password field selector', required: true },
+      { name: 'submitSelector', description: 'Submit button selector', required: true },
+    ],
+  },
+  {
+    name: 'batch_screenshot',
+    description: 'Take screenshots of multiple URLs',
+    arguments: [
+      { name: 'urls', description: 'Comma-separated list of URLs', required: true },
+      { name: 'outputDir', description: 'Directory to save screenshots', required: true },
+    ],
+  },
+  {
+    name: 'extract_video_stream',
+    description: 'Extract video streaming URL from a page (m3u8, mp4)',
+    arguments: [
+      { name: 'url', description: 'Video page URL', required: true },
+      { name: 'quality', description: 'Preferred quality (highest, 1080p, 720p)', required: false },
+    ],
+  },
+];
 
 // Extended capabilities for streaming and auto-sync (for documentation/client info)
 export const EXTENDED_CAPABILITIES = {

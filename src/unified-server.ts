@@ -23,13 +23,15 @@ import {
     CallToolRequestSchema,
     ListToolsRequestSchema,
     ListResourcesRequestSchema,
+    ReadResourceRequestSchema,
     ListPromptsRequestSchema,
+    GetPromptRequestSchema,
     InitializeRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import { randomUUID } from 'crypto';
 
 // Import core modules
-import { TOOLS, SERVER_INFO, CAPABILITIES, TOOL_NAMES } from './tool-definitions.js';
+import { TOOLS, SERVER_INFO, CAPABILITIES, TOOL_NAMES, RESOURCES, PROMPTS } from './tool-definitions.js';
 import { getSharedEventBus } from './shared/event-bus.js';
 import { getProgressNotifier } from './transport/progress-notifier.js';
 import { getSessionManager } from './transport/session-manager.js';
@@ -90,8 +92,112 @@ mcpServer.setRequestHandler(InitializeRequestSchema, async (request) => {
 });
 
 mcpServer.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOLS }));
-mcpServer.setRequestHandler(ListResourcesRequestSchema, async () => ({ resources: [] }));
-mcpServer.setRequestHandler(ListPromptsRequestSchema, async () => ({ prompts: [] }));
+mcpServer.setRequestHandler(ListResourcesRequestSchema, async () => ({ resources: RESOURCES }));
+mcpServer.setRequestHandler(ListPromptsRequestSchema, async () => ({ prompts: PROMPTS }));
+
+// Read Resource Handler
+mcpServer.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+    const { uri } = request.params;
+    const page = getPageInstance();
+    debug(`ReadResource: ${uri}`);
+
+    try {
+        switch (uri) {
+            case 'browser://state': {
+                const state = page ? {
+                    url: page.url(),
+                    title: await page.title(),
+                    isConnected: page.browser()?.connected ?? false,
+                    viewport: page.viewport(),
+                } : { status: 'Browser not initialized' };
+                return { contents: [{ uri, mimeType: 'application/json', text: JSON.stringify(state, null, 2) }] };
+            }
+            case 'browser://page/content': {
+                if (!page) throw new Error('Browser not initialized');
+                const html = await page.content();
+                return { contents: [{ uri, mimeType: 'text/html', text: html }] };
+            }
+            case 'browser://page/text': {
+                if (!page) throw new Error('Browser not initialized');
+                const text = await page.evaluate(() => document.body.innerText);
+                return { contents: [{ uri, mimeType: 'text/plain', text }] };
+            }
+            case 'browser://cookies': {
+                if (!page) throw new Error('Browser not initialized');
+                const cookies = await page.cookies();
+                return { contents: [{ uri, mimeType: 'application/json', text: JSON.stringify(cookies, null, 2) }] };
+            }
+            case 'browser://network/requests': {
+                // Return cached network requests from event bus
+                const history = eventBus.getHistory().filter(e => (e.type as string).includes('network'));
+                return { contents: [{ uri, mimeType: 'application/json', text: JSON.stringify(history.slice(-50), null, 2) }] };
+            }
+            case 'browser://console/logs': {
+                const logs = eventBus.getHistory().filter(e => (e.type as string).includes('console'));
+                return { contents: [{ uri, mimeType: 'application/json', text: JSON.stringify(logs.slice(-100), null, 2) }] };
+            }
+            default:
+                throw new Error(`Unknown resource: ${uri}`);
+        }
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return { contents: [{ uri, mimeType: 'text/plain', text: `Error: ${errorMessage}` }] };
+    }
+});
+
+// Get Prompt Handler
+mcpServer.setRequestHandler(GetPromptRequestSchema, async (request) => {
+    const { name, arguments: args } = request.params;
+    debug(`GetPrompt: ${name}`);
+
+    const prompt = PROMPTS.find(p => p.name === name);
+    if (!prompt) {
+        throw new Error(`Unknown prompt: ${name}`);
+    }
+
+    // Generate prompt messages based on template
+    let messages: any[] = [];
+
+    switch (name) {
+        case 'scrape_website':
+            messages = [
+                { role: 'user', content: { type: 'text', text: `Scrape the website at ${args?.url || '[URL]'}. ${args?.selector ? `Focus on elements matching: ${args.selector}` : 'Extract main content.'}` } },
+            ];
+            break;
+        case 'extract_download_links':
+            messages = [
+                { role: 'user', content: { type: 'text', text: `Extract all download links from ${args?.url || '[URL]'}. ${args?.fileTypes ? `Filter for: ${args.fileTypes}` : 'Include all file types.'}` } },
+            ];
+            break;
+        case 'monitor_page_changes':
+            messages = [
+                { role: 'user', content: { type: 'text', text: `Monitor ${args?.url || '[URL]'} for changes in element: ${args?.selector || '[SELECTOR]'}. Check every ${args?.interval || 60} seconds.` } },
+            ];
+            break;
+        case 'automate_login':
+            messages = [
+                { role: 'user', content: { type: 'text', text: `Automate login to ${args?.url || '[URL]'}. Use ${args?.usernameSelector || '#username'} for username, ${args?.passwordSelector || '#password'} for password, and ${args?.submitSelector || 'button[type=submit]'} to submit.` } },
+            ];
+            break;
+        case 'batch_screenshot':
+            messages = [
+                { role: 'user', content: { type: 'text', text: `Take screenshots of: ${args?.urls || '[URLs]'}. Save to: ${args?.outputDir || './screenshots'}` } },
+            ];
+            break;
+        case 'extract_video_stream':
+            messages = [
+                { role: 'user', content: { type: 'text', text: `Extract video streaming URL from ${args?.url || '[URL]'}. Prefer quality: ${args?.quality || 'highest'}` } },
+            ];
+            break;
+        default:
+            messages = [{ role: 'user', content: { type: 'text', text: `Execute prompt: ${name}` } }];
+    }
+
+    return {
+        description: prompt.description,
+        messages,
+    };
+});
 
 mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
