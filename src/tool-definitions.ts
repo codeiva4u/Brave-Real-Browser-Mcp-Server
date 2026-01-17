@@ -272,6 +272,9 @@ export const TOOLS = [
           description: 'Maximum wait time in ms',
           default: 30000,
         },
+        // Merged from ajax_content_waiter
+        pollInterval: { type: 'number', description: 'Check interval for dynamic content (ms)', default: 500 },
+        expectedContent: { type: 'string', description: 'Expected text content to wait for' },
       },
       required: ['type', 'value'],
     },
@@ -533,6 +536,15 @@ export const TOOLS = [
             },
           },
         },
+        // Merged from extract_schema
+        extractSchema: {
+          type: 'object',
+          description: 'Extract Schema.org structured data (JSON-LD and Microdata)',
+          properties: {
+            enabled: { type: 'boolean', description: 'Enable schema extraction', default: true },
+            schemaTypes: { type: 'array', items: { type: 'string' }, description: 'Schema types to extract (e.g., Product, Article)' },
+          },
+        },
       },
     },
   },
@@ -596,7 +608,7 @@ export const TOOLS = [
   },
   {
     name: 'network_recorder',
-    description: 'Record full network traffic including headers and body',
+    description: 'Record full network traffic including headers and body. Also discovers hidden API endpoints.',
     inputSchema: {
       type: 'object',
       additionalProperties: false,
@@ -605,35 +617,14 @@ export const TOOLS = [
         filterUrl: { type: 'string', description: 'Filter requests by URL pattern' },
         includeHeaders: { type: 'boolean', description: 'Include request headers', default: false },
         includeBody: { type: 'boolean', description: 'Include request body', default: false },
+        // Merged from api_finder
+        findApis: { type: 'boolean', description: 'Discover hidden API endpoints (XHR/fetch)', default: false },
+        apiPatterns: { type: 'array', items: { type: 'string' }, description: 'URL patterns to match for API discovery' },
       },
     },
   },
-  {
-    name: 'api_finder',
-    description: 'Discover hidden API endpoints by monitoring network traffic',
-    inputSchema: {
-      type: 'object',
-      additionalProperties: false,
-      properties: {
-        patterns: { type: 'array', items: { type: 'string' }, description: 'URL patterns to match' },
-        includeInternal: { type: 'boolean', description: 'Include internal XHR/fetch', default: true },
-      },
-    },
-  },
-  {
-    name: 'ajax_content_waiter',
-    description: 'Wait for dynamic AJAX/JavaScript content to load',
-    inputSchema: {
-      type: 'object',
-      additionalProperties: false,
-      properties: {
-        selector: { type: 'string', description: 'CSS selector to wait for' },
-        timeout: { type: 'number', description: 'Maximum wait time in ms', default: 30000 },
-        pollInterval: { type: 'number', description: 'Check interval in ms', default: 500 },
-        expectedContent: { type: 'string', description: 'Expected text content to wait for' },
-      },
-    },
-  },
+  // api_finder REMOVED - merged into network_recorder (use findApis: true)
+  // ajax_content_waiter REMOVED - merged into wait tool (use pollInterval, expectedContent)
   // media_extractor REMOVED - functionality merged into stream_extractor
   {
     name: 'element_screenshot',
@@ -678,17 +669,7 @@ export const TOOLS = [
       required: ['selector'],
     },
   },
-  {
-    name: 'extract_schema',
-    description: 'Extract Schema.org structured data (JSON-LD and Microdata)',
-    inputSchema: {
-      type: 'object',
-      additionalProperties: false,
-      properties: {
-        schemaTypes: { type: 'array', items: { type: 'string' }, description: 'Schema types to extract (e.g., Product, Article)' },
-      },
-    },
-  },
+  // extract_schema REMOVED - merged into extract_json (use extractSchema option)
   // m3u8_parser REMOVED - functionality merged into stream_extractor
   {
     name: 'cookie_manager',
@@ -848,13 +829,13 @@ export const TOOL_NAMES = {
   PROGRESS_TRACKER: 'progress_tracker',
   DEEP_ANALYSIS: 'deep_analysis',
   NETWORK_RECORDER: 'network_recorder',
-  API_FINDER: 'api_finder',
-  AJAX_CONTENT_WAITER: 'ajax_content_waiter',
+  // API_FINDER: 'api_finder', // REMOVED - merged into NETWORK_RECORDER (use findApis option)
+  // AJAX_CONTENT_WAITER: 'ajax_content_waiter', // REMOVED - merged into WAIT (use pollInterval, expectedContent)
   // MEDIA_EXTRACTOR: 'media_extractor', // REMOVED - merged into STREAM_EXTRACTOR
   ELEMENT_SCREENSHOT: 'element_screenshot',
   LINK_HARVESTER: 'link_harvester',
   BATCH_ELEMENT_SCRAPER: 'batch_element_scraper',
-  EXTRACT_SCHEMA: 'extract_schema',
+  // EXTRACT_SCHEMA: 'extract_schema', // REMOVED - merged into EXTRACT_JSON (use extractSchema option)
   // M3U8_PARSER: 'm3u8_parser', // REMOVED - merged into STREAM_EXTRACTOR
   COOKIE_MANAGER: 'cookie_manager',
   FILE_DOWNLOADER: 'file_downloader',

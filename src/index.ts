@@ -101,8 +101,8 @@ import {
   handleProgressTracker,
   handleDeepAnalysis,
   handleNetworkRecorder,
-  handleApiFinder,
-  handleAjaxContentWaiter,
+  // handleApiFinder, // REMOVED - merged into handleNetworkRecorder
+  // handleAjaxContentWaiter, // REMOVED - merged into handleWait
   handleAdvancedVideoExtraction,
   handleMediaExtractor,
   handleElementScreenshot,
@@ -110,7 +110,7 @@ import {
   handleImageExtractorAdvanced,
   handleSmartSelectorGenerator,
   handleBatchElementScraper,
-  handleExtractSchema,
+  // handleExtractSchema, // REMOVED - merged into handleExtractJson
   handleSolveCaptchaAdvanced,
   // Streaming tools
   handleM3u8Parser,
@@ -310,13 +310,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
         if (!page) throw new Error('Browser not initialized. Call browser_init first.');
         return { content: [{ type: 'text', text: JSON.stringify(await handleNetworkRecorder(page, args || {})) }] };
 
-      case TOOL_NAMES.API_FINDER:
-        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
-        return { content: [{ type: 'text', text: JSON.stringify(await handleApiFinder(page, args || {})) }] };
+      // API_FINDER case REMOVED - merged into NETWORK_RECORDER (use findApis: true)
 
-      case TOOL_NAMES.AJAX_CONTENT_WAITER:
-        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
-        return { content: [{ type: 'text', text: JSON.stringify(await handleAjaxContentWaiter(page, args || {})) }] };
+      // AJAX_CONTENT_WAITER case REMOVED - merged into WAIT (use pollInterval, expectedContent)
 
 
       // MEDIA_EXTRACTOR case REMOVED - merged into STREAM_EXTRACTOR
@@ -333,9 +329,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
         if (!page) throw new Error('Browser not initialized. Call browser_init first.');
         return { content: [{ type: 'text', text: JSON.stringify(await handleBatchElementScraper(page, args as any)) }] };
 
-      case TOOL_NAMES.EXTRACT_SCHEMA:
-        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
-        return { content: [{ type: 'text', text: JSON.stringify(await handleExtractSchema(page, args || {})) }] };
+      // EXTRACT_SCHEMA case REMOVED - merged into EXTRACT_JSON (use extractSchema option)
 
 
       // M3U8_PARSER case REMOVED - merged into STREAM_EXTRACTOR
