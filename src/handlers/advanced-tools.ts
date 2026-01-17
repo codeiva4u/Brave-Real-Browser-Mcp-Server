@@ -1344,9 +1344,17 @@ export async function handlePressKey(
     page: Page,
     args: PressKeyArgs
 ): Promise<{ success: boolean; key: string; count: number }> {
+    // Progress tracking
+    const progressNotifier = getProgressNotifier();
+    const tracker = progressNotifier.createTracker(`press-key-${Date.now()}`);
+    tracker.start(100, `⌨️ Pressing key: ${args.key}...`);
+
     const count = args.count || 1;
     const delay = args.delay || 100;
     const modifiers = args.modifiers || [];
+
+    const keyCombo = modifiers.length > 0 ? `${modifiers.join('+')}+${args.key}` : args.key;
+    tracker.setProgress(20, `🎹 Pressing ${keyCombo} (${count}x)`);
 
     for (let i = 0; i < count; i++) {
         // Hold modifiers
@@ -1364,11 +1372,19 @@ export async function handlePressKey(
         if (i < count - 1) {
             await new Promise((r) => setTimeout(r, delay));
         }
+
+        // Update progress for multiple presses
+        if (count > 1) {
+            const progress = 20 + Math.round(((i + 1) / count) * 70);
+            tracker.setProgress(progress, `⌨️ Pressed ${i + 1}/${count}`);
+        }
     }
+
+    tracker.complete(`🎉 Key pressed: ${keyCombo}`);
 
     return {
         success: true,
-        key: modifiers.length > 0 ? `${modifiers.join('+')}+${args.key}` : args.key,
+        key: keyCombo,
         count,
     };
 }
@@ -1517,6 +1533,11 @@ export async function handleNetworkRecorder(
     apis?: { url: string; method: string; type: string }[];
     mediaUrls?: string[];
 }> {
+    // Progress tracking
+    const progressNotifier = getProgressNotifier();
+    const tracker = progressNotifier.createTracker(`network-recorder-${Date.now()}`);
+    tracker.start(100, '🌐 Starting network recording...');
+
     const requests: any[] = [];
     const duration = args.duration || 10000;
     let totalSize = 0;
@@ -1524,6 +1545,8 @@ export async function handleNetworkRecorder(
     const apis: { url: string; method: string; type: string }[] = [];
     const mediaUrls: string[] = [];
     const seen = new Set<string>();
+
+    tracker.setProgress(10, `⏱️ Recording for ${duration}ms...`);
 
     // ============================================================
     // SMART CATEGORIZATION HELPER
