@@ -9,6 +9,9 @@
 type Page = any;
 type ElementHandle = any;
 
+// Import progress notifier for real-time progress updates
+import { getProgressNotifier } from '../transport/progress-notifier.js';
+
 // ============================================================
 // INTERFACES
 // ============================================================
@@ -2099,11 +2102,18 @@ export async function handleLinkHarvester(
     pagination?: { nextPage?: string; prevPage?: string; totalPages?: number };
     categories?: Record<string, number>;
 }> {
+    // Progress tracking for real-time updates
+    const progressNotifier = getProgressNotifier();
+    const tracker = progressNotifier.createTracker(`link-harvester-${Date.now()}`);
+    tracker.start(100, '🔗 Starting link harvesting...');
+
     const currentUrl = new URL(page.url());
+    tracker.setProgress(10, `📍 Analyzing page: ${currentUrl.hostname}`);
 
     // ============================================================
     // 1. EXTRACT ALL LINKS WITH SMART CATEGORIZATION
     // ============================================================
+    tracker.setProgress(20, '🔍 Extracting all links from page...');
     const allLinks = await page.evaluate(() => {
         const links: { url: string; text: string; attrs: Record<string, string> }[] = [];
 
@@ -2239,6 +2249,9 @@ export async function handleLinkHarvester(
             // Invalid URL, skip
         }
     }
+
+    tracker.setProgress(90, `✅ Processed ${processedLinks.length} links`);
+    tracker.complete(`🎉 Link harvesting complete: ${processedLinks.length} links found`);
 
     return {
         links: processedLinks,
@@ -2485,8 +2498,15 @@ export async function handleBatchElementScraper(
     page: Page,
     args: BatchElementScraperArgs
 ): Promise<{ items: Record<string, any>[]; count: number }> {
+    // Progress tracking for real-time updates
+    const progressNotifier = getProgressNotifier();
+    const tracker = progressNotifier.createTracker(`batch-scraper-${Date.now()}`);
+    tracker.start(100, '📋 Starting batch element scraping...');
+
     const limit = args.limit || 100;
     const attributes = args.attributes || ['textContent', 'href', 'src'];
+
+    tracker.setProgress(20, `🔍 Finding elements with selector: ${args.selector}`);
 
     const items = await page.evaluate((opts) => {
         const elements = Array.from(document.querySelectorAll(opts.selector)).slice(0, opts.limit);
@@ -2509,6 +2529,9 @@ export async function handleBatchElementScraper(
             return item;
         });
     }, { selector: args.selector, limit, attributes });
+
+    tracker.setProgress(90, `✅ Scraped ${items.length} elements`);
+    tracker.complete(`🎉 Batch scraping complete: ${items.length} items extracted`);
 
     return {
         items,
@@ -3057,12 +3080,18 @@ export async function handleFileDownloader(
     page: Page,
     args: FileDownloaderArgs
 ): Promise<{ success: boolean; filePath?: string; size?: number; message: string }> {
+    // Progress tracking for real-time download updates
+    const progressNotifier = getProgressNotifier();
+    const tracker = progressNotifier.createTracker(`file-download-${Date.now()}`);
+    tracker.start(100, '📥 Starting file download...');
+
     const fs = await import('fs');
     const path = await import('path');
     const https = await import('https');
     const http = await import('http');
 
     const timeout = args.timeout || 300000; // 5 minutes default
+    tracker.setProgress(5, `🔗 Connecting to: ${args.url.substring(0, 60)}...`);
 
     // Extract filename from URL if not provided
     let filename = args.filename;
@@ -3076,9 +3105,11 @@ export async function handleFileDownloader(
     }
 
     const fullPath = path.join(args.savePath, filename);
+    tracker.setProgress(10, `📁 Saving to: ${filename}`);
 
     // Check if file exists and overwrite is false
     if (!args.overwrite && fs.existsSync(fullPath)) {
+        tracker.fail('File already exists');
         return {
             success: false,
             message: `File already exists: ${fullPath}. Set overwrite: true to replace.`,
@@ -3103,6 +3134,7 @@ export async function handleFileDownloader(
 
         const file = fs.createWriteStream(fullPath);
         let downloadedSize = 0;
+        let lastProgressUpdate = 0;
 
         const request = protocol.get(args.url, options, (response: any) => {
             // Handle redirects
@@ -3126,15 +3158,25 @@ export async function handleFileDownloader(
             }
 
             const totalSize = parseInt(response.headers['content-length'] || '0', 10);
+            tracker.setProgress(20, `📊 Starting download (${totalSize > 0 ? (totalSize / 1024 / 1024).toFixed(2) + 'MB' : 'unknown size'})`);
 
             response.on('data', (chunk: Buffer) => {
                 downloadedSize += chunk.length;
+                // Update progress every 500KB or 5%
+                const now = Date.now();
+                if (now - lastProgressUpdate > 500 || (totalSize > 0 && downloadedSize - lastProgressUpdate > totalSize / 20)) {
+                    lastProgressUpdate = now;
+                    const percent = totalSize > 0 ? Math.round((downloadedSize / totalSize) * 70) + 20 : 50;
+                    const sizeStr = (downloadedSize / 1024 / 1024).toFixed(2);
+                    tracker.setProgress(Math.min(percent, 90), `⬇️ Downloaded ${sizeStr}MB${totalSize > 0 ? ` / ${(totalSize / 1024 / 1024).toFixed(2)}MB` : ''}`);
+                }
             });
 
             response.pipe(file);
 
             file.on('finish', () => {
                 file.close();
+                tracker.complete(`🎉 Download complete: ${(downloadedSize / 1024 / 1024).toFixed(2)}MB`);
                 resolve({
                     success: true,
                     filePath: fullPath,
