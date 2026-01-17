@@ -47,6 +47,18 @@ export interface ExtractJsonArgs {
     selector?: string;
     scriptIndex?: number;
     variableName?: string;
+
+    // Advanced Decode capabilities for complex websites
+    decodeBase64?: string;           // Direct base64 string to decode
+    decodeFromUrl?: string;          // URL to extract and decode ?id= or similar param
+    decodeUrlParam?: string;         // Specific URL parameter name to decode (default: 'id')
+    decodePattern?: string;          // Regex pattern to find and decode base64 strings in page
+    advancedDecode?: {               // Multi-layer decode for complex obfuscation
+        input?: string;              // Input string (if not using page content)
+        layers: ('base64' | 'url' | 'hex' | 'rot13' | 'reverse')[];
+        extractFromPage?: boolean;   // Extract input from current page
+        pageSelector?: string;       // CSS selector to extract from (for extractFromPage)
+    };
 }
 
 export interface ScrapeMetaTagsArgs {
@@ -587,13 +599,238 @@ export async function handleFindElementAdvanced(
 }
 
 /**
- * Extract embedded JSON/API data from page
+ * Extract embedded JSON/API data from page + Advanced Decode capabilities
+ * Supports: base64, URL encoding, hex, rot13, reverse - with multi-layer decoding
  */
+
+// ============================================================
+// DECODE HELPER FUNCTIONS
+// ============================================================
+
+function decodeBase64(input: string): string {
+    try {
+        // Handle URL-safe base64
+        const normalized = input.replace(/-/g, '+').replace(/_/g, '/');
+        const padded = normalized + '='.repeat((4 - normalized.length % 4) % 4);
+        return Buffer.from(padded, 'base64').toString('utf-8');
+    } catch {
+        return input;
+    }
+}
+
+function decodeUrl(input: string): string {
+    try {
+        return decodeURIComponent(input);
+    } catch {
+        return input;
+    }
+}
+
+function decodeHex(input: string): string {
+    try {
+        // Remove 0x prefix if present
+        const hex = input.replace(/^0x/i, '').replace(/\s/g, '');
+        return Buffer.from(hex, 'hex').toString('utf-8');
+    } catch {
+        return input;
+    }
+}
+
+function decodeRot13(input: string): string {
+    return input.replace(/[a-zA-Z]/g, (char) => {
+        const base = char <= 'Z' ? 65 : 97;
+        return String.fromCharCode(((char.charCodeAt(0) - base + 13) % 26) + base);
+    });
+}
+
+function reverseString(input: string): string {
+    return input.split('').reverse().join('');
+}
+
+function applyDecodeLayer(input: string, layer: string): string {
+    switch (layer) {
+        case 'base64': return decodeBase64(input);
+        case 'url': return decodeUrl(input);
+        case 'hex': return decodeHex(input);
+        case 'rot13': return decodeRot13(input);
+        case 'reverse': return reverseString(input);
+        default: return input;
+    }
+}
+
+function multiLayerDecode(input: string, layers: string[]): string {
+    let result = input;
+    for (const layer of layers) {
+        result = applyDecodeLayer(result, layer);
+    }
+    return result;
+}
+
+function extractUrlParam(url: string, param: string = 'id'): string | null {
+    try {
+        const urlObj = new URL(url);
+        return urlObj.searchParams.get(param);
+    } catch {
+        // Try regex fallback for malformed URLs
+        const match = url.match(new RegExp(`[?&]${param}=([^&]+)`));
+        return match ? match[1] : null;
+    }
+}
+
+function findBase64InText(text: string, pattern?: string): string[] {
+    const results: string[] = [];
+
+    // Use custom pattern or default base64 pattern
+    const regex = pattern
+        ? new RegExp(pattern, 'g')
+        : /[A-Za-z0-9+/=_-]{20,}/g;  // Match potential base64 strings
+
+    let match;
+    while ((match = regex.exec(text)) !== null) {
+        // Validate it looks like base64
+        const candidate = match[0];
+        if (candidate.length >= 20 && /^[A-Za-z0-9+/=_-]+$/.test(candidate)) {
+            try {
+                const decoded = decodeBase64(candidate);
+                // Only include if it decoded to something meaningful
+                if (decoded && decoded.length > 0 && /^[\x20-\x7E\s]+$/.test(decoded)) {
+                    results.push(decoded);
+                }
+            } catch {
+                // Skip invalid base64
+            }
+        }
+        if (results.length >= 50) break; // Limit results
+    }
+
+    return results;
+}
+
+// ============================================================
+// MAIN HANDLER
+// ============================================================
+
 export async function handleExtractJson(
     page: Page,
     args: ExtractJsonArgs
-): Promise<{ found: boolean; data: any[]; count: number }> {
+): Promise<{ found: boolean; data: any[]; count: number; decoded?: any }> {
     const data: any[] = [];
+    let decoded: any = null;
+
+    // ============================================================
+    // 1. DECODE FROM DIRECT BASE64 STRING
+    // ============================================================
+    if (args.decodeBase64) {
+        try {
+            const result = decodeBase64(args.decodeBase64);
+            decoded = {
+                source: 'decodeBase64',
+                input: args.decodeBase64.substring(0, 50) + '...',
+                output: result,
+                isUrl: result.startsWith('http'),
+            };
+            data.push(decoded);
+        } catch (e) {
+            decoded = { source: 'decodeBase64', error: String(e) };
+        }
+    }
+
+    // ============================================================
+    // 2. DECODE FROM URL PARAMETER
+    // ============================================================
+    if (args.decodeFromUrl) {
+        try {
+            const paramName = args.decodeUrlParam || 'id';
+            const encoded = extractUrlParam(args.decodeFromUrl, paramName);
+
+            if (encoded) {
+                const result = decodeBase64(encoded);
+                decoded = {
+                    source: 'decodeFromUrl',
+                    url: args.decodeFromUrl.substring(0, 80) + '...',
+                    param: paramName,
+                    encoded: encoded.substring(0, 50) + '...',
+                    decoded: result,
+                    isUrl: result.startsWith('http'),
+                };
+                data.push(decoded);
+            } else {
+                decoded = { source: 'decodeFromUrl', error: `Parameter '${paramName}' not found in URL` };
+            }
+        } catch (e) {
+            decoded = { source: 'decodeFromUrl', error: String(e) };
+        }
+    }
+
+    // ============================================================
+    // 3. ADVANCED MULTI-LAYER DECODE
+    // ============================================================
+    if (args.advancedDecode) {
+        try {
+            let input = args.advancedDecode.input || '';
+
+            // Extract from page if requested
+            if (args.advancedDecode.extractFromPage) {
+                const pageContent = await page.evaluate((selector) => {
+                    if (selector) {
+                        const el = document.querySelector(selector);
+                        return el?.textContent || '';
+                    }
+                    return document.body?.textContent || '';
+                }, args.advancedDecode.pageSelector);
+                input = pageContent;
+            }
+
+            if (input) {
+                const result = multiLayerDecode(input, args.advancedDecode.layers);
+                decoded = {
+                    source: 'advancedDecode',
+                    layers: args.advancedDecode.layers,
+                    inputLength: input.length,
+                    inputPreview: input.substring(0, 100) + (input.length > 100 ? '...' : ''),
+                    output: result,
+                    outputLength: result.length,
+                    isUrl: result.startsWith('http'),
+                };
+                data.push(decoded);
+            }
+        } catch (e) {
+            decoded = { source: 'advancedDecode', error: String(e) };
+        }
+    }
+
+    // ============================================================
+    // 4. FIND AND DECODE BASE64 PATTERNS IN PAGE
+    // ============================================================
+    if (args.decodePattern) {
+        try {
+            const pageText = await page.evaluate(() => {
+                // Get all script contents + page text
+                const scripts = Array.from(document.querySelectorAll('script'))
+                    .map(s => s.textContent || '')
+                    .join('\n');
+                const bodyText = document.body?.textContent || '';
+                return scripts + '\n' + bodyText;
+            });
+
+            const found = findBase64InText(pageText, args.decodePattern);
+
+            decoded = {
+                source: 'decodePattern',
+                pattern: args.decodePattern,
+                foundCount: found.length,
+                results: found.slice(0, 20), // Limit to first 20
+                urls: found.filter(f => f.startsWith('http')),
+            };
+            data.push(decoded);
+        } catch (e) {
+            decoded = { source: 'decodePattern', error: String(e) };
+        }
+    }
+
+    // ============================================================
+    // 5. ORIGINAL JSON EXTRACTION (preserved)
+    // ============================================================
 
     // Extract from script tags with type="application/json" or type="application/ld+json"
     const scriptData = await page.evaluate((selector) => {
@@ -642,6 +879,7 @@ export async function handleExtractJson(
         found: data.length > 0,
         data,
         count: data.length,
+        decoded,
     };
 }
 

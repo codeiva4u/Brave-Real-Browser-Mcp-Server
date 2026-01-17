@@ -487,14 +487,34 @@ export const TOOLS = [
   },
   {
     name: 'extract_json',
-    description: 'Extract embedded JSON/API data from page (LD+JSON, __NEXT_DATA__, etc.)',
+    description: 'Extract embedded JSON/API data from page (LD+JSON, __NEXT_DATA__, etc.) + Advanced Decode capabilities for complex websites (base64, URL, hex, rot13, multi-layer)',
     inputSchema: {
       type: 'object',
       additionalProperties: false,
       properties: {
+        // Original JSON extraction
         selector: { type: 'string', description: 'CSS selector for script tags' },
         scriptIndex: { type: 'number', description: 'Index of script to extract' },
         variableName: { type: 'string', description: 'Window variable name to extract' },
+        // Advanced Decode capabilities
+        decodeBase64: { type: 'string', description: 'Direct base64 string to decode' },
+        decodeFromUrl: { type: 'string', description: 'URL to extract and decode encoded parameter from (e.g., gadgetsweb.xyz/?id=xxx)' },
+        decodeUrlParam: { type: 'string', description: 'URL parameter name to decode (default: id)', default: 'id' },
+        decodePattern: { type: 'string', description: 'Regex pattern to find and decode base64 strings in page content' },
+        advancedDecode: {
+          type: 'object',
+          description: 'Multi-layer decode for complex obfuscation (supports base64, url, hex, rot13, reverse)',
+          properties: {
+            input: { type: 'string', description: 'Input string to decode (if not using page content)' },
+            layers: {
+              type: 'array',
+              items: { type: 'string', enum: ['base64', 'url', 'hex', 'rot13', 'reverse'] },
+              description: 'Decode layers to apply in order (e.g., ["base64", "url"])'
+            },
+            extractFromPage: { type: 'boolean', description: 'Extract input from current page content', default: false },
+            pageSelector: { type: 'string', description: 'CSS selector to extract from (for extractFromPage)' },
+          },
+        },
       },
     },
   },
