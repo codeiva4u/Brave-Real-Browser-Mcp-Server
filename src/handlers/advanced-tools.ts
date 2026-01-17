@@ -1049,6 +1049,7 @@ export async function handleExtractJson(
             } else {
                 let decryptResult: string | null = null;
                 let successIv: string | null = null;
+                let lastError: string = '';
 
                 for (const iv of ivList) {
                     try {
@@ -1058,7 +1059,8 @@ export async function handleExtractJson(
                             decryptResult = result;
                             break;
                         }
-                    } catch {
+                    } catch (e) {
+                        lastError = String(e);
                         // Try next IV
                     }
                 }
@@ -1087,7 +1089,10 @@ export async function handleExtractJson(
                         source: 'decryptAES',
                         success: false,
                         error: 'Decryption failed with all IVs',
+                        lastError: lastError,
                         triedIvs: ivList,
+                        inputLength: input.length,
+                        keyLength: key.length,
                     };
                 }
             }
