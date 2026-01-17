@@ -654,27 +654,76 @@ function reverseString(input: string): string {
 /**
  * Unpack obfuscated JavaScript code using eval(function(p,a,c,k,e,d)) pattern
  * This is the most common packer used by streaming sites
+ * 
+ * Format: eval(function(p,a,c,k,e,d){while(c--)...}('packed_code',36,623,'dict'.split('|'),0,{}))
  */
 function unpackJs(input: string): string {
     try {
-        // Pattern: eval(function(p,a,c,k,e,d){...}('packed_code',radix,count,'dictionary'.split('|'),0,{}))
-        const packedRegex = /eval\s*\(\s*function\s*\(\s*p\s*,\s*a\s*,\s*c\s*,\s*k\s*,\s*e\s*,\s*d\s*\)\s*\{[^}]+\}\s*\(\s*'([^']+)'\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*'([^']+)'\.split\s*\(\s*'\|'\s*\)/;
-
-        const match = input.match(packedRegex);
-        if (!match) {
-            // Try alternate pattern without word boundary
-            const altRegex = /function\s*\(\s*p\s*,\s*a\s*,\s*c\s*,\s*k\s*,\s*e\s*,\s*d\s*\)[^}]+\}\s*\(\s*'([^']+)'\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*'([^']+)'\.split/;
-            const altMatch = input.match(altRegex);
-            if (!altMatch) return input;
-            return unpackPACKer(altMatch[1], parseInt(altMatch[2]), parseInt(altMatch[3]), altMatch[4].split('|'));
+        // Check if input contains packed JS pattern
+        if (!input.includes('function(p,a,c,k,e,d)') && !input.includes('function (p,a,c,k,e,d)')) {
+            return input;
         }
 
-        const packed = match[1];
-        const radix = parseInt(match[2]);
-        const count = parseInt(match[3]);
-        const dictionary = match[4].split('|');
+        // Strategy 1: Extract dictionary from the end (most reliable)
+        // Pattern: 'dictionary_words'.split('|')
+        const dictRegex = /'([^']{50,})'\.split\s*\(\s*'\|'\s*\)/;
+        const dictMatch = input.match(dictRegex);
 
-        return unpackPACKer(packed, radix, count, dictionary);
+        if (!dictMatch) {
+            return input;
+        }
+
+        const dictionary = dictMatch[1].split('|');
+
+        // Strategy 2: Position-based extraction (handles escaped quotes in packed code)
+        // Find start marker: }('
+        const startMarker = "}('";
+        const startIdx = input.indexOf(startMarker);
+
+        if (startIdx === -1) {
+            return input;
+        }
+
+        // Find radix and count pattern: ,radix,count,'
+        // Common radix values: 36, 62, 10, 16
+        const radixPattern = /,(\d{1,2}),(\d+),'/;
+        const radixMatch = input.match(radixPattern);
+
+        if (!radixMatch) {
+            return input;
+        }
+
+        const radix = parseInt(radixMatch[1]);
+        const count = parseInt(radixMatch[2]);
+
+        // Validate radix (must be between 2-62)
+        if (radix < 2 || radix > 62) {
+            return input;
+        }
+
+        // Find position of radix pattern in input
+        const radixSearchPattern = ',' + radixMatch[1] + ',' + radixMatch[2] + ",'";
+        const radixPos = input.indexOf(radixSearchPattern);
+
+        if (radixPos === -1 || radixPos <= startIdx) {
+            return input;
+        }
+
+        // Extract packed code between }(' and the radix position
+        const packedStart = startIdx + startMarker.length;
+        const packed = input.substring(packedStart, radixPos);
+
+        // Validate packed code (must end with quote)
+        if (!packed.endsWith("'")) {
+            // Try to trim trailing quote
+            const cleanPacked = packed.replace(/'$/, '');
+            return unpackPACKer(cleanPacked, radix, count, dictionary);
+        }
+
+        // Remove trailing quote
+        const cleanPacked = packed.slice(0, -1);
+
+        return unpackPACKer(cleanPacked, radix, count, dictionary);
     } catch (e) {
         return input;
     }
@@ -685,27 +734,35 @@ function unpackJs(input: string): string {
  * Replaces placeholders in packed code with dictionary values
  */
 function unpackPACKer(p: string, a: number, c: number, k: string[]): string {
+    // Validate inputs
+    if (!p || a < 2 || a > 62 || c <= 0 || !k || k.length === 0) {
+        return p || '';
+    }
+
     // Decode function to convert number to base-a representation
     function decode(d: number): string {
         const chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        if (d === 0) return '0';
         let result = '';
         while (d > 0) {
             result = chars[d % a] + result;
             d = Math.floor(d / a);
         }
-        return result || '0';
+        return result;
     }
 
-    // Replace encoded values with dictionary words
-    while (c--) {
-        if (k[c]) {
-            // Match word boundaries using regex based on radix
-            const pattern = new RegExp('\\b' + decode(c) + '\\b', 'g');
-            p = p.replace(pattern, k[c]);
+    // Replace encoded values with dictionary words (iterate from high to low)
+    let unpacked = p;
+    for (let i = Math.min(c, k.length) - 1; i >= 0; i--) {
+        if (k[i] && k[i].length > 0) {
+            const encoded = decode(i);
+            // Use word boundary matching
+            const pattern = new RegExp('\\b' + encoded + '\\b', 'g');
+            unpacked = unpacked.replace(pattern, k[i]);
         }
     }
 
-    return p;
+    return unpacked;
 }
 
 /**
@@ -715,14 +772,49 @@ function extractAndUnpackAll(html: string): { scripts: string[]; urls: string[] 
     const scripts: string[] = [];
     const urls: string[] = [];
 
-    // Find all packed script blocks
-    const packedPattern = /eval\s*\(\s*function\s*\(\s*p\s*,\s*a\s*,\s*c\s*,\s*k\s*,\s*e\s*,\s*d\s*\)[^)]+\([^)]+\)\s*\)/g;
+    // Find script contents that contain packed JS signature
+    // Split by script tags and process each one
+    const scriptBlocks: string[] = [];
 
-    let match;
-    while ((match = packedPattern.exec(html)) !== null) {
+    // Method 1: Find eval(function(p,a,c,k,e,d) blocks by searching for the pattern
+    // and extracting until the matching closing ))
+    const evalStarts = [...html.matchAll(/eval\s*\(\s*function\s*\(\s*p\s*,\s*a\s*,\s*c\s*,\s*k\s*,\s*e\s*,\s*d\s*\)/g)];
+
+    for (const evalStart of evalStarts) {
+        if (evalStart.index !== undefined) {
+            // Find the end by looking for .split('|')))
+            const searchStart = evalStart.index;
+            const searchEnd = html.indexOf(".split('|')))", searchStart);
+            if (searchEnd !== -1) {
+                const block = html.substring(searchStart, searchEnd + 14); // +14 for ".split('|')))"
+                scriptBlocks.push(block);
+            }
+        }
+    }
+
+    // Method 2: Fallback - look for any scripts containing the signature
+    if (scriptBlocks.length === 0) {
+        const signature = "function(p,a,c,k,e,d)";
+        let searchPos = 0;
+        while ((searchPos = html.indexOf(signature, searchPos)) !== -1) {
+            // Extract surrounding context (up to 15000 chars)
+            const start = Math.max(0, searchPos - 100);
+            const end = Math.min(html.length, searchPos + 15000);
+            const context = html.substring(start, end);
+
+            // Check if this looks like a full packed script
+            if (context.includes(".split('|')")) {
+                scriptBlocks.push(context);
+            }
+            searchPos += signature.length;
+        }
+    }
+
+    // Process all found script blocks
+    for (const block of scriptBlocks) {
         try {
-            const unpacked = unpackJs(match[0]);
-            if (unpacked && unpacked !== match[0]) {
+            const unpacked = unpackJs(block);
+            if (unpacked && unpacked !== block && unpacked.length > 100) {
                 scripts.push(unpacked);
 
                 // Extract URLs from unpacked script
@@ -731,13 +823,16 @@ function extractAndUnpackAll(html: string): { scripts: string[]; urls: string[] 
                     /https?:\/\/[^\s"'<>\\]+\.txt\?[^\s"'<>\\]*/gi,
                     /https?:\/\/[^\s"'<>\\]+\/stream\/[^\s"'<>\\]*/gi,
                     /https?:\/\/[^\s"'<>\\]+\/hls\/[^\s"'<>\\]*/gi,
+                    /https?:\/\/[^\s"'<>\\]+pureluxury[^\s"'<>\\]*/gi,
+                    /https?:\/\/[^\s"'<>\\]+minochinos[^\s"'<>\\]*/gi,
                 ];
 
                 for (const pattern of urlPatterns) {
                     let urlMatch;
                     while ((urlMatch = pattern.exec(unpacked)) !== null) {
-                        if (!urls.includes(urlMatch[0])) {
-                            urls.push(urlMatch[0]);
+                        const url = urlMatch[0].replace(/['"\\,;}\]]+$/, ''); // Clean trailing chars
+                        if (!urls.includes(url) && url.length > 20) {
+                            urls.push(url);
                         }
                     }
                 }
