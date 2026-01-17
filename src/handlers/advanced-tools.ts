@@ -53,9 +53,13 @@ export interface ExtractJsonArgs {
     decodeFromUrl?: string;          // URL to extract and decode ?id= or similar param
     decodeUrlParam?: string;         // Specific URL parameter name to decode (default: 'id')
     decodePattern?: string;          // Regex pattern to find and decode base64 strings in page
+
+    // NEW: Packed JavaScript decoder - auto-detects and unpacks eval(function(p,a,c,k,e,d)) patterns
+    decodePackedJs?: boolean;        // Auto-detect and decode packed JavaScript in page scripts
+
     advancedDecode?: {               // Multi-layer decode for complex obfuscation
         input?: string;              // Input string (if not using page content)
-        layers: ('base64' | 'url' | 'hex' | 'rot13' | 'reverse')[];
+        layers: ('base64' | 'url' | 'hex' | 'rot13' | 'reverse' | 'unpackJs')[];
         extractFromPage?: boolean;   // Extract input from current page
         pageSelector?: string;       // CSS selector to extract from (for extractFromPage)
     };
@@ -647,6 +651,105 @@ function reverseString(input: string): string {
     return input.split('').reverse().join('');
 }
 
+/**
+ * Unpack obfuscated JavaScript code using eval(function(p,a,c,k,e,d)) pattern
+ * This is the most common packer used by streaming sites
+ */
+function unpackJs(input: string): string {
+    try {
+        // Pattern: eval(function(p,a,c,k,e,d){...}('packed_code',radix,count,'dictionary'.split('|'),0,{}))
+        const packedRegex = /eval\s*\(\s*function\s*\(\s*p\s*,\s*a\s*,\s*c\s*,\s*k\s*,\s*e\s*,\s*d\s*\)\s*\{[^}]+\}\s*\(\s*'([^']+)'\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*'([^']+)'\.split\s*\(\s*'\|'\s*\)/;
+
+        const match = input.match(packedRegex);
+        if (!match) {
+            // Try alternate pattern without word boundary
+            const altRegex = /function\s*\(\s*p\s*,\s*a\s*,\s*c\s*,\s*k\s*,\s*e\s*,\s*d\s*\)[^}]+\}\s*\(\s*'([^']+)'\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*'([^']+)'\.split/;
+            const altMatch = input.match(altRegex);
+            if (!altMatch) return input;
+            return unpackPACKer(altMatch[1], parseInt(altMatch[2]), parseInt(altMatch[3]), altMatch[4].split('|'));
+        }
+
+        const packed = match[1];
+        const radix = parseInt(match[2]);
+        const count = parseInt(match[3]);
+        const dictionary = match[4].split('|');
+
+        return unpackPACKer(packed, radix, count, dictionary);
+    } catch (e) {
+        return input;
+    }
+}
+
+/**
+ * Core P.A.C.K.E.R. decoding algorithm
+ * Replaces placeholders in packed code with dictionary values
+ */
+function unpackPACKer(p: string, a: number, c: number, k: string[]): string {
+    // Decode function to convert number to base-a representation
+    function decode(d: number): string {
+        const chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        let result = '';
+        while (d > 0) {
+            result = chars[d % a] + result;
+            d = Math.floor(d / a);
+        }
+        return result || '0';
+    }
+
+    // Replace encoded values with dictionary words
+    while (c--) {
+        if (k[c]) {
+            // Match word boundaries using regex based on radix
+            const pattern = new RegExp('\\b' + decode(c) + '\\b', 'g');
+            p = p.replace(pattern, k[c]);
+        }
+    }
+
+    return p;
+}
+
+/**
+ * Extract all packed scripts from HTML and decode them
+ */
+function extractAndUnpackAll(html: string): { scripts: string[]; urls: string[] } {
+    const scripts: string[] = [];
+    const urls: string[] = [];
+
+    // Find all packed script blocks
+    const packedPattern = /eval\s*\(\s*function\s*\(\s*p\s*,\s*a\s*,\s*c\s*,\s*k\s*,\s*e\s*,\s*d\s*\)[^)]+\([^)]+\)\s*\)/g;
+
+    let match;
+    while ((match = packedPattern.exec(html)) !== null) {
+        try {
+            const unpacked = unpackJs(match[0]);
+            if (unpacked && unpacked !== match[0]) {
+                scripts.push(unpacked);
+
+                // Extract URLs from unpacked script
+                const urlPatterns = [
+                    /https?:\/\/[^\s"'<>\\]+\.m3u8[^\s"'<>\\]*/gi,
+                    /https?:\/\/[^\s"'<>\\]+\.txt\?[^\s"'<>\\]*/gi,
+                    /https?:\/\/[^\s"'<>\\]+\/stream\/[^\s"'<>\\]*/gi,
+                    /https?:\/\/[^\s"'<>\\]+\/hls\/[^\s"'<>\\]*/gi,
+                ];
+
+                for (const pattern of urlPatterns) {
+                    let urlMatch;
+                    while ((urlMatch = pattern.exec(unpacked)) !== null) {
+                        if (!urls.includes(urlMatch[0])) {
+                            urls.push(urlMatch[0]);
+                        }
+                    }
+                }
+            }
+        } catch (e) {
+            // Skip failed unpacking
+        }
+    }
+
+    return { scripts, urls };
+}
+
 function applyDecodeLayer(input: string, layer: string): string {
     switch (layer) {
         case 'base64': return decodeBase64(input);
@@ -654,6 +757,7 @@ function applyDecodeLayer(input: string, layer: string): string {
         case 'hex': return decodeHex(input);
         case 'rot13': return decodeRot13(input);
         case 'reverse': return reverseString(input);
+        case 'unpackJs': return unpackJs(input);
         default: return input;
     }
 }
@@ -829,7 +933,53 @@ export async function handleExtractJson(
     }
 
     // ============================================================
-    // 5. ORIGINAL JSON EXTRACTION (preserved)
+    // 5. DECODE PACKED JAVASCRIPT (AUTO-DETECT)
+    // ============================================================
+    if (args.decodePackedJs) {
+        try {
+            // Get all script contents from page
+            const scriptContents = await page.evaluate(() => {
+                const scripts = Array.from(document.querySelectorAll('script'));
+                return scripts.map(s => s.textContent || '').filter(s => s.length > 0);
+            });
+
+            const allUnpacked: { scripts: string[]; urls: string[] } = { scripts: [], urls: [] };
+
+            for (const script of scriptContents) {
+                const result = extractAndUnpackAll(script);
+                allUnpacked.scripts.push(...result.scripts);
+                allUnpacked.urls.push(...result.urls);
+            }
+
+            // Remove duplicates from URLs
+            const uniqueUrls = [...new Set(allUnpacked.urls)];
+
+            if (allUnpacked.scripts.length > 0 || uniqueUrls.length > 0) {
+                decoded = {
+                    source: 'decodePackedJs',
+                    packedScriptsFound: allUnpacked.scripts.length,
+                    unpackedScripts: allUnpacked.scripts.slice(0, 5), // Limit to first 5
+                    extractedUrls: uniqueUrls,
+                    streamUrls: uniqueUrls.filter(u =>
+                        u.includes('m3u8') || u.includes('.txt?') ||
+                        u.includes('/stream/') || u.includes('/hls/')
+                    ),
+                };
+                data.push(decoded);
+            } else {
+                decoded = {
+                    source: 'decodePackedJs',
+                    message: 'No packed JavaScript found in page',
+                    hint: 'Try using execute_js or player_api_hook for dynamically loaded content',
+                };
+            }
+        } catch (e) {
+            decoded = { source: 'decodePackedJs', error: String(e) };
+        }
+    }
+
+    // ============================================================
+    // 6. ORIGINAL JSON EXTRACTION (preserved)
     // ============================================================
 
     // Extract from script tags with type="application/json" or type="application/ld+json"

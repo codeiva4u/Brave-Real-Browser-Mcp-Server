@@ -3,7 +3,7 @@
 // Server metadata
 export const SERVER_INFO = {
   name: 'brave-real-browser-mcp-server',
-  version: '2.24.0',
+  version: '2.25.0',
 };
 
 // MCP capabilities with LSP-compatible streaming support
@@ -487,7 +487,7 @@ export const TOOLS = [
   },
   {
     name: 'extract_json',
-    description: 'Extract embedded JSON/API data from page (LD+JSON, __NEXT_DATA__, etc.) + Advanced Decode capabilities for complex websites (base64, URL, hex, rot13, multi-layer)',
+    description: 'Extract embedded JSON/API data from page (LD+JSON, __NEXT_DATA__, etc.) + Advanced Decode capabilities for complex websites (base64, URL, hex, rot13, multi-layer) + Packed JavaScript decoder (eval/function(p,a,c,k,e,d) unpacker)',
     inputSchema: {
       type: 'object',
       additionalProperties: false,
@@ -501,15 +501,17 @@ export const TOOLS = [
         decodeFromUrl: { type: 'string', description: 'URL to extract and decode encoded parameter from (e.g., gadgetsweb.xyz/?id=xxx)' },
         decodeUrlParam: { type: 'string', description: 'URL parameter name to decode (default: id)', default: 'id' },
         decodePattern: { type: 'string', description: 'Regex pattern to find and decode base64 strings in page content' },
+        // NEW: Packed JavaScript decoder
+        decodePackedJs: { type: 'boolean', description: 'Auto-detect and decode packed JavaScript (eval/function(p,a,c,k,e,d)) in page scripts. Extracts m3u8/stream URLs automatically.', default: false },
         advancedDecode: {
           type: 'object',
-          description: 'Multi-layer decode for complex obfuscation (supports base64, url, hex, rot13, reverse)',
+          description: 'Multi-layer decode for complex obfuscation (supports base64, url, hex, rot13, reverse, unpackJs)',
           properties: {
             input: { type: 'string', description: 'Input string to decode (if not using page content)' },
             layers: {
               type: 'array',
-              items: { type: 'string', enum: ['base64', 'url', 'hex', 'rot13', 'reverse'] },
-              description: 'Decode layers to apply in order (e.g., ["base64", "url"])'
+              items: { type: 'string', enum: ['base64', 'url', 'hex', 'rot13', 'reverse', 'unpackJs'] },
+              description: 'Decode layers to apply in order (e.g., ["base64", "url", "unpackJs"])'
             },
             extractFromPage: { type: 'boolean', description: 'Extract input from current page content', default: false },
             pageSelector: { type: 'string', description: 'CSS selector to extract from (for extractFromPage)' },
