@@ -214,6 +214,11 @@ export async function handleBreadcrumbNavigator(
     page: Page,
     args: BreadcrumbNavigatorArgs
 ): Promise<{ success: boolean; breadcrumbs: string[]; navigatedTo?: string }> {
+    // Progress tracking
+    const progressNotifier = getProgressNotifier();
+    const tracker = progressNotifier.createTracker(`breadcrumb-${Date.now()}`);
+    tracker.start(100, '🍞 Finding breadcrumbs...');
+
     const breadcrumbSelectors = [
         'nav[aria-label*="breadcrumb"]',
         '.breadcrumb',
@@ -223,13 +228,19 @@ export async function handleBreadcrumbNavigator(
         'ul.breadcrumb',
     ];
 
+    tracker.setProgress(20, '🔍 Searching for breadcrumb container...');
+
     let breadcrumbContainer: ElementHandle | null = null;
     for (const selector of breadcrumbSelectors) {
         breadcrumbContainer = await page.$(selector);
-        if (breadcrumbContainer) break;
+        if (breadcrumbContainer) {
+            tracker.setProgress(40, `✅ Found breadcrumb: ${selector}`);
+            break;
+        }
     }
 
     if (!breadcrumbContainer) {
+        tracker.fail('No breadcrumbs found');
         return { success: false, breadcrumbs: [] };
     }
 
@@ -423,13 +434,20 @@ export async function handleSearchContent(
     page: Page,
     args: SearchContentArgs
 ): Promise<{ found: boolean; matches: { text: string; context: string; selector?: string }[]; count: number }> {
+    // Progress tracking
+    const progressNotifier = getProgressNotifier();
+    const tracker = progressNotifier.createTracker(`search-${Date.now()}`);
+    tracker.start(100, `🔎 Searching for: "${args.pattern}"...`);
+
     // Wait for body to be available
     try {
+        tracker.setProgress(10, '⏳ Waiting for page content...');
         await page.waitForSelector('body', { timeout: 5000 });
     } catch {
         // Continue anyway
     }
 
+    tracker.setProgress(30, '📄 Extracting page content...');
     let content = '';
     if (args.selector) {
         try {
@@ -444,8 +462,11 @@ export async function handleSearchContent(
     const matches: { text: string; context: string; selector?: string }[] = [];
 
     if (!content || content.length === 0) {
+        tracker.fail('No content to search');
         return { found: false, matches: [], count: 0 };
     }
+
+    tracker.setProgress(50, '🔍 Running pattern match...');
 
     let regex: RegExp;
     if (args.isRegex) {
@@ -465,6 +486,8 @@ export async function handleSearchContent(
         });
         if (matches.length >= 100) break; // Limit matches
     }
+
+    tracker.complete(`🎉 Found ${matches.length} matches`);
 
     return {
         found: matches.length > 0,
@@ -1381,9 +1404,16 @@ export async function handleDeepAnalysis(
     page: Page,
     args: DeepAnalysisArgs
 ): Promise<{ console: string[]; network: any[]; domStats: any; screenshot?: string }> {
+    // Progress tracking
+    const progressNotifier = getProgressNotifier();
+    const tracker = progressNotifier.createTracker(`deep-analysis-${Date.now()}`);
+    tracker.start(100, '🔬 Starting deep analysis...');
+
     const consoleLogs: string[] = [];
     const networkRequests: any[] = [];
     const duration = args.duration || 5000;
+
+    tracker.setProgress(10, `⏱️ Recording for ${duration}ms...`);
 
     // Console log handler
     const consoleHandler = (msg: any) => {
@@ -1410,11 +1440,13 @@ export async function handleDeepAnalysis(
     try {
         // Collect console logs
         if (args.includeConsole !== false) {
+            tracker.setProgress(20, '📝 Monitoring console logs...');
             page.on('console', consoleHandler);
         }
 
         // Collect network using response events (safer than request interception)
         if (args.includeNetwork !== false) {
+            tracker.setProgress(30, '🌐 Recording network traffic...');
             page.on('response', responseHandler);
         }
 
