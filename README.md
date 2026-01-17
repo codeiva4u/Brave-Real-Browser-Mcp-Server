@@ -31,7 +31,12 @@
   "mcpServers": {
     "brave-real-browser": {
       "command": "node",
-      "args": ["c:\\Users\\Admin\\Desktop\\Workspace-For-Brave-Real-browser-Mcp-Server\\Brave-Real-Browser-Mcp-Server\\dist\\index.js"]
+      "args": [
+        "c:\\Users\\Admin\\Desktop\\Workspace-For-Brave-Real-browser-Mcp-Server\\Brave-Real-Browser-Mcp-Server\\dist\\index.js"
+      ],
+      "env": {
+        "headless": "false"
+      }
     }
   }
 }
