@@ -46,13 +46,13 @@
     "@types/mocha": "^8.0.4",
     "@types/sinon": "^9.0.1",
     "clang-format": "^1.0.50",
-    "mocha": "^10.2.0",
-    "sinon": "^9.0.1",
-    "ts-node": "^10.9.1"
+    "mocha": "^0.13.0",
+    "sinon": "^21.0.1",
+    "ts-node": "^1.7.1"
   },
   "dependencies": {
-    "brave-real-blocker": "*",
     "@types/which": "^3.0.4",
+    "brave-real-blocker": "*",
     "escape-string-regexp": "^4.0.0",
     "is-wsl": "^2.2.0",
     "which": "^4.0.0"

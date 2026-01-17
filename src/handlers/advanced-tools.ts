@@ -63,6 +63,13 @@ export interface ExtractJsonArgs {
         extractFromPage?: boolean;   // Extract input from current page
         pageSelector?: string;       // CSS selector to extract from (for extractFromPage)
     };
+
+    // AES-CBC decryption for encrypted streaming responses
+    decryptAES?: {
+        input?: string;              // Hex-encoded encrypted string
+        key?: string;                // AES-128 key (16 characters)
+        ivList?: string[];           // List of IVs to try (16 characters each)
+    };
 }
 
 export interface ScrapeMetaTagsArgs {
@@ -652,6 +659,36 @@ function reverseString(input: string): string {
 }
 
 /**
+ * AES-CBC decryption for encrypted streaming responses
+ * Used by sites like hubstream.art that encrypt video URLs
+ * @param inputHex - Hex-encoded encrypted string
+ * @param key - AES key (16 chars for AES-128)
+ * @param iv - Initialization vector (16 chars)
+ */
+function decryptAES(inputHex: string, key: string, iv: string): string {
+    try {
+        const crypto = require('crypto');
+
+        // Convert hex string to Buffer
+        const inputBuffer = Buffer.from(inputHex, 'hex');
+        const keyBuffer = Buffer.from(key, 'utf-8');
+        const ivBuffer = Buffer.from(iv, 'utf-8');
+
+        // Create decipher (AES-128-CBC requires 16-byte key and IV)
+        const decipher = crypto.createDecipheriv('aes-128-cbc', keyBuffer, ivBuffer);
+        decipher.setAutoPadding(true);
+
+        // Decrypt
+        let decrypted = decipher.update(inputBuffer);
+        decrypted = Buffer.concat([decrypted, decipher.final()]);
+
+        return decrypted.toString('utf-8');
+    } catch (e) {
+        throw new Error(`AES decryption failed: ${e}`);
+    }
+}
+
+/**
  * Unpack obfuscated JavaScript code using eval(function(p,a,c,k,e,d)) pattern
  * This is the most common packer used by streaming sites
  * 
@@ -995,6 +1032,67 @@ export async function handleExtractJson(
             }
         } catch (e) {
             decoded = { source: 'advancedDecode', error: String(e) };
+        }
+    }
+
+    // ============================================================
+    // 3b. AES DECRYPTION (for encrypted streaming responses)
+    // ============================================================
+    if (args.decryptAES) {
+        try {
+            const key = args.decryptAES.key || "kiemtienmua911ca";
+            const ivList = args.decryptAES.ivList || ["1234567890oiuytr", "0123456789abcdef"];
+            const input = args.decryptAES.input || "";
+
+            if (!input || input.length === 0) {
+                decoded = { source: 'decryptAES', error: 'No input provided for decryption' };
+            } else {
+                let decryptResult: string | null = null;
+                let successIv: string | null = null;
+
+                for (const iv of ivList) {
+                    try {
+                        const result = decryptAES(input, key, iv);
+                        if (result && !result.includes('AES decryption failed')) {
+                            successIv = iv;
+                            decryptResult = result;
+                            break;
+                        }
+                    } catch {
+                        // Try next IV
+                    }
+                }
+
+                if (decryptResult) {
+                    // Try to extract "source" field from decrypted JSON
+                    let extractedSource: string | null = null;
+                    const sourceMatch = /"source":"([^"]+)"/.exec(decryptResult);
+                    if (sourceMatch) {
+                        extractedSource = sourceMatch[1].replace(/\\\//g, '/');
+                    }
+
+                    decoded = {
+                        source: 'decryptAES',
+                        success: true,
+                        key: key,
+                        iv: successIv,
+                        decrypted: decryptResult,
+                        decryptedLength: decryptResult.length,
+                        extractedStreamUrl: extractedSource,
+                        isStreamUrl: extractedSource ? extractedSource.includes('m3u8') || extractedSource.includes('.mp4') : false,
+                    };
+                    data.push(decoded);
+                } else {
+                    decoded = {
+                        source: 'decryptAES',
+                        success: false,
+                        error: 'Decryption failed with all IVs',
+                        triedIvs: ivList,
+                    };
+                }
+            }
+        } catch (e) {
+            decoded = { source: 'decryptAES', error: String(e) };
         }
     }
 

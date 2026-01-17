@@ -487,7 +487,7 @@ export const TOOLS = [
   },
   {
     name: 'extract_json',
-    description: 'Extract embedded JSON/API data from page (LD+JSON, __NEXT_DATA__, etc.) + Advanced Decode capabilities for complex websites (base64, URL, hex, rot13, multi-layer) + Packed JavaScript decoder (eval/function(p,a,c,k,e,d) unpacker)',
+    description: 'Extract embedded JSON/API data from page (LD+JSON, __NEXT_DATA__, etc.) + Advanced Decode (base64, URL, hex, rot13, multi-layer) + Packed JavaScript decoder + AES-CBC decryption for encrypted streaming sites',
     inputSchema: {
       type: 'object',
       additionalProperties: false,
@@ -515,6 +515,21 @@ export const TOOLS = [
             },
             extractFromPage: { type: 'boolean', description: 'Extract input from current page content', default: false },
             pageSelector: { type: 'string', description: 'CSS selector to extract from (for extractFromPage)' },
+          },
+        },
+        // NEW: AES Decryption for encrypted streaming responses
+        decryptAES: {
+          type: 'object',
+          description: 'AES-CBC decryption for encrypted streaming responses (like hubstream.art VidStack API)',
+          properties: {
+            input: { type: 'string', description: 'Hex-encoded encrypted string to decrypt' },
+            key: { type: 'string', description: 'AES-128 key (16 characters)', default: 'kiemtienmua911ca' },
+            ivList: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'List of IVs to try (16 characters each)',
+              default: ['1234567890oiuytr', '0123456789abcdef']
+            },
           },
         },
       },

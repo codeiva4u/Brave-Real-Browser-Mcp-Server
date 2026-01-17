@@ -30,7 +30,10 @@
     "adm-zip": "^0.5.10",
     "cross-fetch": "^4.1.0",
     "fs-extra": "^11.2.0",
-    "got": "^13.0.0"
+    "got": "^13.0.0",
+    "mocha": "0.13.0",
+    "sinon": "21.0.1",
+    "ts-node": "1.7.1"
   },
   "devDependencies": {
     "@types/adm-zip": "^0.5.5",
@@ -41,7 +44,7 @@
     "puppeteer-core": "^24.35.0",
     "tsup": "^8.0.0",
     "typescript": "^5.0.0",
-    "vitest": "^1.0.0"
+    "vitest": "^4.0.17"
   },
   "publishConfig": {
     "access": "public"
