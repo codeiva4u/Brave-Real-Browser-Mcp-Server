@@ -3,7 +3,7 @@
 // Server metadata
 export const SERVER_INFO = {
   name: 'brave-real-browser-mcp-server',
-  version: '2.22.0',
+  version: '2.23.0',
 };
 
 // MCP capabilities with LSP-compatible streaming support
@@ -773,6 +773,38 @@ export const TOOLS = [
       required: ['url'],
     },
   },
+  // ============================================================
+  // NEW: EXECUTE_JS & PLAYER_API_HOOK TOOLS
+  // ============================================================
+  {
+    name: 'execute_js',
+    description: 'Execute custom JavaScript code on the page. ULTRA POWERFUL: Run any JS and get results. Perfect for extracting data from complex obfuscated pages.',
+    inputSchema: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        code: { type: 'string', description: 'JavaScript code to execute' },
+        returnValue: { type: 'boolean', description: 'Whether to return the result', default: true },
+        waitForResult: { type: 'number', description: 'Max wait time for async code (ms)', default: 5000 },
+        context: { type: 'string', enum: ['page', 'isolated'], description: 'Execution context', default: 'page' },
+      },
+      required: ['code'],
+    },
+  },
+  {
+    name: 'player_api_hook',
+    description: 'Hook into video player APIs to extract sources, state, and configuration. ULTRA POWERFUL: Detects JWPlayer, Video.js, HLS.js, Plyr, Vidstack, DASH.js and extracts all stream URLs.',
+    inputSchema: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        action: { type: 'string', enum: ['detect', 'getSources', 'getState', 'extractAll'], description: 'Action to perform', default: 'extractAll' },
+        playerType: { type: 'string', enum: ['auto', 'jwplayer', 'videojs', 'plyr', 'hlsjs', 'dashjs', 'vidstack', 'custom'], description: 'Target player type', default: 'auto' },
+        customSelector: { type: 'string', description: 'CSS selector for custom players' },
+        waitForPlayer: { type: 'number', description: 'Wait time for player to initialize (ms)', default: 3000 },
+      },
+    },
+  },
 ];
 
 // Tool name constants for type safety
@@ -812,6 +844,9 @@ export const TOOL_NAMES = {
   IFRAME_HANDLER: 'iframe_handler',
   STREAM_EXTRACTOR: 'stream_extractor',
   JS_SCRAPE: 'js_scrape',
+  // New JS extraction tools
+  EXECUTE_JS: 'execute_js',
+  PLAYER_API_HOOK: 'player_api_hook',
 
 } as const;
 

@@ -3870,6 +3870,378 @@ export async function handleJsScrape(
     }
 }
 
+// ============================================================
+// NEW TOOLS: EXECUTE_JS & PLAYER_API_HOOK
+// ============================================================
+
+/**
+ * Arguments for Execute JS tool - Run custom JavaScript on page
+ */
+export interface ExecuteJsArgs {
+    code: string;                      // JavaScript code to execute
+    returnValue?: boolean;             // Whether to return the result
+    waitForResult?: number;            // Max wait time for async code (ms)
+    context?: 'page' | 'isolated';     // Execution context
+}
+
+/**
+ * Arguments for Player API Hook tool - Access video player internal APIs
+ */
+export interface PlayerApiHookArgs {
+    action: 'detect' | 'getSources' | 'getState' | 'extractAll';
+    playerType?: 'auto' | 'jwplayer' | 'videojs' | 'plyr' | 'hlsjs' | 'dashjs' | 'vidstack' | 'custom';
+    customSelector?: string;           // For custom players
+    waitForPlayer?: number;            // Wait time for player to initialize
+}
+
+/**
+ * Execute custom JavaScript on page
+ * ULTRA POWERFUL: Execute any JS code and get results
+ */
+export async function handleExecuteJs(
+    page: Page,
+    args: ExecuteJsArgs
+): Promise<{
+    success: boolean;
+    result: any;
+    error?: string;
+    executionTime: number;
+}> {
+    const startTime = Date.now();
+    const waitTime = args.waitForResult || 5000;
+
+    try {
+        let result: any;
+
+        if (args.context === 'isolated') {
+            // Execute in isolated context (sandboxed)
+            result = await page.evaluate(args.code);
+        } else {
+            // Execute in page context with full access
+            result = await page.evaluate((code: string) => {
+                try {
+                    // eslint-disable-next-line no-eval
+                    return eval(code);
+                } catch (e) {
+                    return { error: String(e) };
+                }
+            }, args.code);
+        }
+
+        // Handle async results
+        if (result instanceof Promise) {
+            result = await Promise.race([
+                result,
+                new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('Timeout')), waitTime)
+                )
+            ]);
+        }
+
+        return {
+            success: true,
+            result: args.returnValue !== false ? result : undefined,
+            executionTime: Date.now() - startTime,
+        };
+    } catch (error) {
+        return {
+            success: false,
+            result: null,
+            error: error instanceof Error ? error.message : String(error),
+            executionTime: Date.now() - startTime,
+        };
+    }
+}
+
+/**
+ * Hook into video player APIs to extract sources and state
+ * ULTRA POWERFUL: Detects and extracts from all major video players
+ */
+export async function handlePlayerApiHook(
+    page: Page,
+    args: PlayerApiHookArgs
+): Promise<{
+    success: boolean;
+    playerDetected: string | null;
+    sources: { url: string; type: string; quality?: string; label?: string }[];
+    playerState?: { playing: boolean; currentTime: number; duration: number };
+    rawConfig?: any;
+    message: string;
+}> {
+    const action = args.action || 'extractAll';
+    const waitTime = args.waitForPlayer || 3000;
+
+    // Wait for player to initialize
+    await new Promise(r => setTimeout(r, waitTime));
+
+    try {
+        const result = await page.evaluate((opts: { action: string; playerType: string; customSelector?: string }) => {
+            const sources: { url: string; type: string; quality?: string; label?: string }[] = [];
+            let playerDetected: string | null = null;
+            let playerState: { playing: boolean; currentTime: number; duration: number } | undefined;
+            let rawConfig: any = null;
+
+            // ============================================================
+            // 1. JW PLAYER
+            // ============================================================
+            if ((window as any).jwplayer && typeof (window as any).jwplayer === 'function') {
+                try {
+                    const jw = (window as any).jwplayer();
+                    if (jw) {
+                        playerDetected = 'jwplayer';
+
+                        // Get sources
+                        const playlist = jw.getPlaylist ? jw.getPlaylist() : [];
+                        const currentItem = jw.getPlaylistItem ? jw.getPlaylistItem() : null;
+
+                        if (currentItem) {
+                            if (currentItem.file) {
+                                sources.push({ url: currentItem.file, type: 'primary', quality: 'auto' });
+                            }
+                            if (currentItem.sources) {
+                                currentItem.sources.forEach((s: any) => {
+                                    if (s.file) {
+                                        sources.push({
+                                            url: s.file,
+                                            type: s.type || 'video',
+                                            quality: s.label || s.height ? `${s.height}p` : 'auto',
+                                            label: s.label
+                                        });
+                                    }
+                                });
+                            }
+                        }
+
+                        // Get state
+                        if (opts.action === 'getState' || opts.action === 'extractAll') {
+                            playerState = {
+                                playing: jw.getState ? jw.getState() === 'playing' : false,
+                                currentTime: jw.getPosition ? jw.getPosition() : 0,
+                                duration: jw.getDuration ? jw.getDuration() : 0,
+                            };
+                        }
+
+                        rawConfig = jw.getConfig ? jw.getConfig() : null;
+                    }
+                } catch (e) { /* ignore */ }
+            }
+
+            // ============================================================
+            // 2. VIDEO.JS
+            // ============================================================
+            if (!playerDetected && (window as any).videojs) {
+                try {
+                    const players = (window as any).videojs.getPlayers ? (window as any).videojs.getPlayers() : {};
+                    const playerIds = Object.keys(players);
+
+                    if (playerIds.length > 0) {
+                        const vjs = players[playerIds[0]];
+                        if (vjs) {
+                            playerDetected = 'videojs';
+
+                            const src = vjs.currentSrc ? vjs.currentSrc() : vjs.src();
+                            if (src) {
+                                sources.push({ url: src, type: 'primary' });
+                            }
+
+                            // Check for quality levels
+                            if (vjs.qualityLevels) {
+                                const levels = vjs.qualityLevels();
+                                for (let i = 0; i < levels.length; i++) {
+                                    const level = levels[i];
+                                    if (level.uri) {
+                                        sources.push({
+                                            url: level.uri,
+                                            type: 'quality',
+                                            quality: level.height ? `${level.height}p` : 'auto',
+                                        });
+                                    }
+                                }
+                            }
+
+                            playerState = {
+                                playing: !vjs.paused(),
+                                currentTime: vjs.currentTime ? vjs.currentTime() : 0,
+                                duration: vjs.duration ? vjs.duration() : 0,
+                            };
+                        }
+                    }
+                } catch (e) { /* ignore */ }
+            }
+
+            // ============================================================
+            // 3. HLS.JS
+            // ============================================================
+            if (!playerDetected && (window as any).Hls) {
+                try {
+                    // Look for HLS instances
+                    const videos = document.querySelectorAll('video');
+                    videos.forEach(video => {
+                        if ((video as any).hls) {
+                            playerDetected = 'hlsjs';
+                            const hls = (video as any).hls;
+                            if (hls.url) {
+                                sources.push({ url: hls.url, type: 'hls_master' });
+                            }
+                            if (hls.levels) {
+                                hls.levels.forEach((level: any, i: number) => {
+                                    if (level.uri || level.url) {
+                                        sources.push({
+                                            url: level.uri || level.url,
+                                            type: 'hls_level',
+                                            quality: level.height ? `${level.height}p` : `Level ${i}`,
+                                        });
+                                    }
+                                });
+                            }
+                            playerState = {
+                                playing: !video.paused,
+                                currentTime: video.currentTime,
+                                duration: video.duration || 0,
+                            };
+                        }
+                    });
+                } catch (e) { /* ignore */ }
+            }
+
+            // ============================================================
+            // 4. PLYR
+            // ============================================================
+            if (!playerDetected && (window as any).Plyr) {
+                try {
+                    const plyrElements = document.querySelectorAll('.plyr');
+                    plyrElements.forEach(el => {
+                        if ((el as any).plyr) {
+                            playerDetected = 'plyr';
+                            const plyr = (el as any).plyr;
+                            if (plyr.source) {
+                                sources.push({ url: plyr.source, type: 'primary' });
+                            }
+                            playerState = {
+                                playing: plyr.playing || false,
+                                currentTime: plyr.currentTime || 0,
+                                duration: plyr.duration || 0,
+                            };
+                        }
+                    });
+                } catch (e) { /* ignore */ }
+            }
+
+            // ============================================================
+            // 5. VIDSTACK (Modern player like Hubstream uses)
+            // ============================================================
+            if (!playerDetected) {
+                try {
+                    const mediaPlayers = document.querySelectorAll('media-player');
+                    mediaPlayers.forEach(mp => {
+                        playerDetected = 'vidstack';
+                        // Vidstack stores config in various ways
+                        const video = mp.querySelector('video');
+                        if (video && video.src) {
+                            sources.push({ url: video.src, type: 'video_src' });
+                        }
+                        // Check for source elements
+                        mp.querySelectorAll('source').forEach(s => {
+                            if (s.src) {
+                                sources.push({ url: s.src, type: s.type || 'video' });
+                            }
+                        });
+                    });
+                } catch (e) { /* ignore */ }
+            }
+
+            // ============================================================
+            // 6. DASH.JS
+            // ============================================================
+            if (!playerDetected && (window as any).dashjs) {
+                try {
+                    const dashPlayer = (window as any).dashPlayer || (window as any).player;
+                    if (dashPlayer && dashPlayer.getSource) {
+                        playerDetected = 'dashjs';
+                        sources.push({ url: dashPlayer.getSource(), type: 'dash_mpd' });
+                    }
+                } catch (e) { /* ignore */ }
+            }
+
+            // ============================================================
+            // 7. FALLBACK: Check video elements directly
+            // ============================================================
+            if (sources.length === 0) {
+                document.querySelectorAll('video').forEach(video => {
+                    if (video.src) {
+                        sources.push({ url: video.src, type: 'video_element' });
+                    }
+                    video.querySelectorAll('source').forEach(s => {
+                        if (s.src) {
+                            sources.push({ url: s.src, type: s.type || 'video' });
+                        }
+                    });
+
+                    // Check currentSrc
+                    if (video.currentSrc && !sources.some(s => s.url === video.currentSrc)) {
+                        sources.push({ url: video.currentSrc, type: 'current_src' });
+                    }
+                });
+
+                if (sources.length > 0) {
+                    playerDetected = 'native_video';
+                }
+            }
+
+            // ============================================================
+            // 8. Check window variables for player configs
+            // ============================================================
+            const configVars = ['playerConfig', 'videoConfig', 'streamConfig', 'sources', 'videoSources'];
+            configVars.forEach(varName => {
+                if ((window as any)[varName]) {
+                    const config = (window as any)[varName];
+                    if (typeof config === 'string' && config.includes('http')) {
+                        sources.push({ url: config, type: 'window_var' });
+                    } else if (config.file || config.src || config.url) {
+                        sources.push({ url: config.file || config.src || config.url, type: 'window_var' });
+                    }
+                }
+            });
+
+            // Deduplicate sources
+            const seen = new Set<string>();
+            const uniqueSources = sources.filter(s => {
+                if (seen.has(s.url)) return false;
+                seen.add(s.url);
+                return true;
+            });
+
+            return {
+                playerDetected,
+                sources: uniqueSources,
+                playerState,
+                rawConfig,
+            };
+        }, { action, playerType: args.playerType || 'auto', customSelector: args.customSelector });
+
+        return {
+            success: result.sources.length > 0 || result.playerDetected !== null,
+            playerDetected: result.playerDetected,
+            sources: result.sources,
+            playerState: result.playerState,
+            rawConfig: result.rawConfig,
+            message: result.playerDetected
+                ? `🎬 Detected ${result.playerDetected} player with ${result.sources.length} source(s)`
+                : result.sources.length > 0
+                    ? `Found ${result.sources.length} video source(s) without player detection`
+                    : 'No video player or sources detected',
+        };
+    } catch (error) {
+        return {
+            success: false,
+            playerDetected: null,
+            sources: [],
+            message: `Error: ${error instanceof Error ? error.message : String(error)}`,
+        };
+    }
+}
+
+
 
 
 
