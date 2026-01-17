@@ -497,31 +497,71 @@ async function withWorkflowValidation<T>(
 }
 
 /**
- * Performs random scrolling to simulate human behavior
+ * Performs ADVANCED random scrolling with human-like behavior
+ * Features: Bezier curves, variable speeds, micro-pauses, overshoot correction
  */
 async function randomScroll(page: any) {
   try {
     await page.evaluate(async () => {
-      const distance = 100 + Math.random() * 500; // Random distance
-      const delay = 100 + Math.random() * 400; // Random delay
+      // Human-like scroll with bezier curve easing
+      const bezierEase = (t: number): number => {
+        // Cubic bezier approximation of natural human deceleration
+        return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      };
 
-      // Scroll down
-      window.scrollBy({
-        top: distance,
-        behavior: 'smooth'
-      });
+      const scrollWithBezier = async (distance: number, duration: number) => {
+        const start = window.scrollY;
+        const startTime = performance.now();
 
-      await new Promise(resolve => setTimeout(resolve, delay));
+        return new Promise<void>((resolve) => {
+          const step = () => {
+            const elapsed = performance.now() - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            const eased = bezierEase(progress);
 
-      // Occasionally scroll up a bit
-      if (Math.random() < 0.3) {
-        window.scrollBy({
-          top: -distance / 2,
-          behavior: 'smooth'
+            window.scrollTo(0, start + distance * eased);
+
+            if (progress < 1) {
+              requestAnimationFrame(step);
+            } else {
+              resolve();
+            }
+          };
+          requestAnimationFrame(step);
         });
+      };
+
+      // Variable scroll parameters (human-like variation)
+      const baseDistance = 150 + Math.random() * 400;
+      const baseDuration = 400 + Math.random() * 600;
+
+      // Main scroll with natural timing
+      await scrollWithBezier(baseDistance, baseDuration);
+
+      // Micro-pause (humans pause briefly after scrolling)
+      await new Promise(resolve => setTimeout(resolve, 50 + Math.random() * 150));
+
+      // 40% chance: Small overshoot correction (very human)
+      if (Math.random() < 0.4) {
+        const overshoot = 20 + Math.random() * 50;
+        await scrollWithBezier(-overshoot, 200 + Math.random() * 200);
+      }
+
+      // 30% chance: Scroll back up slightly (reading behavior)
+      if (Math.random() < 0.3) {
+        await new Promise(resolve => setTimeout(resolve, 200 + Math.random() * 300));
+        await scrollWithBezier(-baseDistance * (0.2 + Math.random() * 0.3), 300 + Math.random() * 300);
+      }
+
+      // 20% chance: Multiple small scrolls (scanning behavior)
+      if (Math.random() < 0.2) {
+        for (let i = 0; i < 2 + Math.floor(Math.random() * 2); i++) {
+          await new Promise(resolve => setTimeout(resolve, 100 + Math.random() * 200));
+          await scrollWithBezier(50 + Math.random() * 100, 200 + Math.random() * 200);
+        }
       }
     });
   } catch (error) {
-    // console.('Random scroll failed (non-fatal):', error);
+    // Random scroll failed (non-fatal)
   }
 }

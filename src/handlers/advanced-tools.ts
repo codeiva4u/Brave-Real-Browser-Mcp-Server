@@ -1271,6 +1271,13 @@ export async function handleScrapeMetaTags(
     page: Page,
     args: ScrapeMetaTagsArgs
 ): Promise<{ title: string; description: string; og: Record<string, string>; twitter: Record<string, string>; other: Record<string, string> }> {
+    // Progress tracking
+    const progressNotifier = getProgressNotifier();
+    const tracker = progressNotifier.createTracker(`meta-tags-${Date.now()}`);
+    tracker.start(100, '🏷️ Scraping meta tags...');
+
+    tracker.setProgress(20, '📄 Extracting page title and description...');
+
     const result = await page.evaluate((options) => {
         const title = document.title || '';
         const description = document.querySelector('meta[name="description"]')?.getAttribute('content') || '';
@@ -1300,6 +1307,9 @@ export async function handleScrapeMetaTags(
         includeOG: args.includeOG !== false,
         includeTwitter: args.includeTwitter !== false,
     });
+
+    const tagCount = Object.keys(result.og).length + Object.keys(result.twitter).length + Object.keys(result.other).length;
+    tracker.complete(`🎉 Extracted ${tagCount} meta tags`);
 
     return result;
 }
@@ -1993,15 +2003,40 @@ export async function handleElementScreenshot(
     page: Page,
     args: ElementScreenshotArgs
 ): Promise<{ success: boolean; path?: string; base64?: string; dimensions: { width: number; height: number } }> {
-    const element = await page.$(args.selector);
-    if (!element) {
-        return { success: false, dimensions: { width: 0, height: 0 } };
+    // Progress tracking
+    const progressNotifier = getProgressNotifier();
+    const tracker = progressNotifier.createTracker(`element-screenshot-${Date.now()}`);
+    tracker.start(100, '📸 Starting element screenshot...');
+
+    // Import self-healing locators
+    const { selfHealingLocators } = await import('../self-healing-locators.js');
+
+    tracker.setProgress(20, `🔍 Finding element: ${args.selector}`);
+
+    // Try self-healing locator first
+    const elementResult = await selfHealingLocators.findElementWithFallbacks(page, args.selector);
+
+    if (!elementResult) {
+        tracker.fail('Element not found');
+        return {
+            success: false,
+            dimensions: { width: 0, height: 0 },
+            // @ts-ignore
+            error: `Element not found: ${args.selector}. Self-healing tried multiple fallback strategies.`
+        };
     }
+
+    const { element, usedSelector, strategy } = elementResult;
+    const strategyMsg = strategy !== 'primary' ? ` (found via ${strategy}: ${usedSelector})` : '';
+    tracker.setProgress(40, `✅ Element found${strategyMsg}`);
 
     const boundingBox = await element.boundingBox();
     if (!boundingBox) {
+        tracker.fail('Element has no bounding box');
         return { success: false, dimensions: { width: 0, height: 0 } };
     }
+
+    tracker.setProgress(60, `📐 Element size: ${Math.round(boundingBox.width)}x${Math.round(boundingBox.height)}`);
 
     const options: any = {
         type: args.format || 'png',
@@ -2014,13 +2049,16 @@ export async function handleElementScreenshot(
     if (args.path) {
         options.path = args.path;
         try {
+            tracker.setProgress(80, '📷 Capturing screenshot to file...');
             await element.screenshot(options);
+            tracker.complete(`🎉 Screenshot saved: ${args.path}`);
             return {
                 success: true,
                 path: args.path,
                 dimensions: { width: Math.round(boundingBox.width), height: Math.round(boundingBox.height) },
             };
         } catch (error) {
+            tracker.fail('Screenshot failed');
             return {
                 success: false,
                 dimensions: { width: 0, height: 0 },
@@ -2030,13 +2068,16 @@ export async function handleElementScreenshot(
         }
     } else {
         try {
+            tracker.setProgress(80, '📷 Capturing screenshot to base64...');
             const buffer = await element.screenshot({ ...options, encoding: 'base64' });
+            tracker.complete('🎉 Screenshot captured successfully');
             return {
                 success: true,
                 base64: buffer as string,
                 dimensions: { width: Math.round(boundingBox.width), height: Math.round(boundingBox.height) },
             };
         } catch (error) {
+            tracker.fail('Screenshot failed');
             return {
                 success: false,
                 dimensions: { width: 0, height: 0 },
