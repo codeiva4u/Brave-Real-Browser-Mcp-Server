@@ -4129,29 +4129,107 @@ export async function handlePlayerApiHook(
 
             // ============================================================
             // 5. VIDSTACK (Modern player like Hubstream uses)
+            // ENHANCED: Check blob URLs, HLS sources, and performance entries
             // ============================================================
             if (!playerDetected) {
                 try {
                     const mediaPlayers = document.querySelectorAll('media-player');
                     mediaPlayers.forEach(mp => {
                         playerDetected = 'vidstack';
-                        // Vidstack stores config in various ways
+
+                        // Method 1: Check video element
                         const video = mp.querySelector('video');
-                        if (video && video.src) {
-                            sources.push({ url: video.src, type: 'video_src' });
+                        if (video) {
+                            // Direct src
+                            if (video.src && !video.src.startsWith('blob:')) {
+                                sources.push({ url: video.src, type: 'video_src' });
+                            }
+                            // CurrentSrc (may be blob but check anyway)
+                            if (video.currentSrc && !video.currentSrc.startsWith('blob:')) {
+                                sources.push({ url: video.currentSrc, type: 'current_src' });
+                            }
+
+                            playerState = {
+                                playing: !video.paused,
+                                currentTime: video.currentTime,
+                                duration: video.duration || 0,
+                            };
                         }
-                        // Check for source elements
+
+                        // Method 2: Check source elements
                         mp.querySelectorAll('source').forEach(s => {
-                            if (s.src) {
-                                sources.push({ url: s.src, type: s.type || 'video' });
+                            if (s.src && !s.src.startsWith('blob:')) {
+                                sources.push({ url: s.src, type: s.type || 'source_element' });
                             }
                         });
+
+                        // Method 3: Check media-provider for HLS sources
+                        const provider = mp.querySelector('media-provider');
+                        if (provider) {
+                            const hlsSrc = provider.getAttribute('src') || provider.getAttribute('data-src');
+                            if (hlsSrc && !hlsSrc.startsWith('blob:')) {
+                                sources.push({ url: hlsSrc, type: 'media_provider' });
+                            }
+                        }
+
+                        // Method 4: Check for Vidstack state/context
+                        if ((mp as any).$state) {
+                            const state = (mp as any).$state;
+                            if (state.src && !state.src.startsWith('blob:')) {
+                                sources.push({ url: state.src, type: 'vidstack_state' });
+                            }
+                        }
+
+                        // Method 5: Check __svelte_meta or similar
+                        if ((mp as any).__player) {
+                            const pl = (mp as any).__player;
+                            if (pl.src) sources.push({ url: pl.src, type: 'vidstack_player' });
+                        }
                     });
                 } catch (e) { /* ignore */ }
             }
 
             // ============================================================
-            // 6. DASH.JS
+            // 6. DOOP PLAYER (Custom player used by some streaming sites)
+            // ============================================================
+            if (!playerDetected && ((window as any).DoopPlayer || (window as any).doop_player || document.querySelector('.doop-player, #doop-player'))) {
+                try {
+                    playerDetected = 'doop_player';
+
+                    // Check window.DoopPlayer
+                    const doop = (window as any).DoopPlayer || (window as any).doop_player;
+                    if (doop) {
+                        if (doop.source) sources.push({ url: doop.source, type: 'doop_source' });
+                        if (doop.src) sources.push({ url: doop.src, type: 'doop_src' });
+                        if (doop.file) sources.push({ url: doop.file, type: 'doop_file' });
+                        if (doop.config?.source) sources.push({ url: doop.config.source, type: 'doop_config' });
+                        if (doop.config?.file) sources.push({ url: doop.config.file, type: 'doop_config' });
+                        rawConfig = doop.config || doop;
+                    }
+
+                    // Check DOM elements with doop class
+                    document.querySelectorAll('.doop-player video, #doop-player video').forEach(video => {
+                        const v = video as HTMLVideoElement;
+                        if (v.src && !v.src.startsWith('blob:')) {
+                            sources.push({ url: v.src, type: 'doop_video' });
+                        }
+                        if (v.currentSrc && !v.currentSrc.startsWith('blob:')) {
+                            sources.push({ url: v.currentSrc, type: 'doop_current' });
+                        }
+                    });
+
+                    // Check for doop_source or doopSource window var
+                    if ((window as any).doop_source) {
+                        sources.push({ url: (window as any).doop_source, type: 'doop_window' });
+                    }
+                    if ((window as any).doopSource) {
+                        sources.push({ url: (window as any).doopSource, type: 'doop_window' });
+                    }
+                } catch (e) { /* ignore */ }
+            }
+
+            // ============================================================
+            // 7. DASH.JS
             // ============================================================
             if (!playerDetected && (window as any).dashjs) {
                 try {
@@ -4164,21 +4242,21 @@ export async function handlePlayerApiHook(
             }
 
             // ============================================================
-            // 7. FALLBACK: Check video elements directly
+            // 8. FALLBACK: Check video elements directly
             // ============================================================
             if (sources.length === 0) {
                 document.querySelectorAll('video').forEach(video => {
-                    if (video.src) {
+                    if (video.src && !video.src.startsWith('blob:')) {
                         sources.push({ url: video.src, type: 'video_element' });
                     }
                     video.querySelectorAll('source').forEach(s => {
-                        if (s.src) {
+                        if (s.src && !s.src.startsWith('blob:')) {
                             sources.push({ url: s.src, type: s.type || 'video' });
                         }
                     });
 
-                    // Check currentSrc
-                    if (video.currentSrc && !sources.some(s => s.url === video.currentSrc)) {
+                    // Check currentSrc (only if not blob)
+                    if (video.currentSrc && !video.currentSrc.startsWith('blob:') && !sources.some(s => s.url === video.currentSrc)) {
                         sources.push({ url: video.currentSrc, type: 'current_src' });
                     }
                 });
@@ -4189,19 +4267,86 @@ export async function handlePlayerApiHook(
             }
 
             // ============================================================
-            // 8. Check window variables for player configs
+            // 9. NETWORK RESOURCES: Extract m3u8/mp4 from performance entries
+            // This catches HLS streams that were loaded dynamically
             // ============================================================
-            const configVars = ['playerConfig', 'videoConfig', 'streamConfig', 'sources', 'videoSources'];
+            try {
+                const resources = performance.getEntriesByType('resource') as PerformanceResourceTiming[];
+                resources.forEach(r => {
+                    const url = r.name;
+                    if (url && (
+                        url.includes('.m3u8') ||
+                        url.includes('.mp4') ||
+                        url.includes('.ts') ||
+                        url.includes('.txt') ||
+                        url.includes('master') ||
+                        url.includes('/hls/')
+                    ) && !url.endsWith('.jpg') && !url.endsWith('.png') && !url.endsWith('.woff2')) {
+                        // Only add if it looks like a video URL
+                        if (!sources.some(s => s.url === url)) {
+                            const type = url.includes('.m3u8') ? 'hls_network' :
+                                url.includes('.mp4') ? 'mp4_network' :
+                                    url.includes('.txt') ? 'txt_network' : 'network';
+                            sources.push({ url, type });
+                        }
+                    }
+                });
+            } catch (e) { /* ignore performance API errors */ }
+
+            // ============================================================
+            // 10. Check window variables for player configs
+            // ============================================================
+            const configVars = ['playerConfig', 'videoConfig', 'streamConfig', 'sources', 'videoSources',
+                'streamUrl', 'videoUrl', 'hlsUrl', 'm3u8Url', 'playbackUrl'];
             configVars.forEach(varName => {
                 if ((window as any)[varName]) {
                     const config = (window as any)[varName];
-                    if (typeof config === 'string' && config.includes('http')) {
+                    if (typeof config === 'string' && config.includes('http') && !config.startsWith('blob:')) {
                         sources.push({ url: config, type: 'window_var' });
                     } else if (config.file || config.src || config.url) {
-                        sources.push({ url: config.file || config.src || config.url, type: 'window_var' });
+                        const url = config.file || config.src || config.url;
+                        if (url && !url.startsWith('blob:')) {
+                            sources.push({ url, type: 'window_var' });
+                        }
                     }
                 }
             });
+
+            // ============================================================
+            // 11. REGEX SCAN: Find m3u8/mp4 URLs in page scripts
+            // ============================================================
+            try {
+                document.querySelectorAll('script').forEach(script => {
+                    const text = script.textContent || '';
+                    // Find m3u8 URLs
+                    const m3u8Matches = text.match(/https?:\/\/[^"'\s<>]+\.m3u8[^"'\s<>]*/gi);
+                    if (m3u8Matches) {
+                        m3u8Matches.forEach(url => {
+                            if (!sources.some(s => s.url === url)) {
+                                sources.push({ url, type: 'script_m3u8' });
+                            }
+                        });
+                    }
+                    // Find mp4 URLs
+                    const mp4Matches = text.match(/https?:\/\/[^"'\s<>]+\.mp4[^"'\s<>]*/gi);
+                    if (mp4Matches) {
+                        mp4Matches.forEach(url => {
+                            if (!sources.some(s => s.url === url)) {
+                                sources.push({ url, type: 'script_mp4' });
+                            }
+                        });
+                    }
+                    // Find txt URLs (HLS alternate format)
+                    const txtMatches = text.match(/https?:\/\/[^"'\s<>]+cf-master[^"'\s<>]*\.txt/gi);
+                    if (txtMatches) {
+                        txtMatches.forEach(url => {
+                            if (!sources.some(s => s.url === url)) {
+                                sources.push({ url, type: 'script_txt' });
+                            }
+                        });
+                    }
+                });
+            } catch (e) { /* ignore */ }
 
             // Deduplicate sources
             const seen = new Set<string>();

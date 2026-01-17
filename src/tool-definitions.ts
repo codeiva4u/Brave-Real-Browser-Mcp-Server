@@ -3,7 +3,7 @@
 // Server metadata
 export const SERVER_INFO = {
   name: 'brave-real-browser-mcp-server',
-  version: '2.23.0',
+  version: '2.24.0',
 };
 
 // MCP capabilities with LSP-compatible streaming support
@@ -793,13 +793,13 @@ export const TOOLS = [
   },
   {
     name: 'player_api_hook',
-    description: 'Hook into video player APIs to extract sources, state, and configuration. ULTRA POWERFUL: Detects JWPlayer, Video.js, HLS.js, Plyr, Vidstack, DASH.js and extracts all stream URLs.',
+    description: 'Hook into video player APIs to extract sources, state, and configuration. ULTRA POWERFUL: Detects JWPlayer, Video.js, HLS.js, Plyr, Vidstack, DASH.js, DoopPlayer and extracts all stream URLs including from network resources and page scripts.',
     inputSchema: {
       type: 'object',
       additionalProperties: false,
       properties: {
         action: { type: 'string', enum: ['detect', 'getSources', 'getState', 'extractAll'], description: 'Action to perform', default: 'extractAll' },
-        playerType: { type: 'string', enum: ['auto', 'jwplayer', 'videojs', 'plyr', 'hlsjs', 'dashjs', 'vidstack', 'custom'], description: 'Target player type', default: 'auto' },
+        playerType: { type: 'string', enum: ['auto', 'jwplayer', 'videojs', 'plyr', 'hlsjs', 'dashjs', 'vidstack', 'doop_player', 'custom'], description: 'Target player type', default: 'auto' },
         customSelector: { type: 'string', description: 'CSS selector for custom players' },
         waitForPlayer: { type: 'number', description: 'Wait time for player to initialize (ms)', default: 3000 },
       },
