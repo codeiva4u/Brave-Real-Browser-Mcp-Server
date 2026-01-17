@@ -520,9 +520,10 @@ export const TOOLS = [
         // NEW: AES Decryption for encrypted streaming responses
         decryptAES: {
           type: 'object',
-          description: 'AES-CBC decryption for encrypted streaming responses (like hubstream.art VidStack API)',
+          description: 'AES-CBC decryption for encrypted streaming responses (like hubstream.art VidStack API). Uses browser Web Crypto API.',
           properties: {
             input: { type: 'string', description: 'Hex-encoded encrypted string to decrypt' },
+            fetchUrl: { type: 'string', description: 'API URL to fetch encrypted data from (e.g., https://hubstream.art/api/v1/video?id=xxx). Recommended over input parameter.' },
             key: { type: 'string', description: 'AES-128 key (16 characters)', default: 'kiemtienmua911ca' },
             ivList: {
               type: 'array',

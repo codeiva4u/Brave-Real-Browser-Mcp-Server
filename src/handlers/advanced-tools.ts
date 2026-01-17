@@ -67,6 +67,7 @@ export interface ExtractJsonArgs {
     // AES-CBC decryption for encrypted streaming responses
     decryptAES?: {
         input?: string;              // Hex-encoded encrypted string
+        fetchUrl?: string;           // API URL to fetch encrypted data from (e.g., https://hubstream.art/api/v1/video?id=xxx)
         key?: string;                // AES-128 key (16 characters)
         ivList?: string[];           // List of IVs to try (16 characters each)
     };
@@ -1037,63 +1038,92 @@ export async function handleExtractJson(
 
     // ============================================================
     // 3b. AES DECRYPTION (for encrypted streaming responses)
+    // Uses browser Web Crypto API via page.evaluate for reliability
     // ============================================================
     if (args.decryptAES) {
         try {
             const key = args.decryptAES.key || "kiemtienmua911ca";
             const ivList = args.decryptAES.ivList || ["1234567890oiuytr", "0123456789abcdef"];
-            const input = args.decryptAES.input || "";
+            let input = args.decryptAES.input || "";
+
+            // Option: Fetch encrypted data from API URL directly (recommended for hubstream)
+            if (!input && args.decryptAES.fetchUrl) {
+                // Fetch will be done in browser context
+                input = '__FETCH_FROM_URL__';
+            }
 
             if (!input || input.length === 0) {
-                decoded = { source: 'decryptAES', error: 'No input provided for decryption' };
+                decoded = { source: 'decryptAES', error: 'No input provided. Use "input" for hex string or "fetchUrl" for API URL.' };
             } else {
-                let decryptResult: string | null = null;
-                let successIv: string | null = null;
-                let lastError: string = '';
-
-                for (const iv of ivList) {
+                // Use browser's Web Crypto API for reliable decryption
+                const result = await page.evaluate(async (params: { input: string; key: string; ivList: string[]; fetchUrl?: string }) => {
                     try {
-                        const result = decryptAES(input, key, iv);
-                        if (result && !result.includes('AES decryption failed')) {
-                            successIv = iv;
-                            decryptResult = result;
-                            break;
+                        let encryptedHex = params.input;
+
+                        // Fetch from URL if specified
+                        if (params.fetchUrl || params.input === '__FETCH_FROM_URL__') {
+                            const response = await fetch(params.fetchUrl!);
+                            encryptedHex = (await response.text()).trim();
                         }
+
+                        const hexToBytes = (hex: string) => {
+                            const bytes = new Uint8Array(hex.length / 2);
+                            for (let i = 0; i < hex.length; i += 2) {
+                                bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16);
+                            }
+                            return bytes;
+                        };
+
+                        for (const iv of params.ivList) {
+                            try {
+                                const keyData = new TextEncoder().encode(params.key);
+                                const ivData = new TextEncoder().encode(iv);
+                                const encryptedData = hexToBytes(encryptedHex);
+
+                                const cryptoKey = await crypto.subtle.importKey(
+                                    "raw", keyData, "AES-CBC", false, ["decrypt"]
+                                );
+
+                                const decrypted = await crypto.subtle.decrypt(
+                                    { name: "AES-CBC", iv: ivData },
+                                    cryptoKey,
+                                    encryptedData
+                                );
+
+                                const decryptedText = new TextDecoder().decode(decrypted);
+
+                                // Extract source URL from decrypted JSON
+                                const sourceMatch = /"source":"([^"]+)"/.exec(decryptedText);
+                                const streamUrl = sourceMatch ? sourceMatch[1].replace(/\\\//g, '/') : null;
+
+                                return {
+                                    success: true,
+                                    iv: iv,
+                                    decrypted: decryptedText,
+                                    decryptedLength: decryptedText.length,
+                                    extractedStreamUrl: streamUrl,
+                                    isStreamUrl: streamUrl ? (streamUrl.includes('m3u8') || streamUrl.includes('.mp4')) : false,
+                                    inputLength: encryptedHex.length
+                                };
+                            } catch (e) {
+                                continue; // Try next IV
+                            }
+                        }
+
+                        return { success: false, error: 'Decryption failed with all IVs', inputLength: encryptedHex.length };
                     } catch (e) {
-                        lastError = String(e);
-                        // Try next IV
+                        return { success: false, error: String(e) };
                     }
-                }
+                }, { input, key, ivList, fetchUrl: args.decryptAES.fetchUrl });
 
-                if (decryptResult) {
-                    // Try to extract "source" field from decrypted JSON
-                    let extractedSource: string | null = null;
-                    const sourceMatch = /"source":"([^"]+)"/.exec(decryptResult);
-                    if (sourceMatch) {
-                        extractedSource = sourceMatch[1].replace(/\\\//g, '/');
-                    }
+                decoded = {
+                    source: 'decryptAES',
+                    ...result,
+                    key: key,
+                };
 
-                    decoded = {
-                        source: 'decryptAES',
-                        success: true,
-                        key: key,
-                        iv: successIv,
-                        decrypted: decryptResult,
-                        decryptedLength: decryptResult.length,
-                        extractedStreamUrl: extractedSource,
-                        isStreamUrl: extractedSource ? extractedSource.includes('m3u8') || extractedSource.includes('.mp4') : false,
-                    };
+                if (result.success) {
                     data.push(decoded);
-                } else {
-                    decoded = {
-                        source: 'decryptAES',
-                        success: false,
-                        error: 'Decryption failed with all IVs',
-                        lastError: lastError,
-                        triedIvs: ivList,
-                        inputLength: input.length,
-                        keyLength: key.length,
-                    };
                 }
             }
         } catch (e) {
