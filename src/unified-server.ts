@@ -227,18 +227,16 @@ mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
             case TOOL_NAMES.FIND_ELEMENT: result = await handleFindSelector(args as any); break;
             case TOOL_NAMES.SAVE_CONTENT_AS_MARKDOWN: result = await handleSaveContentAsMarkdown(args as any); break;
             // Advanced tools
-            case TOOL_NAMES.BREADCRUMB_NAVIGATOR:
-                if (!page) throw new Error('Browser not initialized');
-                result = { content: [{ type: 'text', text: JSON.stringify(await advancedTools.handleBreadcrumbNavigator(page, args || {})) }] };
-                break;
+            // BREADCRUMB_NAVIGATOR REMOVED - use click or find_element
             case TOOL_NAMES.REDIRECT_TRACER:
                 if (!page) throw new Error('Browser not initialized');
                 result = { content: [{ type: 'text', text: JSON.stringify(await advancedTools.handleUrlRedirectTracer(page, args as any)) }] };
                 break;
-            case TOOL_NAMES.SEARCH_CONTENT:
+            case TOOL_NAMES.SEARCH_REGEX:
                 if (!page) throw new Error('Browser not initialized');
-                result = { content: [{ type: 'text', text: JSON.stringify(await advancedTools.handleSearchContent(page, args as any)) }] };
+                result = { content: [{ type: 'text', text: JSON.stringify(await advancedTools.handleSearchRegex(page, args as any)) }] };
                 break;
+            // WEB_SEARCH case REMOVED - redundant with search_regex
             // MEDIA_EXTRACTOR case REMOVED - merged into STREAM_EXTRACTOR
             case TOOL_NAMES.STREAM_EXTRACTOR:
                 if (!page) throw new Error('Browser not initialized');
@@ -675,17 +673,14 @@ async function main() {
             console.error('   🖼️  iframe_handler        - Handle nested iframes (deep_scrape)');
             console.error('');
             console.error('   Advanced Tools:');
-            console.error('   🔎 search_content        - Search patterns in page');
+            console.error('   🔥 search_regex          - ULTRA Regex Engine (like regex101)');
+            console.error('   🚀 web_search            - Intelligent Content Search');
             console.error('   📊 extract_json          - Extract embedded JSON');
             console.error('   🏷️  scrape_meta_tags      - Extract meta/OG tags');
             console.error('   📈 deep_analysis         - Full page analysis');
-            console.error('   📡 network_recorder      - Record network traffic');
-            console.error('   🔌 api_finder            - Discover hidden APIs');
-            console.error('   ⏱️  ajax_content_waiter   - Wait for dynamic content');
+            console.error('   📡 network_recorder      - Record network traffic + API finder');
             console.error('   🔗 link_harvester        - Harvest all links');
-            console.error('   📋 batch_element_scraper - Batch scrape elements');
             console.error('   🏗️  extract_schema        - Extract Schema.org data');
-            console.error('   📸 element_screenshot    - Screenshot element');
             console.error('   🧭 breadcrumb_navigator  - Navigate breadcrumbs');
             console.error('   ↪️  redirect_tracer       - Trace URL redirects');
             console.error('   📊 progress_tracker      - Track task progress');

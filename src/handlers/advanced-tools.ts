@@ -32,18 +32,104 @@ export interface MultiLayerRedirectTraceArgs {
     timeout?: number;
 }
 
-export interface SearchContentArgs {
+// ============================================================
+// SEARCH REGEX ARGS (regex101.com-like)
+// ============================================================
+export interface SearchRegexArgs {
     pattern: string;
-    isRegex?: boolean;
-    caseSensitive?: boolean;
+    testString?: string;
+    flags?: {
+        global?: boolean;
+        ignoreCase?: boolean;
+        multiline?: boolean;
+        dotAll?: boolean;
+        unicode?: boolean;
+        sticky?: boolean;
+    };
+    replaceWith?: string;
+    maxMatches?: number;
+    contextChars?: number;
+    sourceType?: 'text' | 'html' | 'scripts' | 'styles' | 'attributes' | 'all';
     selector?: string;
+    extractGroups?: boolean;
+    highlightMatches?: boolean;
+    showMatchInfo?: boolean;
+    timeout?: number;
+}
+
+// ============================================================
+// WEB SEARCH ARGS (intelligent content search)
+// ============================================================
+export interface WebSearchArgs {
+    query: string;
+    searchIn?: 'text' | 'html' | 'links' | 'images' | 'videos' | 'scripts' | 'json' | 'schema' | 'meta' | 'all';
+    selector?: string;
+    includeIframes?: boolean;
+    matchMode?: {
+        fuzzy?: boolean;
+        fuzzyThreshold?: number;
+        semantic?: boolean;
+        wholeWord?: boolean;
+        caseSensitive?: boolean;
+    };
+    operators?: {
+        must?: string[];
+        should?: string[];
+        mustNot?: string[];
+        phrase?: string;
+        proximity?: {
+            words?: string[];
+            distance?: number;
+        };
+    };
+    filters?: {
+        minLength?: number;
+        maxLength?: number;
+        containsPattern?: string;
+        excludePattern?: string;
+    };
+    maxResults?: number;
+    snippetLength?: number;
+    highlightTag?: string;
+    sortBy?: 'relevance' | 'position' | 'frequency';
+    groupBy?: 'none' | 'element' | 'section';
 }
 
 export interface FindElementAdvancedArgs {
+    // Find mode
     xpath?: string;
     cssSelector?: string;
     contains?: string;
     attributes?: string;
+    text?: string;
+    selector?: string;
+    description?: string;
+    elementType?: string;
+    exact?: boolean;
+    context?: string;
+    shadowDOM?: boolean;
+    searchFrames?: boolean;
+
+    // Batch scrape mode (merged from batch_element_scraper)
+    batchMode?: boolean;
+    extractAttributes?: string[];
+    limit?: number;
+    includeInnerHTML?: boolean;
+    includePosition?: boolean;
+
+    // Advanced filters
+    filter?: {
+        visible?: boolean;
+        enabled?: boolean;
+        minWidth?: number;
+        minHeight?: number;
+        hasChildren?: boolean;
+        containsClass?: string;
+        matchPattern?: string;
+    };
+
+    // Output options
+    returnType?: 'elements' | 'selectors' | 'data';
 }
 
 export interface ExtractJsonArgs {
@@ -428,63 +514,179 @@ export async function handleMultiLayerRedirectTrace(
 }
 
 /**
- * Search text or regex patterns in page content
+ * 🔥 ULTRA-POWERFUL Regex Engine (like regex101.com)
+ * Features: Named capture groups, all regex flags, match highlighting,
+ * detailed match info, replace mode, timeout protection
  */
-export async function handleSearchContent(
+export async function handleSearchRegex(
     page: Page,
-    args: SearchContentArgs
-): Promise<{ found: boolean; matches: { text: string; context: string; selector?: string }[]; count: number }> {
-    // Progress tracking
+    args: SearchRegexArgs
+): Promise<{
+    found: boolean;
+    matches: Array<{
+        text: string;
+        context: string;
+        index: number;
+        length: number;
+        groups?: Record<string, string>;
+        numberedGroups?: string[];
+    }>;
+    count: number;
+    replaced?: string;
+    patternInfo?: {
+        flags: string;
+        isValid: boolean;
+        errorMessage?: string;
+    };
+}> {
     const progressNotifier = getProgressNotifier();
-    const tracker = progressNotifier.createTracker(`search-${Date.now()}`);
-    tracker.start(100, `🔎 Searching for: "${args.pattern}"...`);
+    const tracker = progressNotifier.createTracker(`search-regex-${Date.now()}`);
+    tracker.start(100, `🔎 Regex Search: "${args.pattern}"`);
 
-    // Wait for body to be available
-    try {
-        tracker.setProgress(10, '⏳ Waiting for page content...');
-        await page.waitForSelector('body', { timeout: 5000 });
-    } catch {
-        // Continue anyway
-    }
+    // Build regex flags
+    const flags = args.flags || {};
+    let flagString = '';
+    if (flags.global !== false) flagString += 'g';
+    if (flags.ignoreCase) flagString += 'i';
+    if (flags.multiline) flagString += 'm';
+    if (flags.dotAll) flagString += 's';
+    if (flags.unicode) flagString += 'u';
+    if (flags.sticky) flagString += 'y';
 
-    tracker.setProgress(30, '📄 Extracting page content...');
-    let content = '';
-    if (args.selector) {
-        try {
-            content = await page.$eval(args.selector, (el) => el.textContent || '');
-        } catch {
-            content = '';
-        }
-    } else {
-        content = await page.evaluate(() => document.body?.textContent || document.documentElement?.textContent || '');
-    }
-
-    const matches: { text: string; context: string; selector?: string }[] = [];
-
-    if (!content || content.length === 0) {
-        tracker.fail('No content to search');
-        return { found: false, matches: [], count: 0 };
-    }
-
-    tracker.setProgress(50, '🔍 Running pattern match...');
-
+    // Validate regex
     let regex: RegExp;
-    if (args.isRegex) {
-        regex = new RegExp(args.pattern, args.caseSensitive ? 'g' : 'gi');
-    } else {
-        const escaped = args.pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        regex = new RegExp(escaped, args.caseSensitive ? 'g' : 'gi');
+    let patternInfo = { flags: flagString, isValid: true, errorMessage: undefined as string | undefined };
+    try {
+        regex = new RegExp(args.pattern, flagString);
+    } catch (e: any) {
+        tracker.fail(`Invalid regex: ${e.message}`);
+        return {
+            found: false,
+            matches: [],
+            count: 0,
+            patternInfo: { flags: flagString, isValid: false, errorMessage: e.message },
+        };
     }
+
+    tracker.setProgress(20, '📄 Extracting content...');
+
+    // Get content based on sourceType
+    let content = '';
+    if (args.testString) {
+        content = args.testString;
+    } else {
+        const sourceType = args.sourceType || 'text';
+        try {
+            await page.waitForSelector('body', { timeout: 5000 });
+        } catch { /* continue */ }
+
+        if (args.selector) {
+            try {
+                content = await page.$eval(args.selector, (el, type) => {
+                    if (type === 'html') return el.innerHTML;
+                    if (type === 'text') return el.textContent || '';
+                    return el.outerHTML;
+                }, sourceType);
+            } catch {
+                content = '';
+            }
+        } else {
+            content = await page.evaluate((type) => {
+                if (type === 'html') return document.documentElement.innerHTML;
+                if (type === 'scripts') {
+                    return Array.from(document.scripts).map(s => s.textContent).join('\n');
+                }
+                if (type === 'styles') {
+                    return Array.from(document.styleSheets).map(s => {
+                        try { return Array.from(s.cssRules).map(r => r.cssText).join('\n'); }
+                        catch { return ''; }
+                    }).join('\n');
+                }
+                if (type === 'attributes') {
+                    return Array.from(document.querySelectorAll('*')).map(el =>
+                        Array.from(el.attributes).map(a => `${a.name}="${a.value}"`).join(' ')
+                    ).join('\n');
+                }
+                if (type === 'all') {
+                    return document.documentElement.outerHTML;
+                }
+                return document.body?.textContent || '';
+            }, sourceType);
+        }
+    }
+
+    if (!content) {
+        tracker.fail('No content to search');
+        return { found: false, matches: [], count: 0, patternInfo };
+    }
+
+    tracker.setProgress(50, '🔍 Running regex match...');
+
+    const matches: Array<{
+        text: string;
+        context: string;
+        index: number;
+        length: number;
+        groups?: Record<string, string>;
+        numberedGroups?: string[];
+    }> = [];
+
+    const maxMatches = args.maxMatches || 100;
+    const contextChars = args.contextChars || 50;
+    const timeout = args.timeout || 5000;
+    const startTime = Date.now();
 
     let match;
     while ((match = regex.exec(content)) !== null) {
-        const start = Math.max(0, match.index - 50);
-        const end = Math.min(content.length, match.index + match[0].length + 50);
-        matches.push({
+        // Timeout protection
+        if (Date.now() - startTime > timeout) {
+            tracker.setProgress(80, '⚠️ Timeout reached, returning partial results');
+            break;
+        }
+
+        const start = Math.max(0, match.index - contextChars);
+        const end = Math.min(content.length, match.index + match[0].length + contextChars);
+        let context = content.substring(start, end);
+
+        // Highlight if requested
+        if (args.highlightMatches) {
+            const matchStart = match.index - start;
+            const matchEnd = matchStart + match[0].length;
+            context = context.substring(0, matchStart) + '<<MATCH>>' + context.substring(matchStart, matchEnd) + '<</MATCH>>' + context.substring(matchEnd);
+        }
+
+        const matchResult: any = {
             text: match[0],
-            context: content.substring(start, end),
-        });
-        if (matches.length >= 100) break; // Limit matches
+            context,
+            index: match.index,
+            length: match[0].length,
+        };
+
+        // Extract groups if requested
+        if (args.extractGroups !== false) {
+            if (match.groups) {
+                matchResult.groups = match.groups;
+            }
+            if (match.length > 1) {
+                matchResult.numberedGroups = match.slice(1);
+            }
+        }
+
+        matches.push(matchResult);
+
+        if (matches.length >= maxMatches) break;
+
+        // Prevent infinite loop for zero-length matches
+        if (match[0].length === 0) {
+            regex.lastIndex++;
+        }
+    }
+
+    // Replace mode
+    let replaced: string | undefined;
+    if (args.replaceWith !== undefined) {
+        tracker.setProgress(90, '🔄 Applying replacement...');
+        replaced = content.replace(regex, args.replaceWith);
     }
 
     tracker.complete(`🎉 Found ${matches.length} matches`);
@@ -493,17 +695,447 @@ export async function handleSearchContent(
         found: matches.length > 0,
         matches,
         count: matches.length,
+        replaced,
+        patternInfo,
     };
 }
 
 /**
- * Find elements using XPath or Advanced CSS
+ * 🚀 INTELLIGENT Content Search Engine
+ * Features: Fuzzy matching, proximity search, advanced operators,
+ * relevance scoring, snippet extraction with highlighting
+ */
+export async function handleWebSearch(
+    page: Page,
+    args: WebSearchArgs
+): Promise<{
+    found: boolean;
+    results: Array<{
+        text: string;
+        snippet: string;
+        score: number;
+        position: number;
+        element?: string;
+    }>;
+    count: number;
+    totalOccurrences: number;
+    searchInfo: {
+        query: string;
+        searchIn: string;
+        matchMode: string;
+    };
+}> {
+    const progressNotifier = getProgressNotifier();
+    const tracker = progressNotifier.createTracker(`web-search-${Date.now()}`);
+    tracker.start(100, `🚀 Intelligent Search: "${args.query}"`);
+
+    try {
+        await page.waitForSelector('body', { timeout: 5000 });
+    } catch { /* continue */ }
+
+    tracker.setProgress(20, '📄 Extracting content...');
+
+    // Get content based on searchIn type
+    const searchIn = args.searchIn || 'text';
+    let content = '';
+    let elements: Array<{ text: string; element: string }> = [];
+
+    content = await page.evaluate((opts: any) => {
+        const { searchIn, selector } = opts;
+        const root = selector ? document.querySelector(selector) : document.body;
+        if (!root) return '';
+
+        switch (searchIn) {
+            case 'html':
+                return root.innerHTML;
+            case 'links':
+                return Array.from(root.querySelectorAll('a')).map((a: any) =>
+                    `${a.textContent?.trim()} [${a.getAttribute('href')}]`
+                ).join('\n');
+            case 'images':
+                return Array.from(root.querySelectorAll('img')).map((img: any) =>
+                    `${img.alt} [${img.src}]`
+                ).join('\n');
+            case 'videos':
+                return Array.from(root.querySelectorAll('video, iframe[src*="youtube"], iframe[src*="vimeo"]')).map((v: any) =>
+                    v.getAttribute('src') || v.querySelector?.('source')?.getAttribute('src') || ''
+                ).join('\n');
+            case 'scripts':
+                return Array.from(document.scripts).map((s: any) => s.textContent).join('\n');
+            case 'json':
+                return Array.from(document.querySelectorAll('script[type="application/json"], script[type="application/ld+json"]'))
+                    .map((s: any) => s.textContent).join('\n');
+            case 'schema':
+                return Array.from(document.querySelectorAll('script[type="application/ld+json"]'))
+                    .map((s: any) => s.textContent).join('\n');
+            case 'meta':
+                return Array.from(document.querySelectorAll('meta')).map((m: any) =>
+                    `${m.name || m.getAttribute('property')}: ${m.content}`
+                ).join('\n');
+            case 'all':
+                return root.outerHTML;
+            default:
+                return root.textContent || '';
+        }
+    }, { searchIn, selector: args.selector });
+
+    if (!content) {
+        tracker.fail('No content to search');
+        return {
+            found: false,
+            results: [],
+            count: 0,
+            totalOccurrences: 0,
+            searchInfo: { query: args.query, searchIn, matchMode: 'none' },
+        };
+    }
+
+    tracker.setProgress(40, '🔍 Processing search query...');
+
+    const matchMode = args.matchMode || {};
+    const operators = args.operators || {};
+    const filters = args.filters || {};
+    const maxResults = args.maxResults || 50;
+    const snippetLength = args.snippetLength || 150;
+    const highlightTag = args.highlightTag || '**';
+
+    // Parse query for operators
+    let searchTerms: string[] = [];
+    let phrases: string[] = [];
+
+    // Extract phrases (quoted strings)
+    const phraseMatches = args.query.match(/"([^"]+)"/g);
+    if (phraseMatches) {
+        phrases = phraseMatches.map(p => p.replace(/"/g, ''));
+    }
+
+    // Get remaining terms
+    const remainingQuery = args.query.replace(/"[^"]+"/g, '').trim();
+    if (remainingQuery) {
+        // Parse AND/OR/NOT operators
+        const parts = remainingQuery.split(/\s+(AND|OR|NOT)\s+/i);
+        searchTerms = parts.filter(p => !['AND', 'OR', 'NOT'].includes(p.toUpperCase()));
+    }
+
+    // Add explicit operator terms
+    if (operators.must) searchTerms.push(...operators.must);
+    if (operators.should) searchTerms.push(...operators.should);
+    if (operators.phrase) phrases.push(operators.phrase);
+
+    tracker.setProgress(60, '🎯 Matching content...');
+
+    const results: Array<{
+        text: string;
+        snippet: string;
+        score: number;
+        position: number;
+        element?: string;
+    }> = [];
+
+    // Levenshtein distance for fuzzy matching
+    const levenshtein = (a: string, b: string): number => {
+        const matrix = Array(b.length + 1).fill(null).map(() => Array(a.length + 1).fill(null));
+        for (let i = 0; i <= a.length; i++) matrix[0][i] = i;
+        for (let j = 0; j <= b.length; j++) matrix[j][0] = j;
+        for (let j = 1; j <= b.length; j++) {
+            for (let i = 1; i <= a.length; i++) {
+                const indicator = a[i - 1] === b[j - 1] ? 0 : 1;
+                matrix[j][i] = Math.min(
+                    matrix[j][i - 1] + 1,
+                    matrix[j - 1][i] + 1,
+                    matrix[j - 1][i - 1] + indicator
+                );
+            }
+        }
+        return matrix[b.length][a.length];
+    };
+
+    const fuzzyMatch = (text: string, term: string, threshold: number): boolean => {
+        const distance = levenshtein(text.toLowerCase(), term.toLowerCase());
+        const maxLen = Math.max(text.length, term.length);
+        return (1 - distance / maxLen) >= threshold;
+    };
+
+    // Split content into searchable chunks
+    const sentences = content.split(/[.!?\n]+/).filter(s => s.trim().length > 10);
+    let totalOccurrences = 0;
+
+    for (let i = 0; i < sentences.length && results.length < maxResults; i++) {
+        const sentence = sentences[i].trim();
+        let score = 0;
+        let matched = false;
+
+        // Check phrases first
+        for (const phrase of phrases) {
+            const phraseRegex = new RegExp(phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), matchMode.caseSensitive ? 'g' : 'gi');
+            if (phraseRegex.test(sentence)) {
+                score += 10;
+                matched = true;
+                totalOccurrences += (sentence.match(phraseRegex) || []).length;
+            }
+        }
+
+        // Check terms
+        for (const term of searchTerms) {
+            if (matchMode.fuzzy) {
+                const words = sentence.split(/\s+/);
+                for (const word of words) {
+                    if (fuzzyMatch(word, term, matchMode.fuzzyThreshold || 0.8)) {
+                        score += 5;
+                        matched = true;
+                        totalOccurrences++;
+                    }
+                }
+            } else {
+                const termRegex = matchMode.wholeWord
+                    ? new RegExp(`\\b${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, matchMode.caseSensitive ? 'g' : 'gi')
+                    : new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), matchMode.caseSensitive ? 'g' : 'gi');
+                const termMatches = sentence.match(termRegex);
+                if (termMatches) {
+                    score += termMatches.length * 3;
+                    matched = true;
+                    totalOccurrences += termMatches.length;
+                }
+            }
+        }
+
+        // Check mustNot terms
+        if (operators.mustNot) {
+            for (const notTerm of operators.mustNot) {
+                if (sentence.toLowerCase().includes(notTerm.toLowerCase())) {
+                    matched = false;
+                    score = 0;
+                    break;
+                }
+            }
+        }
+
+        // Proximity search
+        if (matched && operators.proximity?.words && operators.proximity.words.length >= 2) {
+            const words = sentence.toLowerCase().split(/\s+/);
+            const positions: number[] = [];
+            for (const pw of operators.proximity.words) {
+                const idx = words.findIndex(w => w.includes(pw.toLowerCase()));
+                if (idx !== -1) positions.push(idx);
+            }
+            if (positions.length >= 2) {
+                const distance = Math.abs(positions[0] - positions[1]);
+                if (distance <= (operators.proximity.distance || 5)) {
+                    score += 15;
+                }
+            }
+        }
+
+        // Apply filters
+        if (matched && filters.minLength && sentence.length < filters.minLength) matched = false;
+        if (matched && filters.maxLength && sentence.length > filters.maxLength) matched = false;
+        if (matched && filters.containsPattern) {
+            const containsRegex = new RegExp(filters.containsPattern, 'i');
+            if (!containsRegex.test(sentence)) matched = false;
+        }
+        if (matched && filters.excludePattern) {
+            const excludeRegex = new RegExp(filters.excludePattern, 'i');
+            if (excludeRegex.test(sentence)) matched = false;
+        }
+
+        if (matched && score > 0) {
+            // Create highlighted snippet
+            let snippet = sentence.substring(0, snippetLength);
+            for (const term of [...searchTerms, ...phrases]) {
+                const highlightRegex = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+                snippet = snippet.replace(highlightRegex, `${highlightTag}$1${highlightTag}`);
+            }
+
+            results.push({
+                text: sentence.substring(0, 100),
+                snippet,
+                score,
+                position: i,
+            });
+        }
+    }
+
+    // Sort by relevance/position/frequency
+    const sortBy = args.sortBy || 'relevance';
+    if (sortBy === 'relevance') {
+        results.sort((a, b) => b.score - a.score);
+    } else if (sortBy === 'position') {
+        results.sort((a, b) => a.position - b.position);
+    }
+
+    tracker.complete(`🎉 Found ${results.length} results (${totalOccurrences} total occurrences)`);
+
+    return {
+        found: results.length > 0,
+        results,
+        count: results.length,
+        totalOccurrences,
+        searchInfo: {
+            query: args.query,
+            searchIn,
+            matchMode: matchMode.fuzzy ? 'fuzzy' : matchMode.wholeWord ? 'wholeWord' : 'normal',
+        },
+    };
+}
+
+
+/**
+ * Ultra-powerful element finder and batch scraper
+ * Find elements using XPath, CSS, text, attributes with advanced filters
+ * Supports batch scraping mode (merged from batch_element_scraper)
  */
 export async function handleFindElementAdvanced(
     page: Page,
     args: FindElementAdvancedArgs
-): Promise<{ found: boolean; elements: { selector: string; text: string; tag: string }[]; count: number }> {
-    const elements: { selector: string; text: string; tag: string }[] = [];
+): Promise<{
+    found: boolean;
+    elements: { selector: string; text: string; tag: string; attributes?: Record<string, string>; position?: { x: number; y: number; width: number; height: number } }[];
+    count: number;
+    batchData?: Record<string, any>[];
+}> {
+    // Progress tracking
+    const progressNotifier = getProgressNotifier();
+    const tracker = progressNotifier.createTracker(`find-element-${Date.now()}`);
+
+    const limit = args.limit || 100;
+    const selectorToUse = args.selector || args.cssSelector;
+
+    // ============================================================
+    // BATCH MODE (merged from batch_element_scraper)
+    // ============================================================
+    if (args.batchMode && selectorToUse) {
+        tracker.start(100, '📋 Starting batch element extraction...');
+        const attributes = args.extractAttributes || ['textContent', 'href', 'src'];
+
+        tracker.setProgress(20, `🔍 Finding elements with selector: ${selectorToUse}`);
+
+        const items = await page.evaluate((opts: any) => {
+            const elements = Array.from(document.querySelectorAll(opts.selector)).slice(0, opts.limit);
+            return elements.map((el, idx) => {
+                const item: Record<string, any> = {};
+
+                // Extract requested attributes
+                for (const attr of opts.attributes) {
+                    if (attr === 'textContent') {
+                        item.text = el.textContent?.trim()?.substring(0, 500) || '';
+                    } else if (attr === 'innerHTML') {
+                        item.html = el.innerHTML?.substring(0, 1000) || '';
+                    } else {
+                        item[attr] = el.getAttribute(attr) || '';
+                    }
+                }
+
+                // Include innerHTML if requested
+                if (opts.includeInnerHTML) {
+                    item.html = el.innerHTML?.substring(0, 1000) || '';
+                }
+
+                // Always include tag
+                item.tag = el.tagName.toLowerCase();
+
+                // Include position if requested
+                if (opts.includePosition) {
+                    const rect = el.getBoundingClientRect();
+                    item.position = {
+                        x: Math.round(rect.x),
+                        y: Math.round(rect.y),
+                        width: Math.round(rect.width),
+                        height: Math.round(rect.height)
+                    };
+                }
+
+                // Generate unique selector
+                const tagName = el.tagName.toLowerCase();
+                const id = el.id;
+                const className = typeof el.className === 'string' ? el.className.split(' ')[0] : '';
+                item.selector = id ? `#${id}` : className ? `${tagName}.${className}` : `${opts.selector}:nth-of-type(${idx + 1})`;
+
+                // Apply advanced filters if specified
+                if (opts.filter) {
+                    const rect = el.getBoundingClientRect();
+                    const style = window.getComputedStyle(el);
+
+                    if (opts.filter.visible !== undefined) {
+                        const isVisible = rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+                        if (opts.filter.visible !== isVisible) return null;
+                    }
+                    if (opts.filter.enabled !== undefined) {
+                        const isEnabled = !(el as HTMLInputElement).disabled;
+                        if (opts.filter.enabled !== isEnabled) return null;
+                    }
+                    if (opts.filter.minWidth && rect.width < opts.filter.minWidth) return null;
+                    if (opts.filter.minHeight && rect.height < opts.filter.minHeight) return null;
+                    if (opts.filter.hasChildren !== undefined) {
+                        const hasKids = el.children.length > 0;
+                        if (opts.filter.hasChildren !== hasKids) return null;
+                    }
+                    if (opts.filter.containsClass && !el.classList.contains(opts.filter.containsClass)) return null;
+                    if (opts.filter.matchPattern) {
+                        const regex = new RegExp(opts.filter.matchPattern);
+                        if (!regex.test(el.textContent || '')) return null;
+                    }
+                }
+
+                return item;
+            }).filter((item: any) => item !== null);
+        }, {
+            selector: selectorToUse,
+            limit,
+            attributes,
+            includeInnerHTML: args.includeInnerHTML,
+            includePosition: args.includePosition,
+            filter: args.filter
+        });
+
+        tracker.setProgress(80, `✅ Found ${items.length} elements`);
+
+        // Format output based on returnType
+        const returnType = args.returnType || 'elements';
+
+        if (returnType === 'selectors') {
+            tracker.complete(`🎉 Extracted ${items.length} selectors`);
+            return {
+                found: items.length > 0,
+                elements: items.map((item: any) => ({
+                    selector: item.selector,
+                    text: '',
+                    tag: item.tag,
+                })),
+                count: items.length,
+            };
+        }
+
+        if (returnType === 'data') {
+            tracker.complete(`🎉 Extracted data from ${items.length} elements`);
+            return {
+                found: items.length > 0,
+                elements: [],
+                count: items.length,
+                batchData: items,
+            };
+        }
+
+        // Default: elements
+        tracker.complete(`🎉 Found and extracted ${items.length} elements`);
+        return {
+            found: items.length > 0,
+            elements: items.map((item: any) => ({
+                selector: item.selector,
+                text: item.text || '',
+                tag: item.tag,
+                attributes: item,
+                position: item.position,
+            })),
+            count: items.length,
+            batchData: items,
+        };
+    }
+
+    // ============================================================
+    // STANDARD FIND MODE
+    // ============================================================
+    tracker.start(100, '🔍 Finding elements...');
+    const elements: { selector: string; text: string; tag: string; attributes?: Record<string, string>; position?: { x: number; y: number; width: number; height: number } }[] = [];
 
     // Wait for body to be available
     try {
@@ -512,8 +1144,10 @@ export async function handleFindElementAdvanced(
         // Continue anyway
     }
 
+    tracker.setProgress(20, '📄 Searching with provided criteria...');
+
+    // XPath search
     if (args.xpath) {
-        // Use document.evaluate for XPath (compatible with all Puppeteer versions)
         const xpathResults = await page.evaluate((xpath: string) => {
             const results: any[] = [];
             try {
@@ -522,11 +1156,13 @@ export async function handleFindElementAdvanced(
                 let count = 0;
                 while (node && count < 50) {
                     if (node instanceof Element) {
+                        const rect = node.getBoundingClientRect();
                         results.push({
                             text: node.textContent?.trim()?.substring(0, 100) || '',
                             tag: node.tagName.toLowerCase(),
                             id: node.id || '',
                             className: typeof node.className === 'string' ? node.className : '',
+                            position: { x: Math.round(rect.x), y: Math.round(rect.y), width: Math.round(rect.width), height: Math.round(rect.height) },
                         });
                     }
                     node = iterator.iterateNext();
@@ -542,50 +1178,71 @@ export async function handleFindElementAdvanced(
             selector: e.id ? `#${e.id}` : e.className ? `.${e.className.split(' ')[0]}` : e.tag,
             text: e.text,
             tag: e.tag,
+            position: args.includePosition ? e.position : undefined,
         })));
     }
 
-    if (args.cssSelector) {
-        const cssElements = await page.$$(args.cssSelector);
-        for (const el of cssElements) {
-            const data = await page.evaluate((e) => ({
-                text: (e as Element).textContent?.trim()?.substring(0, 100) || '',
-                tag: (e as Element).tagName.toLowerCase(),
-                id: (e as Element).id,
-                className: (e as Element).className,
-            }), el);
+    // CSS selector search
+    if (selectorToUse) {
+        const cssElements = await page.$$(selectorToUse);
+        for (const el of cssElements.slice(0, limit)) {
+            const data = await page.evaluate((e: any, includePos: boolean) => {
+                const rect = e.getBoundingClientRect();
+                return {
+                    text: (e as Element).textContent?.trim()?.substring(0, 100) || '',
+                    tag: (e as Element).tagName.toLowerCase(),
+                    id: (e as Element).id,
+                    className: (e as Element).className,
+                    position: includePos ? { x: Math.round(rect.x), y: Math.round(rect.y), width: Math.round(rect.width), height: Math.round(rect.height) } : undefined,
+                };
+            }, el, args.includePosition);
             elements.push({
-                selector: args.cssSelector,
+                selector: selectorToUse,
                 text: data.text,
                 tag: data.tag,
+                position: data.position,
             });
         }
     }
 
-    if (args.contains) {
-        const containsElements = await page.evaluate((text: string) => {
+    // Text content search
+    if (args.contains || args.text) {
+        const searchText = args.contains || args.text || '';
+        const isExact = args.exact || false;
+
+        const containsElements = await page.evaluate((opts: any) => {
             const results: any[] = [];
-            const allElements = document.querySelectorAll('*');
-            for (let i = 0; i < allElements.length && results.length < 10; i++) {
+            const allElements = document.querySelectorAll(opts.elementType || '*');
+            for (let i = 0; i < allElements.length && results.length < opts.limit; i++) {
                 const el = allElements[i];
-                if (el.textContent?.includes(text)) {
+                const textContent = el.textContent || '';
+                const matches = opts.exact
+                    ? textContent.trim() === opts.text
+                    : textContent.includes(opts.text);
+
+                if (matches) {
+                    const rect = el.getBoundingClientRect();
                     results.push({
-                        text: el.textContent?.trim()?.substring(0, 100) || '',
+                        text: textContent.trim()?.substring(0, 100) || '',
                         tag: el.tagName.toLowerCase(),
                         id: el.id || '',
                         className: typeof el.className === 'string' ? el.className : '',
+                        position: { x: Math.round(rect.x), y: Math.round(rect.y), width: Math.round(rect.width), height: Math.round(rect.height) },
                     });
                 }
             }
             return results;
-        }, args.contains);
+        }, { text: searchText, exact: isExact, elementType: args.elementType, limit });
+
         elements.push(...containsElements.map((e: any) => ({
             selector: e.id ? `#${e.id}` : e.className ? `.${e.className.split(' ')[0]}` : e.tag,
             text: e.text,
             tag: e.tag,
+            position: args.includePosition ? e.position : undefined,
         })));
     }
 
+    // Attribute search
     if (args.attributes) {
         let attributes: Record<string, string> = {};
         try {
@@ -594,16 +1251,15 @@ export async function handleFindElementAdvanced(
             // Ignore invalid JSON
         }
 
-        // Use Puppeteer evaluation to find elements with matching attributes
-        const attributeElements = await page.evaluate((attrs: Record<string, string>) => {
+        const attributeElements = await page.evaluate((opts: any) => {
             const results: any[] = [];
             const allElements = document.querySelectorAll('*');
 
-            for (let i = 0; i < allElements.length && results.length < 50; i++) {
+            for (let i = 0; i < allElements.length && results.length < opts.limit; i++) {
                 const el = allElements[i];
                 let match = true;
 
-                for (const [key, value] of Object.entries(attrs)) {
+                for (const [key, value] of Object.entries(opts.attrs)) {
                     if (el.getAttribute(key) !== value) {
                         match = false;
                         break;
@@ -611,27 +1267,32 @@ export async function handleFindElementAdvanced(
                 }
 
                 if (match) {
+                    const rect = el.getBoundingClientRect();
                     results.push({
                         text: el.textContent?.trim()?.substring(0, 100) || '',
                         tag: el.tagName.toLowerCase(),
                         id: el.id || '',
                         className: typeof el.className === 'string' ? el.className : '',
+                        position: { x: Math.round(rect.x), y: Math.round(rect.y), width: Math.round(rect.width), height: Math.round(rect.height) },
                     });
                 }
             }
             return results;
-        }, attributes);
+        }, { attrs: attributes, limit });
 
         elements.push(...attributeElements.map((e: any) => ({
             selector: e.id ? `#${e.id}` : e.className ? `.${e.className.split(' ')[0]}` : e.tag,
             text: e.text,
             tag: e.tag,
+            position: args.includePosition ? e.position : undefined,
         })));
     }
 
+    tracker.complete(`🎉 Found ${elements.length} elements`);
+
     return {
         found: elements.length > 0,
-        elements: elements.slice(0, 50),
+        elements: elements.slice(0, limit),
         count: elements.length,
     };
 }

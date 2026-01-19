@@ -371,11 +371,12 @@ export const TOOLS = [
   },
   {
     name: 'find_element',
-    description: 'Find elements using text, CSS selector, XPath, attributes, or AI-powered description. Supports Shadow DOM and cross-frame search.',
+    description: 'Ultra-powerful element finder and batch scraper. Find elements using text, CSS selector, XPath, attributes, or AI-powered description. Supports Shadow DOM, cross-frame search, and efficient batch scraping of similar elements with advanced filtering.',
     inputSchema: {
       type: 'object',
       additionalProperties: false,
       properties: {
+        // === FIND MODE ===
         text: { type: 'string', description: 'Text content to search for in elements' },
         selector: { type: 'string', description: 'CSS selector' },
         xpath: { type: 'string', description: 'XPath expression' },
@@ -386,6 +387,37 @@ export const TOOLS = [
         context: { type: 'string', description: 'Additional context for AI search' },
         shadowDOM: { type: 'boolean', description: 'Search inside Shadow DOM elements', default: false },
         searchFrames: { type: 'boolean', description: 'Search across all iframes/frames', default: false },
+
+        // === BATCH SCRAPE MODE (merged from batch_element_scraper) ===
+        batchMode: { type: 'boolean', description: 'Enable batch scraping mode for extracting data from multiple similar elements', default: false },
+        extractAttributes: { type: 'array', items: { type: 'string' }, description: 'Attributes to extract in batch mode (e.g., href, src, data-id). Default: textContent, href, src' },
+        limit: { type: 'number', description: 'Maximum elements to process in batch mode', default: 100 },
+        includeInnerHTML: { type: 'boolean', description: 'Include innerHTML in batch extraction', default: false },
+        includePosition: { type: 'boolean', description: 'Include element position (x, y, width, height) in results', default: false },
+
+        // === ADVANCED FILTERS ===
+        filter: {
+          type: 'object',
+          description: 'Advanced filtering options for more precise element selection',
+          properties: {
+            visible: { type: 'boolean', description: 'Only find visible elements (not hidden by CSS)' },
+            enabled: { type: 'boolean', description: 'Only find enabled elements (not disabled)' },
+            minWidth: { type: 'number', description: 'Minimum element width in pixels' },
+            minHeight: { type: 'number', description: 'Minimum element height in pixels' },
+            hasChildren: { type: 'boolean', description: 'Only elements that have child elements' },
+            containsClass: { type: 'string', description: 'Element must contain this CSS class' },
+            matchPattern: { type: 'string', description: 'Regex pattern to match element text content' },
+          },
+          additionalProperties: false,
+        },
+
+        // === OUTPUT OPTIONS ===
+        returnType: {
+          type: 'string',
+          enum: ['elements', 'selectors', 'data'],
+          description: 'What to return: elements (full info with tag, text, attributes), selectors (just CSS selectors), data (extracted attribute data only)',
+          default: 'elements'
+        },
       },
     },
   },
@@ -443,20 +475,9 @@ export const TOOLS = [
     },
   },
   // ============================================================
-  // ADVANCED TOOLS (24 advanced tools)
+  // ADVANCED TOOLS
   // ============================================================
-  {
-    name: 'breadcrumb_navigator',
-    description: 'Navigate using site breadcrumbs - find and click breadcrumb links',
-    inputSchema: {
-      type: 'object',
-      additionalProperties: false,
-      properties: {
-        targetIndex: { type: 'number', description: 'Index of breadcrumb to click (0-based)' },
-        targetText: { type: 'string', description: 'Text of breadcrumb to click' },
-      },
-    },
-  },
+  // breadcrumb_navigator REMOVED - use click or find_element with text
   {
     name: 'redirect_tracer',
     description: 'Trace URL redirects including standard, JavaScript, and meta refresh redirects',
@@ -474,20 +495,59 @@ export const TOOLS = [
     },
   },
   {
-    name: 'search_content',
-    description: 'Search text or Regex patterns in page content',
+    name: 'search_regex',
+    description: `🔥 ULTRA-POWERFUL Regex Engine (like regex101.com) - Test, match, replace with full regex support. Features: Named capture groups, all regex flags (g/i/m/s/u/y), match highlighting, detailed match info with indices, replace mode, pattern explanation, timeout protection against catastrophic backtracking. Search in HTML, text, scripts, styles, or attributes.`,
     inputSchema: {
       type: 'object',
       additionalProperties: false,
       properties: {
-        pattern: { type: 'string', description: 'Search pattern (text or regex)' },
-        isRegex: { type: 'boolean', description: 'Treat pattern as regex', default: false },
-        caseSensitive: { type: 'boolean', description: 'Case sensitive search', default: false },
+        // Core regex
+        pattern: { type: 'string', description: 'Regex pattern to search (supports full JavaScript regex syntax including lookahead/lookbehind)' },
+        testString: { type: 'string', description: 'Optional custom string to test against. If not provided, uses page content' },
+
+        // Regex flags (individually controllable like regex101.com)
+        flags: {
+          type: 'object',
+          description: 'Regex flags - control each flag individually',
+          properties: {
+            global: { type: 'boolean', description: 'g flag - Find all matches', default: true },
+            ignoreCase: { type: 'boolean', description: 'i flag - Case insensitive', default: false },
+            multiline: { type: 'boolean', description: 'm flag - ^ and $ match line boundaries', default: false },
+            dotAll: { type: 'boolean', description: 's flag - Dot matches newlines', default: false },
+            unicode: { type: 'boolean', description: 'u flag - Unicode mode', default: false },
+            sticky: { type: 'boolean', description: 'y flag - Sticky mode', default: false },
+          },
+          additionalProperties: false,
+        },
+
+        // Replace mode (like regex101.com substitution)
+        replaceWith: { type: 'string', description: 'Replace matches with this string. Supports $1, $2, $& for capture groups' },
+
+        // Match options
+        maxMatches: { type: 'number', description: 'Maximum number of matches to return', default: 100 },
+        contextChars: { type: 'number', description: 'Number of context characters around each match', default: 50 },
+
+        // Source selection
+        sourceType: {
+          type: 'string',
+          enum: ['text', 'html', 'scripts', 'styles', 'attributes', 'all'],
+          description: 'What content to search in',
+          default: 'text'
+        },
         selector: { type: 'string', description: 'CSS selector to limit search scope' },
+
+        // Advanced features
+        extractGroups: { type: 'boolean', description: 'Extract and return named/numbered capture groups', default: true },
+        highlightMatches: { type: 'boolean', description: 'Return matches with <<MATCH>> highlighting', default: false },
+        showMatchInfo: { type: 'boolean', description: 'Show detailed match info: index, length, groups', default: true },
+
+        // Safety
+        timeout: { type: 'number', description: 'Regex execution timeout in ms (prevents catastrophic backtracking)', default: 5000 },
       },
       required: ['pattern'],
     },
   },
+  // web_search tool REMOVED - redundant with search_regex and other tools
   {
     name: 'extract_json',
     description: 'Extract embedded JSON/API data from page (LD+JSON, __NEXT_DATA__, etc.) + Advanced Decode (base64, URL, hex, rot13, multi-layer) + Packed JavaScript decoder + AES-CBC decryption for encrypted streaming sites',
@@ -626,21 +686,8 @@ export const TOOLS = [
   // api_finder REMOVED - merged into network_recorder (use findApis: true)
   // ajax_content_waiter REMOVED - merged into wait tool (use pollInterval, expectedContent)
   // media_extractor REMOVED - functionality merged into stream_extractor
-  {
-    name: 'element_screenshot',
-    description: 'Capture screenshot of a specific element',
-    inputSchema: {
-      type: 'object',
-      additionalProperties: false,
-      properties: {
-        selector: { type: 'string', description: 'CSS selector of element to capture' },
-        path: { type: 'string', description: 'File path to save screenshot' },
-        format: { type: 'string', enum: ['png', 'jpeg', 'webp'], description: 'Image format', default: 'png' },
-        quality: { type: 'number', description: 'Quality for JPEG/WebP (0-100)' },
-      },
-      required: ['selector'],
-    },
-  },
+  // element_screenshot REMOVED - use deep_analysis with includeScreenshot: true for screenshots
+  // batch_element_scraper REMOVED - merged into find_element (use batchMode: true)
   {
     name: 'link_harvester',
     description: 'Harvest all links from page with filtering options',
@@ -653,20 +700,6 @@ export const TOOLS = [
         includeInternal: { type: 'boolean', description: 'Include internal links', default: true },
         maxLinks: { type: 'number', description: 'Maximum links to return' },
       },
-    },
-  },
-  {
-    name: 'batch_element_scraper',
-    description: 'Efficiently scrape lists of similar elements',
-    inputSchema: {
-      type: 'object',
-      additionalProperties: false,
-      properties: {
-        selector: { type: 'string', description: 'CSS selector for elements to scrape' },
-        attributes: { type: 'array', items: { type: 'string' }, description: 'Attributes to extract' },
-        limit: { type: 'number', description: 'Maximum elements to scrape', default: 100 },
-      },
-      required: ['selector'],
     },
   },
   // extract_schema REMOVED - merged into extract_json (use extractSchema option)
@@ -820,9 +853,10 @@ export const TOOL_NAMES = {
   FIND_ELEMENT: 'find_element',
   SAVE_CONTENT_AS_MARKDOWN: 'save_content_as_markdown',
   // Advanced tools
-  BREADCRUMB_NAVIGATOR: 'breadcrumb_navigator',
+  // BREADCRUMB_NAVIGATOR REMOVED - use click or find_element with text
   REDIRECT_TRACER: 'redirect_tracer',
-  SEARCH_CONTENT: 'search_content',
+  SEARCH_REGEX: 'search_regex', // Renamed from SEARCH_CONTENT - now regex101.com-like
+  // WEB_SEARCH REMOVED - redundant with search_regex
   EXTRACT_JSON: 'extract_json',
   SCRAPE_META_TAGS: 'scrape_meta_tags',
   PRESS_KEY: 'press_key',
@@ -832,9 +866,9 @@ export const TOOL_NAMES = {
   // API_FINDER: 'api_finder', // REMOVED - merged into NETWORK_RECORDER (use findApis option)
   // AJAX_CONTENT_WAITER: 'ajax_content_waiter', // REMOVED - merged into WAIT (use pollInterval, expectedContent)
   // MEDIA_EXTRACTOR: 'media_extractor', // REMOVED - merged into STREAM_EXTRACTOR
-  ELEMENT_SCREENSHOT: 'element_screenshot',
+  // ELEMENT_SCREENSHOT: 'element_screenshot', // REMOVED - use DEEP_ANALYSIS with includeScreenshot
   LINK_HARVESTER: 'link_harvester',
-  BATCH_ELEMENT_SCRAPER: 'batch_element_scraper',
+  // BATCH_ELEMENT_SCRAPER: 'batch_element_scraper', // REMOVED - merged into FIND_ELEMENT (use batchMode option)
   // EXTRACT_SCHEMA: 'extract_schema', // REMOVED - merged into EXTRACT_JSON (use extractSchema option)
   // M3U8_PARSER: 'm3u8_parser', // REMOVED - merged into STREAM_EXTRACTOR
   COOKIE_MANAGER: 'cookie_manager',

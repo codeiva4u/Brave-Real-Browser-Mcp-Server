@@ -90,10 +90,11 @@ import { handleSaveContentAsMarkdown } from './handlers/file-handlers.js';
 
 // Import advanced tools handlers
 import {
-  handleBreadcrumbNavigator,
+  // handleBreadcrumbNavigator REMOVED - use click or find_element
   handleUrlRedirectTracer,
   handleMultiLayerRedirectTrace,
-  handleSearchContent,
+  handleSearchRegex, // Renamed from handleSearchContent
+  // handleWebSearch REMOVED - redundant with search_regex
   handleFindElementAdvanced,
   handleExtractJson,
   handleScrapeMetaTags,
@@ -105,11 +106,11 @@ import {
   // handleAjaxContentWaiter, // REMOVED - merged into handleWait
   handleAdvancedVideoExtraction,
   handleMediaExtractor,
-  handleElementScreenshot,
+  // handleElementScreenshot, // REMOVED - use deep_analysis with includeScreenshot
   handleLinkHarvester,
   handleImageExtractorAdvanced,
   handleSmartSelectorGenerator,
-  handleBatchElementScraper,
+  // handleBatchElementScraper, // REMOVED - merged into handleFindElementAdvanced (use batchMode)
   // handleExtractSchema, // REMOVED - merged into handleExtractJson
   handleSolveCaptchaAdvanced,
   // Streaming tools
@@ -272,19 +273,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
         return await handleSaveContentAsMarkdown(args as unknown as SaveContentAsMarkdownArgs);
 
       // Advanced Tools
-      case TOOL_NAMES.BREADCRUMB_NAVIGATOR:
-        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
-        return { content: [{ type: 'text', text: JSON.stringify(await handleBreadcrumbNavigator(page, args || {})) }] };
+      // BREADCRUMB_NAVIGATOR case REMOVED - use click or find_element
 
       case TOOL_NAMES.REDIRECT_TRACER:
         if (!page) throw new Error('Browser not initialized. Call browser_init first.');
         return { content: [{ type: 'text', text: JSON.stringify(await handleUrlRedirectTracer(page, args as any)) }] };
 
-      case TOOL_NAMES.SEARCH_CONTENT:
+      case TOOL_NAMES.SEARCH_REGEX:
         if (!page) throw new Error('Browser not initialized. Call browser_init first.');
-        return { content: [{ type: 'text', text: JSON.stringify(await handleSearchContent(page, args as any)) }] };
+        return { content: [{ type: 'text', text: JSON.stringify(await handleSearchRegex(page, args as any)) }] };
 
-
+      // WEB_SEARCH case REMOVED - redundant with search_regex
 
       case TOOL_NAMES.EXTRACT_JSON:
         if (!page) throw new Error('Browser not initialized. Call browser_init first.');
@@ -317,17 +316,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
 
       // MEDIA_EXTRACTOR case REMOVED - merged into STREAM_EXTRACTOR
 
-      case TOOL_NAMES.ELEMENT_SCREENSHOT:
-        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
-        return { content: [{ type: 'text', text: JSON.stringify(await handleElementScreenshot(page, args as any)) }] };
+      // ELEMENT_SCREENSHOT case REMOVED - use deep_analysis with includeScreenshot
 
       case TOOL_NAMES.LINK_HARVESTER:
         if (!page) throw new Error('Browser not initialized. Call browser_init first.');
         return { content: [{ type: 'text', text: JSON.stringify(await handleLinkHarvester(page, args || {})) }] };
 
-      case TOOL_NAMES.BATCH_ELEMENT_SCRAPER:
-        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
-        return { content: [{ type: 'text', text: JSON.stringify(await handleBatchElementScraper(page, args as any)) }] };
+      // BATCH_ELEMENT_SCRAPER case REMOVED - merged into FIND_ELEMENT (use batchMode)
 
       // EXTRACT_SCHEMA case REMOVED - merged into EXTRACT_JSON (use extractSchema option)
 

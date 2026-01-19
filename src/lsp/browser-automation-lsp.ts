@@ -85,7 +85,7 @@ const TOOL_DEFINITIONS: Record<string, {
   },
   find_element: {
     name: 'find_element',
-    description: 'Find elements using text, CSS selector, XPath, attributes, or AI-powered description',
+    description: 'Ultra-powerful element finder and batch scraper. Find elements using text, CSS selector, XPath, attributes, or AI-powered description. Supports batch scraping mode with advanced filtering.',
     category: 'Content',
     parameters: [
       { name: 'text', type: 'string', description: 'Text content to search for', required: false },
@@ -93,6 +93,11 @@ const TOOL_DEFINITIONS: Record<string, {
       { name: 'xpath', type: 'string', description: 'XPath expression', required: false },
       { name: 'description', type: 'string', description: 'Natural language description (AI-powered)', required: false },
       { name: 'exact', type: 'boolean', description: 'Exact text match', required: false, default: false },
+      { name: 'batchMode', type: 'boolean', description: 'Enable batch scraping mode for multiple elements', required: false, default: false },
+      { name: 'extractAttributes', type: 'array', description: 'Attributes to extract in batch mode (e.g., href, src)', required: false },
+      { name: 'limit', type: 'number', description: 'Maximum elements to process', required: false, default: 100 },
+      { name: 'includePosition', type: 'boolean', description: 'Include element position (x, y, width, height)', required: false, default: false },
+      { name: 'returnType', type: 'string', description: 'Output format: elements, selectors, or data', required: false, enum: ['elements', 'selectors', 'data'], default: 'elements' },
     ],
   },
   save_content_as_markdown: {
@@ -186,15 +191,20 @@ const TOOL_DEFINITIONS: Record<string, {
     ],
   },
   // Advanced Tools
-  search_content: {
-    name: 'search_content',
-    description: 'Search text or Regex patterns in page content',
+  search_regex: {
+    name: 'search_regex',
+    description: '🔥 ULTRA-POWERFUL Regex Engine (like regex101.com) - Full regex support with flags, capture groups, replace mode, timeout protection',
     category: 'Advanced',
     parameters: [
-      { name: 'pattern', type: 'string', description: 'Search pattern (text or regex)', required: true },
-      { name: 'isRegex', type: 'boolean', description: 'Treat pattern as regex', required: false, default: false },
+      { name: 'pattern', type: 'string', description: 'Regex pattern to search', required: true },
+      { name: 'flags', type: 'object', description: 'Regex flags: global, ignoreCase, multiline, dotAll, unicode, sticky', required: false },
+      { name: 'replaceWith', type: 'string', description: 'Replace matches with this string (supports $1, $2, $&)', required: false },
+      { name: 'sourceType', type: 'string', description: 'Where to search: text, html, scripts, styles, attributes, all', required: false, default: 'text' },
+      { name: 'extractGroups', type: 'boolean', description: 'Extract capture groups', required: false, default: true },
+      { name: 'highlightMatches', type: 'boolean', description: 'Highlight matches in context', required: false, default: false },
     ],
   },
+  // web_search REMOVED - redundant with search_regex
   extract_json: {
     name: 'extract_json',
     description: 'Extract embedded JSON/API data from page (LD+JSON, __NEXT_DATA__, etc.)',
@@ -261,16 +271,7 @@ const TOOL_DEFINITIONS: Record<string, {
       { name: 'maxLinks', type: 'number', description: 'Maximum links to return', required: false },
     ],
   },
-  batch_element_scraper: {
-    name: 'batch_element_scraper',
-    description: 'Efficiently scrape lists of similar elements',
-    category: 'Advanced',
-    parameters: [
-      { name: 'selector', type: 'string', description: 'CSS selector for elements to scrape', required: true },
-      { name: 'attributes', type: 'array', description: 'Attributes to extract', required: false },
-      { name: 'limit', type: 'number', description: 'Maximum elements to scrape', required: false, default: 100 },
-    ],
-  },
+  // batch_element_scraper REMOVED - merged into find_element (use batchMode: true)
   extract_schema: {
     name: 'extract_schema',
     description: 'Extract Schema.org structured data (JSON-LD and Microdata)',
@@ -279,25 +280,8 @@ const TOOL_DEFINITIONS: Record<string, {
       { name: 'schemaTypes', type: 'array', description: 'Schema types to extract (e.g., Product, Article)', required: false },
     ],
   },
-  element_screenshot: {
-    name: 'element_screenshot',
-    description: 'Capture screenshot of a specific element',
-    category: 'Advanced',
-    parameters: [
-      { name: 'selector', type: 'string', description: 'CSS selector of element to capture', required: true },
-      { name: 'path', type: 'string', description: 'File path to save screenshot', required: false },
-      { name: 'format', type: 'string', description: 'Image format', required: false, enum: ['png', 'jpeg', 'webp'], default: 'png' },
-    ],
-  },
-  breadcrumb_navigator: {
-    name: 'breadcrumb_navigator',
-    description: 'Navigate using site breadcrumbs - find and click breadcrumb links',
-    category: 'Advanced',
-    parameters: [
-      { name: 'targetIndex', type: 'number', description: 'Index of breadcrumb to click (0-based)', required: false },
-      { name: 'targetText', type: 'string', description: 'Text of breadcrumb to click', required: false },
-    ],
-  },
+  // element_screenshot REMOVED - use deep_analysis with includeScreenshot: true
+  // breadcrumb_navigator REMOVED - use click or find_element with text
   redirect_tracer: {
     name: 'redirect_tracer',
     description: 'Trace URL redirects including standard, JavaScript, and meta refresh redirects',
