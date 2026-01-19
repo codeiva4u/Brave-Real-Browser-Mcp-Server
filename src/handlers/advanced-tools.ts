@@ -33,7 +33,7 @@ export interface MultiLayerRedirectTraceArgs {
 }
 
 // ============================================================
-// SEARCH REGEX ARGS (regex101.com-like)
+// SEARCH REGEX ARGS (regex101.com-like + Simple Search Mode)
 // ============================================================
 export interface SearchRegexArgs {
     pattern: string;
@@ -55,6 +55,12 @@ export interface SearchRegexArgs {
     highlightMatches?: boolean;
     showMatchInfo?: boolean;
     timeout?: number;
+    // NEW: Simple Search Mode - treat pattern as literal text, not regex
+    simpleSearch?: boolean;
+    // NEW: Pattern Explanation - explain each regex component
+    showExplanation?: boolean;
+    // NEW: Hierarchical Group Tree - show nested groups structure
+    showGroupTree?: boolean;
 }
 
 // ============================================================
@@ -514,10 +520,153 @@ export async function handleMultiLayerRedirectTrace(
 }
 
 /**
- * 🔥 ULTRA-POWERFUL Regex Engine (like regex101.com)
+ * 🔥 ULTRA-POWERFUL Regex Engine (like regex101.com) + Simple Search Mode
  * Features: Named capture groups, all regex flags, match highlighting,
- * detailed match info, replace mode, timeout protection
+ * detailed match info, replace mode, timeout protection,
+ * NEW: Simple search mode, Pattern explanation, Hierarchical group tree
  */
+
+// Helper: Escape regex special characters for simple search mode
+function escapeRegex(str: string): string {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Helper: Generate pattern explanation
+function explainPattern(pattern: string): Array<{ part: string; meaning: string; position: number }> {
+    const explanations: Array<{ part: string; meaning: string; position: number }> = [];
+    const regexTokens: Array<{ regex: RegExp; meaning: (match: string) => string }> = [
+        { regex: /^\^/, meaning: () => 'Start of string/line' },
+        { regex: /^\$/, meaning: () => 'End of string/line' },
+        { regex: /^\\d/, meaning: () => 'Any digit (0-9)' },
+        { regex: /^\\D/, meaning: () => 'Any non-digit character' },
+        { regex: /^\\w/, meaning: () => 'Word character (a-z, A-Z, 0-9, _)' },
+        { regex: /^\\W/, meaning: () => 'Non-word character' },
+        { regex: /^\\s/, meaning: () => 'Whitespace character (space, tab, newline)' },
+        { regex: /^\\S/, meaning: () => 'Non-whitespace character' },
+        { regex: /^\\b/, meaning: () => 'Word boundary' },
+        { regex: /^\\B/, meaning: () => 'Non-word boundary' },
+        { regex: /^\\n/, meaning: () => 'Newline character' },
+        { regex: /^\\r/, meaning: () => 'Carriage return' },
+        { regex: /^\\t/, meaning: () => 'Tab character' },
+        { regex: /^\./, meaning: () => 'Any character (except newline unless s flag)' },
+        { regex: /^\*/, meaning: () => 'Zero or more of the preceding' },
+        { regex: /^\+/, meaning: () => 'One or more of the preceding' },
+        { regex: /^\?/, meaning: () => 'Zero or one of the preceding (optional)' },
+        { regex: /^\*\?/, meaning: () => 'Zero or more (lazy/non-greedy)' },
+        { regex: /^\+\?/, meaning: () => 'One or more (lazy/non-greedy)' },
+        { regex: /^\?\?/, meaning: () => 'Zero or one (lazy/non-greedy)' },
+        { regex: /^\|/, meaning: () => 'OR - matches either side' },
+        { regex: /^\(\?:([^)]*)\)/, meaning: (m) => `Non-capturing group: ${m}` },
+        { regex: /^\(\?=([^)]*)\)/, meaning: (m) => `Positive lookahead: must be followed by "${m}"` },
+        { regex: /^\(\?!([^)]*)\)/, meaning: (m) => `Negative lookahead: must NOT be followed by "${m}"` },
+        { regex: /^\(\?<=([^)]*)\)/, meaning: (m) => `Positive lookbehind: must be preceded by "${m}"` },
+        { regex: /^\(\?<!([^)]*)\)/, meaning: (m) => `Negative lookbehind: must NOT be preceded by "${m}"` },
+        { regex: /^\(\?<(\w+)>/, meaning: (m) => `Named capture group: "${m}"` },
+        { regex: /^\(/, meaning: () => 'Capture group start' },
+        { regex: /^\)/, meaning: () => 'Capture group end' },
+        { regex: /^\[(\^)?([^\]]+)\]/, meaning: (m) => m.startsWith('^') ? `Any character NOT in: ${m.slice(1)}` : `Any character in: ${m}` },
+        { regex: /^\{(\d+)\}/, meaning: (m) => `Exactly ${m} occurrences` },
+        { regex: /^\{(\d+),\}/, meaning: (m) => `${m} or more occurrences` },
+        { regex: /^\{(\d+),(\d+)\}/, meaning: (m) => `Between ${m.split(',')[0]} and ${m.split(',')[1]} occurrences` },
+        { regex: /^\\([0-9])/, meaning: (m) => `Backreference to group ${m}` },
+        { regex: /^\\k<(\w+)>/, meaning: (m) => `Backreference to named group "${m}"` },
+        { regex: /^https?:\/\//, meaning: () => 'HTTP or HTTPS protocol' },
+        { regex: /^[a-zA-Z0-9]+/, meaning: (m) => `Literal text: "${m}"` },
+        { regex: /^\\(.)/, meaning: (m) => `Escaped character: "${m}"` },
+    ];
+
+    let remaining = pattern;
+    let position = 0;
+
+    while (remaining.length > 0) {
+        let matched = false;
+
+        for (const token of regexTokens) {
+            const match = remaining.match(token.regex);
+            if (match) {
+                const part = match[0];
+                const captured = match[1] || match[0];
+                explanations.push({
+                    part,
+                    meaning: token.meaning(captured),
+                    position,
+                });
+                remaining = remaining.slice(part.length);
+                position += part.length;
+                matched = true;
+                break;
+            }
+        }
+
+        if (!matched) {
+            // Single character literal
+            const char = remaining[0];
+            explanations.push({
+                part: char,
+                meaning: `Literal character: "${char}"`,
+                position,
+            });
+            remaining = remaining.slice(1);
+            position += 1;
+        }
+    }
+
+    return explanations;
+}
+
+// Helper: Build hierarchical group tree
+function buildGroupTree(pattern: string, match: RegExpExecArray): {
+    fullMatch: string;
+    groups: Array<{
+        index: number;
+        name?: string;
+        value: string;
+        start: number;
+        end: number;
+        nested?: boolean;
+    }>;
+} {
+    const groups: Array<{
+        index: number;
+        name?: string;
+        value: string;
+        start: number;
+        end: number;
+        nested?: boolean;
+    }> = [];
+
+    // Extract named groups from pattern
+    const namedGroupPattern = /\(\?<(\w+)>/g;
+    const namedGroups: string[] = [];
+    let namedMatch;
+    while ((namedMatch = namedGroupPattern.exec(pattern)) !== null) {
+        namedGroups.push(namedMatch[1]);
+    }
+
+    // Build group entries
+    for (let i = 1; i < match.length; i++) {
+        if (match[i] !== undefined) {
+            const value = match[i];
+            const fullMatchText = match[0];
+            const valueIndex = fullMatchText.indexOf(value);
+
+            groups.push({
+                index: i,
+                name: match.groups && Object.keys(match.groups)[i - 1] ? Object.keys(match.groups).find(k => match.groups![k] === value) : undefined,
+                value,
+                start: valueIndex >= 0 ? match.index + valueIndex : match.index,
+                end: valueIndex >= 0 ? match.index + valueIndex + value.length : match.index + value.length,
+                nested: i > 1 && match[i - 1]?.includes(value),
+            });
+        }
+    }
+
+    return {
+        fullMatch: match[0],
+        groups,
+    };
+}
+
 export async function handleSearchRegex(
     page: Page,
     args: SearchRegexArgs
@@ -530,42 +679,89 @@ export async function handleSearchRegex(
         length: number;
         groups?: Record<string, string>;
         numberedGroups?: string[];
+        groupTree?: {
+            fullMatch: string;
+            groups: Array<{
+                index: number;
+                name?: string;
+                value: string;
+                start: number;
+                end: number;
+                nested?: boolean;
+            }>;
+        };
     }>;
     count: number;
     replaced?: string;
     patternInfo?: {
         flags: string;
         isValid: boolean;
+        isSimpleSearch?: boolean;
+        originalPattern?: string;
         errorMessage?: string;
     };
+    patternExplanation?: Array<{ part: string; meaning: string; position: number }>;
 }> {
     const progressNotifier = getProgressNotifier();
     const tracker = progressNotifier.createTracker(`search-regex-${Date.now()}`);
-    tracker.start(100, `🔎 Regex Search: "${args.pattern}"`);
+
+    // Determine search mode
+    const isSimpleSearch = args.simpleSearch === true;
+    const searchMode = isSimpleSearch ? '🔤 Simple Search' : '🔎 Regex Search';
+    tracker.start(100, `${searchMode}: "${args.pattern}"`);
 
     // Build regex flags
     const flags = args.flags || {};
     let flagString = '';
     if (flags.global !== false) flagString += 'g';
-    if (flags.ignoreCase) flagString += 'i';
+    if (flags.ignoreCase || isSimpleSearch) flagString += 'i'; // Simple search defaults to case-insensitive
     if (flags.multiline) flagString += 'm';
     if (flags.dotAll) flagString += 's';
     if (flags.unicode) flagString += 'u';
     if (flags.sticky) flagString += 'y';
 
+    // Process pattern based on mode
+    let processedPattern = args.pattern;
+    const originalPattern = args.pattern;
+
+    if (isSimpleSearch) {
+        // Escape all regex special characters for literal search
+        processedPattern = escapeRegex(args.pattern);
+        tracker.setProgress(10, '🔤 Simple search mode - treating as literal text');
+    }
+
     // Validate regex
     let regex: RegExp;
-    let patternInfo = { flags: flagString, isValid: true, errorMessage: undefined as string | undefined };
+    let patternInfo: {
+        flags: string;
+        isValid: boolean;
+        isSimpleSearch?: boolean;
+        originalPattern?: string;
+        errorMessage?: string;
+    } = {
+        flags: flagString,
+        isValid: true,
+        isSimpleSearch,
+        originalPattern: isSimpleSearch ? originalPattern : undefined,
+    };
+
     try {
-        regex = new RegExp(args.pattern, flagString);
+        regex = new RegExp(processedPattern, flagString);
     } catch (e: any) {
         tracker.fail(`Invalid regex: ${e.message}`);
         return {
             found: false,
             matches: [],
             count: 0,
-            patternInfo: { flags: flagString, isValid: false, errorMessage: e.message },
+            patternInfo: { ...patternInfo, isValid: false, errorMessage: e.message },
         };
+    }
+
+    // Generate pattern explanation if requested
+    let patternExplanation: Array<{ part: string; meaning: string; position: number }> | undefined;
+    if (args.showExplanation && !isSimpleSearch) {
+        tracker.setProgress(15, '📖 Generating pattern explanation...');
+        patternExplanation = explainPattern(args.pattern);
     }
 
     tracker.setProgress(20, '📄 Extracting content...');
@@ -617,10 +813,10 @@ export async function handleSearchRegex(
 
     if (!content) {
         tracker.fail('No content to search');
-        return { found: false, matches: [], count: 0, patternInfo };
+        return { found: false, matches: [], count: 0, patternInfo, patternExplanation };
     }
 
-    tracker.setProgress(50, '🔍 Running regex match...');
+    tracker.setProgress(50, '🔍 Running match...');
 
     const matches: Array<{
         text: string;
@@ -629,6 +825,17 @@ export async function handleSearchRegex(
         length: number;
         groups?: Record<string, string>;
         numberedGroups?: string[];
+        groupTree?: {
+            fullMatch: string;
+            groups: Array<{
+                index: number;
+                name?: string;
+                value: string;
+                start: number;
+                end: number;
+                nested?: boolean;
+            }>;
+        };
     }> = [];
 
     const maxMatches = args.maxMatches || 100;
@@ -663,13 +870,18 @@ export async function handleSearchRegex(
         };
 
         // Extract groups if requested
-        if (args.extractGroups !== false) {
+        if (args.extractGroups !== false && !isSimpleSearch) {
             if (match.groups) {
                 matchResult.groups = match.groups;
             }
             if (match.length > 1) {
                 matchResult.numberedGroups = match.slice(1);
             }
+        }
+
+        // Build hierarchical group tree if requested
+        if (args.showGroupTree && !isSimpleSearch && match.length > 1) {
+            matchResult.groupTree = buildGroupTree(args.pattern, match);
         }
 
         matches.push(matchResult);
@@ -689,7 +901,8 @@ export async function handleSearchRegex(
         replaced = content.replace(regex, args.replaceWith);
     }
 
-    tracker.complete(`🎉 Found ${matches.length} matches`);
+    const modeText = isSimpleSearch ? 'text matches' : 'regex matches';
+    tracker.complete(`🎉 Found ${matches.length} ${modeText}`);
 
     return {
         found: matches.length > 0,
@@ -697,6 +910,7 @@ export async function handleSearchRegex(
         count: matches.length,
         replaced,
         patternInfo,
+        patternExplanation,
     };
 }
 

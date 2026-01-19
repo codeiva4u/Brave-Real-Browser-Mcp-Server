@@ -496,14 +496,17 @@ export const TOOLS = [
   },
   {
     name: 'search_regex',
-    description: `🔥 ULTRA-POWERFUL Regex Engine (like regex101.com) - Test, match, replace with full regex support. Features: Named capture groups, all regex flags (g/i/m/s/u/y), match highlighting, detailed match info with indices, replace mode, pattern explanation, timeout protection against catastrophic backtracking. Search in HTML, text, scripts, styles, or attributes.`,
+    description: `🔥 ULTRA-POWERFUL Regex Engine (like regex101.com) - Test, match, replace with full regex support. Features: Named capture groups, all regex flags (g/i/m/s/u/y), match highlighting, detailed match info with indices, replace mode, pattern explanation, timeout protection against catastrophic backtracking. Search in HTML, text, scripts, styles, or attributes. NEW: Simple search mode for non-regex text search.`,
     inputSchema: {
       type: 'object',
       additionalProperties: false,
       properties: {
         // Core regex
-        pattern: { type: 'string', description: 'Regex pattern to search (supports full JavaScript regex syntax including lookahead/lookbehind)' },
+        pattern: { type: 'string', description: 'Regex pattern to search (supports full JavaScript regex syntax including lookahead/lookbehind). In simpleSearch mode, treated as literal text.' },
         testString: { type: 'string', description: 'Optional custom string to test against. If not provided, uses page content' },
+
+        // NEW: Simple Search Mode
+        simpleSearch: { type: 'boolean', description: 'Treat pattern as literal text, not regex. Perfect for Ctrl+F style searches. Automatically case-insensitive.', default: false },
 
         // Regex flags (individually controllable like regex101.com)
         flags: {
@@ -540,6 +543,12 @@ export const TOOLS = [
         extractGroups: { type: 'boolean', description: 'Extract and return named/numbered capture groups', default: true },
         highlightMatches: { type: 'boolean', description: 'Return matches with <<MATCH>> highlighting', default: false },
         showMatchInfo: { type: 'boolean', description: 'Show detailed match info: index, length, groups', default: true },
+
+        // NEW: Pattern Explanation
+        showExplanation: { type: 'boolean', description: 'Generate explanation for each regex component (like regex101.com explanation sidebar)', default: false },
+
+        // NEW: Hierarchical Group Tree
+        showGroupTree: { type: 'boolean', description: 'Show hierarchical structure of capture groups with positions and nesting info', default: false },
 
         // Safety
         timeout: { type: 'number', description: 'Regex execution timeout in ms (prevents catastrophic backtracking)', default: 5000 },

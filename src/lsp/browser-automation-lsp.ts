@@ -193,15 +193,18 @@ const TOOL_DEFINITIONS: Record<string, {
   // Advanced Tools
   search_regex: {
     name: 'search_regex',
-    description: '🔥 ULTRA-POWERFUL Regex Engine (like regex101.com) - Full regex support with flags, capture groups, replace mode, timeout protection',
+    description: '🔥 ULTRA-POWERFUL Regex Engine (like regex101.com) - Full regex support with flags, capture groups, replace mode, timeout protection. NEW: Simple search mode for non-regex text search, pattern explanation, and group tree.',
     category: 'Advanced',
     parameters: [
-      { name: 'pattern', type: 'string', description: 'Regex pattern to search', required: true },
+      { name: 'pattern', type: 'string', description: 'Regex pattern to search (or literal text in simpleSearch mode)', required: true },
+      { name: 'simpleSearch', type: 'boolean', description: 'Treat pattern as literal text, not regex. Perfect for Ctrl+F style searches.', required: false, default: false },
       { name: 'flags', type: 'object', description: 'Regex flags: global, ignoreCase, multiline, dotAll, unicode, sticky', required: false },
       { name: 'replaceWith', type: 'string', description: 'Replace matches with this string (supports $1, $2, $&)', required: false },
       { name: 'sourceType', type: 'string', description: 'Where to search: text, html, scripts, styles, attributes, all', required: false, default: 'text' },
       { name: 'extractGroups', type: 'boolean', description: 'Extract capture groups', required: false, default: true },
       { name: 'highlightMatches', type: 'boolean', description: 'Highlight matches in context', required: false, default: false },
+      { name: 'showExplanation', type: 'boolean', description: 'Generate explanation for each regex component', required: false, default: false },
+      { name: 'showGroupTree', type: 'boolean', description: 'Show hierarchical structure of capture groups', required: false, default: false },
     ],
   },
   // web_search REMOVED - redundant with search_regex
