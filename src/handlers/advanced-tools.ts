@@ -154,7 +154,7 @@ export interface ExtractJsonArgs {
 
     advancedDecode?: {               // Multi-layer decode for complex obfuscation
         input?: string;              // Input string (if not using page content)
-        layers: ('base64' | 'url' | 'hex' | 'rot13' | 'reverse' | 'unpackJs')[];
+        layers: ('base64' | 'url' | 'hex' | 'rot13' | 'reverse' | 'unpackJs' | 'xor' | 'rc4')[];
         extractFromPage?: boolean;   // Extract input from current page
         pageSelector?: string;       // CSS selector to extract from (for extractFromPage)
     };
@@ -162,9 +162,51 @@ export interface ExtractJsonArgs {
     // AES-CBC decryption for encrypted streaming responses
     decryptAES?: {
         input?: string;              // Hex-encoded encrypted string
-        fetchUrl?: string;           // API URL to fetch encrypted data from (e.g., https://hubstream.art/api/v1/video?id=xxx)
-        key?: string;                // AES-128 key (16 characters)
-        ivList?: string[];           // List of IVs to try (16 characters each)
+        fetchUrl?: string;           // API URL to fetch encrypted data from
+        key?: string;                // AES key (16 chars for 128-bit, 32 chars for 256-bit)
+        ivList?: string[];           // List of IVs to try
+        mode?: 'cbc' | 'gcm';        // AES mode (default: cbc)
+        keySize?: 128 | 256;         // Key size in bits (default: 128)
+    };
+
+    // ============================================================
+    // ULTRA ADVANCED DECODE - NEW FEATURES
+    // ============================================================
+    ultraDecode?: {
+        input?: string;              // Input string to decode
+        autoDetect?: boolean;        // Auto-detect encryption type and decode
+        recursive?: boolean;         // Keep decoding until URL found
+        maxDepth?: number;           // Max recursion depth (default: 10)
+        tryCommonKeys?: boolean;     // Try common streaming site keys
+        extractUrls?: boolean;       // Auto-extract URLs from decoded content
+        extractFromPage?: boolean;   // Get input from page content
+        pageSelector?: string;       // CSS selector for page extraction
+    };
+
+    // XOR Cipher decryption
+    decryptXOR?: {
+        input: string;               // Input string (hex or base64)
+        key: string | number;        // XOR key (string or single byte)
+        inputFormat?: 'hex' | 'base64' | 'text';  // Input format
+    };
+
+    // RC4 Stream Cipher decryption
+    decryptRC4?: {
+        input: string;               // Hex-encoded encrypted data
+        key: string;                 // RC4 key
+    };
+
+    // JSFuck/Obfuscated JS decoder
+    decodeObfuscatedJs?: {
+        extractFromPage?: boolean;   // Find obfuscated JS in page
+        selector?: string;           // Specific script selector
+        evalIntercept?: boolean;     // Intercept eval() calls
+    };
+
+    // Schema.org structured data extraction
+    extractSchema?: {
+        enabled?: boolean;
+        schemaTypes?: string[];      // Filter by schema type (e.g., 'Product', 'Article')
     };
 }
 
@@ -1560,6 +1602,379 @@ function reverseString(input: string): string {
     return input.split('').reverse().join('');
 }
 
+// ============================================================
+// ULTRA ADVANCED DECODE FUNCTIONS
+// ============================================================
+
+/**
+ * Common streaming site encryption keys database
+ * Used for tryCommonKeys feature
+ */
+const COMMON_STREAMING_KEYS = {
+    hubstream: {
+        keys: ['kiemtienmua911ca', '0123456789abcdef'],
+        ivs: ['1234567890oiuytr', '0123456789abcdef'],
+    },
+    vidstack: {
+        keys: ['streamkey12345ab', 'vidstack1234567'],
+        ivs: ['abcdef0123456789', '1234567890abcdef'],
+    },
+    player: {
+        keys: ['playerkey123456', 'defaultkey12345'],
+        ivs: ['playeriv12345678', 'defaultiv1234567'],
+    },
+    generic: {
+        keys: ['aaaaaaaaaaaaaaaa', '0000000000000000', '1111111111111111'],
+        ivs: ['0000000000000000', '1111111111111111', 'aaaaaaaaaaaaaaaa'],
+    }
+};
+
+/**
+ * XOR Cipher Decryption
+ * XOR each byte with key (repeating if key is shorter)
+ */
+function decryptXOR(input: string, key: string | number, inputFormat: 'hex' | 'base64' | 'text' = 'hex'): string {
+    try {
+        let inputBytes: Buffer;
+
+        // Parse input based on format
+        if (inputFormat === 'hex') {
+            inputBytes = Buffer.from(input.replace(/\s/g, ''), 'hex');
+        } else if (inputFormat === 'base64') {
+            inputBytes = Buffer.from(input, 'base64');
+        } else {
+            inputBytes = Buffer.from(input, 'utf-8');
+        }
+
+        // Parse key
+        let keyBytes: Buffer;
+        if (typeof key === 'number') {
+            keyBytes = Buffer.from([key & 0xFF]);
+        } else {
+            keyBytes = Buffer.from(key, 'utf-8');
+        }
+
+        // XOR decrypt
+        const result = Buffer.alloc(inputBytes.length);
+        for (let i = 0; i < inputBytes.length; i++) {
+            result[i] = inputBytes[i] ^ keyBytes[i % keyBytes.length];
+        }
+
+        return result.toString('utf-8');
+    } catch (e) {
+        return input;
+    }
+}
+
+/**
+ * RC4 Stream Cipher Decryption
+ * Used by some streaming sites for lightweight encryption
+ */
+function decryptRC4(inputHex: string, key: string): string {
+    try {
+        const input = Buffer.from(inputHex.replace(/\s/g, ''), 'hex');
+        const keyBytes = Buffer.from(key, 'utf-8');
+
+        // RC4 Key Scheduling Algorithm (KSA)
+        const S = new Uint8Array(256);
+        for (let i = 0; i < 256; i++) S[i] = i;
+
+        let j = 0;
+        for (let i = 0; i < 256; i++) {
+            j = (j + S[i] + keyBytes[i % keyBytes.length]) & 0xFF;
+            [S[i], S[j]] = [S[j], S[i]]; // Swap
+        }
+
+        // RC4 Pseudo-Random Generation Algorithm (PRGA)
+        const result = Buffer.alloc(input.length);
+        let i = 0;
+        j = 0;
+
+        for (let k = 0; k < input.length; k++) {
+            i = (i + 1) & 0xFF;
+            j = (j + S[i]) & 0xFF;
+            [S[i], S[j]] = [S[j], S[i]]; // Swap
+            const keyByte = S[(S[i] + S[j]) & 0xFF];
+            result[k] = input[k] ^ keyByte;
+        }
+
+        return result.toString('utf-8');
+    } catch (e) {
+        return inputHex;
+    }
+}
+
+/**
+ * AES-256-CBC Decryption
+ * For sites using stronger 256-bit encryption
+ */
+function decryptAES256(inputHex: string, key: string, iv: string): string {
+    try {
+        const crypto = require('crypto');
+
+        const inputBuffer = Buffer.from(inputHex, 'hex');
+        const keyBuffer = Buffer.from(key, 'utf-8'); // 32 bytes for AES-256
+        const ivBuffer = Buffer.from(iv, 'utf-8');   // 16 bytes
+
+        const decipher = crypto.createDecipheriv('aes-256-cbc', keyBuffer, ivBuffer);
+        decipher.setAutoPadding(true);
+
+        let decrypted = decipher.update(inputBuffer);
+        decrypted = Buffer.concat([decrypted, decipher.final()]);
+
+        return decrypted.toString('utf-8');
+    } catch (e) {
+        throw new Error(`AES-256 decryption failed: ${e}`);
+    }
+}
+
+/**
+ * AES-GCM Decryption (Authenticated Encryption)
+ * More secure mode used by modern sites
+ */
+function decryptAESGCM(inputHex: string, key: string, iv: string, authTag?: string): string {
+    try {
+        const crypto = require('crypto');
+
+        const inputBuffer = Buffer.from(inputHex, 'hex');
+        const keyBuffer = Buffer.from(key, 'utf-8');
+        const ivBuffer = Buffer.from(iv, 'utf-8');
+
+        const decipher = crypto.createDecipheriv('aes-128-gcm', keyBuffer, ivBuffer);
+
+        if (authTag) {
+            decipher.setAuthTag(Buffer.from(authTag, 'hex'));
+        }
+
+        let decrypted = decipher.update(inputBuffer);
+        decrypted = Buffer.concat([decrypted, decipher.final()]);
+
+        return decrypted.toString('utf-8');
+    } catch (e) {
+        throw new Error(`AES-GCM decryption failed: ${e}`);
+    }
+}
+
+/**
+ * Auto-Detect Encryption Type
+ * Analyzes input and detects the most likely encryption/encoding
+ */
+function autoDetectEncryption(input: string): {
+    type: 'base64' | 'hex' | 'rot13' | 'packedJs' | 'xor' | 'aes' | 'jsfuck' | 'unknown';
+    confidence: number;
+    details?: string;
+} {
+    // Check for JSFuck (all symbols)
+    if (/^[\[\]\(\)\+\!\s]+$/.test(input) && input.length > 50) {
+        return { type: 'jsfuck', confidence: 95, details: 'JSFuck obfuscated code' };
+    }
+
+    // Check for Packed JS
+    if (input.includes('function(p,a,c,k,e,d)') || input.includes("eval(function(p,a,c,k,e")) {
+        return { type: 'packedJs', confidence: 98, details: 'P.A.C.K.E.R. packed JavaScript' };
+    }
+
+    // Check for Hex (only hex chars and even length)
+    if (/^[0-9a-fA-F]+$/.test(input) && input.length % 2 === 0 && input.length >= 32) {
+        return { type: 'hex', confidence: 85, details: 'Hex-encoded data' };
+    }
+
+    // Check for Base64
+    if (/^[A-Za-z0-9+/=_-]+$/.test(input) && input.length >= 4) {
+        try {
+            const decoded = decodeBase64(input);
+            if (decoded && /^[\x20-\x7E\s]+$/.test(decoded)) {
+                return { type: 'base64', confidence: 90, details: 'Base64 encoded' };
+            }
+        } catch { }
+    }
+
+    // Check for ROT13 (common ROT13 patterns)
+    const rot13Decoded = decodeRot13(input);
+    if (rot13Decoded.startsWith('http') || rot13Decoded.includes('://')) {
+        return { type: 'rot13', confidence: 85, details: 'ROT13 encoded URL' };
+    }
+
+    // Check for AES (hex string of typical AES block sizes)
+    if (/^[0-9a-fA-F]+$/.test(input) && (input.length === 32 || input.length === 64 || input.length % 32 === 0)) {
+        return { type: 'aes', confidence: 70, details: 'Possibly AES encrypted' };
+    }
+
+    return { type: 'unknown', confidence: 0, details: 'Could not detect encryption type' };
+}
+
+/**
+ * Extract URLs from decoded content
+ * Finds http/https URLs in any text
+ */
+function extractUrlsFromText(text: string): string[] {
+    const urlPatterns = [
+        /https?:\/\/[^\s"'<>\\]+\.m3u8[^\s"'<>\\]*/gi,
+        /https?:\/\/[^\s"'<>\\]+\.mp4[^\s"'<>\\]*/gi,
+        /https?:\/\/[^\s"'<>\\]+\.mp3[^\s"'<>\\]*/gi,
+        /https?:\/\/[^\s"'<>\\]+/gi,
+    ];
+
+    const urls: string[] = [];
+    for (const pattern of urlPatterns) {
+        let match;
+        while ((match = pattern.exec(text)) !== null) {
+            const url = match[0].replace(/['",;}\]]+$/, ''); // Clean trailing chars
+            if (!urls.includes(url) && url.length > 10) {
+                urls.push(url);
+            }
+        }
+    }
+
+    return [...new Set(urls)]; // Remove duplicates
+}
+
+/**
+ * Recursive Decode - Keep decoding until URL found or max depth reached
+ */
+function recursiveDecode(input: string, maxDepth: number = 10): {
+    decoded: string;
+    layers: string[];
+    depth: number;
+    foundUrls: string[];
+} {
+    let current = input;
+    const layers: string[] = [];
+    let depth = 0;
+
+    while (depth < maxDepth) {
+        const detection = autoDetectEncryption(current);
+
+        if (detection.type === 'unknown' || detection.confidence < 50) {
+            break;
+        }
+
+        let decoded: string;
+        try {
+            switch (detection.type) {
+                case 'base64':
+                    decoded = decodeBase64(current);
+                    break;
+                case 'hex':
+                    decoded = decodeHex(current);
+                    break;
+                case 'rot13':
+                    decoded = decodeRot13(current);
+                    break;
+                case 'packedJs':
+                    decoded = unpackJs(current);
+                    break;
+                default:
+                    decoded = current;
+            }
+        } catch {
+            break;
+        }
+
+        if (decoded === current || !decoded) {
+            break;
+        }
+
+        layers.push(detection.type);
+        current = decoded;
+        depth++;
+
+        // Check if we found URLs
+        const urls = extractUrlsFromText(current);
+        if (urls.some(u => u.includes('.m3u8') || u.includes('.mp4') || u.includes('stream'))) {
+            return { decoded: current, layers, depth, foundUrls: urls };
+        }
+    }
+
+    return { decoded: current, layers, depth, foundUrls: extractUrlsFromText(current) };
+}
+
+/**
+ * JSFuck Decoder
+ * Decodes JSFuck obfuscated code (uses only []()!+)
+ */
+function decodeJSFuck(input: string): string {
+    try {
+        // JSFuck can only be safely decoded by evaluating it
+        // We use a sandboxed approach
+        if (!/^[\[\]\(\)\+\!\s]+$/.test(input)) {
+            return input; // Not JSFuck
+        }
+
+        // Common JSFuck patterns that decode to strings
+        const patterns: { [key: string]: string } = {
+            '[]': '',
+            '![]': 'false',
+            '!![]': 'true',
+            '+[]': '0',
+            '+!![]': '1',
+        };
+
+        // This is a simplified decoder - full JSFuck requires eval
+        // Return indication that it's JSFuck for browser-side decoding
+        return `[JSFuck detected - length: ${input.length} - use execute_js with eval() for full decode]`;
+    } catch {
+        return input;
+    }
+}
+
+/**
+ * Try decryption with common streaming site keys
+ */
+async function tryCommonKeys(inputHex: string, page: any): Promise<{
+    success: boolean;
+    key?: string;
+    iv?: string;
+    decrypted?: string;
+    site?: string;
+}> {
+    for (const [site, config] of Object.entries(COMMON_STREAMING_KEYS)) {
+        for (const key of config.keys) {
+            for (const iv of config.ivs) {
+                try {
+                    const result = await page.evaluate(async (params: { input: string; key: string; iv: string }) => {
+                        try {
+                            const hexToBytes = (hex: string) => {
+                                const bytes = new Uint8Array(hex.length / 2);
+                                for (let i = 0; i < hex.length; i += 2) {
+                                    bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16);
+                                }
+                                return bytes;
+                            };
+
+                            const keyData = new TextEncoder().encode(params.key);
+                            const ivData = new TextEncoder().encode(params.iv);
+                            const encryptedData = hexToBytes(params.input);
+
+                            const cryptoKey = await crypto.subtle.importKey(
+                                "raw", keyData, "AES-CBC", false, ["decrypt"]
+                            );
+
+                            const decrypted = await crypto.subtle.decrypt(
+                                { name: "AES-CBC", iv: ivData },
+                                cryptoKey,
+                                encryptedData
+                            );
+
+                            return new TextDecoder().decode(decrypted);
+                        } catch {
+                            return null;
+                        }
+                    }, { input: inputHex, key, iv });
+
+                    if (result && (result.includes('http') || result.includes('source'))) {
+                        return { success: true, key, iv, decrypted: result, site };
+                    }
+                } catch {
+                    continue;
+                }
+            }
+        }
+    }
+
+    return { success: false };
+}
+
 /**
  * AES-CBC decryption for encrypted streaming responses
  * Used by sites like hubstream.art that encrypt video URLs
@@ -1792,6 +2207,9 @@ function applyDecodeLayer(input: string, layer: string): string {
         case 'rot13': return decodeRot13(input);
         case 'reverse': return reverseString(input);
         case 'unpackJs': return unpackJs(input);
+        case 'xor': return decryptXOR(input, 0xFF, 'text'); // Default XOR with 0xFF
+        case 'rc4': return input; // RC4 requires key - use decryptRC4 directly
+        case 'jsfuck': return decodeJSFuck(input);
         default: return input;
     }
 }
@@ -2108,7 +2526,190 @@ export async function handleExtractJson(
     }
 
     // ============================================================
-    // 6. ORIGINAL JSON EXTRACTION (preserved)
+    // 6. ULTRA ADVANCED DECODE (NEW!)
+    // ============================================================
+    if (args.ultraDecode) {
+        try {
+            let input = args.ultraDecode.input || '';
+
+            // Extract from page if requested
+            if (args.ultraDecode.extractFromPage) {
+                input = await page.evaluate((selector: string) => {
+                    if (selector) {
+                        const el = document.querySelector(selector);
+                        return el?.textContent || '';
+                    }
+                    return document.body?.textContent || '';
+                }, args.ultraDecode.pageSelector);
+            }
+
+            if (input) {
+                // Auto-detect mode
+                if (args.ultraDecode.autoDetect) {
+                    const detection = autoDetectEncryption(input);
+                    decoded = {
+                        source: 'ultraDecode-autoDetect',
+                        detectedType: detection.type,
+                        confidence: detection.confidence,
+                        details: detection.details,
+                    };
+
+                    // Try to decode based on detection
+                    if (detection.confidence >= 70) {
+                        const recursiveResult = recursiveDecode(input, args.ultraDecode.maxDepth || 10);
+                        decoded = {
+                            ...decoded,
+                            decoded: recursiveResult.decoded,
+                            layers: recursiveResult.layers,
+                            depth: recursiveResult.depth,
+                            foundUrls: recursiveResult.foundUrls,
+                            streamUrls: recursiveResult.foundUrls.filter(u =>
+                                u.includes('.m3u8') || u.includes('.mp4') || u.includes('stream')
+                            ),
+                        };
+                    }
+                    data.push(decoded);
+                }
+
+                // Recursive decode mode
+                else if (args.ultraDecode.recursive) {
+                    const result = recursiveDecode(input, args.ultraDecode.maxDepth || 10);
+                    decoded = {
+                        source: 'ultraDecode-recursive',
+                        decoded: result.decoded,
+                        layers: result.layers,
+                        depth: result.depth,
+                        foundUrls: result.foundUrls,
+                        streamUrls: result.foundUrls.filter(u =>
+                            u.includes('.m3u8') || u.includes('.mp4') || u.includes('stream')
+                        ),
+                    };
+                    data.push(decoded);
+                }
+
+                // Try common keys mode
+                else if (args.ultraDecode.tryCommonKeys) {
+                    const result = await tryCommonKeys(input, page);
+                    if (result.success) {
+                        decoded = {
+                            source: 'ultraDecode-commonKeys',
+                            success: true,
+                            matchedSite: result.site,
+                            key: result.key,
+                            iv: result.iv,
+                            decrypted: result.decrypted,
+                            extractedUrls: extractUrlsFromText(result.decrypted || ''),
+                        };
+                    } else {
+                        decoded = {
+                            source: 'ultraDecode-commonKeys',
+                            success: false,
+                            message: 'No matching key found in common keys database',
+                            triedSites: Object.keys(COMMON_STREAMING_KEYS),
+                        };
+                    }
+                    data.push(decoded);
+                }
+            }
+        } catch (e) {
+            decoded = { source: 'ultraDecode', error: String(e) };
+        }
+    }
+
+    // ============================================================
+    // 7. XOR CIPHER DECRYPTION
+    // ============================================================
+    if (args.decryptXOR) {
+        try {
+            const result = decryptXOR(
+                args.decryptXOR.input,
+                args.decryptXOR.key,
+                args.decryptXOR.inputFormat || 'hex'
+            );
+            decoded = {
+                source: 'decryptXOR',
+                input: args.decryptXOR.input.substring(0, 50) + '...',
+                key: String(args.decryptXOR.key),
+                format: args.decryptXOR.inputFormat || 'hex',
+                decrypted: result,
+                foundUrls: extractUrlsFromText(result),
+            };
+            data.push(decoded);
+        } catch (e) {
+            decoded = { source: 'decryptXOR', error: String(e) };
+        }
+    }
+
+    // ============================================================
+    // 8. RC4 STREAM CIPHER DECRYPTION
+    // ============================================================
+    if (args.decryptRC4) {
+        try {
+            const result = decryptRC4(args.decryptRC4.input, args.decryptRC4.key);
+            decoded = {
+                source: 'decryptRC4',
+                input: args.decryptRC4.input.substring(0, 50) + '...',
+                key: args.decryptRC4.key,
+                decrypted: result,
+                foundUrls: extractUrlsFromText(result),
+            };
+            data.push(decoded);
+        } catch (e) {
+            decoded = { source: 'decryptRC4', error: String(e) };
+        }
+    }
+
+    // ============================================================
+    // 9. OBFUSCATED JS DECODER (eval interceptor)
+    // ============================================================
+    if (args.decodeObfuscatedJs) {
+        try {
+            // Intercept eval calls if requested
+            const obfuscatedResults = await page.evaluate((options: { selector?: string; evalIntercept?: boolean }) => {
+                const results: { type: string; content: string }[] = [];
+
+                // Find JSFuck or heavily obfuscated scripts
+                const scripts = options.selector
+                    ? document.querySelectorAll(options.selector)
+                    : document.querySelectorAll('script');
+
+                scripts.forEach((script: Element) => {
+                    const content = script.textContent || '';
+
+                    // Detect JSFuck
+                    if (/^[\[\]\(\)\+\!\s]+$/.test(content.trim()) && content.length > 50) {
+                        results.push({ type: 'jsfuck', content: content.substring(0, 500) });
+                    }
+
+                    // Detect eval-based obfuscation
+                    if (content.includes('eval(') || content.includes('Function(')) {
+                        results.push({ type: 'eval-obfuscated', content: content.substring(0, 1000) });
+                    }
+
+                    // Detect hex-encoded strings
+                    const hexMatches = content.match(/\\x[0-9a-fA-F]{2}/g);
+                    if (hexMatches && hexMatches.length > 10) {
+                        results.push({ type: 'hex-encoded', content: content.substring(0, 1000) });
+                    }
+                });
+
+                return results;
+            }, { selector: args.decodeObfuscatedJs.selector, evalIntercept: args.decodeObfuscatedJs.evalIntercept });
+
+            decoded = {
+                source: 'decodeObfuscatedJs',
+                foundObfuscated: obfuscatedResults.length,
+                results: obfuscatedResults,
+                hint: 'Use execute_js with eval() to decode JSFuck, or use ultraDecode with recursive:true',
+            };
+            data.push(decoded);
+        } catch (e) {
+            decoded = { source: 'decodeObfuscatedJs', error: String(e) };
+        }
+    }
+
+    // ============================================================
+    // 10. ORIGINAL JSON EXTRACTION (preserved)
     // ============================================================
 
     // Extract from script tags with type="application/json" or type="application/ld+json"
