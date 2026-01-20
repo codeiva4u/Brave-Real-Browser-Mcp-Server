@@ -208,6 +208,13 @@ export interface ExtractJsonArgs {
         enabled?: boolean;
         schemaTypes?: string[];      // Filter by schema type (e.g., 'Product', 'Article')
     };
+
+    // Custom Cipher Function - provide your own decode logic
+    customCipher?: {
+        input: string;               // Input string to decode
+        decodeFunction: string;      // JavaScript function as string, e.g., "input => input.split('').reverse().join('')"
+        inputFormat?: 'text' | 'hex' | 'base64';  // Input format
+    };
 }
 
 export interface ScrapeMetaTagsArgs {
@@ -2709,7 +2716,56 @@ export async function handleExtractJson(
     }
 
     // ============================================================
-    // 10. ORIGINAL JSON EXTRACTION (preserved)
+    // 10. CUSTOM CIPHER FUNCTION (user-provided decode logic)
+    // ============================================================
+    if (args.customCipher) {
+        try {
+            let input = args.customCipher.input;
+
+            // Convert input format if needed
+            if (args.customCipher.inputFormat === 'hex') {
+                input = Buffer.from(input.replace(/\s/g, ''), 'hex').toString('utf-8');
+            } else if (args.customCipher.inputFormat === 'base64') {
+                input = decodeBase64(input);
+            }
+
+            // Execute custom decode function in browser context (safer)
+            const result = await page.evaluate((params: { input: string; fn: string }) => {
+                try {
+                    // Create function from string and execute
+                    const decodeFn = eval(`(${params.fn})`);
+                    if (typeof decodeFn === 'function') {
+                        return { success: true, result: decodeFn(params.input) };
+                    }
+                    return { success: false, error: 'Not a function' };
+                } catch (e: any) {
+                    return { success: false, error: e.message };
+                }
+            }, { input, fn: args.customCipher.decodeFunction });
+
+            if (result.success) {
+                decoded = {
+                    source: 'customCipher',
+                    input: args.customCipher.input.substring(0, 50) + '...',
+                    function: args.customCipher.decodeFunction.substring(0, 100),
+                    decrypted: result.result,
+                    foundUrls: extractUrlsFromText(String(result.result)),
+                };
+            } else {
+                decoded = {
+                    source: 'customCipher',
+                    error: result.error,
+                    hint: 'Function must be a valid JS arrow function like: input => input.split("").reverse().join("")',
+                };
+            }
+            data.push(decoded);
+        } catch (e) {
+            decoded = { source: 'customCipher', error: String(e) };
+        }
+    }
+
+    // ============================================================
+    // 11. ORIGINAL JSON EXTRACTION (preserved)
     // ============================================================
 
     // Extract from script tags with type="application/json" or type="application/ld+json"
