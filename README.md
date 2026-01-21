@@ -58,6 +58,27 @@
   }
 }
 ```
+
+### Option 2: ( Locle for Opencode AI IDEs)
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "brave-real-browser": {
+      "type": "local",
+      "command": ["node", "c: path hare "],
+      "environment": {
+        "headless": "false"
+      },
+      "enabled": true
+    }
+  }
+}
+```
+
+
+
 **Config locations:**
 - **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
 - **Mac:** `~/Library/Application Support/Claude/`
