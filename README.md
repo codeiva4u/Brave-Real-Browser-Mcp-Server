@@ -10,7 +10,6 @@
 ### Option 1: NPX (Recommended for AI IDEs)
 
 ```json
-{
   {
   "mcpServers": {
     "brave-real-browser": {
