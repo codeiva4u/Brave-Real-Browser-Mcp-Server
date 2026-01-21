@@ -40,6 +40,24 @@
   }
 }
 ```
+
+### Option 1: NPX (Recommended for Opencode AI IDEs)
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "brave-real-browser": {
+      "type": "local",
+      "command": ["npx", "-y", "brave-real-browser-mcp-server@latest"],
+      "environment": {
+        "headless": "false"
+      },
+      "enabled": true
+    }
+  }
+}
+```
 **Config locations:**
 - **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
 - **Mac:** `~/Library/Application Support/Claude/`
