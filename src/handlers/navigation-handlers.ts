@@ -8,6 +8,18 @@ import { getSharedEventBus } from '../transport/index.js';
 // Get event bus instance
 const eventBus = getSharedEventBus();
 
+// Helper to detect API endpoints
+function isApiEndpoint(url: string): boolean {
+  return /\/api\/|\.json(\?|$)|\?.*=.*&|\/v\d+\//.test(url);
+}
+
+// Interface for API response
+interface ApiResponse {
+  status: number;
+  contentType: string | null;
+  data: string;
+}
+
 // Navigation handler with real-time progress
 export async function handleNavigate(args: NavigateArgs) {
   const progressNotifier = getProgressNotifier();
@@ -53,6 +65,41 @@ export async function handleNavigate(args: NavigateArgs) {
           break;
         } catch (error) {
           lastError = error instanceof Error ? error : new Error(String(error));
+          
+          // Check if this is an API endpoint that failed with ERR_ABORTED
+          const isAborted = lastError.message.includes('ERR_ABORTED') || 
+                           lastError.message.includes('net::ERR_');
+          
+          if (isAborted && isApiEndpoint(url)) {
+            // Fallback: Use fetch to get API response directly
+            tracker.setProgress(50, '📡 Detected API endpoint, using fetch fallback...');
+            try {
+              const apiResponse = await pageInstance.evaluate(async (apiUrl: string) => {
+                const response = await fetch(apiUrl);
+                const text = await response.text();
+                return {
+                  status: response.status,
+                  contentType: response.headers.get('content-type'),
+                  data: text
+                };
+              }, url) as ApiResponse;
+              
+              tracker.complete('📡 API endpoint fetched successfully');
+              
+              return {
+                content: [
+                  {
+                    type: 'text',
+                    text: `API Response from ${url}\n\nStatus: ${apiResponse.status}\nContent-Type: ${apiResponse.contentType}\n\nData:\n${apiResponse.data}`,
+                  },
+                ],
+              };
+            } catch (fetchError) {
+              // Fetch also failed, continue with normal retry
+              tracker.setProgress(55, '❌ Fetch fallback failed, retrying navigation...');
+            }
+          }
+          
           tracker.setProgress(20 + attempt * 20, `❌ Attempt ${attempt} failed: ${lastError.message}`);
 
           if (attempt < maxRetries) {

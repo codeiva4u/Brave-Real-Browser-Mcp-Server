@@ -165,6 +165,7 @@ export interface ExtractJsonArgs {
         fetchUrl?: string;           // API URL to fetch encrypted data from
         key?: string;                // AES key (16 chars for 128-bit, 32 chars for 256-bit)
         ivList?: string[];           // List of IVs to try
+        autoIV?: boolean;            // Auto-detect IV from first 16 bytes of encrypted data (hubstream style)
         mode?: 'cbc' | 'gcm';        // AES mode (default: cbc)
         keySize?: 128 | 256;         // Key size in bits (default: 128)
     };
@@ -2370,6 +2371,7 @@ export async function handleExtractJson(
         try {
             const key = args.decryptAES.key || "kiemtienmua911ca";
             const ivList = args.decryptAES.ivList || ["1234567890oiuytr", "0123456789abcdef"];
+            const autoIV = args.decryptAES.autoIV !== false; // Default to true for hubstream-style encryption
             let input = args.decryptAES.input || "";
 
             // Option: Fetch encrypted data from API URL directly (recommended for hubstream)
@@ -2382,7 +2384,7 @@ export async function handleExtractJson(
                 decoded = { source: 'decryptAES', error: 'No input provided. Use "input" for hex string or "fetchUrl" for API URL.' };
             } else {
                 // Use browser's Web Crypto API for reliable decryption
-                const result = await page.evaluate(async (params: { input: string; key: string; ivList: string[]; fetchUrl?: string }) => {
+                const result = await page.evaluate(async (params: { input: string; key: string; ivList: string[]; autoIV: boolean; fetchUrl?: string }) => {
                     try {
                         let encryptedHex = params.input;
 
@@ -2400,35 +2402,59 @@ export async function handleExtractJson(
                             return bytes;
                         };
 
-                        for (const iv of params.ivList) {
+                        // Build IV list - if autoIV, try extracting from first 16 bytes first
+                        const ivsToTry: { iv: Uint8Array; label: string }[] = [];
+                        
+                        if (params.autoIV && encryptedHex.length >= 32) {
+                            // First 32 hex chars = first 16 bytes = IV (hubstream style)
+                            const ivHex = encryptedHex.substring(0, 32);
+                            ivsToTry.push({ iv: hexToBytes(ivHex), label: 'autoIV (first 16 bytes)' });
+                        }
+                        
+                        // Add manual IV list
+                        for (const ivStr of params.ivList) {
+                            ivsToTry.push({ iv: new TextEncoder().encode(ivStr), label: ivStr });
+                        }
+
+                        for (const { iv: ivData, label: ivLabel } of ivsToTry) {
                             try {
                                 const keyData = new TextEncoder().encode(params.key);
-                                const ivData = new TextEncoder().encode(iv);
-                                const encryptedData = hexToBytes(encryptedHex);
+                                
+                                // If using autoIV, encrypted data starts after first 32 hex chars (16 bytes)
+                                const isAutoIV = ivLabel.startsWith('autoIV');
+                                const dataHex = isAutoIV ? encryptedHex.substring(32) : encryptedHex;
+                                const encryptedData = hexToBytes(dataHex);
 
                                 const cryptoKey = await crypto.subtle.importKey(
                                     "raw", keyData, "AES-CBC", false, ["decrypt"]
                                 );
 
                                 const decrypted = await crypto.subtle.decrypt(
-                                    { name: "AES-CBC", iv: ivData },
+                                    { name: "AES-CBC", iv: ivData as BufferSource },
                                     cryptoKey,
                                     encryptedData
                                 );
 
                                 const decryptedText = new TextDecoder().decode(decrypted);
 
-                                // Extract source URL from decrypted JSON
+                                // Extract URLs from decrypted JSON
                                 const sourceMatch = /"source":"([^"]+)"/.exec(decryptedText);
+                                const mp4Match = /"mp4":"([^"]+)"/.exec(decryptedText);
+                                const hlsMatch = /"hls":"([^"]+)"/.exec(decryptedText);
+                                
                                 const streamUrl = sourceMatch ? sourceMatch[1].replace(/\\\//g, '/') : null;
+                                const mp4Url = mp4Match ? mp4Match[1].replace(/\\\//g, '/') : null;
+                                const hlsUrl = hlsMatch ? hlsMatch[1].replace(/\\\//g, '/') : null;
 
                                 return {
                                     success: true,
-                                    iv: iv,
+                                    iv: ivLabel,
                                     decrypted: decryptedText,
                                     decryptedLength: decryptedText.length,
                                     extractedStreamUrl: streamUrl,
-                                    isStreamUrl: streamUrl ? (streamUrl.includes('m3u8') || streamUrl.includes('.mp4')) : false,
+                                    extractedMp4Url: mp4Url,
+                                    extractedHlsUrl: hlsUrl,
+                                    isStreamUrl: (streamUrl && (streamUrl.includes('m3u8') || streamUrl.includes('.mp4'))) || !!mp4Url,
                                     inputLength: encryptedHex.length
                                 };
                             } catch (e) {
@@ -2440,7 +2466,7 @@ export async function handleExtractJson(
                     } catch (e) {
                         return { success: false, error: String(e) };
                     }
-                }, { input, key, ivList, fetchUrl: args.decryptAES.fetchUrl });
+                }, { input, key, ivList, autoIV, fetchUrl: args.decryptAES.fetchUrl });
 
                 decoded = {
                     source: 'decryptAES',
@@ -5961,9 +5987,18 @@ export async function handleExecuteJs(
     try {
         let result: any;
 
+        // Auto-detect if code contains await and wrap with async IIFE
+        const hasAwait = /\bawait\b/.test(args.code);
+        const isAlreadyAsync = /^\s*\(async\s+function|\(\s*async\s*\(|\(async\s*\(\)\s*=>/.test(args.code.trim());
+        
+        // Wrap code with async IIFE if it contains await but isn't already async
+        const codeToExecute = (hasAwait && !isAlreadyAsync) 
+            ? `(async () => { ${args.code} })()`
+            : args.code;
+
         if (args.context === 'isolated') {
             // Execute in isolated context (sandboxed)
-            result = await page.evaluate(args.code);
+            result = await page.evaluate(codeToExecute);
         } else {
             // Execute in page context with full access
             result = await page.evaluate((code: string) => {
@@ -5973,7 +6008,7 @@ export async function handleExecuteJs(
                 } catch (e) {
                     return { error: String(e) };
                 }
-            }, args.code);
+            }, codeToExecute);
         }
 
         // Handle async results
