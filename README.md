@@ -107,6 +107,115 @@ npm run dev
 
 ---
 
+## 🆕 New in v2.28.1 - Advanced Enhancements
+
+### 🌐 Advanced Navigation
+| Option | Description |
+|--------|-------------|
+| `blockResources` | Block images, fonts, CSS for faster loading |
+| `customHeaders` | Set custom HTTP headers |
+| `referrer` | Custom referrer URL |
+| `waitForSelector` | Wait for specific element after load |
+| `waitForContent` | Wait for specific text content |
+| `scrollToBottom` | Auto-scroll for lazy loading |
+| `randomDelay` | Human-like delay (100-500ms) |
+| `bypassCSP` | Bypass Content Security Policy |
+
+**Example:**
+```json
+{
+  "url": "https://example.com",
+  "blockResources": ["image", "font"],
+  "waitForSelector": ".main-content",
+  "scrollToBottom": true,
+  "randomDelay": true
+}
+```
+
+### 🚀 Parallel Scraping (js_scrape)
+| Option | Description |
+|--------|-------------|
+| `urls` | Array of multiple URLs to scrape |
+| `concurrency` | Max concurrent scrapes (1-10) |
+| `continueOnError` | Continue even if some URLs fail |
+| `delayBetween` | Delay between scrapes (ms) |
+
+**Example:**
+```json
+{
+  "urls": ["https://site1.com", "https://site2.com", "https://site3.com"],
+  "concurrency": 3,
+  "extractSelector": "article"
+}
+```
+
+### 📄 Auto-Pagination (link_harvester)
+| Option | Description |
+|--------|-------------|
+| `followPagination` | Auto-follow pagination links |
+| `maxPages` | Maximum pages to scrape (1-20) |
+| `paginationSelector` | Custom next page selector |
+| `delayBetweenPages` | Delay between pages (ms) |
+
+**Example:**
+```json
+{
+  "followPagination": true,
+  "maxPages": 10,
+  "filter": "movie"
+}
+```
+
+### 🔌 API Interceptor (network_recorder)
+| Option | Description |
+|--------|-------------|
+| `interceptMode` | `record`, `intercept`, or `mock` |
+| `blockPatterns` | URL patterns to block |
+| `mockResponses` | Fake responses for URLs |
+| `modifyHeaders` | Modify request headers |
+| `capturePayloads` | Capture POST/PUT bodies |
+
+**Example:**
+```json
+{
+  "interceptMode": "intercept",
+  "blockPatterns": ["ads", "tracking"],
+  "capturePayloads": true
+}
+```
+
+### 🛡️ Anti-Detection Enhancements
+
+| Feature | Description |
+|---------|-------------|
+| **Fingerprint Randomizer** | Canvas, Audio, Hardware randomization |
+| **Human Behavior Simulation** | Natural mouse/scroll patterns |
+| **WebGL Spoofing** | Random GPU from 8 configs (Intel, NVIDIA, AMD) |
+| **Proxy Rotation** | round-robin, random, least-used, on-error strategies |
+| **Rate Limiter** | Per-second/minute limits, domain-specific |
+| **Error Auto-Recovery** | Smart retry with different strategies |
+
+### 🔄 Internal Systems
+
+```javascript
+// Rate Limiter
+initRateLimiter({ requestsPerSecond: 5, requestsPerMinute: 100 });
+setDomainRateLimit('api.example.com', 2); // 2 req/sec for this domain
+
+// Proxy Rotation
+initProxyRotation(['proxy1:8080', 'proxy2:8080'], 'round-robin');
+rotateProxy('error'); // Rotate on error
+
+// Error Recovery
+executeWithRecovery(operation, {
+  toolName: 'navigate',
+  page: pageInstance,
+  restartBrowser: () => browser.restart()
+});
+```
+
+---
+
 ## 🌐 Unified MCP+LSP+SSE Ecosystem
 
 **एक command से सब active:**
@@ -117,7 +226,7 @@ npm run dev
 
 ### Output:
 ```
-🦁 Brave Real Browser - Unified Server v2.22.0
+🦁 Brave Real Browser - Unified Server v2.28.1
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📡 HTTP Server: http://localhost:3000
 
@@ -185,14 +294,14 @@ brave-real-launcher
 ### Navigation
 | Tool | Description |
 |------|-------------|
-| `navigate` | Navigate to URL |
+| `navigate` | Navigate to URL with advanced options (resource blocking, custom headers, auto-scroll) |
 | `wait` | Wait for conditions |
 
 ### Content
 | Tool | Description |
 |------|-------------|
 | `get_content` | Get page HTML/text |
-| `find_element` | Find by selector/text/AI |
+| `find_element` | Find by selector/text/AI with batch mode |
 | `save_content_as_markdown` | Save as markdown file |
 
 ### Interaction
@@ -204,34 +313,32 @@ brave-real-launcher
 | `random_scroll` | Natural scrolling |
 | `solve_captcha` | Solve CAPTCHAs |
 
-### Media Extraction
+### Media & Streaming
 | Tool | Description |
 |------|-------------|
-| `media_extractor` | Extract video/audio |
-| `m3u8_parser` | Parse HLS streams |
-| `stream_extractor` | Direct download URLs |
+| `stream_extractor` | Extract streams with multi-quality selector, VidSrc/Filemoon/StreamWish support |
+| `player_api_hook` | Hook into JWPlayer, Video.js, HLS.js, Plyr, Vidstack, DASH.js |
+| `iframe_handler` | Deep iframe scraping with video source extraction |
+
+### Scraping
+| Tool | Description |
+|------|-------------|
+| `js_scrape` | JavaScript-rendered scraping with parallel URL support |
+| `link_harvester` | Harvest links with auto-pagination |
+| `network_recorder` | Record traffic with API interception |
+| `extract_json` | Extract embedded JSON with AES decryption |
+| `search_regex` | Regex search like regex101.com |
 
 ### Advanced
 | Tool | Description |
 |------|-------------|
-| `search_content` | Search patterns |
-| `extract_json` | Extract embedded JSON |
 | `scrape_meta_tags` | Meta/OG tags |
-| `deep_analysis` | Full page analysis |
-| `network_recorder` | Record traffic |
-| `api_finder` | Discover APIs |
-| `ajax_content_waiter` | Wait for AJAX |
-| `link_harvester` | Harvest links |
-| `batch_element_scraper` | Batch scrape |
-| `extract_schema` | Schema.org data |
-| `element_screenshot` | Screenshot element |
-| `breadcrumb_navigator` | Navigate breadcrumbs |
+| `deep_analysis` | Full page analysis with screenshot |
 | `redirect_tracer` | Trace redirects |
 | `progress_tracker` | Track progress |
 | `cookie_manager` | Manage cookies |
 | `file_downloader` | Download files |
-| `iframe_handler` | Handle iframes |
-| `popup_handler` | Handle popups |
+| `execute_js` | Run custom JavaScript |
 
 ---
 
