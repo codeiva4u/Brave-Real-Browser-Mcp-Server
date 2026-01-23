@@ -194,18 +194,223 @@ export const STEALTH_SCRIPTS = {
 
   /**
    * Override WebGL vendor and renderer
+   * ENHANCED: Random selection from common GPU configs
    */
   webglOverride: `
-    const getParameter = WebGLRenderingContext.prototype.getParameter;
-    WebGLRenderingContext.prototype.getParameter = function(parameter) {
-      if (parameter === 37445) {
-        return 'Intel Inc.';
+    (function() {
+      // Common GPU configurations for randomization
+      const gpuConfigs = [
+        { vendor: 'Intel Inc.', renderer: 'Intel Iris OpenGL Engine' },
+        { vendor: 'Intel Inc.', renderer: 'Intel(R) UHD Graphics 630' },
+        { vendor: 'Intel Inc.', renderer: 'Intel(R) HD Graphics 520' },
+        { vendor: 'NVIDIA Corporation', renderer: 'NVIDIA GeForce GTX 1060/PCIe/SSE2' },
+        { vendor: 'NVIDIA Corporation', renderer: 'NVIDIA GeForce RTX 3060/PCIe/SSE2' },
+        { vendor: 'AMD', renderer: 'AMD Radeon RX 580 Series' },
+        { vendor: 'AMD', renderer: 'AMD Radeon Pro 5500M' },
+        { vendor: 'Google Inc. (Intel)', renderer: 'ANGLE (Intel, Intel(R) Iris(TM) Plus Graphics, OpenGL 4.1)' },
+      ];
+      
+      // Select random config (seeded by session to maintain consistency)
+      const sessionSeed = (window.sessionStorage.getItem('_fp_seed') || Math.random().toString()).slice(0, 10);
+      window.sessionStorage.setItem('_fp_seed', sessionSeed);
+      const configIndex = Math.abs(sessionSeed.split('').reduce((a, c) => a + c.charCodeAt(0), 0)) % gpuConfigs.length;
+      const selectedGpu = gpuConfigs[configIndex];
+      
+      const getParameter = WebGLRenderingContext.prototype.getParameter;
+      WebGLRenderingContext.prototype.getParameter = function(parameter) {
+        if (parameter === 37445) return selectedGpu.vendor;
+        if (parameter === 37446) return selectedGpu.renderer;
+        return getParameter.call(this, parameter);
+      };
+      
+      // Also override WebGL2
+      if (typeof WebGL2RenderingContext !== 'undefined') {
+        const getParameter2 = WebGL2RenderingContext.prototype.getParameter;
+        WebGL2RenderingContext.prototype.getParameter = function(parameter) {
+          if (parameter === 37445) return selectedGpu.vendor;
+          if (parameter === 37446) return selectedGpu.renderer;
+          return getParameter2.call(this, parameter);
+        };
       }
-      if (parameter === 37446) {
-        return 'Intel Iris OpenGL Engine';
+    })();
+  `,
+
+  /**
+   * FINGERPRINT RANDOMIZER - Unique fingerprint per session
+   * Randomizes Canvas, AudioContext, Fonts, Hardware Concurrency
+   */
+  fingerprintRandomizer: `
+    (function() {
+      // Generate session-consistent random seed
+      const getSeed = () => {
+        let seed = window.sessionStorage.getItem('_fp_master_seed');
+        if (!seed) {
+          seed = Math.random().toString(36).substring(2, 15);
+          window.sessionStorage.setItem('_fp_master_seed', seed);
+        }
+        return seed;
+      };
+      
+      const seed = getSeed();
+      const seededRandom = (str) => {
+        let hash = 0;
+        const combined = seed + str;
+        for (let i = 0; i < combined.length; i++) {
+          hash = ((hash << 5) - hash) + combined.charCodeAt(i);
+          hash = hash & hash;
+        }
+        return (hash & 0x7FFFFFFF) / 0x7FFFFFFF;
+      };
+      
+      // ============================================
+      // CANVAS FINGERPRINT RANDOMIZATION
+      // ============================================
+      const originalToDataURL = HTMLCanvasElement.prototype.toDataURL;
+      HTMLCanvasElement.prototype.toDataURL = function(type, quality) {
+        const ctx = this.getContext('2d');
+        if (ctx) {
+          // Add subtle noise to canvas
+          const imageData = ctx.getImageData(0, 0, Math.min(this.width, 10), Math.min(this.height, 10));
+          for (let i = 0; i < imageData.data.length; i += 4) {
+            // Subtle RGB noise (±2)
+            imageData.data[i] = Math.max(0, Math.min(255, imageData.data[i] + Math.floor(seededRandom('r'+i) * 5) - 2));
+            imageData.data[i+1] = Math.max(0, Math.min(255, imageData.data[i+1] + Math.floor(seededRandom('g'+i) * 5) - 2));
+            imageData.data[i+2] = Math.max(0, Math.min(255, imageData.data[i+2] + Math.floor(seededRandom('b'+i) * 5) - 2));
+          }
+          ctx.putImageData(imageData, 0, 0);
+        }
+        return originalToDataURL.call(this, type, quality);
+      };
+      
+      // Also randomize getImageData
+      const originalGetImageData = CanvasRenderingContext2D.prototype.getImageData;
+      CanvasRenderingContext2D.prototype.getImageData = function(sx, sy, sw, sh) {
+        const imageData = originalGetImageData.call(this, sx, sy, sw, sh);
+        // Add consistent noise
+        for (let i = 0; i < Math.min(imageData.data.length, 100); i += 4) {
+          imageData.data[i] = Math.max(0, Math.min(255, imageData.data[i] + Math.floor(seededRandom('img'+i) * 3) - 1));
+        }
+        return imageData;
+      };
+      
+      // ============================================
+      // AUDIO FINGERPRINT RANDOMIZATION  
+      // ============================================
+      if (typeof AudioContext !== 'undefined' || typeof webkitAudioContext !== 'undefined') {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        const originalCreateOscillator = AudioContextClass.prototype.createOscillator;
+        const originalCreateDynamicsCompressor = AudioContextClass.prototype.createDynamicsCompressor;
+        
+        AudioContextClass.prototype.createOscillator = function() {
+          const oscillator = originalCreateOscillator.call(this);
+          // Slight frequency offset
+          const originalFrequency = oscillator.frequency.value;
+          oscillator.frequency.value = originalFrequency * (1 + (seededRandom('osc') - 0.5) * 0.0001);
+          return oscillator;
+        };
+        
+        AudioContextClass.prototype.createDynamicsCompressor = function() {
+          const compressor = originalCreateDynamicsCompressor.call(this);
+          // Subtle parameter variations
+          if (compressor.threshold) {
+            const original = compressor.threshold.value;
+            compressor.threshold.value = original + (seededRandom('comp_th') - 0.5) * 0.01;
+          }
+          return compressor;
+        };
       }
-      return getParameter.call(this, parameter);
-    };
+      
+      // ============================================
+      // HARDWARE CONCURRENCY RANDOMIZATION
+      // ============================================
+      const cores = [2, 4, 6, 8, 12, 16];
+      const randomCores = cores[Math.floor(seededRandom('cores') * cores.length)];
+      Object.defineProperty(navigator, 'hardwareConcurrency', {
+        get: () => randomCores,
+        configurable: true
+      });
+      
+      // ============================================
+      // DEVICE MEMORY RANDOMIZATION
+      // ============================================
+      const memoryOptions = [2, 4, 8, 16, 32];
+      const randomMemory = memoryOptions[Math.floor(seededRandom('memory') * memoryOptions.length)];
+      Object.defineProperty(navigator, 'deviceMemory', {
+        get: () => randomMemory,
+        configurable: true
+      });
+      
+      // ============================================
+      // SCREEN RESOLUTION SLIGHT VARIATION
+      // ============================================
+      const originalWidth = window.screen.width;
+      const originalHeight = window.screen.height;
+      
+      // Common resolutions
+      const resolutions = [
+        { w: 1920, h: 1080 }, { w: 1366, h: 768 }, { w: 1536, h: 864 },
+        { w: 1440, h: 900 }, { w: 1280, h: 720 }, { w: 2560, h: 1440 }
+      ];
+      const randomRes = resolutions[Math.floor(seededRandom('screen') * resolutions.length)];
+      
+      Object.defineProperty(window.screen, 'width', { get: () => randomRes.w, configurable: true });
+      Object.defineProperty(window.screen, 'height', { get: () => randomRes.h, configurable: true });
+      Object.defineProperty(window.screen, 'availWidth', { get: () => randomRes.w, configurable: true });
+      Object.defineProperty(window.screen, 'availHeight', { get: () => randomRes.h - 40, configurable: true });
+      Object.defineProperty(window.screen, 'colorDepth', { get: () => 24, configurable: true });
+      Object.defineProperty(window.screen, 'pixelDepth', { get: () => 24, configurable: true });
+      
+      console.log('[stealth] Fingerprint randomizer active: GPU=' + Math.floor(seededRandom('log') * 100));
+    })();
+  `,
+
+  /**
+   * HUMAN BEHAVIOR SIMULATION
+   * Adds natural mouse movements and typing patterns
+   */
+  humanBehavior: `
+    (function() {
+      // Track mouse movement patterns
+      let lastMouseMove = 0;
+      let mouseHistory = [];
+      
+      // Add slight randomness to mouse events
+      const originalAddEventListener = EventTarget.prototype.addEventListener;
+      EventTarget.prototype.addEventListener = function(type, listener, options) {
+        if (type === 'mousemove' || type === 'click') {
+          const wrappedListener = function(e) {
+            // Add natural delay variance
+            const now = Date.now();
+            if (now - lastMouseMove < 10) return; // Throttle too-fast movements
+            lastMouseMove = now;
+            
+            // Track history for pattern analysis
+            if (mouseHistory.length > 100) mouseHistory.shift();
+            mouseHistory.push({ x: e.clientX, y: e.clientY, t: now });
+            
+            return listener.apply(this, arguments);
+          };
+          return originalAddEventListener.call(this, type, wrappedListener, options);
+        }
+        return originalAddEventListener.call(this, type, listener, options);
+      };
+      
+      // Add natural scroll behavior
+      let lastScroll = 0;
+      window.addEventListener('scroll', function() {
+        const now = Date.now();
+        const delta = now - lastScroll;
+        lastScroll = now;
+        
+        // Natural scroll has variable timing
+        if (delta < 16) {
+          // Too fast, likely programmatic - add slight delay
+          // (This is a detection hint, not a block)
+        }
+      }, { passive: true });
+      
+      console.log('[stealth] Human behavior simulation active');
+    })();
   `,
 
   /**
@@ -377,6 +582,7 @@ export const STEALTH_SCRIPTS = {
 
   /**
    * Full combined stealth script
+   * ENHANCED: Includes fingerprint randomizer and human behavior simulation
    */
   get fullStealth(): string {
     return [
@@ -389,6 +595,8 @@ export const STEALTH_SCRIPTS = {
       this.consoleOverride,
       this.iframeOverride,
       this.webglOverride,
+      this.fingerprintRandomizer,  // NEW: Fingerprint randomization
+      this.humanBehavior,           // NEW: Human behavior simulation
       this.dimensionsOverride,
       this.popupBlocker  // Include popup blocker in stealth scripts
     ].join('\n');

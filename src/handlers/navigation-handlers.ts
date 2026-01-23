@@ -20,7 +20,7 @@ interface ApiResponse {
   data: string;
 }
 
-// Navigation handler with real-time progress
+// Navigation handler with real-time progress and advanced features
 export async function handleNavigate(args: NavigateArgs) {
   const progressNotifier = getProgressNotifier();
   const progressToken = `navigate-${Date.now()}`;
@@ -36,31 +36,113 @@ export async function handleNavigate(args: NavigateArgs) {
         throw new Error('Browser not initialized. Call browser_init first.');
       }
 
-      const { url, waitUntil = 'domcontentloaded' } = args;
+      const { 
+        url, 
+        waitUntil = 'domcontentloaded',
+        blockResources,
+        customHeaders,
+        referrer,
+        waitForSelector,
+        waitForContent,
+        scrollToBottom,
+        randomDelay,
+        bypassCSP,
+        timeout = 60000,
+        retries = 3
+      } = args;
 
-      tracker.setProgress(10, `📍 Navigating to: ${url}`);
+      tracker.setProgress(5, `📍 Preparing to navigate to: ${url}`);
 
-      // Navigate with retry logic
+      // ============================================================
+      // STEP 1: Setup request interception for resource blocking
+      // ============================================================
+      let interceptorEnabled = false;
+      const blockedTypes = new Set(blockResources || []);
+      
+      if (blockedTypes.size > 0) {
+        tracker.setProgress(8, `🚫 Setting up resource blocking: ${Array.from(blockedTypes).join(', ')}`);
+        try {
+          await pageInstance.setRequestInterception(true);
+          interceptorEnabled = true;
+          
+          pageInstance.on('request', (request: any) => {
+            const resourceType = request.resourceType();
+            if (blockedTypes.has(resourceType)) {
+              request.abort();
+            } else {
+              request.continue();
+            }
+          });
+        } catch (e) {
+          // Interception already enabled or not supported
+        }
+      }
+
+      // ============================================================
+      // STEP 2: Set custom headers if provided
+      // ============================================================
+      if (customHeaders && Object.keys(customHeaders).length > 0) {
+        tracker.setProgress(10, '📝 Setting custom headers...');
+        try {
+          await pageInstance.setExtraHTTPHeaders(customHeaders);
+        } catch (e) {
+          // Ignore header setting errors
+        }
+      }
+
+      // ============================================================
+      // STEP 3: Bypass CSP if requested
+      // ============================================================
+      if (bypassCSP) {
+        tracker.setProgress(12, '🔓 Bypassing Content Security Policy...');
+        try {
+          await pageInstance.setBypassCSP(true);
+        } catch (e) {
+          // CSP bypass not supported
+        }
+      }
+
+      // ============================================================
+      // STEP 4: Add random human-like delay
+      // ============================================================
+      if (randomDelay) {
+        const delay = 100 + Math.random() * 400; // 100-500ms
+        tracker.setProgress(14, `⏳ Human-like delay: ${Math.round(delay)}ms`);
+        await new Promise(r => setTimeout(r, delay));
+      }
+
+      tracker.setProgress(15, `📍 Navigating to: ${url}`);
+
+      // ============================================================
+      // STEP 5: Navigate with retry logic
+      // ============================================================
       let lastError: Error | null = null;
       let success = false;
-      const maxRetries = 3;
+      const maxRetries = retries;
 
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
-          tracker.setProgress(20 + (attempt - 1) * 20, `🔄 Attempt ${attempt}/${maxRetries}...`);
+          tracker.setProgress(15 + (attempt - 1) * 15, `🔄 Attempt ${attempt}/${maxRetries}...`);
 
           await withTimeout(async () => {
-            await pageInstance.goto(url, {
+            const navigationOptions: any = {
               waitUntil: waitUntil as any,
-              timeout: 60000
-            });
+              timeout: timeout
+            };
+            
+            // Add referrer if provided
+            if (referrer) {
+              navigationOptions.referer = referrer;
+            }
 
-            tracker.setProgress(60, '🛡️ Checking for Cloudflare...');
+            await pageInstance.goto(url, navigationOptions);
+
+            tracker.setProgress(50, '🛡️ Checking for Cloudflare...');
             // Auto-handle Cloudflare challenges if detected
             await waitForCloudflareBypass(pageInstance, tracker);
-          }, 90000, 'page-navigation');
+          }, timeout + 30000, 'page-navigation');
 
-          tracker.setProgress(80, '✅ Navigation successful');
+          tracker.setProgress(60, '✅ Navigation successful');
           success = true;
           break;
         } catch (error) {
@@ -84,6 +166,11 @@ export async function handleNavigate(args: NavigateArgs) {
                 };
               }, url) as ApiResponse;
               
+              // Cleanup interception
+              if (interceptorEnabled) {
+                try { await pageInstance.setRequestInterception(false); } catch {}
+              }
+              
               tracker.complete('📡 API endpoint fetched successfully');
               
               return {
@@ -100,22 +187,97 @@ export async function handleNavigate(args: NavigateArgs) {
             }
           }
           
-          tracker.setProgress(20 + attempt * 20, `❌ Attempt ${attempt} failed: ${lastError.message}`);
+          tracker.setProgress(15 + attempt * 15, `❌ Attempt ${attempt} failed: ${lastError.message}`);
 
           if (attempt < maxRetries) {
             const delay = 1000 * Math.pow(2, attempt - 1);
-            tracker.setProgress(25 + attempt * 20, `⏳ Retrying in ${delay}ms...`);
+            tracker.setProgress(20 + attempt * 15, `⏳ Retrying in ${delay}ms...`);
             await new Promise(resolve => setTimeout(resolve, delay));
           }
         }
       }
 
       if (!success && lastError) {
+        // Cleanup interception
+        if (interceptorEnabled) {
+          try { await pageInstance.setRequestInterception(false); } catch {}
+        }
         tracker.fail(lastError.message);
         throw lastError;
       }
 
-      tracker.setProgress(90, '📄 Page loaded, preparing response...');
+      // ============================================================
+      // STEP 6: Wait for specific selector if requested
+      // ============================================================
+      if (waitForSelector) {
+        tracker.setProgress(65, `🔍 Waiting for selector: ${waitForSelector}`);
+        try {
+          await pageInstance.waitForSelector(waitForSelector, { timeout: 10000, visible: true });
+          tracker.setProgress(70, '✅ Selector found');
+        } catch (e) {
+          tracker.setProgress(70, `⚠️ Selector not found: ${waitForSelector}`);
+        }
+      }
+
+      // ============================================================
+      // STEP 7: Wait for specific content if requested
+      // ============================================================
+      if (waitForContent) {
+        tracker.setProgress(72, `📝 Waiting for content: "${waitForContent.substring(0, 30)}..."`);
+        try {
+          await pageInstance.waitForFunction(
+            (text: string) => document.body?.innerText?.includes(text),
+            { timeout: 10000 },
+            waitForContent
+          );
+          tracker.setProgress(75, '✅ Content found');
+        } catch (e) {
+          tracker.setProgress(75, `⚠️ Content not found: "${waitForContent.substring(0, 30)}..."`);
+        }
+      }
+
+      // ============================================================
+      // STEP 8: Auto-scroll to trigger lazy loading
+      // ============================================================
+      if (scrollToBottom) {
+        tracker.setProgress(77, '📜 Auto-scrolling to trigger lazy loading...');
+        try {
+          await pageInstance.evaluate(async () => {
+            const scrollStep = window.innerHeight;
+            const scrollDelay = 200;
+            let totalScrolled = 0;
+            const maxScroll = Math.min(document.body.scrollHeight, 10000);
+
+            while (totalScrolled < maxScroll) {
+              window.scrollBy(0, scrollStep);
+              totalScrolled += scrollStep;
+              await new Promise(r => setTimeout(r, scrollDelay));
+            }
+
+            // Scroll back to top
+            window.scrollTo(0, 0);
+          });
+          
+          // Wait for lazy content to load
+          await new Promise(r => setTimeout(r, 1000));
+          tracker.setProgress(82, '✅ Auto-scroll completed');
+        } catch (e) {
+          tracker.setProgress(82, '⚠️ Auto-scroll failed');
+        }
+      }
+
+      // ============================================================
+      // STEP 9: Cleanup and prepare response
+      // ============================================================
+      
+      // Disable request interception if it was enabled
+      if (interceptorEnabled) {
+        try {
+          await pageInstance.setRequestInterception(false);
+        } catch {}
+      }
+
+      tracker.setProgress(85, '📄 Page loaded, preparing response...');
 
       // Publish browser state update to event bus
       try {
@@ -133,6 +295,28 @@ export async function handleNavigate(args: NavigateArgs) {
         // Ignore event bus errors
       }
 
+      // Get page info for response
+      let pageInfo = '';
+      try {
+        const title = await pageInstance.title();
+        const finalUrl = pageInstance.url();
+        pageInfo = `\n📄 Title: ${title}\n🔗 Final URL: ${finalUrl}`;
+      } catch {}
+
+      const advancedOptionsUsed: string[] = [];
+      if (blockResources?.length) advancedOptionsUsed.push(`Blocked: ${blockResources.join(', ')}`);
+      if (customHeaders) advancedOptionsUsed.push('Custom headers set');
+      if (referrer) advancedOptionsUsed.push(`Referrer: ${referrer}`);
+      if (waitForSelector) advancedOptionsUsed.push(`Waited for: ${waitForSelector}`);
+      if (waitForContent) advancedOptionsUsed.push(`Waited for content`);
+      if (scrollToBottom) advancedOptionsUsed.push('Auto-scrolled');
+      if (randomDelay) advancedOptionsUsed.push('Human delay added');
+      if (bypassCSP) advancedOptionsUsed.push('CSP bypassed');
+
+      const advancedInfo = advancedOptionsUsed.length > 0 
+        ? `\n\n⚡ Advanced options: ${advancedOptionsUsed.join(' | ')}`
+        : '';
+
       const workflowMessage = '\n\n🔄 Workflow Status: Page loaded\n' +
         '  • Next step: Use get_content to analyze page content\n' +
         '  • Then: Use find_selector to locate elements\n' +
@@ -145,7 +329,7 @@ export async function handleNavigate(args: NavigateArgs) {
         content: [
           {
             type: 'text',
-            text: `Successfully navigated to ${url}${workflowMessage}`,
+            text: `Successfully navigated to ${url}${pageInfo}${advancedInfo}${workflowMessage}`,
           },
         ],
       };

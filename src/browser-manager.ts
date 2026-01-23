@@ -40,6 +40,440 @@ function loadEnvFile(): void {
 
 loadEnvFile();
 
+// ============================================================
+// PROXY ROTATION SYSTEM
+// ============================================================
+export interface ProxyConfig {
+  host: string;
+  port: number;
+  username?: string;
+  password?: string;
+  protocol?: 'http' | 'https' | 'socks5';
+}
+
+export interface ProxyRotationConfig {
+  enabled: boolean;
+  proxies: ProxyConfig[];
+  rotationStrategy: 'round-robin' | 'random' | 'least-used' | 'on-error';
+  rotateAfterRequests?: number;  // Rotate after N requests
+  rotateOnBlock?: boolean;       // Rotate when blocked/detected
+  currentIndex: number;
+  requestCount: number;
+  proxyStats: Map<string, { uses: number; failures: number; lastUsed: number }>;
+}
+
+// Global proxy rotation state
+let proxyRotation: ProxyRotationConfig = {
+  enabled: false,
+  proxies: [],
+  rotationStrategy: 'round-robin',
+  rotateAfterRequests: 50,
+  rotateOnBlock: true,
+  currentIndex: 0,
+  requestCount: 0,
+  proxyStats: new Map()
+};
+
+// Initialize proxy rotation
+export function initProxyRotation(proxies: (string | ProxyConfig)[], strategy: ProxyRotationConfig['rotationStrategy'] = 'round-robin') {
+  const parsedProxies: ProxyConfig[] = proxies.map(p => {
+    if (typeof p === 'string') {
+      // Parse string format: protocol://user:pass@host:port or host:port
+      const match = p.match(/^(?:(https?|socks5):\/\/)?(?:([^:]+):([^@]+)@)?([^:]+):(\d+)$/);
+      if (match) {
+        return {
+          protocol: (match[1] as ProxyConfig['protocol']) || 'http',
+          username: match[2],
+          password: match[3],
+          host: match[4],
+          port: parseInt(match[5], 10)
+        };
+      }
+      // Simple host:port
+      const [host, port] = p.split(':');
+      return { host, port: parseInt(port, 10), protocol: 'http' as const };
+    }
+    return p;
+  });
+
+  proxyRotation = {
+    enabled: true,
+    proxies: parsedProxies,
+    rotationStrategy: strategy,
+    rotateAfterRequests: 50,
+    rotateOnBlock: true,
+    currentIndex: 0,
+    requestCount: 0,
+    proxyStats: new Map()
+  };
+
+  // Initialize stats for each proxy
+  parsedProxies.forEach(p => {
+    const key = `${p.host}:${p.port}`;
+    proxyRotation.proxyStats.set(key, { uses: 0, failures: 0, lastUsed: 0 });
+  });
+
+  console.log(`[ProxyRotation] Initialized with ${parsedProxies.length} proxies, strategy: ${strategy}`);
+}
+
+// Get current proxy
+export function getCurrentProxy(): ProxyConfig | null {
+  if (!proxyRotation.enabled || proxyRotation.proxies.length === 0) {
+    return null;
+  }
+  return proxyRotation.proxies[proxyRotation.currentIndex];
+}
+
+// Get proxy as URL string
+export function getCurrentProxyUrl(): string | null {
+  const proxy = getCurrentProxy();
+  if (!proxy) return null;
+  
+  let url = `${proxy.protocol || 'http'}://`;
+  if (proxy.username && proxy.password) {
+    url += `${proxy.username}:${proxy.password}@`;
+  }
+  url += `${proxy.host}:${proxy.port}`;
+  return url;
+}
+
+// Rotate to next proxy
+export function rotateProxy(reason: 'scheduled' | 'error' | 'blocked' = 'scheduled'): ProxyConfig | null {
+  if (!proxyRotation.enabled || proxyRotation.proxies.length === 0) {
+    return null;
+  }
+
+  const prevProxy = getCurrentProxy();
+  const prevKey = prevProxy ? `${prevProxy.host}:${prevProxy.port}` : '';
+
+  switch (proxyRotation.rotationStrategy) {
+    case 'round-robin':
+      proxyRotation.currentIndex = (proxyRotation.currentIndex + 1) % proxyRotation.proxies.length;
+      break;
+    
+    case 'random':
+      proxyRotation.currentIndex = Math.floor(Math.random() * proxyRotation.proxies.length);
+      break;
+    
+    case 'least-used':
+      let minUses = Infinity;
+      let minIndex = 0;
+      proxyRotation.proxies.forEach((p, i) => {
+        const key = `${p.host}:${p.port}`;
+        const stats = proxyRotation.proxyStats.get(key);
+        if (stats && stats.uses < minUses) {
+          minUses = stats.uses;
+          minIndex = i;
+        }
+      });
+      proxyRotation.currentIndex = minIndex;
+      break;
+    
+    case 'on-error':
+      // Only rotate on error/blocked, otherwise keep current
+      if (reason === 'error' || reason === 'blocked') {
+        proxyRotation.currentIndex = (proxyRotation.currentIndex + 1) % proxyRotation.proxies.length;
+      }
+      break;
+  }
+
+  proxyRotation.requestCount = 0;
+  
+  const newProxy = getCurrentProxy();
+  const newKey = newProxy ? `${newProxy.host}:${newProxy.port}` : '';
+  
+  // Update stats
+  if (newKey && proxyRotation.proxyStats.has(newKey)) {
+    const stats = proxyRotation.proxyStats.get(newKey)!;
+    stats.uses++;
+    stats.lastUsed = Date.now();
+    if (reason === 'error' || reason === 'blocked') {
+      const prevStats = proxyRotation.proxyStats.get(prevKey);
+      if (prevStats) prevStats.failures++;
+    }
+  }
+
+  console.log(`[ProxyRotation] Rotated proxy (${reason}): ${prevKey} -> ${newKey}`);
+  return newProxy;
+}
+
+// Check if proxy should be rotated
+export function shouldRotateProxy(): boolean {
+  if (!proxyRotation.enabled) return false;
+  
+  proxyRotation.requestCount++;
+  
+  if (proxyRotation.rotateAfterRequests && 
+      proxyRotation.requestCount >= proxyRotation.rotateAfterRequests) {
+    return true;
+  }
+  
+  return false;
+}
+
+// Mark current proxy as blocked/failed
+export function markProxyFailed(blocked: boolean = false) {
+  if (!proxyRotation.enabled) return;
+  
+  const proxy = getCurrentProxy();
+  if (proxy) {
+    const key = `${proxy.host}:${proxy.port}`;
+    const stats = proxyRotation.proxyStats.get(key);
+    if (stats) {
+      stats.failures++;
+    }
+  }
+  
+  if (proxyRotation.rotateOnBlock && blocked) {
+    rotateProxy('blocked');
+  }
+}
+
+// Get proxy stats
+export function getProxyStats() {
+  return {
+    enabled: proxyRotation.enabled,
+    currentProxy: getCurrentProxyUrl(),
+    totalProxies: proxyRotation.proxies.length,
+    currentIndex: proxyRotation.currentIndex,
+    requestCount: proxyRotation.requestCount,
+    strategy: proxyRotation.rotationStrategy,
+    stats: Object.fromEntries(proxyRotation.proxyStats)
+  };
+}
+
+// ============================================================
+// RATE LIMITER SYSTEM
+// ============================================================
+export interface RateLimiterConfig {
+  enabled: boolean;
+  requestsPerSecond: number;       // Max requests per second
+  requestsPerMinute: number;       // Max requests per minute
+  burstLimit: number;              // Max burst requests
+  domainLimits: Map<string, { requestsPerSecond: number; requestsPerMinute: number }>;
+  globalCooldown: number;          // Minimum delay between any requests (ms)
+  retryAfter: number;              // Default retry delay on rate limit (ms)
+}
+
+interface RateLimiterState {
+  lastRequestTime: number;
+  requestsInSecond: number;
+  requestsInMinute: number;
+  secondWindowStart: number;
+  minuteWindowStart: number;
+  domainRequestTimes: Map<string, number[]>;
+  isThrottled: boolean;
+  throttleUntil: number;
+}
+
+// Global rate limiter configuration
+let rateLimiterConfig: RateLimiterConfig = {
+  enabled: false,
+  requestsPerSecond: 5,
+  requestsPerMinute: 100,
+  burstLimit: 10,
+  domainLimits: new Map(),
+  globalCooldown: 100,
+  retryAfter: 5000
+};
+
+// Global rate limiter state
+let rateLimiterState: RateLimiterState = {
+  lastRequestTime: 0,
+  requestsInSecond: 0,
+  requestsInMinute: 0,
+  secondWindowStart: Date.now(),
+  minuteWindowStart: Date.now(),
+  domainRequestTimes: new Map(),
+  isThrottled: false,
+  throttleUntil: 0
+};
+
+/**
+ * Initialize rate limiter with custom configuration
+ */
+export function initRateLimiter(config: Partial<RateLimiterConfig> = {}) {
+  rateLimiterConfig = {
+    ...rateLimiterConfig,
+    enabled: true,
+    ...config
+  };
+  
+  // Reset state
+  rateLimiterState = {
+    lastRequestTime: 0,
+    requestsInSecond: 0,
+    requestsInMinute: 0,
+    secondWindowStart: Date.now(),
+    minuteWindowStart: Date.now(),
+    domainRequestTimes: new Map(),
+    isThrottled: false,
+    throttleUntil: 0
+  };
+
+  console.log(`[RateLimiter] Initialized: ${rateLimiterConfig.requestsPerSecond}/sec, ${rateLimiterConfig.requestsPerMinute}/min`);
+}
+
+/**
+ * Set rate limit for a specific domain
+ */
+export function setDomainRateLimit(domain: string, requestsPerSecond: number, requestsPerMinute?: number) {
+  rateLimiterConfig.domainLimits.set(domain, {
+    requestsPerSecond,
+    requestsPerMinute: requestsPerMinute || requestsPerSecond * 60
+  });
+  console.log(`[RateLimiter] Domain limit set for ${domain}: ${requestsPerSecond}/sec`);
+}
+
+/**
+ * Get the delay needed before making a request
+ * Returns 0 if request can be made immediately
+ */
+export function getRateLimitDelay(url?: string): number {
+  if (!rateLimiterConfig.enabled) return 0;
+
+  const now = Date.now();
+  
+  // Check if we're in a throttle period
+  if (rateLimiterState.isThrottled && now < rateLimiterState.throttleUntil) {
+    return rateLimiterState.throttleUntil - now;
+  } else if (rateLimiterState.isThrottled) {
+    rateLimiterState.isThrottled = false;
+  }
+
+  // Update sliding windows
+  if (now - rateLimiterState.secondWindowStart >= 1000) {
+    rateLimiterState.requestsInSecond = 0;
+    rateLimiterState.secondWindowStart = now;
+  }
+  if (now - rateLimiterState.minuteWindowStart >= 60000) {
+    rateLimiterState.requestsInMinute = 0;
+    rateLimiterState.minuteWindowStart = now;
+  }
+
+  // Check global limits
+  if (rateLimiterState.requestsInSecond >= rateLimiterConfig.requestsPerSecond) {
+    return 1000 - (now - rateLimiterState.secondWindowStart);
+  }
+  if (rateLimiterState.requestsInMinute >= rateLimiterConfig.requestsPerMinute) {
+    return 60000 - (now - rateLimiterState.minuteWindowStart);
+  }
+
+  // Check global cooldown
+  const timeSinceLastRequest = now - rateLimiterState.lastRequestTime;
+  if (timeSinceLastRequest < rateLimiterConfig.globalCooldown) {
+    return rateLimiterConfig.globalCooldown - timeSinceLastRequest;
+  }
+
+  // Check domain-specific limits
+  if (url) {
+    try {
+      const domain = new URL(url).hostname;
+      const domainLimit = rateLimiterConfig.domainLimits.get(domain);
+      
+      if (domainLimit) {
+        const domainTimes = rateLimiterState.domainRequestTimes.get(domain) || [];
+        
+        // Clean up old timestamps
+        const recentTimes = domainTimes.filter(t => now - t < 60000);
+        rateLimiterState.domainRequestTimes.set(domain, recentTimes);
+        
+        // Check domain limits
+        const lastSecondRequests = recentTimes.filter(t => now - t < 1000).length;
+        if (lastSecondRequests >= domainLimit.requestsPerSecond) {
+          const oldestInSecond = recentTimes.filter(t => now - t < 1000)[0];
+          return oldestInSecond ? 1000 - (now - oldestInSecond) : 1000;
+        }
+        
+        const lastMinuteRequests = recentTimes.length;
+        if (lastMinuteRequests >= domainLimit.requestsPerMinute) {
+          const oldestInMinute = recentTimes[0];
+          return oldestInMinute ? 60000 - (now - oldestInMinute) : 60000;
+        }
+      }
+    } catch {
+      // Invalid URL, ignore domain limits
+    }
+  }
+
+  return 0;
+}
+
+/**
+ * Wait for rate limit if needed, then record the request
+ */
+export async function waitForRateLimit(url?: string): Promise<void> {
+  const delay = getRateLimitDelay(url);
+  
+  if (delay > 0) {
+    console.log(`[RateLimiter] Waiting ${delay}ms before request${url ? ` to ${new URL(url).hostname}` : ''}`);
+    await new Promise(resolve => setTimeout(resolve, delay));
+  }
+  
+  // Record the request
+  recordRequest(url);
+}
+
+/**
+ * Record a request for rate limiting tracking
+ */
+export function recordRequest(url?: string) {
+  if (!rateLimiterConfig.enabled) return;
+
+  const now = Date.now();
+  rateLimiterState.lastRequestTime = now;
+  rateLimiterState.requestsInSecond++;
+  rateLimiterState.requestsInMinute++;
+
+  // Record domain-specific request
+  if (url) {
+    try {
+      const domain = new URL(url).hostname;
+      const domainTimes = rateLimiterState.domainRequestTimes.get(domain) || [];
+      domainTimes.push(now);
+      rateLimiterState.domainRequestTimes.set(domain, domainTimes);
+    } catch {
+      // Invalid URL
+    }
+  }
+}
+
+/**
+ * Signal that a rate limit response (429) was received
+ */
+export function onRateLimitHit(retryAfterMs?: number) {
+  const delay = retryAfterMs || rateLimiterConfig.retryAfter;
+  rateLimiterState.isThrottled = true;
+  rateLimiterState.throttleUntil = Date.now() + delay;
+  console.log(`[RateLimiter] Rate limit hit! Throttling for ${delay}ms`);
+}
+
+/**
+ * Get current rate limiter stats
+ */
+export function getRateLimiterStats() {
+  const now = Date.now();
+  return {
+    enabled: rateLimiterConfig.enabled,
+    requestsInSecond: rateLimiterState.requestsInSecond,
+    requestsInMinute: rateLimiterState.requestsInMinute,
+    limitsPerSecond: rateLimiterConfig.requestsPerSecond,
+    limitsPerMinute: rateLimiterConfig.requestsPerMinute,
+    isThrottled: rateLimiterState.isThrottled,
+    throttleRemaining: rateLimiterState.isThrottled ? Math.max(0, rateLimiterState.throttleUntil - now) : 0,
+    domainLimits: Object.fromEntries(rateLimiterConfig.domainLimits),
+    cooldown: rateLimiterConfig.globalCooldown
+  };
+}
+
+/**
+ * Disable rate limiter
+ */
+export function disableRateLimiter() {
+  rateLimiterConfig.enabled = false;
+  console.log('[RateLimiter] Disabled');
+}
+
 // Content prioritization configuration
 export interface ContentPriorityConfig {
   prioritizeContent: boolean;

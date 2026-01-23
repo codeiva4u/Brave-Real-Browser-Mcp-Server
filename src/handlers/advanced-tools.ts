@@ -251,6 +251,13 @@ export interface NetworkRecorderArgs {
     filterUrl?: string;
     includeHeaders?: boolean;
     includeBody?: boolean;
+    // API Interceptor options
+    interceptMode?: 'record' | 'intercept' | 'mock';  // Mode of operation
+    blockPatterns?: string[];                          // URL patterns to block
+    mockResponses?: { urlPattern: string; response: any; statusCode?: number }[];  // Mock responses
+    modifyHeaders?: { urlPattern: string; headers: Record<string, string> }[];     // Modify request headers
+    capturePayloads?: boolean;                         // Capture POST/PUT request bodies
+    replayRequests?: boolean;                          // Enable replaying captured requests
 }
 
 export interface ApiFinderArgs {
@@ -298,6 +305,11 @@ export interface LinkHarvesterArgs {
     includeExternal?: boolean;
     includeInternal?: boolean;
     maxLinks?: number;
+    // Pagination options
+    followPagination?: boolean;          // Auto-follow pagination links (default: false)
+    maxPages?: number;                   // Maximum pages to scrape (default: 5)
+    paginationSelector?: string;         // Custom pagination selector (e.g., 'a.next-page')
+    delayBetweenPages?: number;          // Delay between page navigations in ms (default: 1000)
 }
 
 export interface ImageExtractorAdvancedArgs {
@@ -335,7 +347,8 @@ export interface SolveCaptchaAdvancedArgs {
  * Arguments for JS Scrape tool - Single-call JS-rendered content extraction
  */
 export interface JsScrapeArgs {
-    url: string;
+    url?: string;                        // Single URL (for backward compatibility)
+    urls?: string[];                     // Multiple URLs for parallel scraping
     waitForSelector?: string;
     waitForTimeout?: number;
     extractSelector?: string;
@@ -343,6 +356,10 @@ export interface JsScrapeArgs {
     returnType?: 'html' | 'text' | 'elements';
     scrollToLoad?: boolean;
     closeBrowserAfter?: boolean;
+    // Parallel scraping options
+    concurrency?: number;                // Max concurrent scrapes (default: 3)
+    continueOnError?: boolean;           // Continue scraping even if some URLs fail (default: true)
+    delayBetween?: number;               // Delay between starting each scrape in ms (default: 500)
 }
 
 // ============================================================
@@ -3077,8 +3094,9 @@ export async function handleDeepAnalysis(
 }
 
 /**
- * Record full network traffic - Uses response events to avoid crashes
+ * Network recorder with API interception capabilities
  * ULTRA POWERFUL: API detection, media URLs, smart categorization
+ * NEW: Request interception, mocking, blocking, and header modification
  */
 export async function handleNetworkRecorder(
     page: Page,
@@ -3088,8 +3106,11 @@ export async function handleNetworkRecorder(
     count: number;
     totalSize: number;
     categories?: Record<string, number>;
-    apis?: { url: string; method: string; type: string }[];
+    apis?: { url: string; method: string; type: string; payload?: any }[];
     mediaUrls?: string[];
+    blockedCount?: number;
+    mockedCount?: number;
+    interceptedRequests?: any[];
 }> {
     // Progress tracking
     const progressNotifier = getProgressNotifier();
@@ -3100,11 +3121,20 @@ export async function handleNetworkRecorder(
     const duration = args.duration || 10000;
     let totalSize = 0;
     const categories: Record<string, number> = {};
-    const apis: { url: string; method: string; type: string }[] = [];
+    const apis: { url: string; method: string; type: string; payload?: any }[] = [];
     const mediaUrls: string[] = [];
     const seen = new Set<string>();
+    const interceptedRequests: any[] = [];
+    let blockedCount = 0;
+    let mockedCount = 0;
 
-    tracker.setProgress(10, `⏱️ Recording for ${duration}ms...`);
+    const interceptMode = args.interceptMode || 'record';
+    const blockPatterns = args.blockPatterns || [];
+    const mockResponses = args.mockResponses || [];
+    const modifyHeaders = args.modifyHeaders || [];
+    const capturePayloads = args.capturePayloads === true;
+
+    tracker.setProgress(10, `⏱️ Recording for ${duration}ms (mode: ${interceptMode})...`);
 
     // ============================================================
     // SMART CATEGORIZATION HELPER
@@ -3140,79 +3170,231 @@ export async function handleNetworkRecorder(
         return 'other';
     };
 
-    // Response handler - safer than request interception
-    const responseHandler = (response: any) => {
-        try {
-            const url = response.url();
-
-            // Dedup
-            if (seen.has(url)) return;
-            seen.add(url);
-
-            if (args.filterUrl && !url.includes(args.filterUrl)) {
-                return;
-            }
-
-            const resourceType = response.request()?.resourceType?.() || 'unknown';
-            const method = response.request()?.method?.() || 'GET';
-            const category = categorizeUrl(url, resourceType);
-
-            categories[category] = (categories[category] || 0) + 1;
-
-            // Collect API endpoints
-            if (category === 'api' || resourceType === 'xhr' || resourceType === 'fetch') {
-                apis.push({ url, method, type: resourceType });
-            }
-
-            // Collect media URLs
-            if (category === 'media' || /\.(mp4|webm|m3u8|ts|mp3)/i.test(url)) {
-                mediaUrls.push(url);
-            }
-
-            const entry: any = {
-                url,
-                status: response.status(),
-                resourceType,
-                category,
-                method,
-                timestamp: Date.now(),
-            };
-
-            if (args.includeHeaders) {
-                try {
-                    entry.headers = response.headers();
-                } catch (e) {
-                    entry.headers = {};
-                }
-            }
-
-            requests.push(entry);
-
-            // Track size from headers
+    // Helper to check URL against patterns
+    const matchesPattern = (url: string, patterns: string[]): boolean => {
+        return patterns.some(pattern => {
             try {
-                const headers = response.headers();
-                const size = parseInt(headers['content-length'] || '0', 10);
-                totalSize += size;
+                if (pattern.startsWith('/') && pattern.endsWith('/')) {
+                    // Regex pattern
+                    const regex = new RegExp(pattern.slice(1, -1));
+                    return regex.test(url);
+                }
+                // Simple includes check
+                return url.includes(pattern);
             } catch {
-                // Ignore
+                return url.includes(pattern);
             }
-        } catch {
-            // Ignore all errors in handler to prevent crash
-        }
+        });
     };
 
-    try {
-        page.on('response', responseHandler);
-        await new Promise((r) => setTimeout(r, duration));
-    } catch (e) {
-        // Capture setup errors
-    } finally {
+    // ============================================================
+    // INTERCEPTION MODE - Uses request interception
+    // ============================================================
+    if (interceptMode === 'intercept' || interceptMode === 'mock') {
         try {
-            page.off('response', responseHandler);
+            await page.setRequestInterception(true);
+
+            const requestHandler = async (request: any) => {
+                const url = request.url();
+                const method = request.method();
+                const resourceType = request.resourceType();
+                const category = categorizeUrl(url, resourceType);
+
+                // Check if should block
+                if (blockPatterns.length > 0 && matchesPattern(url, blockPatterns)) {
+                    blockedCount++;
+                    interceptedRequests.push({
+                        url,
+                        method,
+                        action: 'blocked',
+                        timestamp: Date.now()
+                    });
+                    await request.abort();
+                    return;
+                }
+
+                // Check if should mock
+                const mockConfig = mockResponses.find(m => matchesPattern(url, [m.urlPattern]));
+                if (mockConfig) {
+                    mockedCount++;
+                    interceptedRequests.push({
+                        url,
+                        method,
+                        action: 'mocked',
+                        mockResponse: mockConfig.response,
+                        timestamp: Date.now()
+                    });
+                    await request.respond({
+                        status: mockConfig.statusCode || 200,
+                        contentType: 'application/json',
+                        body: typeof mockConfig.response === 'string' 
+                            ? mockConfig.response 
+                            : JSON.stringify(mockConfig.response)
+                    });
+                    return;
+                }
+
+                // Check if should modify headers
+                const headerConfig = modifyHeaders.find(h => matchesPattern(url, [h.urlPattern]));
+                if (headerConfig) {
+                    const headers = {
+                        ...request.headers(),
+                        ...headerConfig.headers
+                    };
+                    interceptedRequests.push({
+                        url,
+                        method,
+                        action: 'headers_modified',
+                        modifiedHeaders: headerConfig.headers,
+                        timestamp: Date.now()
+                    });
+                    await request.continue({ headers });
+                    return;
+                }
+
+                // Continue normally but record
+                if (!seen.has(url)) {
+                    seen.add(url);
+                    categories[category] = (categories[category] || 0) + 1;
+
+                    const entry: any = {
+                        url,
+                        method,
+                        resourceType,
+                        category,
+                        timestamp: Date.now()
+                    };
+
+                    // Capture POST/PUT payloads
+                    if (capturePayloads && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
+                        try {
+                            entry.payload = request.postData();
+                        } catch {
+                            // Ignore
+                        }
+                    }
+
+                    requests.push(entry);
+
+                    // Collect API endpoints
+                    if (category === 'api' || resourceType === 'xhr' || resourceType === 'fetch') {
+                        apis.push({ 
+                            url, 
+                            method, 
+                            type: resourceType,
+                            payload: entry.payload
+                        });
+                    }
+
+                    // Collect media URLs
+                    if (category === 'media' || /\.(mp4|webm|m3u8|ts|mp3)/i.test(url)) {
+                        mediaUrls.push(url);
+                    }
+                }
+
+                await request.continue();
+            };
+
+            page.on('request', requestHandler);
+            await new Promise(r => setTimeout(r, duration));
+            page.off('request', requestHandler);
+            await page.setRequestInterception(false);
+
         } catch (e) {
-            // Ignore cleanup errors
+            // Cleanup on error
+            try {
+                await page.setRequestInterception(false);
+            } catch {}
+        }
+    } else {
+        // ============================================================
+        // RECORD MODE - Uses response events (safer)
+        // ============================================================
+        const responseHandler = (response: any) => {
+            try {
+                const url = response.url();
+
+                // Dedup
+                if (seen.has(url)) return;
+                seen.add(url);
+
+                if (args.filterUrl && !url.includes(args.filterUrl)) {
+                    return;
+                }
+
+                const resourceType = response.request()?.resourceType?.() || 'unknown';
+                const method = response.request()?.method?.() || 'GET';
+                const category = categorizeUrl(url, resourceType);
+
+                categories[category] = (categories[category] || 0) + 1;
+
+                // Collect API endpoints
+                if (category === 'api' || resourceType === 'xhr' || resourceType === 'fetch') {
+                    const apiEntry: any = { url, method, type: resourceType };
+                    
+                    // Capture POST data if enabled
+                    if (capturePayloads && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
+                        try {
+                            apiEntry.payload = response.request()?.postData?.();
+                        } catch {}
+                    }
+                    
+                    apis.push(apiEntry);
+                }
+
+                // Collect media URLs
+                if (category === 'media' || /\.(mp4|webm|m3u8|ts|mp3)/i.test(url)) {
+                    mediaUrls.push(url);
+                }
+
+                const entry: any = {
+                    url,
+                    status: response.status(),
+                    resourceType,
+                    category,
+                    method,
+                    timestamp: Date.now(),
+                };
+
+                if (args.includeHeaders) {
+                    try {
+                        entry.headers = response.headers();
+                    } catch (e) {
+                        entry.headers = {};
+                    }
+                }
+
+                requests.push(entry);
+
+                // Track size from headers
+                try {
+                    const headers = response.headers();
+                    const size = parseInt(headers['content-length'] || '0', 10);
+                    totalSize += size;
+                } catch {
+                    // Ignore
+                }
+            } catch {
+                // Ignore all errors in handler to prevent crash
+            }
+        };
+
+        try {
+            page.on('response', responseHandler);
+            await new Promise((r) => setTimeout(r, duration));
+        } catch (e) {
+            // Capture setup errors
+        } finally {
+            try {
+                page.off('response', responseHandler);
+            } catch (e) {
+                // Ignore cleanup errors
+            }
         }
     }
+
+    tracker.setProgress(90, `✅ Recorded ${requests.length} requests`);
+    tracker.complete(`🎉 Network recording complete`);
 
     return {
         requests: requests.slice(0, 500),
@@ -3221,7 +3403,12 @@ export async function handleNetworkRecorder(
         categories,
         apis: apis.length > 0 ? apis : undefined,
         mediaUrls: mediaUrls.length > 0 ? mediaUrls : undefined,
-        message: `📡 Recorded ${requests.length} requests (${Math.round(totalSize / 1024)}KB) | APIs: ${apis.length} | Media: ${mediaUrls.length}`
+        blockedCount: blockedCount > 0 ? blockedCount : undefined,
+        mockedCount: mockedCount > 0 ? mockedCount : undefined,
+        interceptedRequests: interceptedRequests.length > 0 ? interceptedRequests : undefined,
+        message: `📡 Recorded ${requests.length} requests (${Math.round(totalSize / 1024)}KB) | APIs: ${apis.length} | Media: ${mediaUrls.length}` +
+            (blockedCount > 0 ? ` | Blocked: ${blockedCount}` : '') +
+            (mockedCount > 0 ? ` | Mocked: ${mockedCount}` : '')
     } as any;
 }
 
@@ -3745,16 +3932,19 @@ export async function handleVideoRecording(
 /**
  * Harvest all links from page
  * ULTRA POWERFUL: Pagination detection, smart categorization, file types
+ * NEW: Auto-follow pagination to scrape multiple pages
  */
 export async function handleLinkHarvester(
     page: Page,
     args: LinkHarvesterArgs
 ): Promise<{
-    links: { url: string; text: string; type: string; category?: string }[];
+    links: { url: string; text: string; type: string; category?: string; page?: number }[];
     internal: number;
     external: number;
-    pagination?: { nextPage?: string; prevPage?: string; totalPages?: number };
+    pagination?: { nextPage?: string; prevPage?: string; totalPages?: number; currentPage?: number };
     categories?: Record<string, number>;
+    pagesScraped?: number;
+    message?: string;
 }> {
     // Progress tracking for real-time updates
     const progressNotifier = getProgressNotifier();
@@ -3764,77 +3954,116 @@ export async function handleLinkHarvester(
     const currentUrl = new URL(page.url());
     tracker.setProgress(10, `📍 Analyzing page: ${currentUrl.hostname}`);
 
-    // ============================================================
-    // 1. EXTRACT ALL LINKS WITH SMART CATEGORIZATION
-    // ============================================================
-    tracker.setProgress(20, '🔍 Extracting all links from page...');
-    const allLinks = await page.evaluate(() => {
-        const links: { url: string; text: string; attrs: Record<string, string> }[] = [];
+    // Pagination settings
+    const followPagination = args.followPagination === true;
+    const maxPages = Math.min(args.maxPages || 5, 20); // Max 20 pages
+    const delayBetweenPages = args.delayBetweenPages || 1000;
+    const paginationSelector = args.paginationSelector;
 
-        document.querySelectorAll('a[href]').forEach((a) => {
-            const anchor = a as HTMLAnchorElement;
-            links.push({
-                url: anchor.href,
-                text: a.textContent?.trim()?.substring(0, 100) || '',
-                attrs: {
-                    rel: anchor.rel || '',
-                    target: anchor.target || '',
-                    class: anchor.className || '',
-                    id: anchor.id || '',
-                    download: anchor.download || '',
-                }
+    // Helper function to extract links from current page
+    const extractLinksFromPage = async (): Promise<{
+        links: { url: string; text: string; attrs: Record<string, string> }[];
+        pagination: { nextPage?: string; prevPage?: string; totalPages?: number; currentPage?: number };
+    }> => {
+        const allLinks = await page.evaluate(() => {
+            const links: { url: string; text: string; attrs: Record<string, string> }[] = [];
+
+            document.querySelectorAll('a[href]').forEach((a) => {
+                const anchor = a as HTMLAnchorElement;
+                links.push({
+                    url: anchor.href,
+                    text: a.textContent?.trim()?.substring(0, 100) || '',
+                    attrs: {
+                        rel: anchor.rel || '',
+                        target: anchor.target || '',
+                        class: anchor.className || '',
+                        id: anchor.id || '',
+                        download: anchor.download || '',
+                    }
+                });
             });
+
+            return links;
         });
 
-        return links;
-    });
+        // Pagination detection
+        const pagination = await page.evaluate((customSelector?: string) => {
+            let nextPage: string | undefined;
+            let prevPage: string | undefined;
+            let totalPages: number | undefined;
+            let currentPage: number | undefined;
+
+            // Custom selector first
+            if (customSelector) {
+                try {
+                    const el = document.querySelector(customSelector) as HTMLAnchorElement;
+                    if (el?.href) nextPage = el.href;
+                } catch { /* invalid selector */ }
+            }
+
+            // Common pagination selectors
+            const nextSelectors = [
+                'a[rel="next"]', 'a.next', 'a.pagination-next',
+                '[aria-label="Next"]', 'a.page-link.next', '.next a',
+                '.pagination a:last-child', 'a[title="Next"]',
+                'a[aria-label*="next" i]', 'button.next', '[data-testid="next"]'
+            ];
+            const prevSelectors = [
+                'a[rel="prev"]', 'a.prev', 'a.pagination-prev',
+                '[aria-label="Previous"]', 'a.page-link.prev', '.prev a'
+            ];
+
+            if (!nextPage) {
+                for (const sel of nextSelectors) {
+                    try {
+                        const el = document.querySelector(sel) as HTMLAnchorElement;
+                        if (el?.href) { nextPage = el.href; break; }
+                    } catch { /* invalid selector */ }
+                }
+            }
+
+            // Text-based next detection
+            if (!nextPage) {
+                const links = Array.from(document.querySelectorAll('a'));
+                for (const link of links) {
+                    const text = link.textContent?.toLowerCase().trim() || '';
+                    if (text === 'next' || text === 'next →' || text === '>' || text === '»' || text === 'next page') {
+                        nextPage = (link as HTMLAnchorElement).href;
+                        break;
+                    }
+                }
+            }
+
+            for (const sel of prevSelectors) {
+                try {
+                    const el = document.querySelector(sel) as HTMLAnchorElement;
+                    if (el?.href) { prevPage = el.href; break; }
+                } catch { /* invalid selector */ }
+            }
+
+            // Detect current page and total pages
+            const pageNumbers = Array.from(document.querySelectorAll('.pagination a, .page-numbers a, nav a, .pager a'))
+                .map(a => ({
+                    num: parseInt(a.textContent || '0', 10),
+                    isActive: a.classList.contains('active') || a.classList.contains('current') || 
+                              a.getAttribute('aria-current') === 'page'
+                }))
+                .filter(p => !isNaN(p.num) && p.num > 0);
+            
+            if (pageNumbers.length > 0) {
+                totalPages = Math.max(...pageNumbers.map(p => p.num));
+                const active = pageNumbers.find(p => p.isActive);
+                if (active) currentPage = active.num;
+            }
+
+            return { nextPage, prevPage, totalPages, currentPage };
+        }, paginationSelector);
+
+        return { links: allLinks, pagination };
+    };
 
     // ============================================================
-    // 2. PAGINATION DETECTION
-    // ============================================================
-    const pagination = await page.evaluate(() => {
-        let nextPage: string | undefined;
-        let prevPage: string | undefined;
-        let totalPages: number | undefined;
-
-        // Common pagination selectors
-        const nextSelectors = [
-            'a[rel="next"]', 'a.next', 'a.pagination-next',
-            '[aria-label="Next"]', 'a:has-text("Next")', 'a:has-text(">")',
-            '.pagination a:last-child', 'a.page-link:last-child'
-        ];
-        const prevSelectors = [
-            'a[rel="prev"]', 'a.prev', 'a.pagination-prev',
-            '[aria-label="Previous"]', 'a:has-text("Prev")', 'a:has-text("<")'
-        ];
-
-        for (const sel of nextSelectors) {
-            try {
-                const el = document.querySelector(sel) as HTMLAnchorElement;
-                if (el?.href) { nextPage = el.href; break; }
-            } catch { /* invalid selector */ }
-        }
-
-        for (const sel of prevSelectors) {
-            try {
-                const el = document.querySelector(sel) as HTMLAnchorElement;
-                if (el?.href) { prevPage = el.href; break; }
-            } catch { /* invalid selector */ }
-        }
-
-        // Count page numbers
-        const pageNumbers = Array.from(document.querySelectorAll('.pagination a, .page-numbers a, nav a'))
-            .map(a => parseInt(a.textContent || '0', 10))
-            .filter(n => !isNaN(n) && n > 0);
-        if (pageNumbers.length > 0) {
-            totalPages = Math.max(...pageNumbers);
-        }
-
-        return { nextPage, prevPage, totalPages };
-    });
-
-    // ============================================================
-    // 3. SMART LINK CATEGORIZATION
+    // SMART LINK CATEGORIZATION
     // ============================================================
     const categorizeLink = (url: string, text: string, attrs: any): string => {
         const urlLower = url.toLowerCase();
@@ -3863,59 +4092,126 @@ export async function handleLinkHarvester(
         return 'navigation';
     };
 
-    const processedLinks: { url: string; text: string; type: string; category: string }[] = [];
+    // ============================================================
+    // MAIN SCRAPING LOGIC
+    // ============================================================
+    const processedLinks: { url: string; text: string; type: string; category: string; page: number }[] = [];
     const categories: Record<string, number> = {};
     const seen = new Set<string>();
     let internal = 0;
     let external = 0;
+    let pagesScraped = 0;
+    let lastPagination: { nextPage?: string; prevPage?: string; totalPages?: number; currentPage?: number } = {};
+    const visitedPages = new Set<string>();
 
-    for (const link of allLinks) {
-        try {
-            // Dedup by URL
-            if (seen.has(link.url)) continue;
-            seen.add(link.url);
+    // Process links from a page
+    const processLinks = (
+        allLinks: { url: string; text: string; attrs: Record<string, string> }[],
+        pageNum: number
+    ) => {
+        for (const link of allLinks) {
+            try {
+                if (seen.has(link.url)) continue;
+                seen.add(link.url);
 
-            const linkUrl = new URL(link.url);
-            const isInternal = linkUrl.hostname === currentUrl.hostname;
+                const linkUrl = new URL(link.url);
+                const isInternal = linkUrl.hostname === currentUrl.hostname;
 
-            if (args.filter && !link.url.includes(args.filter) && !link.text.includes(args.filter)) {
-                continue;
+                if (args.filter && !link.url.includes(args.filter) && !link.text.includes(args.filter)) {
+                    continue;
+                }
+
+                if (isInternal && args.includeInternal === false) continue;
+                if (!isInternal && args.includeExternal === false) continue;
+
+                const category = categorizeLink(link.url, link.text, link.attrs);
+                categories[category] = (categories[category] || 0) + 1;
+
+                processedLinks.push({
+                    url: link.url,
+                    text: link.text,
+                    type: isInternal ? 'internal' : 'external',
+                    category,
+                    page: pageNum,
+                });
+
+                if (isInternal) internal++;
+                else external++;
+
+                if (args.maxLinks && processedLinks.length >= args.maxLinks) return true; // Stop
+            } catch {
+                // Invalid URL, skip
             }
+        }
+        return false; // Continue
+    };
 
-            if (isInternal && args.includeInternal === false) continue;
-            if (!isInternal && args.includeExternal === false) continue;
+    // Scrape first page
+    tracker.setProgress(20, '🔍 Extracting links from page 1...');
+    const firstPage = await extractLinksFromPage();
+    pagesScraped = 1;
+    visitedPages.add(page.url());
+    lastPagination = firstPage.pagination;
+    
+    const shouldStop = processLinks(firstPage.links, 1);
 
-            const category = categorizeLink(link.url, link.text, link.attrs);
-            categories[category] = (categories[category] || 0) + 1;
+    // Follow pagination if enabled
+    if (followPagination && !shouldStop && firstPage.pagination.nextPage) {
+        let nextUrl: string | undefined = firstPage.pagination.nextPage;
+        
+        while (nextUrl && pagesScraped < maxPages && !(args.maxLinks && processedLinks.length >= args.maxLinks)) {
+            // Check if we've already visited this page
+            if (visitedPages.has(nextUrl)) {
+                break;
+            }
+            visitedPages.add(nextUrl);
 
-            processedLinks.push({
-                url: link.url,
-                text: link.text,
-                type: isInternal ? 'internal' : 'external',
-                category,
-            });
+            tracker.setProgress(
+                20 + (pagesScraped / maxPages) * 60,
+                `📄 Scraping page ${pagesScraped + 1}...`
+            );
 
-            if (isInternal) internal++;
-            else external++;
+            try {
+                // Navigate to next page
+                await page.goto(nextUrl, { 
+                    waitUntil: 'domcontentloaded', 
+                    timeout: 15000 
+                });
+                
+                // Wait for content to load
+                await new Promise(r => setTimeout(r, delayBetweenPages));
 
-            if (args.maxLinks && processedLinks.length >= args.maxLinks) break;
-        } catch {
-            // Invalid URL, skip
+                // Extract links from this page
+                const pageData = await extractLinksFromPage();
+                pagesScraped++;
+                lastPagination = pageData.pagination;
+
+                const stop = processLinks(pageData.links, pagesScraped);
+                if (stop) break;
+
+                // Get next page URL
+                nextUrl = pageData.pagination.nextPage || undefined;
+
+            } catch (error) {
+                // Failed to navigate, stop pagination
+                break;
+            }
         }
     }
 
-    tracker.setProgress(90, `✅ Processed ${processedLinks.length} links`);
-    tracker.complete(`🎉 Link harvesting complete: ${processedLinks.length} links found`);
+    tracker.setProgress(90, `✅ Processed ${processedLinks.length} links from ${pagesScraped} pages`);
+    tracker.complete(`🎉 Link harvesting complete: ${processedLinks.length} links from ${pagesScraped} pages`);
 
     return {
         links: processedLinks,
         internal,
         external,
-        pagination: (pagination.nextPage || pagination.prevPage || pagination.totalPages) ? pagination : undefined,
+        pagination: (lastPagination.nextPage || lastPagination.prevPage || lastPagination.totalPages) ? lastPagination : undefined,
         categories,
-        message: `🔗 Found ${processedLinks.length} links (${internal} internal, ${external} external)` +
-            (pagination.nextPage ? ` | Next: ${pagination.nextPage}` : '')
-    } as any;
+        pagesScraped,
+        message: `🔗 Found ${processedLinks.length} links (${internal} internal, ${external} external) from ${pagesScraped} pages` +
+            (lastPagination.nextPage && pagesScraped >= maxPages ? ` | More pages available: ${lastPagination.nextPage}` : '')
+    };
 }
 
 /**
@@ -4351,6 +4647,10 @@ export interface M3u8ParserArgs {
     extractAll?: boolean;
     preferQuality?: string;
     includeAudio?: boolean;
+    // NEW: Enhanced parsing options
+    parseSegments?: boolean;          // Parse individual TS segments
+    fetchPlaylist?: boolean;          // Fetch and parse playlist content
+    extractBandwidth?: boolean;       // Extract bandwidth info from variants
 }
 
 export interface SubtitleExtractorArgs {
@@ -4371,13 +4671,23 @@ export interface CookieManagerArgs {
 
 /**
  * Parse and extract HLS/m3u8 streaming URLs
+ * ENHANCED: Segment parsing, bandwidth extraction, playlist fetching
  */
 export async function handleM3u8Parser(
     page: Page,
     args: M3u8ParserArgs
-): Promise<{ found: boolean; streams: any[]; masterPlaylist?: string; qualities: string[] }> {
+): Promise<{ 
+    found: boolean; 
+    streams: any[]; 
+    masterPlaylist?: string; 
+    qualities: string[];
+    variants?: { quality: string; bandwidth: number; url: string; resolution?: string }[];
+    segments?: { url: string; duration: number; index: number }[];
+}> {
     const streams: any[] = [];
     const qualities: string[] = [];
+    const variants: { quality: string; bandwidth: number; url: string; resolution?: string }[] = [];
+    const segments: { url: string; duration: number; index: number }[] = [];
     let masterPlaylist: string | undefined;
 
     // Intercept network requests to find m3u8 files
@@ -4469,6 +4779,100 @@ export async function handleM3u8Parser(
         }
     }
 
+    // ============================================================
+    // NEW: FETCH AND PARSE MASTER PLAYLIST FOR VARIANTS
+    // ============================================================
+    if ((args.fetchPlaylist || args.extractBandwidth) && masterPlaylist) {
+        try {
+            const playlistContent = await page.evaluate(async (url: string) => {
+                try {
+                    const response = await fetch(url);
+                    return await response.text();
+                } catch { return null; }
+            }, masterPlaylist);
+
+            if (playlistContent) {
+                // Parse #EXT-X-STREAM-INF lines for variants
+                const variantRegex = /#EXT-X-STREAM-INF:.*?BANDWIDTH=(\d+)(?:.*?RESOLUTION=(\d+x\d+))?[^\n]*\n([^\n]+)/g;
+                let match;
+                while ((match = variantRegex.exec(playlistContent)) !== null) {
+                    const bandwidth = parseInt(match[1], 10);
+                    const resolution = match[2] || undefined;
+                    let variantUrl = match[3].trim();
+                    
+                    // Make relative URLs absolute
+                    if (!variantUrl.startsWith('http')) {
+                        const baseUrl = masterPlaylist.substring(0, masterPlaylist.lastIndexOf('/') + 1);
+                        variantUrl = baseUrl + variantUrl;
+                    }
+
+                    // Determine quality from resolution or bandwidth
+                    let quality = 'unknown';
+                    if (resolution) {
+                        const height = parseInt(resolution.split('x')[1], 10);
+                        if (height >= 2160) quality = '4K';
+                        else if (height >= 1080) quality = '1080p';
+                        else if (height >= 720) quality = '720p';
+                        else if (height >= 480) quality = '480p';
+                        else if (height >= 360) quality = '360p';
+                        else quality = `${height}p`;
+                    } else if (bandwidth >= 5000000) quality = '1080p';
+                    else if (bandwidth >= 2500000) quality = '720p';
+                    else if (bandwidth >= 1000000) quality = '480p';
+                    else quality = '360p';
+
+                    variants.push({ quality, bandwidth, url: variantUrl, resolution });
+                }
+
+                // Sort variants by bandwidth (highest first)
+                variants.sort((a, b) => b.bandwidth - a.bandwidth);
+            }
+        } catch (e) {
+            // Ignore fetch errors
+        }
+    }
+
+    // ============================================================
+    // NEW: PARSE SEGMENTS FROM MEDIA PLAYLIST
+    // ============================================================
+    if (args.parseSegments && streams.length > 0) {
+        const mediaPlaylistUrl = streams[0].url;
+        try {
+            const mediaContent = await page.evaluate(async (url: string) => {
+                try {
+                    const response = await fetch(url);
+                    return await response.text();
+                } catch { return null; }
+            }, mediaPlaylistUrl);
+
+            if (mediaContent) {
+                const lines = mediaContent.split('\n');
+                let segmentIndex = 0;
+                let currentDuration = 0;
+
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    
+                    // Parse duration from #EXTINF
+                    if (line.startsWith('#EXTINF:')) {
+                        currentDuration = parseFloat(line.replace('#EXTINF:', '').split(',')[0]);
+                    }
+                    // Capture segment URL
+                    else if (line && !line.startsWith('#') && (line.includes('.ts') || line.includes('.m4s'))) {
+                        let segmentUrl = line;
+                        if (!segmentUrl.startsWith('http')) {
+                            const baseUrl = mediaPlaylistUrl.substring(0, mediaPlaylistUrl.lastIndexOf('/') + 1);
+                            segmentUrl = baseUrl + segmentUrl;
+                        }
+                        segments.push({ url: segmentUrl, duration: currentDuration, index: segmentIndex++ });
+                    }
+                }
+            }
+        } catch (e) {
+            // Ignore segment parsing errors
+        }
+    }
+
     // Filter audio if not wanted
     const filteredStreams = args.includeAudio !== false
         ? streams
@@ -4479,6 +4883,8 @@ export async function handleM3u8Parser(
         streams: filteredStreams,
         masterPlaylist,
         qualities: [...new Set(qualities)],
+        variants: variants.length > 0 ? variants : undefined,
+        segments: segments.length > 0 ? segments : undefined,
     };
 }
 
@@ -4983,6 +5389,12 @@ export interface StreamExtractorArgs {
     bypassCloudflare?: boolean;
     formats?: string[];
     quality?: string;
+    // NEW: Multi-Quality Selector Options
+    autoSelectBest?: boolean;           // Auto-select highest quality (1080p > 720p > 480p)
+    preferredQuality?: '1080p' | '720p' | '480p' | '360p' | 'highest' | 'lowest';
+    extractSubtitles?: boolean;         // Also extract subtitles
+    // NEW: More Sites Support
+    siteType?: 'auto' | 'vidsrc' | 'filemoon' | 'streamwish' | 'doodstream' | 'mixdrop' | 'streamtape' | 'vidcloud' | 'mp4upload';
 }
 
 /**
@@ -5528,6 +5940,7 @@ export async function handleCloudflareBypass(
 /**
  * Master tool: Extract direct stream/download URLs
  * ULTRA POWERFUL: Handles packed JS, JW Player, Video.js, HLS.js, obfuscated scripts
+ * ENHANCED: Multi-Quality Selector, VidSrc, Filemoon, StreamWish support
  */
 export async function handleStreamExtractor(
     page: Page,
@@ -5535,11 +5948,79 @@ export async function handleStreamExtractor(
 ): Promise<{
     success: boolean;
     directUrls: { url: string; format: string; quality?: string; size?: string; source?: string }[];
+    bestQuality?: { url: string; format: string; quality: string; source?: string };
+    subtitles?: { url: string; language?: string; label?: string }[];
     message: string
 }> {
     const formats = args.formats || ['mp4', 'mkv', 'm3u8', 'mp3', 'webm', 'flv', 'avi'];
     const maxRedirects = args.maxRedirects || 10;
     const directUrls: { url: string; format: string; quality?: string; size?: string; source?: string }[] = [];
+    const subtitles: { url: string; language?: string; label?: string }[] = [];
+
+    // Quality priority for auto-selection
+    const qualityPriority: Record<string, number> = {
+        '2160p': 100, '4k': 100, 'uhd': 100,
+        '1080p': 90, 'fhd': 90, 'full hd': 90,
+        '720p': 80, 'hd': 80,
+        '480p': 70, 'sd': 70,
+        '360p': 60,
+        '240p': 50,
+        '144p': 40,
+        'unknown': 10, 'auto': 10
+    };
+
+    // Site-specific extraction patterns
+    const sitePatterns: Record<string, { urlPattern: RegExp; sourcePattern: RegExp[] }> = {
+        vidsrc: {
+            urlPattern: /vidsrc|v2\.vidsrc/i,
+            sourcePattern: [
+                /source:\s*["']([^"']+\.m3u8[^"']*)/gi,
+                /file:\s*["']([^"']+\.m3u8[^"']*)/gi
+            ]
+        },
+        filemoon: {
+            urlPattern: /filemoon|moonplayer/i,
+            sourcePattern: [
+                /sources:\s*\[\s*\{[^}]*file:\s*["']([^"']+)/gi,
+                /eval\(function\(p,a,c,k,e,[rd]\)/gi
+            ]
+        },
+        streamwish: {
+            urlPattern: /streamwish|swish/i,
+            sourcePattern: [
+                /file:\s*["']([^"']+\.m3u8[^"']*)/gi,
+                /sources:\s*\[.*?["']([^"']+\.m3u8[^"']*)/gi
+            ]
+        },
+        doodstream: {
+            urlPattern: /dood|doodstream/i,
+            sourcePattern: [
+                /\/pass_md5\/[^"']+/gi,
+                /\$.get\(['"]([^'"]+pass_md5[^'"]+)/gi
+            ]
+        },
+        mixdrop: {
+            urlPattern: /mixdrop/i,
+            sourcePattern: [
+                /MDCore\.wurl\s*=\s*["']([^"']+)/gi,
+                /wurl\s*=\s*["']([^"']+)/gi
+            ]
+        },
+        streamtape: {
+            urlPattern: /streamtape/i,
+            sourcePattern: [
+                /id=.*?&token=/gi,
+                /robotlink.*?=\s*['"]([^'"]+)/gi
+            ]
+        },
+        mp4upload: {
+            urlPattern: /mp4upload/i,
+            sourcePattern: [
+                /player\.src\(\{src:\s*["']([^"']+)/gi,
+                /src:\s*["']([^"']+\.mp4[^"']*)/gi
+            ]
+        }
+    };
 
     // Navigate if URL provided
     if (args.url) {
@@ -5780,24 +6261,165 @@ export async function handleStreamExtractor(
         }
     }
 
+    // ============================================================
+    // NEW: SITE-SPECIFIC EXTRACTION (VidSrc, Filemoon, StreamWish, etc.)
+    // ============================================================
+    if (args.siteType && args.siteType !== 'auto') {
+        const siteConfig = sitePatterns[args.siteType];
+        if (siteConfig) {
+            const html = await page.content();
+            for (const pattern of siteConfig.sourcePattern) {
+                let match;
+                while ((match = pattern.exec(html)) !== null) {
+                    if (match[1] && !directUrls.some(d => d.url === match[1])) {
+                        const format = formats.find(f => match[1].includes(`.${f}`)) || 'm3u8';
+                        directUrls.push({ url: match[1], format, source: args.siteType });
+                    }
+                }
+            }
+        }
+    } else {
+        // Auto-detect site type from URL
+        const currentUrl = page.url();
+        for (const [siteName, config] of Object.entries(sitePatterns)) {
+            if (config.urlPattern.test(currentUrl)) {
+                const html = await page.content();
+                for (const pattern of config.sourcePattern) {
+                    let match;
+                    while ((match = pattern.exec(html)) !== null) {
+                        if (match[1] && !directUrls.some(d => d.url === match[1])) {
+                            const format = formats.find(f => match[1].includes(`.${f}`)) || 'm3u8';
+                            directUrls.push({ url: match[1], format, source: siteName });
+                        }
+                    }
+                }
+                break;
+            }
+        }
+    }
+
+    // ============================================================
+    // NEW: EXTRACT QUALITY FROM URLs
+    // ============================================================
+    for (const item of directUrls) {
+        if (!item.quality || item.quality === 'auto') {
+            const url = item.url.toLowerCase();
+            if (url.includes('2160') || url.includes('4k') || url.includes('uhd')) item.quality = '2160p';
+            else if (url.includes('1080')) item.quality = '1080p';
+            else if (url.includes('720')) item.quality = '720p';
+            else if (url.includes('480')) item.quality = '480p';
+            else if (url.includes('360')) item.quality = '360p';
+            else if (url.includes('240')) item.quality = '240p';
+            else if (url.includes('144')) item.quality = '144p';
+            else item.quality = 'unknown';
+        }
+    }
+
+    // ============================================================
+    // NEW: AUTO-SELECT BEST QUALITY
+    // ============================================================
+    let bestQuality: { url: string; format: string; quality: string; source?: string } | undefined;
+    
+    if (args.autoSelectBest || args.preferredQuality) {
+        const preferredQ = args.preferredQuality || 'highest';
+        
+        if (preferredQ === 'highest') {
+            // Sort by quality priority (highest first)
+            const sorted = [...directUrls].sort((a, b) => {
+                const aScore = qualityPriority[a.quality?.toLowerCase() || 'unknown'] || 0;
+                const bScore = qualityPriority[b.quality?.toLowerCase() || 'unknown'] || 0;
+                return bScore - aScore;
+            });
+            if (sorted.length > 0) {
+                bestQuality = { url: sorted[0].url, format: sorted[0].format, quality: sorted[0].quality || 'unknown', source: sorted[0].source };
+            }
+        } else if (preferredQ === 'lowest') {
+            // Sort by quality priority (lowest first)
+            const sorted = [...directUrls].sort((a, b) => {
+                const aScore = qualityPriority[a.quality?.toLowerCase() || 'unknown'] || 0;
+                const bScore = qualityPriority[b.quality?.toLowerCase() || 'unknown'] || 0;
+                return aScore - bScore;
+            });
+            if (sorted.length > 0) {
+                bestQuality = { url: sorted[0].url, format: sorted[0].format, quality: sorted[0].quality || 'unknown', source: sorted[0].source };
+            }
+        } else {
+            // Find exact match for preferred quality
+            const exact = directUrls.find(d => d.quality?.toLowerCase() === preferredQ.toLowerCase());
+            if (exact) {
+                bestQuality = { url: exact.url, format: exact.format, quality: exact.quality || preferredQ, source: exact.source };
+            } else {
+                // Fallback to highest available
+                const sorted = [...directUrls].sort((a, b) => {
+                    const aScore = qualityPriority[a.quality?.toLowerCase() || 'unknown'] || 0;
+                    const bScore = qualityPriority[b.quality?.toLowerCase() || 'unknown'] || 0;
+                    return bScore - aScore;
+                });
+                if (sorted.length > 0) {
+                    bestQuality = { url: sorted[0].url, format: sorted[0].format, quality: sorted[0].quality || 'unknown', source: sorted[0].source };
+                }
+            }
+        }
+    }
+
+    // ============================================================
+    // NEW: EXTRACT SUBTITLES
+    // ============================================================
+    if (args.extractSubtitles) {
+        const subData = await page.evaluate(() => {
+            const subs: { url: string; language?: string; label?: string }[] = [];
+            
+            // HTML5 track elements
+            document.querySelectorAll('track[kind="subtitles"], track[kind="captions"]').forEach(track => {
+                const src = track.getAttribute('src');
+                if (src) {
+                    subs.push({
+                        url: src,
+                        language: track.getAttribute('srclang') || undefined,
+                        label: track.getAttribute('label') || undefined
+                    });
+                }
+            });
+            
+            // VTT/SRT links
+            document.querySelectorAll('a[href*=".vtt"], a[href*=".srt"], a[href*=".ass"]').forEach(link => {
+                const href = (link as HTMLAnchorElement).href;
+                subs.push({ url: href, label: link.textContent?.trim() || undefined });
+            });
+            
+            // Look in scripts for subtitle URLs
+            const html = document.documentElement.innerHTML;
+            const vttMatches = html.match(/https?:\/\/[^\s"']+\.vtt[^\s"']*/gi);
+            const srtMatches = html.match(/https?:\/\/[^\s"']+\.srt[^\s"']*/gi);
+            
+            if (vttMatches) vttMatches.forEach(url => subs.push({ url }));
+            if (srtMatches) srtMatches.forEach(url => subs.push({ url }));
+            
+            // Deduplicate
+            const seen = new Set<string>();
+            return subs.filter(s => {
+                if (seen.has(s.url)) return false;
+                seen.add(s.url);
+                return true;
+            });
+        });
+        
+        subtitles.push(...subData);
+    }
+
     return {
         success: directUrls.length > 0,
         directUrls,
+        bestQuality,
+        subtitles: args.extractSubtitles ? subtitles : undefined,
         message: directUrls.length > 0
-            ? `🎬 Found ${directUrls.length} direct URL(s) from ${new Set(directUrls.map(d => d.source)).size} sources`
+            ? `🎬 Found ${directUrls.length} URL(s)${bestQuality ? ` | Best: ${bestQuality.quality}` : ''}${subtitles.length > 0 ? ` | ${subtitles.length} subtitles` : ''}`
             : 'No direct URLs found',
     };
 }
 
-/**
- * JS Scrape - Single-call JavaScript-rendered content extraction
- * Combines navigation, waiting, scrolling, and content extraction in one call
- * Perfect for scraping dynamic/AJAX-loaded content
- */
-export async function handleJsScrape(
-    page: Page,
-    args: JsScrapeArgs
-): Promise<{
+// Single page scrape result type
+interface JsScrapeResult {
     success: boolean;
     url: string;
     finalUrl: string;
@@ -5807,13 +6429,22 @@ export async function handleJsScrape(
     elements?: { tag: string; text: string; attributes: Record<string, string> }[];
     elementCount: number;
     error?: string;
-}> {
+    duration?: number;
+}
+
+// Helper function to scrape a single URL
+async function scrapeSingleUrl(
+    page: Page,
+    url: string,
+    args: JsScrapeArgs
+): Promise<JsScrapeResult> {
+    const startTime = Date.now();
     const waitForTimeout = args.waitForTimeout || 10000;
     const returnType = args.returnType || 'html';
 
     try {
         // Step 1: Navigate to URL
-        await page.goto(args.url, {
+        await page.goto(url, {
             waitUntil: 'domcontentloaded',
             timeout: waitForTimeout
         });
@@ -5923,25 +6554,195 @@ export async function handleJsScrape(
 
         return {
             success: true,
-            url: args.url,
+            url,
             finalUrl,
             title,
             html,
             text,
             elements,
-            elementCount
+            elementCount,
+            duration: Date.now() - startTime
         };
 
     } catch (error) {
         return {
             success: false,
-            url: args.url,
-            finalUrl: page.url() || args.url,
+            url,
+            finalUrl: page.url() || url,
             title: '',
             elementCount: 0,
-            error: error instanceof Error ? error.message : String(error)
+            error: error instanceof Error ? error.message : String(error),
+            duration: Date.now() - startTime
         };
     }
+}
+
+/**
+ * JS Scrape - Single-call JavaScript-rendered content extraction
+ * Combines navigation, waiting, scrolling, and content extraction in one call
+ * Perfect for scraping dynamic/AJAX-loaded content
+ * NEW: Supports parallel scraping of multiple URLs with concurrency control
+ */
+export async function handleJsScrape(
+    page: Page,
+    args: JsScrapeArgs
+): Promise<{
+    success: boolean;
+    url?: string;
+    urls?: string[];
+    finalUrl?: string;
+    title?: string;
+    html?: string;
+    text?: string;
+    elements?: { tag: string; text: string; attributes: Record<string, string> }[];
+    elementCount?: number;
+    error?: string;
+    // Parallel scraping results
+    results?: JsScrapeResult[];
+    totalUrls?: number;
+    successCount?: number;
+    failedCount?: number;
+    totalDuration?: number;
+    isParallel?: boolean;
+}> {
+    const startTime = Date.now();
+
+    // Determine URLs to scrape
+    const urlList = args.urls || (args.url ? [args.url] : []);
+    
+    if (urlList.length === 0) {
+        return {
+            success: false,
+            error: 'No URL(s) provided. Use "url" for single URL or "urls" for multiple URLs.',
+            elementCount: 0
+        };
+    }
+
+    // Single URL mode - backward compatible
+    if (urlList.length === 1 && !args.urls) {
+        const result = await scrapeSingleUrl(page, urlList[0], args);
+        return result;
+    }
+
+    // Parallel scraping mode
+    const concurrency = Math.min(args.concurrency || 3, 10); // Max 10 concurrent
+    const continueOnError = args.continueOnError !== false;
+    const delayBetween = args.delayBetween || 500;
+    
+    const results: JsScrapeResult[] = [];
+    const browser = page.browser();
+    
+    if (!browser) {
+        return {
+            success: false,
+            error: 'Browser not available for parallel scraping',
+            elementCount: 0
+        };
+    }
+
+    // Create a semaphore for concurrency control
+    let activeCount = 0;
+    const queue = [...urlList];
+    const errors: string[] = [];
+
+    // Process URLs with concurrency limit
+    const processUrl = async (url: string): Promise<JsScrapeResult | null> => {
+        let newPage: Page | null = null;
+        try {
+            // Create new page for each URL
+            newPage = await browser.newPage();
+            
+            // Copy settings from original page if needed
+            await newPage.setViewport({ width: 1280, height: 720 });
+            
+            const result = await scrapeSingleUrl(newPage, url, args);
+            return result;
+        } catch (error) {
+            return {
+                success: false,
+                url,
+                finalUrl: url,
+                title: '',
+                elementCount: 0,
+                error: error instanceof Error ? error.message : String(error),
+                duration: 0
+            };
+        } finally {
+            // Close the page
+            if (newPage) {
+                try {
+                    await newPage.close();
+                } catch (e) {
+                    // Ignore close errors
+                }
+            }
+        }
+    };
+
+    // Process all URLs with concurrency control
+    const processBatch = async (): Promise<void> => {
+        const promises: Promise<void>[] = [];
+        
+        while (queue.length > 0 || activeCount > 0) {
+            // Start new tasks up to concurrency limit
+            while (activeCount < concurrency && queue.length > 0) {
+                const url = queue.shift()!;
+                activeCount++;
+                
+                const promise = (async () => {
+                    try {
+                        // Add delay between starting each scrape
+                        if (results.length > 0) {
+                            await new Promise(r => setTimeout(r, delayBetween));
+                        }
+                        
+                        const result = await processUrl(url);
+                        if (result) {
+                            results.push(result);
+                            
+                            if (!result.success && !continueOnError) {
+                                // Clear queue to stop processing
+                                queue.length = 0;
+                                errors.push(`Stopped at ${url}: ${result.error}`);
+                            }
+                        }
+                    } finally {
+                        activeCount--;
+                    }
+                })();
+                
+                promises.push(promise);
+            }
+            
+            // Wait for at least one to complete before continuing
+            if (promises.length > 0) {
+                await Promise.race(promises);
+            }
+            
+            // Small delay to prevent tight loop
+            await new Promise(r => setTimeout(r, 50));
+        }
+        
+        // Wait for all remaining promises
+        await Promise.all(promises);
+    };
+
+    await processBatch();
+
+    const successCount = results.filter(r => r.success).length;
+    const failedCount = results.filter(r => !r.success).length;
+
+    return {
+        success: successCount > 0,
+        isParallel: true,
+        urls: urlList,
+        results,
+        totalUrls: urlList.length,
+        successCount,
+        failedCount,
+        totalDuration: Date.now() - startTime,
+        error: errors.length > 0 ? errors.join('; ') : undefined
+    };
 }
 
 // ============================================================

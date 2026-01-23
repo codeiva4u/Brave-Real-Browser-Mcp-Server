@@ -210,9 +210,9 @@ export const TOOLS = [
       },
     },
   },
-  {
+{
     name: 'navigate',
-    description: 'Navigate to a URL',
+    description: 'Navigate to a URL with advanced options: resource blocking, custom headers, auto-scroll, wait for content, and anti-detection features.',
     inputSchema: {
       type: 'object',
       additionalProperties: false,
@@ -226,6 +226,53 @@ export const TOOLS = [
           description: 'When to consider navigation complete',
           enum: ['load', 'domcontentloaded', 'networkidle0', 'networkidle2'],
           default: 'domcontentloaded',
+        },
+        // Advanced options
+        blockResources: {
+          type: 'array',
+          items: { type: 'string', enum: ['image', 'stylesheet', 'font', 'media', 'script'] },
+          description: 'Block resource types for faster loading (e.g., ["image", "font"])',
+        },
+        customHeaders: {
+          type: 'object',
+          description: 'Custom headers to send with request (e.g., {"Authorization": "Bearer xxx"})',
+        },
+        referrer: {
+          type: 'string',
+          description: 'Custom referrer URL',
+        },
+        waitForSelector: {
+          type: 'string',
+          description: 'Wait for specific CSS selector after navigation',
+        },
+        waitForContent: {
+          type: 'string',
+          description: 'Wait for specific text content to appear',
+        },
+        scrollToBottom: {
+          type: 'boolean',
+          description: 'Auto-scroll to bottom to trigger lazy loading',
+          default: false,
+        },
+        randomDelay: {
+          type: 'boolean',
+          description: 'Add random human-like delay (100-500ms) before navigation',
+          default: false,
+        },
+        bypassCSP: {
+          type: 'boolean',
+          description: 'Bypass Content Security Policy',
+          default: false,
+        },
+        timeout: {
+          type: 'number',
+          description: 'Navigation timeout in ms',
+          default: 60000,
+        },
+        retries: {
+          type: 'number',
+          description: 'Number of retry attempts on failure',
+          default: 3,
         },
       },
       required: ['url'],
@@ -675,9 +722,9 @@ export const TOOLS = [
       },
     },
   },
-  {
+{
     name: 'network_recorder',
-    description: 'Record full network traffic including headers and body. Also discovers hidden API endpoints.',
+    description: 'Record full network traffic including headers and body. Also discovers hidden API endpoints. NEW: API interception with request blocking, mocking, and header modification.',
     inputSchema: {
       type: 'object',
       additionalProperties: false,
@@ -689,6 +736,33 @@ export const TOOLS = [
         // Merged from api_finder
         findApis: { type: 'boolean', description: 'Discover hidden API endpoints (XHR/fetch)', default: false },
         apiPatterns: { type: 'array', items: { type: 'string' }, description: 'URL patterns to match for API discovery' },
+        // API Interceptor options
+        interceptMode: { type: 'string', enum: ['record', 'intercept', 'mock'], description: 'Mode: record (passive), intercept (active with blocking/modifying), mock (respond with fake data)', default: 'record' },
+        blockPatterns: { type: 'array', items: { type: 'string' }, description: 'URL patterns to block (e.g., ["ads", "/tracking/"])' },
+        mockResponses: { 
+          type: 'array', 
+          items: { 
+            type: 'object',
+            properties: {
+              urlPattern: { type: 'string' },
+              response: { type: 'object' },
+              statusCode: { type: 'number' }
+            }
+          }, 
+          description: 'Mock responses for matching URLs' 
+        },
+        modifyHeaders: { 
+          type: 'array', 
+          items: { 
+            type: 'object',
+            properties: {
+              urlPattern: { type: 'string' },
+              headers: { type: 'object' }
+            }
+          }, 
+          description: 'Modify headers for matching URLs' 
+        },
+        capturePayloads: { type: 'boolean', description: 'Capture POST/PUT request bodies', default: false },
       },
     },
   },
@@ -697,9 +771,9 @@ export const TOOLS = [
   // media_extractor REMOVED - functionality merged into stream_extractor
   // element_screenshot REMOVED - use deep_analysis with includeScreenshot: true for screenshots
   // batch_element_scraper REMOVED - merged into find_element (use batchMode: true)
-  {
+{
     name: 'link_harvester',
-    description: 'Harvest all links from page with filtering options',
+    description: 'Harvest all links from page with filtering options. NEW: Auto-follow pagination to scrape multiple pages automatically.',
     inputSchema: {
       type: 'object',
       additionalProperties: false,
@@ -708,6 +782,11 @@ export const TOOLS = [
         includeExternal: { type: 'boolean', description: 'Include external links', default: true },
         includeInternal: { type: 'boolean', description: 'Include internal links', default: true },
         maxLinks: { type: 'number', description: 'Maximum links to return' },
+        // Pagination options
+        followPagination: { type: 'boolean', description: 'Auto-follow pagination links to scrape multiple pages', default: false },
+        maxPages: { type: 'number', description: 'Maximum pages to scrape when following pagination (1-20)', default: 5 },
+        paginationSelector: { type: 'string', description: 'Custom CSS selector for the next page link (e.g., "a.next-page")' },
+        delayBetweenPages: { type: 'number', description: 'Delay between page navigations in ms', default: 1000 },
       },
     },
   },
@@ -776,7 +855,7 @@ export const TOOLS = [
 
   {
     name: 'stream_extractor',
-    description: 'Master tool: Extract direct download/stream URLs from any page with automatic redirect following, countdown waiting, and format detection',
+    description: 'Master tool: Extract direct download/stream URLs from any page with automatic redirect following, countdown waiting, format detection, multi-quality selection, and VidSrc/Filemoon/StreamWish support',
     inputSchema: {
       type: 'object',
       additionalProperties: false,
@@ -792,17 +871,32 @@ export const TOOLS = [
           default: ['mp4', 'mkv', 'm3u8', 'mp3'],
         },
         quality: { type: 'string', description: 'Preferred quality (highest, lowest, 1080p, 720p)', default: 'highest' },
+        autoSelectBest: { type: 'boolean', description: 'Auto-select highest quality stream', default: true },
+        preferredQuality: { 
+          type: 'string', 
+          enum: ['1080p', '720p', '480p', '360p', 'highest', 'lowest'],
+          description: 'Preferred quality to select',
+          default: 'highest'
+        },
+        extractSubtitles: { type: 'boolean', description: 'Also extract VTT/SRT subtitles', default: false },
+        siteType: {
+          type: 'string',
+          enum: ['auto', 'vidsrc', 'filemoon', 'streamwish', 'doodstream', 'mixdrop', 'streamtape', 'vidcloud', 'mp4upload'],
+          description: 'Site-specific extraction mode (auto-detects if not specified)',
+          default: 'auto'
+        },
       },
     },
   },
-  {
+{
     name: 'js_scrape',
-    description: 'Single-call JavaScript-rendered content extraction. Combines navigation, auto-wait, scrolling, and content extraction. Perfect for AJAX/dynamic pages that Jsoup cannot parse.',
+    description: 'Single-call JavaScript-rendered content extraction. Combines navigation, auto-wait, scrolling, and content extraction. Perfect for AJAX/dynamic pages that Jsoup cannot parse. NEW: Supports parallel scraping of multiple URLs with concurrency control.',
     inputSchema: {
       type: 'object',
       additionalProperties: false,
       properties: {
         url: { type: 'string', description: 'URL to scrape (required)' },
+        urls: { type: 'array', items: { type: 'string' }, description: 'Multiple URLs for parallel scraping (alternative to url)' },
         waitForSelector: { type: 'string', description: 'CSS selector to wait for before extracting content' },
         waitForTimeout: { type: 'number', description: 'Maximum wait time in ms', default: 10000 },
         extractSelector: { type: 'string', description: 'CSS selector for specific elements to extract (optional, extracts full page if not specified)' },
@@ -810,8 +904,12 @@ export const TOOLS = [
         returnType: { type: 'string', enum: ['html', 'text', 'elements'], description: 'Return format', default: 'html' },
         scrollToLoad: { type: 'boolean', description: 'Scroll page to trigger lazy loading', default: true },
         closeBrowserAfter: { type: 'boolean', description: 'Close browser after scraping', default: false },
+        // Parallel scraping options
+        concurrency: { type: 'number', description: 'Max concurrent scrapes for parallel mode (1-10)', default: 3 },
+        continueOnError: { type: 'boolean', description: 'Continue scraping even if some URLs fail', default: true },
+        delayBetween: { type: 'number', description: 'Delay between starting each scrape in ms', default: 500 },
       },
-      required: ['url'],
+      required: [],
     },
   },
   // ============================================================
@@ -910,6 +1008,17 @@ export interface BrowserInitArgs {
 export interface NavigateArgs {
   url: string;
   waitUntil?: 'load' | 'domcontentloaded' | 'networkidle0' | 'networkidle2';
+  // Advanced navigation options
+  blockResources?: ('image' | 'stylesheet' | 'font' | 'media' | 'script')[];  // Block resource types for faster loading
+  customHeaders?: Record<string, string>;       // Custom headers to send
+  referrer?: string;                            // Custom referrer
+  waitForSelector?: string;                     // Wait for specific selector after navigation
+  waitForContent?: string;                      // Wait for specific text content
+  scrollToBottom?: boolean;                     // Auto-scroll to trigger lazy loading
+  randomDelay?: boolean;                        // Add random human-like delay (100-500ms)
+  bypassCSP?: boolean;                          // Bypass Content Security Policy
+  timeout?: number;                             // Custom navigation timeout (default: 60000)
+  retries?: number;                             // Custom retry count (default: 3)
 }
 
 export interface GetContentArgs {

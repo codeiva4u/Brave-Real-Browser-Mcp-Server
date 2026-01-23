@@ -354,3 +354,283 @@ export async function executeBatchWithProgress<T, R>(
     return results;
   }, { totalSteps: items.length + 2 });
 }
+
+// ============================================================
+// ERROR AUTO-RECOVERY SYSTEM
+// ============================================================
+
+export interface RecoveryStrategy {
+  errorPattern: RegExp | string;      // Pattern to match error messages
+  action: 'retry' | 'refresh' | 'restart_browser' | 'skip' | 'fallback';
+  maxRetries?: number;                 // Max retries for this error type
+  delay?: number;                      // Delay before retry (ms)
+  fallbackFn?: () => Promise<any>;     // Fallback function if all else fails
+}
+
+export interface ErrorRecoveryConfig {
+  enabled: boolean;
+  maxGlobalRetries: number;           // Max total retries across all errors
+  defaultDelay: number;               // Default delay between retries
+  strategies: RecoveryStrategy[];     // Error-specific recovery strategies
+  onRecovery?: (error: Error, action: string, attempt: number) => void;
+}
+
+// Default recovery strategies for common browser automation errors
+const defaultRecoveryStrategies: RecoveryStrategy[] = [
+  // Network errors - retry with delay
+  { errorPattern: /net::ERR_|ECONNREFUSED|ETIMEDOUT|socket hang up/i, action: 'retry', maxRetries: 3, delay: 2000 },
+  
+  // Navigation errors - refresh and retry
+  { errorPattern: /Navigation timeout|navigation.*timed out/i, action: 'refresh', maxRetries: 2, delay: 1000 },
+  
+  // Frame/Context errors - restart browser
+  { errorPattern: /frame was detached|Execution context was destroyed|Target closed/i, action: 'restart_browser', maxRetries: 1 },
+  
+  // Session errors - restart browser
+  { errorPattern: /Session closed|Protocol error|Session timed out/i, action: 'restart_browser', maxRetries: 1 },
+  
+  // Element not found - retry with delay
+  { errorPattern: /Element.*not found|waiting for selector|failed to find/i, action: 'retry', maxRetries: 3, delay: 1000 },
+  
+  // Rate limiting - wait and retry
+  { errorPattern: /rate limit|too many requests|429/i, action: 'retry', maxRetries: 3, delay: 5000 },
+  
+  // Cloudflare/Bot detection - skip (handled separately)
+  { errorPattern: /cloudflare|captcha|bot detected|access denied/i, action: 'skip', maxRetries: 0 },
+];
+
+// Global error recovery configuration
+let errorRecoveryConfig: ErrorRecoveryConfig = {
+  enabled: true,
+  maxGlobalRetries: 5,
+  defaultDelay: 1000,
+  strategies: defaultRecoveryStrategies
+};
+
+/**
+ * Configure error recovery
+ */
+export function configureErrorRecovery(config: Partial<ErrorRecoveryConfig>) {
+  errorRecoveryConfig = { ...errorRecoveryConfig, ...config };
+  if (config.strategies) {
+    errorRecoveryConfig.strategies = [...config.strategies, ...defaultRecoveryStrategies];
+  }
+}
+
+/**
+ * Add a custom recovery strategy
+ */
+export function addRecoveryStrategy(strategy: RecoveryStrategy) {
+  errorRecoveryConfig.strategies.unshift(strategy); // Add at beginning for priority
+}
+
+/**
+ * Get matching recovery strategy for an error
+ */
+function getRecoveryStrategy(error: Error): RecoveryStrategy | null {
+  const errorMessage = error.message || String(error);
+  
+  for (const strategy of errorRecoveryConfig.strategies) {
+    const pattern = typeof strategy.errorPattern === 'string' 
+      ? new RegExp(strategy.errorPattern, 'i')
+      : strategy.errorPattern;
+    
+    if (pattern.test(errorMessage)) {
+      return strategy;
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Error recovery state tracker
+ */
+interface RecoveryState {
+  globalRetries: number;
+  errorCounts: Map<string, number>;
+  lastRecoveryTime: number;
+}
+
+const recoveryState: RecoveryState = {
+  globalRetries: 0,
+  errorCounts: new Map(),
+  lastRecoveryTime: 0
+};
+
+/**
+ * Reset recovery state (call after successful operation)
+ */
+export function resetRecoveryState() {
+  recoveryState.globalRetries = 0;
+  recoveryState.errorCounts.clear();
+}
+
+/**
+ * Execute with auto-recovery
+ */
+export async function executeWithRecovery<T>(
+  operation: () => Promise<T>,
+  options: {
+    toolName: string;
+    page?: any;
+    getBrowser?: () => any;
+    restartBrowser?: () => Promise<any>;
+    onProgress?: (message: string) => void;
+  }
+): Promise<{ success: boolean; result?: T; error?: Error; recoveryAttempts: number }> {
+  if (!errorRecoveryConfig.enabled) {
+    try {
+      const result = await operation();
+      return { success: true, result, recoveryAttempts: 0 };
+    } catch (error) {
+      return { success: false, error: error as Error, recoveryAttempts: 0 };
+    }
+  }
+
+  let lastError: Error | null = null;
+  let attempts = 0;
+  
+  while (recoveryState.globalRetries < errorRecoveryConfig.maxGlobalRetries) {
+    try {
+      const result = await operation();
+      
+      // Success - reset relevant counters
+      if (attempts > 0) {
+        options.onProgress?.(`✅ Recovery successful after ${attempts} attempts`);
+      }
+      
+      return { success: true, result, recoveryAttempts: attempts };
+      
+    } catch (error) {
+      lastError = error as Error;
+      const strategy = getRecoveryStrategy(lastError);
+      
+      if (!strategy) {
+        // No recovery strategy for this error
+        options.onProgress?.(`❌ No recovery strategy for: ${lastError.message}`);
+        return { success: false, error: lastError, recoveryAttempts: attempts };
+      }
+      
+      // Check error-specific retry count
+      const errorKey = strategy.errorPattern.toString();
+      const errorCount = recoveryState.errorCounts.get(errorKey) || 0;
+      
+      if (errorCount >= (strategy.maxRetries || 3)) {
+        options.onProgress?.(`❌ Max retries (${strategy.maxRetries}) reached for: ${errorKey}`);
+        return { success: false, error: lastError, recoveryAttempts: attempts };
+      }
+      
+      // Increment counters
+      recoveryState.globalRetries++;
+      recoveryState.errorCounts.set(errorKey, errorCount + 1);
+      attempts++;
+      
+      // Execute recovery action
+      const delay = strategy.delay || errorRecoveryConfig.defaultDelay;
+      
+      options.onProgress?.(`🔄 Recovery attempt ${attempts}: ${strategy.action} (${lastError.message.substring(0, 50)}...)`);
+      
+      // Notify callback
+      errorRecoveryConfig.onRecovery?.(lastError, strategy.action, attempts);
+      
+      switch (strategy.action) {
+        case 'retry':
+          // Simple retry after delay
+          await new Promise(r => setTimeout(r, delay));
+          break;
+          
+        case 'refresh':
+          // Refresh the page and retry
+          if (options.page) {
+            try {
+              await options.page.reload({ waitUntil: 'domcontentloaded', timeout: 15000 });
+              await new Promise(r => setTimeout(r, delay));
+            } catch (e) {
+              // Refresh failed, continue anyway
+            }
+          }
+          break;
+          
+        case 'restart_browser':
+          // Restart the browser
+          if (options.restartBrowser) {
+            try {
+              options.onProgress?.('🔄 Restarting browser...');
+              await options.restartBrowser();
+              await new Promise(r => setTimeout(r, delay));
+            } catch (e) {
+              options.onProgress?.(`⚠️ Browser restart failed: ${(e as Error).message}`);
+            }
+          }
+          break;
+          
+        case 'fallback':
+          // Try fallback function
+          if (strategy.fallbackFn) {
+            try {
+              const fallbackResult = await strategy.fallbackFn();
+              return { success: true, result: fallbackResult, recoveryAttempts: attempts };
+            } catch (e) {
+              // Fallback failed, continue with retry
+            }
+          }
+          break;
+          
+        case 'skip':
+          // Skip this operation entirely
+          options.onProgress?.(`⏭️ Skipping operation due to: ${lastError.message}`);
+          return { success: false, error: lastError, recoveryAttempts: attempts };
+      }
+      
+      recoveryState.lastRecoveryTime = Date.now();
+    }
+  }
+  
+  // Max global retries reached
+  options.onProgress?.(`❌ Max global retries (${errorRecoveryConfig.maxGlobalRetries}) reached`);
+  return { success: false, error: lastError || new Error('Max retries reached'), recoveryAttempts: attempts };
+}
+
+/**
+ * Decorator to add auto-recovery to any async function
+ */
+export function withAutoRecovery(toolName: string, options: { maxRetries?: number } = {}) {
+  return function <T extends (...args: any[]) => Promise<any>>(
+    handler: T
+  ): (...args: Parameters<T>) => Promise<ReturnType<T>> {
+    return async function (...args: Parameters<T>): Promise<ReturnType<T>> {
+      // Check if first arg is a page object
+      const page = args[0]?.goto ? args[0] : undefined;
+      
+      const result = await executeWithRecovery(
+        () => handler(...args),
+        {
+          toolName,
+          page,
+          onProgress: (msg) => console.log(`[${toolName}] ${msg}`)
+        }
+      );
+      
+      if (!result.success) {
+        throw result.error;
+      }
+      
+      return result.result;
+    };
+  };
+}
+
+/**
+ * Get current recovery statistics
+ */
+export function getRecoveryStats() {
+  return {
+    enabled: errorRecoveryConfig.enabled,
+    globalRetries: recoveryState.globalRetries,
+    maxGlobalRetries: errorRecoveryConfig.maxGlobalRetries,
+    errorCounts: Object.fromEntries(recoveryState.errorCounts),
+    lastRecoveryTime: recoveryState.lastRecoveryTime,
+    strategiesCount: errorRecoveryConfig.strategies.length
+  };
+}
