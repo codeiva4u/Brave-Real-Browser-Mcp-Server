@@ -62,6 +62,7 @@ jobs:
       - name: 📥 Checkout
         uses: actions/checkout@v4
         with:
+          token: ${{ secrets.GH_TOKEN || github.token }}
           fetch-depth: 0
 
       - name: 🔍 Detect Changes
