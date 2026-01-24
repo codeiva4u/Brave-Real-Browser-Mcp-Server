@@ -5,6 +5,7 @@ import { injectStealth } from './stealth';
 import { injectScriptlets } from './scriptlets';
 import { injectCosmeticFiltering } from './cosmetic';
 import { injectRedirectBlocking } from './redirects';
+import { FilterUpdater, getFilterUpdater, FilterUpdaterOptions } from './filter-updater';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -21,6 +22,10 @@ export interface BraveBlockerOptions {
     enableScriptlets?: boolean;
     /** Path to custom filter list file */
     customFiltersPath?: string;
+    /** Enable auto-update of uBlock Origin filters */
+    enableFilterAutoUpdate?: boolean;
+    /** Filter updater options */
+    filterUpdaterOptions?: FilterUpdaterOptions;
 }
 
 // Additional filter lists for aggressive blocking
@@ -78,9 +83,18 @@ export class BraveBlocker {
     private blocker: PuppeteerBlocker | null = null;
     private options: BraveBlockerOptions;
     private initialized: boolean = false;
+    private filterUpdater: FilterUpdater | null = null;
 
     constructor(options: BraveBlockerOptions = {}) {
         this.options = options;
+        
+        // Initialize filter updater if auto-update is enabled (default: true)
+        if (this.options.enableFilterAutoUpdate !== false) {
+            this.filterUpdater = getFilterUpdater({
+                customFiltersPath: this.options.customFiltersPath,
+                ...this.options.filterUpdaterOptions
+            });
+        }
     }
 
     /**
@@ -96,26 +110,36 @@ export class BraveBlocker {
             // Add built-in custom filters
             const customBlocker = await PuppeteerBlocker.parse(BUILTIN_CUSTOM_FILTERS);
             
-            // Try to load custom filter file if exists
-            const customFiltersPath = this.options.customFiltersPath || 
-                path.join(__dirname, '..', 'assets', 'ublock-custom-filters.txt');
-            
-            if (fs.existsSync(customFiltersPath)) {
+            // Try to fetch latest filters using FilterUpdater (auto-update from uBlock Origin)
+            if (this.filterUpdater) {
                 try {
-                    const customFilters = fs.readFileSync(customFiltersPath, 'utf-8');
-                    const fileBlocker = await PuppeteerBlocker.parse(customFilters);
-                    // Merge all blockers
-                    this.blocker = PuppeteerBlocker.deserialize(
-                        Buffer.concat([
-                            this.blocker.serialize(),
-                            customBlocker.serialize(),
-                            fileBlocker.serialize()
-                        ])
-                    );
-                    console.log('[BraveBlocker] Loaded custom filters from:', customFiltersPath);
-                } catch (e) {
-                    console.warn('[BraveBlocker] Failed to load custom filters:', e);
+                    console.log('[BraveBlocker] Fetching latest uBlock Origin filters...');
+                    const latestFilters = await this.filterUpdater.getFilters();
+                    
+                    if (latestFilters && latestFilters.length > 0) {
+                        const latestBlocker = await PuppeteerBlocker.parse(latestFilters);
+                        
+                        // Merge all blockers
+                        this.blocker = PuppeteerBlocker.deserialize(
+                            Buffer.concat([
+                                this.blocker.serialize(),
+                                customBlocker.serialize(),
+                                latestBlocker.serialize()
+                            ])
+                        );
+                        
+                        const cacheInfo = this.filterUpdater.getCacheInfo();
+                        console.log('[BraveBlocker] Loaded latest uBlock Origin filters');
+                        console.log('[BraveBlocker] Cache expires:', cacheInfo.expiresAt?.toISOString());
+                    }
+                } catch (filterError) {
+                    console.warn('[BraveBlocker] Failed to fetch latest filters, using fallback:', filterError);
+                    // Fall back to local custom filters
+                    await this.loadLocalCustomFilters(customBlocker);
                 }
+            } else {
+                // No filter updater, use local custom filters only
+                await this.loadLocalCustomFilters(customBlocker);
             }
             
             this.initialized = true;
@@ -125,6 +149,32 @@ export class BraveBlocker {
             // Fallback to basic blocker
             this.blocker = await PuppeteerBlocker.parse(BUILTIN_CUSTOM_FILTERS);
             this.initialized = true;
+        }
+    }
+    
+    /**
+     * Load local custom filters as fallback
+     */
+    private async loadLocalCustomFilters(customBlocker: PuppeteerBlocker) {
+        const customFiltersPath = this.options.customFiltersPath || 
+            path.join(__dirname, '..', 'assets', 'ublock-custom-filters.txt');
+        
+        if (fs.existsSync(customFiltersPath)) {
+            try {
+                const customFilters = fs.readFileSync(customFiltersPath, 'utf-8');
+                const fileBlocker = await PuppeteerBlocker.parse(customFilters);
+                // Merge all blockers
+                this.blocker = PuppeteerBlocker.deserialize(
+                    Buffer.concat([
+                        this.blocker!.serialize(),
+                        customBlocker.serialize(),
+                        fileBlocker.serialize()
+                    ])
+                );
+                console.log('[BraveBlocker] Loaded custom filters from:', customFiltersPath);
+            } catch (e) {
+                console.warn('[BraveBlocker] Failed to load custom filters:', e);
+            }
         }
     }
 
