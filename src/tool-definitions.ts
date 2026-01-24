@@ -944,6 +944,71 @@ export const TOOLS = [
       },
     },
   },
+  // Form Automator Tool
+  {
+    name: 'form_automator',
+    description: 'Auto-fill forms with human-like typing, field detection, and smart form submission. Supports auto-detection of field types (email, password, name, phone, address, etc.)',
+    inputSchema: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        action: {
+          type: 'string',
+          enum: ['fill', 'autoFill', 'getFields', 'submit', 'fillField'],
+          description: 'Action to perform: fill (with custom data), autoFill (with test data), getFields (detect fields), submit, fillField (single field)',
+          default: 'fill'
+        },
+        formSelector: {
+          type: 'string',
+          description: 'CSS selector for the form (default: "form")',
+          default: 'form'
+        },
+        data: {
+          type: 'object',
+          description: 'Data to fill in form. Keys can be field names, IDs, or types (email, password, username, firstName, lastName, phone, address, etc.)',
+          additionalProperties: true
+        },
+        fieldSelector: {
+          type: 'string',
+          description: 'CSS selector for specific field (used with fillField action)'
+        },
+        fieldValue: {
+          type: 'string',
+          description: 'Value to fill in specific field (used with fillField action)'
+        },
+        humanLike: {
+          type: 'boolean',
+          description: 'Use human-like typing with variable delays and occasional typos',
+          default: true
+        },
+        clearFields: {
+          type: 'boolean',
+          description: 'Clear existing field values before filling',
+          default: true
+        },
+        submitAfter: {
+          type: 'boolean',
+          description: 'Submit form after filling',
+          default: false
+        },
+        submitSelector: {
+          type: 'string',
+          description: 'CSS selector for submit button',
+          default: 'button[type="submit"], input[type="submit"]'
+        },
+        waitForNavigation: {
+          type: 'boolean',
+          description: 'Wait for page navigation after submit',
+          default: true
+        },
+        delayBetweenFields: {
+          type: 'number',
+          description: 'Delay in ms between filling fields (for human-like behavior)',
+          default: 500
+        }
+      }
+    },
+  },
 ];
 
 // Tool name constants for type safety
@@ -987,6 +1052,8 @@ export const TOOL_NAMES = {
   // New JS extraction tools
   EXECUTE_JS: 'execute_js',
   PLAYER_API_HOOK: 'player_api_hook',
+  // Form automation
+  FORM_AUTOMATOR: 'form_automator',
 
 } as const;
 

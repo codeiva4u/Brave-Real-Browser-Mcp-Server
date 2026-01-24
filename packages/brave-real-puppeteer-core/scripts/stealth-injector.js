@@ -2826,6 +2826,97 @@ export function injectHardwareSpoofing() {
                         }
                     ]);
                 }
+                
+                // ============================================
+                // WebRTC LEAK PREVENTION - Hide real IP address
+                // ============================================
+                (function() {
+                    // Store original RTCPeerConnection
+                    const OriginalRTCPeerConnection = window.RTCPeerConnection || window.webkitRTCPeerConnection || window.mozRTCPeerConnection;
+                    
+                    if (OriginalRTCPeerConnection) {
+                        // Create spoofed RTCPeerConnection
+                        const SpoofedRTCPeerConnection = function(config, constraints) {
+                            // Force TURN-only mode to prevent local IP leak
+                            if (config && config.iceServers) {
+                                config.iceServers = config.iceServers.map(server => {
+                                    // Remove STUN servers, keep only TURN
+                                    if (server.urls) {
+                                        if (Array.isArray(server.urls)) {
+                                            server.urls = server.urls.filter(url => !url.startsWith('stun:'));
+                                        } else if (typeof server.urls === 'string' && server.urls.startsWith('stun:')) {
+                                            return null;
+                                        }
+                                    }
+                                    return server;
+                                }).filter(Boolean);
+                            }
+                            
+                            // Add iceTransportPolicy to force relay (TURN only)
+                            config = config || {};
+                            config.iceTransportPolicy = 'relay';
+                            
+                            const pc = new OriginalRTCPeerConnection(config, constraints);
+                            
+                            // Override onicecandidate to filter local IPs
+                            const originalOnIceCandidate = Object.getOwnPropertyDescriptor(RTCPeerConnection.prototype, 'onicecandidate');
+                            
+                            // Filter ICE candidates to remove local IP addresses
+                            const originalAddEventListener = pc.addEventListener.bind(pc);
+                            pc.addEventListener = function(type, listener, options) {
+                                if (type === 'icecandidate') {
+                                    const wrappedListener = function(event) {
+                                        if (event.candidate) {
+                                            const candidateStr = event.candidate.candidate;
+                                            // Block local/private IP addresses
+                                            const privateIPRegex = /((10\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3})|(172\\.(1[6-9]|2[0-9]|3[0-1])\\.\\d{1,3}\\.\\d{1,3})|(192\\.168\\.\\d{1,3}\\.\\d{1,3})|(127\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3})|([a-f0-9:]+:+)+[a-f0-9]+)/gi;
+                                            
+                                            if (privateIPRegex.test(candidateStr)) {
+                                                console.log('[WebRTC-Protection] Blocked local IP candidate');
+                                                // Create fake event with null candidate
+                                                const fakeEvent = new Event('icecandidate');
+                                                fakeEvent.candidate = null;
+                                                listener.call(this, fakeEvent);
+                                                return;
+                                            }
+                                        }
+                                        listener.call(this, event);
+                                    };
+                                    return originalAddEventListener(type, wrappedListener, options);
+                                }
+                                return originalAddEventListener(type, listener, options);
+                            };
+                            
+                            return pc;
+                        };
+                        
+                        // Copy static properties
+                        SpoofedRTCPeerConnection.prototype = OriginalRTCPeerConnection.prototype;
+                        SpoofedRTCPeerConnection.generateCertificate = OriginalRTCPeerConnection.generateCertificate;
+                        
+                        // Make it look native
+                        Object.defineProperty(SpoofedRTCPeerConnection, 'name', { value: 'RTCPeerConnection' });
+                        SpoofedRTCPeerConnection.toString = function() { return 'function RTCPeerConnection() { [native code] }'; };
+                        
+                        // Replace global RTCPeerConnection
+                        window.RTCPeerConnection = SpoofedRTCPeerConnection;
+                        if (window.webkitRTCPeerConnection) window.webkitRTCPeerConnection = SpoofedRTCPeerConnection;
+                        if (window.mozRTCPeerConnection) window.mozRTCPeerConnection = SpoofedRTCPeerConnection;
+                        
+                        console.log('[WebRTC-Protection] RTCPeerConnection spoofed to prevent IP leaks');
+                    }
+                    
+                    // Also spoof navigator.mediaDevices.getUserMedia to prevent fingerprinting
+                    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                        const originalGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+                        navigator.mediaDevices.getUserMedia = function(constraints) {
+                            // Log the access attempt
+                            console.log('[WebRTC-Protection] getUserMedia access requested');
+                            return originalGetUserMedia(constraints);
+                        };
+                    }
+                })();
+                
             } catch {}
         })();
     `;

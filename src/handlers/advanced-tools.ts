@@ -7271,6 +7271,361 @@ export async function handlePlayerApiHook(
 }
 
 
+// ============================================================
+// FORM AUTOMATOR - Auto-fill forms with human-like behavior
+// ============================================================
+
+interface FormAutomatorArgs {
+    action?: 'fill' | 'autoFill' | 'getFields' | 'submit' | 'fillField';
+    formSelector?: string;
+    data?: Record<string, any>;
+    fieldSelector?: string;
+    fieldValue?: string;
+    humanLike?: boolean;
+    clearFields?: boolean;
+    submitAfter?: boolean;
+    submitSelector?: string;
+    waitForNavigation?: boolean;
+    delayBetweenFields?: number;
+}
+
+// Field type detection patterns
+const FIELD_PATTERNS: Record<string, RegExp[]> = {
+    email: [/email/i, /e-mail/i, /mail/i],
+    password: [/password/i, /pass/i, /pwd/i],
+    username: [/username/i, /user/i, /login/i, /uname/i],
+    firstName: [/first.?name/i, /fname/i, /given.?name/i],
+    lastName: [/last.?name/i, /lname/i, /surname/i, /family.?name/i],
+    fullName: [/full.?name/i, /name/i],
+    phone: [/phone/i, /tel/i, /mobile/i, /cell/i],
+    address: [/address/i, /street/i, /addr/i],
+    city: [/city/i, /town/i],
+    state: [/state/i, /province/i, /region/i],
+    zip: [/zip/i, /postal/i, /postcode/i],
+    country: [/country/i, /nation/i],
+    cardNumber: [/card.?number/i, /cc.?num/i, /credit.?card/i],
+    cvv: [/cvv/i, /cvc/i, /security.?code/i],
+    expiry: [/expir/i, /exp.?date/i],
+    search: [/search/i, /query/i, /q/i],
+    message: [/message/i, /comment/i, /feedback/i, /note/i],
+    company: [/company/i, /organization/i, /org/i],
+    website: [/website/i, /url/i, /web/i],
+    age: [/age/i, /birth/i, /dob/i],
+};
+
+// Detect field type from attributes
+function detectFieldType(attributes: { name?: string; id?: string; type?: string; placeholder?: string; label?: string; autocomplete?: string }): string {
+    const { name = '', id = '', type = '', placeholder = '', label = '', autocomplete = '' } = attributes;
+    const combined = `${name} ${id} ${type} ${placeholder} ${label} ${autocomplete}`.toLowerCase();
+    
+    for (const [fieldType, patterns] of Object.entries(FIELD_PATTERNS)) {
+        for (const pattern of patterns) {
+            if (pattern.test(combined)) {
+                return fieldType;
+            }
+        }
+    }
+    
+    return 'unknown';
+}
+
+export async function handleFormAutomator(page: Page, args: FormAutomatorArgs): Promise<any> {
+    const action = args.action || 'fill';
+    const formSelector = args.formSelector || 'form';
+    const humanLike = args.humanLike !== false;
+    const clearFields = args.clearFields !== false;
+    const delayBetweenFields = args.delayBetweenFields || 500;
+    
+    try {
+        // Get form fields
+        const getFormFields = async () => {
+            return await page.evaluate((selector: string) => {
+                const form = document.querySelector(selector);
+                if (!form) return [];
+                
+                const inputs = form.querySelectorAll('input, textarea, select');
+                const fields: any[] = [];
+                
+                inputs.forEach((input: any, index: number) => {
+                    // Find associated label
+                    let label = '';
+                    if (input.id) {
+                        const labelEl = document.querySelector(`label[for="${input.id}"]`);
+                        if (labelEl) label = (labelEl as HTMLElement).textContent?.trim() || '';
+                    }
+                    if (!label) {
+                        const parent = input.closest('label');
+                        if (parent) label = (parent as HTMLElement).textContent?.replace(input.value || '', '').trim() || '';
+                    }
+                    
+                    fields.push({
+                        index,
+                        tagName: input.tagName.toLowerCase(),
+                        type: input.type || 'text',
+                        name: input.name || '',
+                        id: input.id || '',
+                        placeholder: input.placeholder || '',
+                        label,
+                        autocomplete: input.autocomplete || '',
+                        required: input.required,
+                        value: input.value || '',
+                        visible: input.offsetWidth > 0 && input.offsetHeight > 0,
+                        selector: input.id ? `#${input.id}` : 
+                                 input.name ? `[name="${input.name}"]` : 
+                                 `${selector} ${input.tagName.toLowerCase()}:nth-of-type(${index + 1})`
+                    });
+                });
+                
+                return fields;
+            }, formSelector);
+        };
+        
+        // Human-like typing function
+        const humanType = async (selector: string, text: string) => {
+            const element = await page.$(selector);
+            if (!element) throw new Error(`Element not found: ${selector}`);
+            
+            // Focus and clear field
+            await element.click();
+            await page.keyboard.down('Control');
+            await page.keyboard.press('a');
+            await page.keyboard.up('Control');
+            await page.keyboard.press('Backspace');
+            
+            const minDelay = 50;
+            const maxDelay = 150;
+            const errorRate = 0.02;
+            
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                
+                // Random delay between keystrokes
+                const delay = minDelay + Math.random() * (maxDelay - minDelay);
+                await new Promise(r => setTimeout(r, delay));
+                
+                // Simulate occasional typo
+                if (Math.random() < errorRate && i > 0 && i < text.length - 1) {
+                    const wrongChar = String.fromCharCode(char.charCodeAt(0) + (Math.random() > 0.5 ? 1 : -1));
+                    await page.keyboard.type(wrongChar);
+                    await new Promise(r => setTimeout(r, 200));
+                    await page.keyboard.press('Backspace');
+                    await new Promise(r => setTimeout(r, 50 + Math.random() * 50));
+                }
+                
+                await page.keyboard.type(char);
+            }
+        };
+        
+        // Handle different actions
+        switch (action) {
+            case 'getFields': {
+                const fields = await getFormFields();
+                const detectedFields = fields.map(f => ({
+                    ...f,
+                    detectedType: detectFieldType(f)
+                }));
+                return {
+                    success: true,
+                    formFound: fields.length > 0,
+                    totalFields: fields.length,
+                    visibleFields: fields.filter(f => f.visible).length,
+                    fields: detectedFields,
+                    message: `Found ${fields.length} fields in form`
+                };
+            }
+            
+            case 'fillField': {
+                if (!args.fieldSelector || !args.fieldValue) {
+                    throw new Error('fieldSelector and fieldValue are required for fillField action');
+                }
+                
+                if (humanLike) {
+                    await humanType(args.fieldSelector, args.fieldValue);
+                } else {
+                    if (clearFields) {
+                        await page.$eval(args.fieldSelector, (el: any) => el.value = '');
+                    }
+                    await page.type(args.fieldSelector, args.fieldValue);
+                }
+                
+                return {
+                    success: true,
+                    field: args.fieldSelector,
+                    value: args.fieldValue,
+                    message: `Field filled successfully`
+                };
+            }
+            
+            case 'submit': {
+                const submitSelector = args.submitSelector || 'button[type="submit"], input[type="submit"]';
+                const waitForNav = args.waitForNavigation !== false;
+                
+                const submitButton = await page.$(submitSelector);
+                
+                if (waitForNav) {
+                    const navigationPromise = page.waitForNavigation({ timeout: 30000 }).catch(() => null);
+                    
+                    if (submitButton) {
+                        await submitButton.click();
+                    } else {
+                        await page.$eval(formSelector, (f: any) => f.submit());
+                    }
+                    
+                    await navigationPromise;
+                } else {
+                    if (submitButton) {
+                        await submitButton.click();
+                    } else {
+                        await page.$eval(formSelector, (f: any) => f.submit());
+                    }
+                }
+                
+                return {
+                    success: true,
+                    submitted: true,
+                    currentUrl: page.url(),
+                    message: 'Form submitted successfully'
+                };
+            }
+            
+            case 'autoFill': {
+                // Default test data
+                const defaultData: Record<string, string> = {
+                    email: 'test@example.com',
+                    password: 'SecurePass123!',
+                    username: 'testuser',
+                    firstName: 'John',
+                    lastName: 'Doe',
+                    fullName: 'John Doe',
+                    phone: '+1-555-123-4567',
+                    address: '123 Main Street',
+                    city: 'New York',
+                    state: 'NY',
+                    zip: '10001',
+                    country: 'United States',
+                    company: 'Acme Corp',
+                    website: 'https://example.com',
+                    message: 'This is a test message.',
+                    ...args.data
+                };
+                
+                args.data = defaultData;
+                // Fall through to fill action
+            }
+            
+            case 'fill':
+            default: {
+                const data = args.data || {};
+                const fields = await getFormFields();
+                const filledFields: any[] = [];
+                const errors: any[] = [];
+                
+                for (const field of fields) {
+                    if (!field.visible) continue;
+                    
+                    // Detect field type
+                    const fieldType = detectFieldType(field);
+                    
+                    // Find matching data
+                    let value: any = null;
+                    if (data[field.name]) value = data[field.name];
+                    else if (data[field.id]) value = data[field.id];
+                    else if (data[fieldType]) value = data[fieldType];
+                    
+                    if (!value) continue;
+                    
+                    try {
+                        if (field.tagName === 'select') {
+                            await page.select(field.selector, value);
+                        } else if (field.type === 'checkbox') {
+                            const isChecked = await page.$eval(field.selector, (el: any) => el.checked);
+                            if ((value === true || value === 'true' || value === '1') && !isChecked) {
+                                await page.click(field.selector);
+                            } else if ((value === false || value === 'false' || value === '0') && isChecked) {
+                                await page.click(field.selector);
+                            }
+                        } else if (field.type === 'radio') {
+                            const radioSelector = `${field.selector}[value="${value}"]`;
+                            await page.click(radioSelector);
+                        } else {
+                            if (humanLike) {
+                                await humanType(field.selector, String(value));
+                            } else {
+                                if (clearFields) {
+                                    await page.$eval(field.selector, (el: any) => el.value = '');
+                                }
+                                await page.type(field.selector, String(value));
+                            }
+                        }
+                        
+                        filledFields.push({
+                            field: field.name || field.id || field.selector,
+                            type: fieldType,
+                            success: true
+                        });
+                        
+                        // Delay between fields
+                        if (humanLike) {
+                            await new Promise(r => setTimeout(r, delayBetweenFields * (0.5 + Math.random())));
+                        }
+                        
+                    } catch (err: any) {
+                        errors.push({
+                            field: field.name || field.id || field.selector,
+                            error: err.message
+                        });
+                    }
+                }
+                
+                // Submit if requested
+                let submitted = false;
+                if (args.submitAfter) {
+                    try {
+                        const submitSelector = args.submitSelector || 'button[type="submit"], input[type="submit"]';
+                        const submitButton = await page.$(submitSelector);
+                        
+                        if (args.waitForNavigation !== false) {
+                            const navigationPromise = page.waitForNavigation({ timeout: 30000 }).catch(() => null);
+                            if (submitButton) {
+                                await submitButton.click();
+                            } else {
+                                await page.$eval(formSelector, (f: any) => f.submit());
+                            }
+                            await navigationPromise;
+                        } else {
+                            if (submitButton) {
+                                await submitButton.click();
+                            } else {
+                                await page.$eval(formSelector, (f: any) => f.submit());
+                            }
+                        }
+                        submitted = true;
+                    } catch (err: any) {
+                        errors.push({ field: 'submit', error: err.message });
+                    }
+                }
+                
+                return {
+                    success: errors.length === 0,
+                    filledFields,
+                    errors,
+                    submitted,
+                    totalFields: fields.filter(f => f.visible).length,
+                    currentUrl: page.url(),
+                    message: `Filled ${filledFields.length} fields${submitted ? ' and submitted form' : ''}`
+                };
+            }
+        }
+        
+    } catch (error) {
+        return {
+            success: false,
+            message: `Form automator error: ${error instanceof Error ? error.message : String(error)}`
+        };
+    }
+}
+
+
 
 
 

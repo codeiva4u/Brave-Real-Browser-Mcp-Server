@@ -581,8 +581,87 @@ export const STEALTH_SCRIPTS = {
   `,
 
   /**
+   * WebRTC LEAK PREVENTION
+   * Prevents real IP address leakage through WebRTC
+   */
+  webrtcPrevention: `
+    (function() {
+      // Store original RTCPeerConnection
+      const OriginalRTCPeerConnection = window.RTCPeerConnection || window.webkitRTCPeerConnection || window.mozRTCPeerConnection;
+      
+      if (OriginalRTCPeerConnection) {
+        // Create spoofed RTCPeerConnection
+        const SpoofedRTCPeerConnection = function(config, constraints) {
+          // Force TURN-only mode to prevent local IP leak
+          if (config && config.iceServers) {
+            config.iceServers = config.iceServers.map(server => {
+              // Remove STUN servers, keep only TURN
+              if (server.urls) {
+                if (Array.isArray(server.urls)) {
+                  server.urls = server.urls.filter(url => !url.startsWith('stun:'));
+                } else if (typeof server.urls === 'string' && server.urls.startsWith('stun:')) {
+                  return null;
+                }
+              }
+              return server;
+            }).filter(Boolean);
+          }
+          
+          // Add iceTransportPolicy to force relay (TURN only)
+          config = config || {};
+          config.iceTransportPolicy = 'relay';
+          
+          const pc = new OriginalRTCPeerConnection(config, constraints);
+          
+          // Filter ICE candidates to remove local IP addresses
+          const originalAddEventListener = pc.addEventListener.bind(pc);
+          pc.addEventListener = function(type, listener, options) {
+            if (type === 'icecandidate') {
+              const wrappedListener = function(event) {
+                if (event.candidate) {
+                  const candidateStr = event.candidate.candidate;
+                  // Block local/private IP addresses
+                  const privateIPRegex = /((10\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3})|(172\\.(1[6-9]|2[0-9]|3[0-1])\\.\\d{1,3}\\.\\d{1,3})|(192\\.168\\.\\d{1,3}\\.\\d{1,3})|(127\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3})|([a-f0-9:]+:+)+[a-f0-9]+)/gi;
+                  
+                  if (privateIPRegex.test(candidateStr)) {
+                    console.log('[WebRTC-Protection] Blocked local IP candidate');
+                    const fakeEvent = new Event('icecandidate');
+                    fakeEvent.candidate = null;
+                    listener.call(this, fakeEvent);
+                    return;
+                  }
+                }
+                listener.call(this, event);
+              };
+              return originalAddEventListener(type, wrappedListener, options);
+            }
+            return originalAddEventListener(type, listener, options);
+          };
+          
+          return pc;
+        };
+        
+        // Copy static properties
+        SpoofedRTCPeerConnection.prototype = OriginalRTCPeerConnection.prototype;
+        SpoofedRTCPeerConnection.generateCertificate = OriginalRTCPeerConnection.generateCertificate;
+        
+        // Make it look native
+        Object.defineProperty(SpoofedRTCPeerConnection, 'name', { value: 'RTCPeerConnection' });
+        SpoofedRTCPeerConnection.toString = function() { return 'function RTCPeerConnection() { [native code] }'; };
+        
+        // Replace global RTCPeerConnection
+        window.RTCPeerConnection = SpoofedRTCPeerConnection;
+        if (window.webkitRTCPeerConnection) window.webkitRTCPeerConnection = SpoofedRTCPeerConnection;
+        if (window.mozRTCPeerConnection) window.mozRTCPeerConnection = SpoofedRTCPeerConnection;
+        
+        console.log('[WebRTC-Protection] RTCPeerConnection spoofed to prevent IP leaks');
+      }
+    })();
+  `,
+
+  /**
    * Full combined stealth script
-   * ENHANCED: Includes fingerprint randomizer and human behavior simulation
+   * ENHANCED: Includes fingerprint randomizer, human behavior simulation, and WebRTC protection
    */
   get fullStealth(): string {
     return [
@@ -595,9 +674,10 @@ export const STEALTH_SCRIPTS = {
       this.consoleOverride,
       this.iframeOverride,
       this.webglOverride,
-      this.fingerprintRandomizer,  // NEW: Fingerprint randomization
-      this.humanBehavior,           // NEW: Human behavior simulation
+      this.fingerprintRandomizer,  // Fingerprint randomization
+      this.humanBehavior,           // Human behavior simulation
       this.dimensionsOverride,
+      this.webrtcPrevention,        // NEW: WebRTC leak prevention
       this.popupBlocker  // Include popup blocker in stealth scripts
     ].join('\n');
   }

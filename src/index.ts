@@ -127,6 +127,8 @@ import {
   // New JS extraction tools
   handleExecuteJs,
   handlePlayerApiHook,
+  // Form automation
+  handleFormAutomator,
 } from './handlers/advanced-tools.js';
 
 // State for video recording
@@ -362,6 +364,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
       case TOOL_NAMES.PLAYER_API_HOOK:
         if (!page) throw new Error('Browser not initialized. Call browser_init first.');
         return { content: [{ type: 'text', text: JSON.stringify(await handlePlayerApiHook(page, args as any)) }] };
+
+      case TOOL_NAMES.FORM_AUTOMATOR:
+        if (!page) throw new Error('Browser not initialized. Call browser_init first.');
+        return { content: [{ type: 'text', text: JSON.stringify(await handleFormAutomator(page, args as any)) }] };
 
       default:
         throw new Error(`Unknown tool: ${name}`);
