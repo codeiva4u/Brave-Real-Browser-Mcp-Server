@@ -107,6 +107,53 @@ npm run dev
 
 ---
 
+## 🆕 New in v2.33.x - Advanced Stealth & Bot Detection Bypass
+
+### 🛡️ SannySoft Bot Detection - 100% Pass Rate
+
+| Test | Status | Fix Applied |
+|------|--------|-------------|
+| **WebDriver** | ✅ PASSED | Property deletion + hasOwnProperty override |
+| **WebDriver Advanced** | ✅ PASSED | 30+ automation keys cleaned |
+| **Chrome** | ✅ PASSED | window.chrome object present |
+| **Permissions** | ✅ PASSED | Fake Notification API + permissions.query spoof |
+| **Plugins** | ✅ PASSED | Real PluginArray with 7 plugins |
+| **Languages** | ✅ PASSED | Proper language array |
+| **WebGL Vendor/Renderer** | ✅ PASSED | Real GPU info exposed |
+
+### 🔒 Advanced Fingerprinting Protection
+
+| Feature | Description |
+|---------|-------------|
+| **Canvas Fingerprinting** | Noise injection in toDataURL and getImageData |
+| **WebGL Fingerprinting** | GPU vendor/renderer spoofing (Intel, NVIDIA, AMD) |
+| **AudioContext Fingerprinting** | Oscillator frequency + analyzer noise |
+| **Notification API Spoof** | Creates fake Notification with permission='default' |
+| **Permissions API Spoof** | Returns 'prompt' for notifications query |
+
+### 🔄 uBlock Origin Auto-Sync (GitHub Action)
+
+Automatic filter updates every 6 hours:
+- Fetches official uBlock Origin filters
+- Includes EasyList, EasyPrivacy
+- Extracts popup, redirect, scriptlet rules
+- Auto-patches `ublock-custom-filters.txt`
+- Triggers version bump on filter updates
+
+**Workflow:** `.github/workflows/ublock-filter-sync.yml`
+
+### 📊 Visual Test Results
+
+```
+✅ SannySoft Bot Detection - ALL PASSED
+✅ AdBlock Tester Score: 100/100
+✅ CanYouBlockIt - Clean (no ads visible)
+✅ AmIUnique - Not Unique (blends in with real users)
+✅ Window.open Wrapper - Properly intercepted
+```
+
+---
+
 ## 🆕 New in v2.28.1 - Advanced Enhancements
 
 ### 🌐 Advanced Navigation
@@ -270,15 +317,38 @@ brave-real-launcher
                             └── brave-real-browser-mcp-server
 ```
 
+### Core Features
+
 | Feature | Description |
 |---------|-------------|
-| **AdBlocking** | Network-level ad/tracker blocking |
+| **AdBlocking** | Network-level ad/tracker blocking with uBlock Origin filters |
 | **Stealth** | Native function masking (prompt, alert, confirm) |
 | **RedirectBlocking** | Popup, window.open interception, tracking param removal |
-| **ScriptletInjection** | Anti-adblock bypass |
-| **CosmeticFiltering** | Element hiding |
+| **ScriptletInjection** | Anti-adblock bypass with uBlock scriptlets |
+| **CosmeticFiltering** | Element hiding with CSS injection |
 
-> ℹ️ No configuration needed - blocker activates automatically on browser launch.
+### Anti-Detection (50+ Features)
+
+| Category | Features |
+|----------|----------|
+| **Navigator** | WebDriver deletion, hasOwnProperty override, plugins array |
+| **Permissions** | Notification.permission='default', permissions.query='prompt' |
+| **Canvas** | toDataURL noise, getImageData noise injection |
+| **WebGL** | GPU vendor/renderer spoofing (8 GPU configs) |
+| **Audio** | AudioContext oscillator frequency noise |
+| **Dialogs** | Native alert/confirm/prompt wrappers |
+| **Focus** | document.hasFocus() always returns true |
+
+### Auto-Updating Filters
+
+| Source | Update Frequency |
+|--------|------------------|
+| uBlock Origin Official | Every 6 hours (GitHub Action) |
+| EasyList | Every 6 hours |
+| EasyPrivacy | Every 6 hours |
+| Custom Rules | On deploy |
+
+> No configuration needed - blocker activates automatically on browser launch.
 
 ---
 
