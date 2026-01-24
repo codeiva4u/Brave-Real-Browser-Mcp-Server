@@ -117,6 +117,54 @@ export async function injectStealth(page: Page) {
                 }, 'getImageData');
                 
                 // ==========================================
+                // WEBDRIVER FIX (SannySoft Bot Detection)
+                // ==========================================
+                // Must DELETE the property, not just return undefined
+                // lodash _.has() checks property existence, not value
+                try {
+                    delete Object.getPrototypeOf(navigator).webdriver;
+                } catch(e) {}
+                try {
+                    delete navigator.webdriver;
+                } catch(e) {}
+                // Fallback: redefine as non-existent getter that also removes from enumeration
+                Object.defineProperty(navigator, 'webdriver', { 
+                    get: () => undefined, 
+                    configurable: true,
+                    enumerable: false 
+                });
+                // Override hasOwnProperty check for webdriver
+                const origHasOwn = Object.prototype.hasOwnProperty;
+                Object.prototype.hasOwnProperty = function(prop) {
+                    if (this === navigator && prop === 'webdriver') return false;
+                    return origHasOwn.call(this, prop);
+                };
+                
+                // ==========================================
+                // NOTIFICATION PERMISSION FIX (SannySoft Bot Detection)
+                // ==========================================
+                // Spoof Notification.permission to 'default' (matches fresh browser)
+                // SannySoft checks: if (Notification.permission === 'denied' && permissionStatus.state === 'prompt') -> FAIL
+                // If Notification doesn't exist, create a fake one to prevent ReferenceError
+                try {
+                    if (typeof Notification === 'undefined') {
+                        // Create a fake Notification class
+                        window.Notification = function() {};
+                        window.Notification.permission = 'default';
+                        window.Notification.requestPermission = function() {
+                            return Promise.resolve('default');
+                        };
+                    } else {
+                        // Spoof existing Notification.permission
+                        Object.defineProperty(Notification, 'permission', {
+                            get: function() { return 'default'; },
+                            configurable: true,
+                            enumerable: true
+                        });
+                    }
+                } catch(e) {}
+                
+                // ==========================================
                 // WEBGL FINGERPRINTING PROTECTION
                 // ==========================================
                 const getParameterProxyHandler = {
@@ -199,6 +247,48 @@ export async function injectStealth(page: Page) {
                     return originalPushState.apply(this, arguments);
                 };
                 history.pushState = createNativeWrapper(cleanPushState, 'pushState');
+                
+                // ==========================================
+                // PERMISSIONS API SPOOFING (SannySoft fix)
+                // ==========================================
+                // Real browsers return 'prompt' for notifications by default
+                // Puppeteer/automation returns 'granted' which is a detection vector
+                try {
+                    const originalQuery = navigator.permissions.query.bind(navigator.permissions);
+                    
+                    navigator.permissions.query = createNativeWrapper(function(permissionDesc) {
+                        return originalQuery(permissionDesc).then(function(status) {
+                            // For notifications, return 'prompt' instead of 'granted'
+                            // This matches real browser behavior where user hasn't granted permission
+                            const name = permissionDesc && permissionDesc.name;
+                            
+                            if (name === 'notifications') {
+                                // Create a fake PermissionStatus object
+                                return Object.create(status, {
+                                    state: {
+                                        get: function() { return 'prompt'; },
+                                        enumerable: true,
+                                        configurable: true
+                                    },
+                                    // Also override onchange to prevent detection
+                                    onchange: {
+                                        get: function() { return null; },
+                                        set: function() {},
+                                        enumerable: true,
+                                        configurable: true
+                                    }
+                                });
+                            }
+                            
+                            return status;
+                        });
+                    }, 'query');
+                    
+                    // Make permissions object look native
+                    Object.defineProperty(navigator.permissions.query, 'toString', {
+                        value: function() { return 'function query() { [native code] }'; }
+                    });
+                } catch(e) {}
                 
             })();
         `,

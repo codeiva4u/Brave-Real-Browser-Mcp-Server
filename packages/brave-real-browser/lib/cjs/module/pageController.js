@@ -193,8 +193,84 @@ async function pageController({ browser, page, proxy, turnstile, xvfbsession, pi
                 // ========== DOCUMENT FOCUS FIX ==========
                 document.hasFocus = function() { return true; };
                 
-                // ========== WEBDRIVER FIX ==========
-                Object.defineProperty(navigator, 'webdriver', { get: () => undefined, configurable: false });
+                // ========== WEBDRIVER FIX (SannySoft Bot Detection) ==========
+                // Must DELETE the property, not just return undefined
+                // lodash _.has() checks property existence, not value
+                try {
+                    delete Object.getPrototypeOf(navigator).webdriver;
+                } catch(e) {}
+                try {
+                    delete navigator.webdriver;
+                } catch(e) {}
+                // Fallback: redefine as non-existent getter that also removes from enumeration
+                Object.defineProperty(navigator, 'webdriver', { 
+                    get: () => undefined, 
+                    configurable: true,
+                    enumerable: false 
+                });
+                // Override hasOwnProperty check for webdriver
+                const origHasOwn = Object.prototype.hasOwnProperty;
+                Object.prototype.hasOwnProperty = function(prop) {
+                    if (this === navigator && prop === 'webdriver') return false;
+                    return origHasOwn.call(this, prop);
+                };
+                
+                // ========== NOTIFICATION PERMISSION FIX (SannySoft Bot Detection) ==========
+                // Spoof Notification.permission to 'default' (matches fresh browser)
+                // SannySoft checks: if (Notification.permission === 'denied' && permissionStatus.state === 'prompt') -> FAIL
+                // If Notification doesn't exist, create a fake one to prevent ReferenceError
+                try {
+                    if (typeof Notification === 'undefined') {
+                        // Create a fake Notification class
+                        window.Notification = function() {};
+                        window.Notification.permission = 'default';
+                        window.Notification.requestPermission = function() {
+                            return Promise.resolve('default');
+                        };
+                    } else {
+                        // Spoof existing Notification.permission
+                        Object.defineProperty(Notification, 'permission', {
+                            get: function() { return 'default'; },
+                            configurable: true,
+                            enumerable: true
+                        });
+                    }
+                } catch(e) {}
+                
+                // ========== PERMISSIONS API FIX (SannySoft Bot Detection) ==========
+                // Real browsers return 'prompt' for notifications, not 'granted'
+                try {
+                    const originalQuery = navigator.permissions.query.bind(navigator.permissions);
+                    const makeNativeQuery = (fn) => {
+                        Object.defineProperty(fn, 'toString', {
+                            value: function() { return 'function query() { [native code] }'; }
+                        });
+                        Object.defineProperty(fn, 'name', { value: 'query' });
+                        return fn;
+                    };
+                    
+                    navigator.permissions.query = makeNativeQuery(function(permissionDesc) {
+                        return originalQuery(permissionDesc).then(function(status) {
+                            // For notifications, return 'prompt' instead of 'granted' (matches real browser)
+                            if (permissionDesc && permissionDesc.name === 'notifications') {
+                                return Object.create(status, {
+                                    state: {
+                                        get: function() { return 'prompt'; },
+                                        enumerable: true,
+                                        configurable: true
+                                    },
+                                    onchange: {
+                                        get: function() { return null; },
+                                        set: function() {},
+                                        enumerable: true,
+                                        configurable: true
+                                    }
+                                });
+                            }
+                            return status;
+                        });
+                    });
+                } catch(e) {}
                 
                 // ========== NATIVE DIALOGS FIX ==========
                 ['alert', 'confirm', 'prompt'].forEach(function(fnName) {
@@ -429,29 +505,6 @@ async function pageController({ browser, page, proxy, turnstile, xvfbsession, pi
         });
         Object.defineProperty(MouseEvent.prototype, 'screenY', {
             get: function () { return this.clientY + window.screenY; }
-        });
-
-        // ========== PERMISSIONS FIX (for SannySoft "prompt" detection) ==========
-        // Override navigator.permissions.query to return 'granted' instead of 'prompt'
-        const originalQuery = navigator.permissions.query.bind(navigator.permissions);
-        Object.defineProperty(navigator.permissions, 'query', {
-            value: function (permissionDesc) {
-                return originalQuery(permissionDesc).then(function (result) {
-                    // Create a mock result that looks like granted
-                    if (result.state === 'prompt') {
-                        return {
-                            state: 'granted',
-                            onchange: null,
-                            addEventListener: function () { },
-                            removeEventListener: function () { },
-                            dispatchEvent: function () { return true; }
-                        };
-                    }
-                    return result;
-                });
-            },
-            writable: true,
-            configurable: true
         });
 
         // ========== POPUP BLOCKER ==========
