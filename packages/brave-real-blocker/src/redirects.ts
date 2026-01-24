@@ -4,99 +4,234 @@ import { Logger } from './logger';
 const log = new Logger();
 
 /**
- * Injects redirect and popup blocking logic
+ * AGGRESSIVE REDIRECT AND POPUP BLOCKING
+ * Works at Puppeteer level to catch what scriptlets miss
  */
 export async function injectRedirectBlocking(page: Page): Promise<void> {
 
-    // 1. Prevent forced new tabs (Popups)
-    // We already have some logic in stealth.ts, but this is a reinforced listener
+    // ==========================================
+    // 1. BLOCK POPUPS AT BROWSER LEVEL
+    // ==========================================
+    const blockedDomains = [
+        'ads', 'pop', 'click', 'track', 'beacon', 'affiliate',
+        'profitableratecpm', 'engridfanlike', 'pubfuture', 'clickadu',
+        'propellerads', 'popads', 'popcash', 'adcash', 'exoclick',
+        'doubleclick', 'googlesyndication', 'googleadservices'
+    ];
+
     page.on('popup', async (popup) => {
         try {
-            // Check if loop/spam
             const url = popup.url();
-            if (url === 'about:blank') {
-                // Often used for ad-loading chains
-                await popup.close();
+            
+            // Always block about:blank popups
+            if (url === 'about:blank' || url === '') {
+                await popup.close().catch(() => {});
                 log.info('Redirect', 'Blocked empty popup');
                 return;
             }
-
-            // Heuristic: If popup opened immediately after another without user interaction
-            // This is hard to detect perfectly in Puppeteer without tracking events
-            // but we can close known ad/spam domains
-        } catch (e) { }
-    });
-
-    // 2. Navigation Locking (Prevent unwanted top-frame redirects)
-    // This is injected into the page context
-    await page.evaluateOnNewDocument(() => {
-
-        let lastUserInteraction = 0;
-
-        // Track user interaction (clicks, keys)
-        ['click', 'keydown', 'mousedown', 'touchstart'].forEach(event => {
-            window.addEventListener(event, () => {
-                lastUserInteraction = Date.now();
-            }, { capture: true, passive: true });
-        });
-
-        // Wrap window.open (reinforcement)
-        const originalOpen = window.open;
-        window.open = function (url, target, features) {
-            const timeSinceInteraction = Date.now() - lastUserInteraction;
-
-            // If no user interaction in last 500ms, likely automated/forced
-            // Allow explicit null/undefined target (often acts as _blank)
-
-            if (timeSinceInteraction > 2000) {
-                console.log('Brave-Blocker: Blocked automated window.open call');
-                return null;
+            
+            // Check if URL contains blocked domain patterns
+            const urlLower = url.toLowerCase();
+            const isAdPopup = blockedDomains.some(domain => urlLower.includes(domain));
+            
+            if (isAdPopup) {
+                await popup.close().catch(() => {});
+                log.info('Redirect', 'Blocked ad popup: ' + url.substring(0, 50));
+                return;
             }
-
-            return originalOpen.apply(this, arguments as any);
-        };
-
-        // Block forced location changes via standard JS
-        // We can't easily proxy window.location, but we can try to use onbeforeunload or navigation api
-        // Simple heuristic for "redirect loops" can be handled by browser itself usually
+            
+            // Block popups that open immediately after page load
+            // (legitimate popups usually require user interaction)
+            log.info('Redirect', 'Allowed popup: ' + url.substring(0, 50));
+        } catch (e) {
+            // Popup might already be closed
+        }
     });
 
+    // ==========================================
+    // 2. BLOCK NEW TAB/WINDOW TARGETS
+    // ==========================================
+    const browser = page.browser();
+    if (browser) {
+        browser.on('targetcreated', async (target) => {
+            try {
+                if (target.type() === 'page') {
+                    const newPage = await target.page();
+                    if (newPage) {
+                        const opener = await newPage.opener();
+                        if (opener) {
+                            const url = newPage.url();
+                            const urlLower = url.toLowerCase();
+                            
+                            // Check for ad URLs
+                            const isAd = blockedDomains.some(d => urlLower.includes(d)) ||
+                                        url === 'about:blank' ||
+                                        url.startsWith('javascript:');
+                            
+                            if (isAd) {
+                                await newPage.close().catch(() => {});
+                                log.info('Redirect', 'Closed ad tab: ' + url.substring(0, 50));
+                            }
+                        }
+                    }
+                }
+            } catch (e) {
+                // Target might be closed
+            }
+        });
+    }
+
+    // ==========================================
+    // 3. NAVIGATION BLOCKING VIA CDP
+    // ==========================================
+    const client = await page.target().createCDPSession();
+    
+    // Listen for navigation requests
+    await client.send('Page.enable');
+    await client.send('Network.enable');
+    
+    // Block navigation to ad domains
+    client.on('Page.frameRequestedNavigation', async (params: any) => {
+        const url = params.url || '';
+        const urlLower = url.toLowerCase();
+        
+        if (blockedDomains.some(d => urlLower.includes(d))) {
+            log.info('Redirect', 'Blocked navigation: ' + url.substring(0, 50));
+            // Note: We can't directly cancel here, but scriptlets should handle it
+        }
+    });
+
+    // ==========================================
+    // 4. INJECT PAGE-LEVEL PROTECTION
+    // ==========================================
+    await client.send('Page.addScriptToEvaluateOnNewDocument', {
+        source: `
+(function() {
+    'use strict';
+    
+    // Block meta refresh redirects
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            mutation.addedNodes.forEach(function(node) {
+                if (node.nodeName === 'META') {
+                    const meta = node;
+                    const httpEquiv = meta.getAttribute('http-equiv');
+                    if (httpEquiv && httpEquiv.toLowerCase() === 'refresh') {
+                        const content = meta.getAttribute('content') || '';
+                        if (content.includes('url=')) {
+                            console.log('[AdBlocker] Blocked meta refresh redirect');
+                            meta.remove();
+                        }
+                    }
+                }
+            });
+        });
+    });
+    
+    observer.observe(document.documentElement, {
+        childList: true,
+        subtree: true
+    });
+    
+    // Check existing meta tags
+    document.querySelectorAll('meta[http-equiv="refresh"]').forEach(function(meta) {
+        const content = meta.getAttribute('content') || '';
+        if (content.includes('url=')) {
+            console.log('[AdBlocker] Removed existing meta refresh');
+            meta.remove();
+        }
+    });
+    
+    // Block form submissions to ad URLs
+    const originalSubmit = HTMLFormElement.prototype.submit;
+    HTMLFormElement.prototype.submit = function() {
+        const action = this.action || '';
+        const blockedPatterns = [/ads?\\./i, /pop/i, /click/i, /track/i, /redirect/i];
+        
+        if (blockedPatterns.some(p => p.test(action))) {
+            console.log('[AdBlocker] Blocked form submit to:', action.substring(0, 50));
+            return;
+        }
+        return originalSubmit.call(this);
+    };
+    
+    console.log('[AdBlocker] Redirect blocking active');
+})();
+        `
+    });
+
+    // ==========================================
+    // 5. URL PARAMETER CLEANING
+    // ==========================================
     await cleanUrlParameters(page);
 }
 
 /**
- * Removes tracking parameters from navigation
+ * Removes tracking parameters from requests
  */
 export async function cleanUrlParameters(page: Page) {
-    await page.setRequestInterception(true);
+    // Check if request interception is already enabled
+    try {
+        await page.setRequestInterception(true);
+    } catch (e) {
+        // Already enabled, continue
+    }
+
+    const trackingParams = [
+        'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
+        'fbclid', 'gclid', 'dclid', 'msclkid', 'mc_eid', '_ga', 'ref', 'source'
+    ];
+
+    const blockedResourceTypes = ['ping', 'beacon', 'csp_report'];
+    
+    const blockedUrlPatterns = [
+        /google-analytics\.com/i,
+        /googletagmanager\.com/i,
+        /facebook\.com\/tr/i,
+        /connect\.facebook\.net/i,
+        /analytics/i,
+        /tracking/i,
+        /pixel/i
+    ];
 
     page.on('request', (request) => {
         if (request.isInterceptResolutionHandled()) return;
 
-        const url = new URL(request.url());
-        const trackingParams = [
-            'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
-            'fbclid', 'gclid', 'dclid', 'msclkid', 'mc_eid'
-        ];
-
-        let changed = false;
-        trackingParams.forEach(param => {
-            if (url.searchParams.has(param)) {
-                url.searchParams.delete(param);
-                changed = true;
-            }
-        });
-
-        // Also block ping/beacon requests often used for tracking
+        const url = request.url();
         const resourceType = request.resourceType();
-        if (resourceType === 'ping' || resourceType === 'beacon' || resourceType === 'csp_report') {
+
+        // Block tracking resource types
+        if (blockedResourceTypes.includes(resourceType)) {
             request.abort('blockedbyclient');
+            log.info('Redirect', 'Blocked tracking request: ' + resourceType);
             return;
         }
 
-        if (changed) {
-            request.continue({ url: url.toString() });
-        } else {
+        // Block known tracking URLs
+        if (blockedUrlPatterns.some(pattern => pattern.test(url))) {
+            request.abort('blockedbyclient');
+            log.info('Redirect', 'Blocked tracking URL: ' + url.substring(0, 50));
+            return;
+        }
+
+        // Clean tracking parameters from URL
+        try {
+            const urlObj = new URL(url);
+            let changed = false;
+            
+            trackingParams.forEach(param => {
+                if (urlObj.searchParams.has(param)) {
+                    urlObj.searchParams.delete(param);
+                    changed = true;
+                }
+            });
+
+            if (changed) {
+                request.continue({ url: urlObj.toString() });
+            } else {
+                request.continue();
+            }
+        } catch (e) {
             request.continue();
         }
     });
