@@ -47,6 +47,12 @@ export const DEFAULT_FLAGS: ReadonlyArray<string> = [
     'BraveP3ANotice',
     // Brave-specific: disable product analytics consent
     'BraveAnalyticsConsent',
+    // CRITICAL: Disable Brave fingerprinting randomization to maintain consistent values
+    'BraveFingerprintingV2',
+    'BraveReduceLanguage',
+    'BraveClientHintsRandom',
+    // Disable additional Brave privacy features that interfere with stealth
+    'BraveShieldsV2',
   ].join(','),
 
   // 🔥 CRITICAL: Hide "Brave is being controlled" infobar

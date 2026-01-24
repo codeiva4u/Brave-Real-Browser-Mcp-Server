@@ -73,10 +73,130 @@ export async function pageController({ browser, page, proxy, turnstile, xvfbsess
     const client = await page.target().createCDPSession();
     await client.send('Page.enable');
 
-    // Inject native dialogs fix via CDP - runs before page scripts
+    // Inject ALL critical stealth fixes via CDP - runs BEFORE Brave Shields
     await client.send('Page.addScriptToEvaluateOnNewDocument', {
         source: `
             (function() {
+                // ========== PERMANENT FINGERPRINT FIX ==========
+                // Brave Shields aggressively overrides values, so we need persistent fix
+                const NavigatorProto = Object.getPrototypeOf(navigator);
+                const FIXED_VALUES = { hardwareConcurrency: 8, deviceMemory: 8 };
+                
+                // Create permanent getter that cannot be easily overridden
+                const createPermanentGetter = (proto, prop, value) => {
+                    try {
+                        Object.defineProperty(proto, prop, {
+                            get: function() { return value; },
+                            set: function() { return value; },
+                            enumerable: true,
+                            configurable: true
+                        });
+                    } catch(e) {}
+                };
+                
+                function applyFingerprintFixes() {
+                    createPermanentGetter(NavigatorProto, 'hardwareConcurrency', FIXED_VALUES.hardwareConcurrency);
+                    createPermanentGetter(NavigatorProto, 'deviceMemory', FIXED_VALUES.deviceMemory);
+                }
+                
+                // Apply immediately and with multiple timings
+                applyFingerprintFixes();
+                [0, 1, 5, 10, 20, 50, 100, 200, 500, 1000, 2000].forEach(ms => setTimeout(applyFingerprintFixes, ms));
+                
+                // Continuous watchdog - reapply every 100ms for first 5 seconds
+                let watchdogCount = 0;
+                const watchdog = setInterval(() => {
+                    applyFingerprintFixes();
+                    watchdogCount++;
+                    if (watchdogCount > 50) clearInterval(watchdog); // Stop after 5 seconds
+                }, 100);
+                
+                // Also apply on DOM events
+                document.addEventListener('DOMContentLoaded', applyFingerprintFixes);
+                window.addEventListener('load', applyFingerprintFixes);
+                
+                // ========== CHROME RUNTIME FIX (CRITICAL for CreepJS) ==========
+                const chromeObj = {
+                    app: {
+                        isInstalled: false,
+                        InstallState: { DISABLED: 'disabled', INSTALLED: 'installed', NOT_INSTALLED: 'not_installed' },
+                        RunningState: { CANNOT_RUN: 'cannot_run', READY_TO_RUN: 'ready_to_run', RUNNING: 'running' },
+                        getDetails: function() { return null; },
+                        getIsInstalled: function() { return false; },
+                        runningState: function() { return 'cannot_run'; }
+                    },
+                    runtime: {
+                        OnInstalledReason: { CHROME_UPDATE: 'chrome_update', INSTALL: 'install', SHARED_MODULE_UPDATE: 'shared_module_update', UPDATE: 'update' },
+                        OnRestartRequiredReason: { APP_UPDATE: 'app_update', OS_UPDATE: 'os_update', PERIODIC: 'periodic' },
+                        PlatformArch: { ARM: 'arm', ARM64: 'arm64', MIPS: 'mips', MIPS64: 'mips64', X86_32: 'x86-32', X86_64: 'x86-64' },
+                        PlatformNaclArch: { ARM: 'arm', MIPS: 'mips', MIPS64: 'mips64', X86_32: 'x86-32', X86_64: 'x86-64' },
+                        PlatformOs: { ANDROID: 'android', CROS: 'cros', FUCHSIA: 'fuchsia', LINUX: 'linux', MAC: 'mac', OPENBSD: 'openbsd', WIN: 'win' },
+                        RequestUpdateCheckStatus: { NO_UPDATE: 'no_update', THROTTLED: 'throttled', UPDATE_AVAILABLE: 'update_available' },
+                        connect: function() { return { name: '', sender: undefined, onDisconnect: { addListener: function() {} }, onMessage: { addListener: function() {} }, postMessage: function() {}, disconnect: function() {} }; },
+                        sendMessage: function() {},
+                        id: undefined
+                    },
+                    csi: function() { return { startE: Date.now(), onloadT: Date.now(), pageT: 500 + Math.floor(Math.random() * 500), tran: 15 }; },
+                    loadTimes: function() { return { requestTime: Date.now()/1000-1, startLoadTime: Date.now()/1000-0.5, commitLoadTime: Date.now()/1000-0.3, finishDocumentLoadTime: Date.now()/1000, finishLoadTime: Date.now()/1000, firstPaintTime: Date.now()/1000-0.2, firstPaintAfterLoadTime: 0, navigationType: 'navigate', wasFetchedViaSpdy: false, wasNpnNegotiated: true, npnNegotiatedProtocol: 'h2', wasAlternateProtocolAvailable: false, connectionInfo: 'h2' }; }
+                };
+                const makeNative = (fn, name) => { Object.defineProperty(fn, 'toString', { value: function() { return 'function ' + name + '() { [native code] }'; } }); return fn; };
+                chromeObj.csi = makeNative(chromeObj.csi, 'csi');
+                chromeObj.loadTimes = makeNative(chromeObj.loadTimes, 'loadTimes');
+                
+                // Chrome fix function for watchdog
+                function applyChromeFixes() {
+                    try {
+                        if (!window.chrome) {
+                            Object.defineProperty(window, 'chrome', { value: chromeObj, writable: true, enumerable: true, configurable: true });
+                        } else {
+                            // Force merge - especially runtime which may be undefined or empty object
+                            Object.keys(chromeObj).forEach(key => { 
+                                const currentVal = window.chrome[key];
+                                const needsFix = currentVal === undefined || 
+                                                 currentVal === null || 
+                                                 (typeof currentVal === 'object' && currentVal !== null && Object.keys(currentVal).length === 0);
+                                if (needsFix) {
+                                    try { window.chrome[key] = chromeObj[key]; } catch(e) {}
+                                }
+                            });
+                        }
+                    } catch(e) {}
+                }
+                
+                // Apply chrome fixes with watchdog timing
+                applyChromeFixes();
+                setTimeout(applyChromeFixes, 0);
+                setTimeout(applyChromeFixes, 10);
+                setTimeout(applyChromeFixes, 50);
+                setTimeout(applyChromeFixes, 100);
+                setTimeout(applyChromeFixes, 500);
+                document.addEventListener('DOMContentLoaded', applyChromeFixes);
+                window.addEventListener('load', applyChromeFixes);
+                
+                // ========== CONNECTION API FIX ==========
+                if (!navigator.connection) {
+                    Object.defineProperty(navigator, 'connection', {
+                        get: () => ({
+                            rtt: 50 + Math.floor(Math.random() * 100),
+                            downlink: 1.5 + Math.random() * 8,
+                            effectiveType: '4g',
+                            saveData: false,
+                            type: 'wifi',
+                            addEventListener: function() {},
+                            removeEventListener: function() {},
+                            dispatchEvent: function() { return true; }
+                        }),
+                        configurable: false
+                    });
+                }
+                
+                // ========== DOCUMENT FOCUS FIX ==========
+                document.hasFocus = function() { return true; };
+                
+                // ========== WEBDRIVER FIX ==========
+                Object.defineProperty(navigator, 'webdriver', { get: () => undefined, configurable: false });
+                
+                // ========== NATIVE DIALOGS FIX ==========
                 ['alert', 'confirm', 'prompt'].forEach(function(fnName) {
                     const originalFn = window[fnName];
                     if (!originalFn) return;
@@ -186,6 +306,64 @@ export async function pageController({ browser, page, proxy, turnstile, xvfbsess
                 configurable: true
             });
         }
+        
+        // ========== CHROME RUNTIME FIX (Critical for CreepJS) ==========
+        (function() {
+            const chromeObj = {
+                app: {
+                    isInstalled: false,
+                    InstallState: { DISABLED: 'disabled', INSTALLED: 'installed', NOT_INSTALLED: 'not_installed' },
+                    RunningState: { CANNOT_RUN: 'cannot_run', READY_TO_RUN: 'ready_to_run', RUNNING: 'running' },
+                    getDetails: function() { return null; },
+                    getIsInstalled: function() { return false; },
+                    runningState: function() { return 'cannot_run'; }
+                },
+                runtime: {
+                    OnInstalledReason: { CHROME_UPDATE: 'chrome_update', INSTALL: 'install', SHARED_MODULE_UPDATE: 'shared_module_update', UPDATE: 'update' },
+                    OnRestartRequiredReason: { APP_UPDATE: 'app_update', OS_UPDATE: 'os_update', PERIODIC: 'periodic' },
+                    PlatformArch: { ARM: 'arm', ARM64: 'arm64', MIPS: 'mips', MIPS64: 'mips64', X86_32: 'x86-32', X86_64: 'x86-64' },
+                    PlatformNaclArch: { ARM: 'arm', MIPS: 'mips', MIPS64: 'mips64', X86_32: 'x86-32', X86_64: 'x86-64' },
+                    PlatformOs: { ANDROID: 'android', CROS: 'cros', FUCHSIA: 'fuchsia', LINUX: 'linux', MAC: 'mac', OPENBSD: 'openbsd', WIN: 'win' },
+                    RequestUpdateCheckStatus: { NO_UPDATE: 'no_update', THROTTLED: 'throttled', UPDATE_AVAILABLE: 'update_available' },
+                    connect: function() { return { name: '', sender: undefined, onDisconnect: { addListener: function() {} }, onMessage: { addListener: function() {} }, postMessage: function() {}, disconnect: function() {} }; },
+                    sendMessage: function() {},
+                    id: undefined
+                },
+                csi: function() {
+                    return { startE: Date.now(), onloadT: Date.now(), pageT: Math.floor(Math.random() * 1000) + 500, tran: 15 };
+                },
+                loadTimes: function() {
+                    return {
+                        requestTime: Date.now() / 1000 - Math.random() * 2,
+                        startLoadTime: Date.now() / 1000 - Math.random(),
+                        commitLoadTime: Date.now() / 1000 - Math.random() * 0.5,
+                        finishDocumentLoadTime: Date.now() / 1000,
+                        finishLoadTime: Date.now() / 1000,
+                        firstPaintTime: Date.now() / 1000 - Math.random() * 0.3,
+                        firstPaintAfterLoadTime: 0,
+                        navigationType: 'navigate',
+                        wasFetchedViaSpdy: false,
+                        wasNpnNegotiated: true,
+                        npnNegotiatedProtocol: 'h2',
+                        wasAlternateProtocolAvailable: false,
+                        connectionInfo: 'h2'
+                    };
+                }
+            };
+            
+            const makeNative = (fn, name) => {
+                Object.defineProperty(fn, 'toString', { value: function() { return 'function ' + name + '() { [native code] }'; } });
+                return fn;
+            };
+            chromeObj.csi = makeNative(chromeObj.csi, 'csi');
+            chromeObj.loadTimes = makeNative(chromeObj.loadTimes, 'loadTimes');
+            
+            if (!window.chrome) {
+                Object.defineProperty(window, 'chrome', { value: chromeObj, writable: true, enumerable: true, configurable: true });
+            } else {
+                Object.keys(chromeObj).forEach(key => { if (!window.chrome[key]) window.chrome[key] = chromeObj[key]; });
+            }
+        })();
         
         // ========== NATIVE DIALOGS FIX (MUST BE FIRST) ==========
         // Fix alert, confirm, prompt to pass SannySoft detection

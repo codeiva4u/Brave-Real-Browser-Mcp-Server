@@ -149,14 +149,87 @@ export const STEALTH_SCRIPTS = {
 
   /**
    * Override chrome.runtime to appear as a regular browser
+   * ENHANCED: Full chrome object with runtime, app, csi, loadTimes
+   * Required to pass CreepJS and other advanced bot detectors
    */
   chromeRuntimeOverride: `
-    window.chrome = {
-      runtime: {},
-      loadTimes: function() {},
-      csi: function() {},
-      app: {}
-    };
+    (function() {
+      // Create comprehensive chrome object like a real browser
+      const chromeObj = {
+        app: {
+          isInstalled: false,
+          InstallState: { DISABLED: 'disabled', INSTALLED: 'installed', NOT_INSTALLED: 'not_installed' },
+          RunningState: { CANNOT_RUN: 'cannot_run', READY_TO_RUN: 'ready_to_run', RUNNING: 'running' },
+          getDetails: function() { return null; },
+          getIsInstalled: function() { return false; },
+          runningState: function() { return 'cannot_run'; }
+        },
+        runtime: {
+          OnInstalledReason: { CHROME_UPDATE: 'chrome_update', INSTALL: 'install', SHARED_MODULE_UPDATE: 'shared_module_update', UPDATE: 'update' },
+          OnRestartRequiredReason: { APP_UPDATE: 'app_update', OS_UPDATE: 'os_update', PERIODIC: 'periodic' },
+          PlatformArch: { ARM: 'arm', ARM64: 'arm64', MIPS: 'mips', MIPS64: 'mips64', X86_32: 'x86-32', X86_64: 'x86-64' },
+          PlatformNaclArch: { ARM: 'arm', MIPS: 'mips', MIPS64: 'mips64', X86_32: 'x86-32', X86_64: 'x86-64' },
+          PlatformOs: { ANDROID: 'android', CROS: 'cros', FUCHSIA: 'fuchsia', LINUX: 'linux', MAC: 'mac', OPENBSD: 'openbsd', WIN: 'win' },
+          RequestUpdateCheckStatus: { NO_UPDATE: 'no_update', THROTTLED: 'throttled', UPDATE_AVAILABLE: 'update_available' },
+          connect: function() { return { name: '', sender: undefined, onDisconnect: { addListener: function() {} }, onMessage: { addListener: function() {} }, postMessage: function() {}, disconnect: function() {} }; },
+          sendMessage: function() {},
+          id: undefined
+        },
+        csi: function() {
+          return {
+            startE: Date.now(),
+            onloadT: Date.now(),
+            pageT: Math.floor(Math.random() * 1000) + 500,
+            tran: 15
+          };
+        },
+        loadTimes: function() {
+          return {
+            requestTime: Date.now() / 1000 - Math.random() * 2,
+            startLoadTime: Date.now() / 1000 - Math.random(),
+            commitLoadTime: Date.now() / 1000 - Math.random() * 0.5,
+            finishDocumentLoadTime: Date.now() / 1000,
+            finishLoadTime: Date.now() / 1000,
+            firstPaintTime: Date.now() / 1000 - Math.random() * 0.3,
+            firstPaintAfterLoadTime: 0,
+            navigationType: 'navigate',
+            wasFetchedViaSpdy: false,
+            wasNpnNegotiated: true,
+            npnNegotiatedProtocol: 'h2',
+            wasAlternateProtocolAvailable: false,
+            connectionInfo: 'h2'
+          };
+        }
+      };
+
+      // Make functions look native
+      const makeNative = (fn, name) => {
+        Object.defineProperty(fn, 'toString', {
+          value: function() { return 'function ' + name + '() { [native code] }'; }
+        });
+        return fn;
+      };
+
+      chromeObj.csi = makeNative(chromeObj.csi, 'csi');
+      chromeObj.loadTimes = makeNative(chromeObj.loadTimes, 'loadTimes');
+      
+      // Define chrome on window
+      if (!window.chrome) {
+        Object.defineProperty(window, 'chrome', {
+          value: chromeObj,
+          writable: true,
+          enumerable: true,
+          configurable: true
+        });
+      } else {
+        // Merge with existing chrome object
+        Object.keys(chromeObj).forEach(key => {
+          if (!window.chrome[key]) {
+            window.chrome[key] = chromeObj[key];
+          }
+        });
+      }
+    })();
   `,
 
   /**
@@ -321,22 +394,22 @@ export const STEALTH_SCRIPTS = {
       }
       
       // ============================================
-      // HARDWARE CONCURRENCY RANDOMIZATION
+      // HARDWARE CONCURRENCY - FIXED VALUE
+      // CreepJS detects headless when value is 2 (common in VMs/containers)
+      // Use 8 cores as it's most common for modern desktops
       // ============================================
-      const cores = [2, 4, 6, 8, 12, 16];
-      const randomCores = cores[Math.floor(seededRandom('cores') * cores.length)];
       Object.defineProperty(navigator, 'hardwareConcurrency', {
-        get: () => randomCores,
+        get: () => 8,
         configurable: true
       });
       
       // ============================================
-      // DEVICE MEMORY RANDOMIZATION
+      // DEVICE MEMORY - FIXED VALUE
+      // CreepJS detects headless when value is 0.5 or 2 (low memory)
+      // Use 8 GB as it's most common for modern desktops
       // ============================================
-      const memoryOptions = [2, 4, 8, 16, 32];
-      const randomMemory = memoryOptions[Math.floor(seededRandom('memory') * memoryOptions.length)];
       Object.defineProperty(navigator, 'deviceMemory', {
-        get: () => randomMemory,
+        get: () => 8,
         configurable: true
       });
       
