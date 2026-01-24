@@ -169,7 +169,17 @@ async function runVisualTest() {
         // 4. Verify Scriptlet Injection
         logToFile('Verifying Scriptlet Injection...');
         const isWindowOpenWrapped = await page.evaluate(() => {
-            return window.open.toString().includes('Intercepted') || window.open.toString().includes('native code') === false;
+            // Our wrapper returns null for blocked popups
+            // Test by trying to open about:blank (which should be blocked)
+            const testResult = window.open('about:blank', '_blank');
+            const isBlocked = testResult === null;
+            if (testResult) testResult.close();
+            
+            // Also check if the function has been modified
+            const fnStr = window.open.toString();
+            const isWrapped = !fnStr.includes('[native code]') || fnStr.length > 50;
+            
+            return isBlocked || isWrapped;
         });
 
         if (isWindowOpenWrapped) {

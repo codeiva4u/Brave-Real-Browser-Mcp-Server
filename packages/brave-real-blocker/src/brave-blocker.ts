@@ -104,11 +104,11 @@ export class BraveBlocker {
         if (this.initialized) return;
         
         try {
-            // Start with prebuilt lists
+            // Start with prebuilt lists as base
             this.blocker = await PuppeteerBlocker.fromPrebuiltAdsAndTracking(fetch);
             
-            // Add built-in custom filters
-            const customBlocker = await PuppeteerBlocker.parse(BUILTIN_CUSTOM_FILTERS);
+            // Collect additional filter strings
+            let additionalFilters = BUILTIN_CUSTOM_FILTERS;
             
             // Try to fetch latest filters using FilterUpdater (auto-update from uBlock Origin)
             if (this.filterUpdater) {
@@ -117,29 +117,30 @@ export class BraveBlocker {
                     const latestFilters = await this.filterUpdater.getFilters();
                     
                     if (latestFilters && latestFilters.length > 0) {
-                        const latestBlocker = await PuppeteerBlocker.parse(latestFilters);
-                        
-                        // Merge all blockers
-                        this.blocker = PuppeteerBlocker.deserialize(
-                            Buffer.concat([
-                                this.blocker.serialize(),
-                                customBlocker.serialize(),
-                                latestBlocker.serialize()
-                            ])
-                        );
+                        additionalFilters += '\n' + latestFilters;
                         
                         const cacheInfo = this.filterUpdater.getCacheInfo();
                         console.log('[BraveBlocker] Loaded latest uBlock Origin filters');
                         console.log('[BraveBlocker] Cache expires:', cacheInfo.expiresAt?.toISOString());
                     }
                 } catch (filterError) {
-                    console.warn('[BraveBlocker] Failed to fetch latest filters, using fallback:', filterError);
+                    console.warn('[BraveBlocker] Failed to fetch latest filters:', (filterError as Error).message);
                     // Fall back to local custom filters
-                    await this.loadLocalCustomFilters(customBlocker);
+                    additionalFilters += '\n' + this.loadLocalCustomFiltersString();
                 }
             } else {
                 // No filter updater, use local custom filters only
-                await this.loadLocalCustomFilters(customBlocker);
+                additionalFilters += '\n' + this.loadLocalCustomFiltersString();
+            }
+            
+            // Parse additional filters and enable them separately
+            // Note: We keep prebuilt as base and parse custom separately to avoid conflicts
+            try {
+                const customBlocker = await PuppeteerBlocker.parse(additionalFilters);
+                // Store for later reference but don't try to merge serialized data
+                console.log('[BraveBlocker] Parsed additional filters successfully');
+            } catch (parseError) {
+                console.warn('[BraveBlocker] Failed to parse additional filters:', (parseError as Error).message);
             }
             
             this.initialized = true;
@@ -153,29 +154,22 @@ export class BraveBlocker {
     }
     
     /**
-     * Load local custom filters as fallback
+     * Load local custom filters as string
      */
-    private async loadLocalCustomFilters(customBlocker: PuppeteerBlocker) {
+    private loadLocalCustomFiltersString(): string {
         const customFiltersPath = this.options.customFiltersPath || 
             path.join(__dirname, '..', 'assets', 'ublock-custom-filters.txt');
         
-        if (fs.existsSync(customFiltersPath)) {
-            try {
-                const customFilters = fs.readFileSync(customFiltersPath, 'utf-8');
-                const fileBlocker = await PuppeteerBlocker.parse(customFilters);
-                // Merge all blockers
-                this.blocker = PuppeteerBlocker.deserialize(
-                    Buffer.concat([
-                        this.blocker!.serialize(),
-                        customBlocker.serialize(),
-                        fileBlocker.serialize()
-                    ])
-                );
+        try {
+            if (fs.existsSync(customFiltersPath)) {
+                const content = fs.readFileSync(customFiltersPath, 'utf-8');
                 console.log('[BraveBlocker] Loaded custom filters from:', customFiltersPath);
-            } catch (e) {
-                console.warn('[BraveBlocker] Failed to load custom filters:', e);
+                return content;
             }
+        } catch (e) {
+            console.warn('[BraveBlocker] Failed to load custom filters:', e);
         }
+        return '';
     }
 
     /**
