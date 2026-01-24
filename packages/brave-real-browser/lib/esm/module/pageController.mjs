@@ -131,6 +131,62 @@ export async function pageController({ browser, page, proxy, turnstile, xvfbsess
     });
 
     await page.evaluateOnNewDocument(() => {
+        // ========== HARDWARE CONCURRENCY & DEVICE MEMORY FIX ==========
+        // Must be even number (4, 8, 12, 16)
+        Object.defineProperty(navigator, 'hardwareConcurrency', {
+            get: () => 8,
+            configurable: true
+        });
+        
+        // Device memory should be 4, 8, or 16 GB
+        if ('deviceMemory' in navigator) {
+            Object.defineProperty(navigator, 'deviceMemory', {
+                get: () => 8,
+                configurable: true
+            });
+        }
+        
+        // ========== NOTIFICATION PERMISSION FIX ==========
+        if (typeof Notification !== 'undefined') {
+            Object.defineProperty(Notification, 'permission', {
+                get: () => 'default',
+                configurable: true
+            });
+        }
+        
+        // ========== DOCUMENT FOCUS FIX ==========
+        const originalHasFocus = document.hasFocus.bind(document);
+        document.hasFocus = function() { return true; };
+        
+        // ========== CONNECTION API FIX ==========
+        if (!navigator.connection) {
+            Object.defineProperty(navigator, 'connection', {
+                get: () => ({
+                    rtt: 50 + Math.floor(Math.random() * 100),
+                    downlink: 1.5 + Math.random() * 8,
+                    effectiveType: '4g',
+                    saveData: false,
+                    type: 'wifi',
+                    addEventListener: function() {},
+                    removeEventListener: function() {},
+                    dispatchEvent: function() { return true; }
+                }),
+                configurable: true
+            });
+        }
+        
+        // ========== PERFORMANCE MEMORY FIX ==========
+        if (window.performance && !performance.memory) {
+            Object.defineProperty(performance, 'memory', {
+                get: () => ({
+                    jsHeapSizeLimit: 2172649472,
+                    totalJSHeapSize: 19321856 + Math.floor(Math.random() * 1000000),
+                    usedJSHeapSize: 16781820 + Math.floor(Math.random() * 500000)
+                }),
+                configurable: true
+            });
+        }
+        
         // ========== NATIVE DIALOGS FIX (MUST BE FIRST) ==========
         // Fix alert, confirm, prompt to pass SannySoft detection
         (function () {

@@ -1062,6 +1062,7 @@ export function getComprehensiveStealthScript() {
         ${injectConnectionPoolManagement()}
 
         ${injectCompleteWebdriverElimination()}
+        ${injectAntiHeadlessDetection()}
         ${injectDebugAndMonitoring()}
         
         // Remove common automation indicators
@@ -2918,6 +2919,203 @@ export function injectHardwareSpoofing() {
                 })();
                 
             } catch {}
+        })();
+    `;
+}
+
+// ============================================================
+// ANTI-HEADLESS DETECTION - Fix "like headless" signals
+// ============================================================
+export function injectAntiHeadlessDetection() {
+    return `
+        (function() {
+            try {
+                // ============================================
+                // 1. Fix outerWidth/outerHeight (must match real browser)
+                // ============================================
+                const realInnerWidth = window.innerWidth;
+                const realInnerHeight = window.innerHeight;
+                
+                Object.defineProperty(window, 'outerWidth', {
+                    get: () => realInnerWidth,
+                    configurable: true
+                });
+                Object.defineProperty(window, 'outerHeight', {
+                    get: () => realInnerHeight + 85,
+                    configurable: true
+                });
+                
+                // ============================================
+                // 2. Fix screen dimensions consistency
+                // ============================================
+                const screenWidth = window.screen.width || 1920;
+                const screenHeight = window.screen.height || 1080;
+                
+                Object.defineProperty(window.screen, 'availWidth', {
+                    get: () => screenWidth,
+                    configurable: true
+                });
+                Object.defineProperty(window.screen, 'availHeight', {
+                    get: () => screenHeight - 40,
+                    configurable: true
+                });
+                Object.defineProperty(window.screen, 'availLeft', {
+                    get: () => 0,
+                    configurable: true
+                });
+                Object.defineProperty(window.screen, 'availTop', {
+                    get: () => 0,
+                    configurable: true
+                });
+                
+                // ============================================
+                // 3. Fix screenX/screenY (window position)
+                // ============================================
+                Object.defineProperty(window, 'screenX', {
+                    get: () => Math.floor(Math.random() * 100),
+                    configurable: true
+                });
+                Object.defineProperty(window, 'screenY', {
+                    get: () => Math.floor(Math.random() * 100),
+                    configurable: true
+                });
+                Object.defineProperty(window, 'screenLeft', {
+                    get: () => window.screenX,
+                    configurable: true
+                });
+                Object.defineProperty(window, 'screenTop', {
+                    get: () => window.screenY,
+                    configurable: true
+                });
+                
+                // ============================================
+                // 4. Fix devicePixelRatio
+                // ============================================
+                Object.defineProperty(window, 'devicePixelRatio', {
+                    get: () => 1,
+                    configurable: true
+                });
+                
+                // ============================================
+                // 5. Fix Notification permission
+                // ============================================
+                if (window.Notification) {
+                    Object.defineProperty(Notification, 'permission', {
+                        get: () => 'default',
+                        configurable: true
+                    });
+                }
+                
+                // ============================================
+                // 6. Fix window.chrome.app
+                // ============================================
+                if (window.chrome) {
+                    window.chrome.app = {
+                        isInstalled: false,
+                        InstallState: { DISABLED: 'disabled', INSTALLED: 'installed', NOT_INSTALLED: 'not_installed' },
+                        RunningState: { CANNOT_RUN: 'cannot_run', READY_TO_RUN: 'ready_to_run', RUNNING: 'running' },
+                        getDetails: function() { return null; },
+                        getIsInstalled: function() { return false; },
+                        installState: function(cb) { if (cb) cb('not_installed'); },
+                        runningState: function() { return 'cannot_run'; }
+                    };
+                    
+                    window.chrome.csi = function() {
+                        return { onloadT: Date.now(), startE: Date.now() - Math.random() * 1000, pageT: Math.random() * 1000 + 500, tran: 15 };
+                    };
+                    
+                    window.chrome.loadTimes = function() {
+                        return {
+                            requestTime: Date.now() / 1000 - Math.random(),
+                            startLoadTime: Date.now() / 1000 - Math.random() * 0.5,
+                            commitLoadTime: Date.now() / 1000 - Math.random() * 0.3,
+                            finishDocumentLoadTime: Date.now() / 1000 - Math.random() * 0.1,
+                            finishLoadTime: Date.now() / 1000,
+                            firstPaintTime: Date.now() / 1000 - Math.random() * 0.2,
+                            firstPaintAfterLoadTime: 0,
+                            navigationType: 'Other',
+                            wasFetchedViaSpdy: false,
+                            wasNpnNegotiated: true,
+                            npnNegotiatedProtocol: 'h2',
+                            wasAlternateProtocolAvailable: false,
+                            connectionInfo: 'h2'
+                        };
+                    };
+                }
+                
+                // ============================================
+                // 7. Fix Performance.memory
+                // ============================================
+                if (window.performance) {
+                    Object.defineProperty(performance, 'memory', {
+                        get: () => ({
+                            jsHeapSizeLimit: 2172649472,
+                            totalJSHeapSize: 19321856 + Math.floor(Math.random() * 1000000),
+                            usedJSHeapSize: 16781820 + Math.floor(Math.random() * 500000)
+                        }),
+                        configurable: true
+                    });
+                }
+                
+                // ============================================
+                // 8. Fix PluginArray
+                // ============================================
+                const makePluginArray = () => {
+                    const plugins = [
+                        { name: 'PDF Viewer', filename: 'internal-pdf-viewer', description: 'Portable Document Format' },
+                        { name: 'Chrome PDF Viewer', filename: 'internal-pdf-viewer', description: '' },
+                        { name: 'Chromium PDF Viewer', filename: 'internal-pdf-viewer', description: '' },
+                        { name: 'Microsoft Edge PDF Viewer', filename: 'internal-pdf-viewer', description: '' },
+                        { name: 'WebKit built-in PDF', filename: 'internal-pdf-viewer', description: '' }
+                    ];
+                    
+                    const arr = [];
+                    plugins.forEach(p => {
+                        const plugin = { ...p, length: 2, 0: { type: 'application/pdf' }, 1: { type: 'text/pdf' } };
+                        arr.push(plugin);
+                    });
+                    arr.item = function(i) { return this[i]; };
+                    arr.namedItem = function(n) { return this.find(p => p.name === n); };
+                    arr.refresh = function() {};
+                    return arr;
+                };
+                
+                try {
+                    Object.defineProperty(navigator, 'plugins', { get: () => makePluginArray(), configurable: true });
+                } catch(e) {}
+                
+                // ============================================
+                // 9. Fix connection.rtt
+                // ============================================
+                if (navigator.connection) {
+                    Object.defineProperty(navigator.connection, 'rtt', { get: () => 50 + Math.floor(Math.random() * 100), configurable: true });
+                    Object.defineProperty(navigator.connection, 'downlink', { get: () => 1.5 + Math.random() * 8, configurable: true });
+                    Object.defineProperty(navigator.connection, 'effectiveType', { get: () => '4g', configurable: true });
+                }
+                
+                // ============================================
+                // 10. Fix document.hasFocus
+                // ============================================
+                document.hasFocus = function() { return true; };
+                
+                // ============================================
+                // 11. Fix speechSynthesis voices
+                // ============================================
+                if (window.speechSynthesis) {
+                    const origGetVoices = speechSynthesis.getVoices.bind(speechSynthesis);
+                    speechSynthesis.getVoices = function() {
+                        const voices = origGetVoices();
+                        if (voices.length === 0) {
+                            return [{ default: true, lang: 'en-US', localService: true, name: 'Microsoft David - English (United States)', voiceURI: 'Microsoft David - English (United States)' }];
+                        }
+                        return voices;
+                    };
+                }
+                
+                console.log('[anti-headless] Enhanced anti-headless detection applied');
+            } catch(e) {
+                console.log('[anti-headless] Error:', e.message);
+            }
         })();
     `;
 }
