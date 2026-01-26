@@ -97,7 +97,7 @@ gdtot.cfd,gdtot.pro##+js(nowoif, !drive.google|!download)
 ##a[href*="doubleclick.net"]
 
 ! === AUTO-SYNCED RULES === (DO NOT EDIT BELOW THIS LINE)
-! Last synced: 2026-01-26 12:48:46 UTC
+! Last synced: 2026-01-26 18:36:05 UTC
 ! Source: uBlock Origin official filters
 
 ! Title: Brave Real Browser - Auto-Synced uBlock Filters
