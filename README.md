@@ -16,7 +16,7 @@
       "command": "npx",
       "args": ["brave-real-browser-mcp-server@latest"],
       "env": {
-        "headless": "false"
+        "HEADLESS": "false"
       }
     }
   }
@@ -34,7 +34,7 @@
         "c:\\Users\\Admin\\Desktop\\Workspace-For-Brave-Real-browser-Mcp-Server\\Brave-Real-Browser-Mcp-Server\\dist\\index.js"
       ],
       "env": {
-        "headless": "false"
+        "HEADLESS": "false"
       }
     }
   }
@@ -51,7 +51,7 @@
       "type": "local",
       "command": ["npx", "-y", "brave-real-browser-mcp-server@latest"],
       "environment": {
-        "headless": "false"
+        "HEADLESS": "false"
       },
       "enabled": true
     }
@@ -69,7 +69,7 @@
       "type": "local",
       "command": ["node", "c: path hare "],
       "environment": {
-        "headless": "false"
+        "HEADLESS": "false"
       },
       "enabled": true
     }
