@@ -97,7 +97,7 @@ gdtot.cfd,gdtot.pro##+js(nowoif, !drive.google|!download)
 ##a[href*="doubleclick.net"]
 
 ! === AUTO-SYNCED RULES === (DO NOT EDIT BELOW THIS LINE)
-! Last synced: 2026-01-27 12:51:11 UTC
+! Last synced: 2026-01-27 18:42:19 UTC
 ! Source: uBlock Origin official filters
 
 ! Title: Brave Real Browser - Auto-Synced uBlock Filters
@@ -1184,6 +1184,7 @@ area51.porn##+js(aopr, document.dispatchEvent)
 hentaipulse.com##+js(acs, ExoLoader)
 1fichier.com##+js(nowebrtc)
 1fichier.com##+js(nano-stb, dlw, 40000)
+1fichier.com##+js(nano-stb, ctt(), 1000, 0.001)
 webcheats.com.br##+js(set, can_run_ads, true)
 webcheats.com.br##+js(nostif, test, 0)
 ceesty.com,gestyy.com##+js(set, adsBlockerDetector, noopFunc)
@@ -1814,7 +1815,6 @@ elixx.*##+js(aopw, I833)
 elixx.*##+js(json-prune, urls, urls.0)
 limetorrents.*##+js(aeld, , _0x)
 limetorrents.*##+js(aeld, load, onload)
-limetorrents.*##+js(acs, Object.assign, popunder)
 
 ! --- Window.open Blocking ---
 foxseotools.com##+js(nowoif, !?safelink_redirect=)
