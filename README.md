@@ -96,7 +96,7 @@ npm run dev
 
 | Feature | Description |
 |---------|-------------|
-| **33 MCP Tools** | Complete browser automation toolkit |
+| **28 MCP Tools** | Complete browser automation toolkit |
 | **Unified Server** | MCP + SSE + LSP in one command |
 | **Stealth Mode** | 50+ anti-detection features |
 | **Captcha Solving** | reCAPTCHA, hCaptcha, Turnstile |
@@ -284,7 +284,7 @@ npm run dev
    ... and 24 more tools
 
 🔗 SharedEventBus: Auto-syncing MCP ↔ LSP ↔ SSE
-📋 Total: 33 MCP tools | TypeScript Analyzer Active
+📋 Total: 28 MCP tools | TypeScript Analyzer Active
 ✅ Ready! All protocols unified and auto-synced.
 ```
 
@@ -353,7 +353,7 @@ brave-real-launcher
 ---
 
 
-## 🛠️ All 33 MCP Tools
+## 🛠️ All 28 MCP Tools
 
 ### Browser Management
 | Tool | Description |
@@ -397,7 +397,7 @@ brave-real-launcher
 | `link_harvester` | Harvest links with auto-pagination |
 | `network_recorder` | Record traffic with API interception |
 | `extract_json` | Extract embedded JSON with AES decryption |
-| `search_regex` | Regex search like regex101.com |
+| `search_regex` | Regex search like regex101.com + **inline flags** `(?i)`, `(?m)`, `(?s)`, `(?u)` support |
 
 ### Advanced
 | Tool | Description |
@@ -409,6 +409,7 @@ brave-real-launcher
 | `cookie_manager` | Manage cookies |
 | `file_downloader` | Download files |
 | `execute_js` | Run custom JavaScript |
+| `form_automator` | Auto-fill forms with human-like typing |
 
 ---
 

@@ -791,6 +791,24 @@ export async function handleSearchRegex(
     let processedPattern = args.pattern;
     const originalPattern = args.pattern;
 
+    // ============================================================
+    // INLINE FLAG PREPROCESSING: Convert (?i), (?m), (?s), (?u) to JS flags
+    // JavaScript doesn't support inline flags, so we extract and convert them
+    // Supported: (?i) -> ignoreCase, (?m) -> multiline, (?s) -> dotAll, (?u) -> unicode
+    // ============================================================
+    const inlineFlagMatch = processedPattern.match(/^\(\?([imsu]+)\)/);
+    if (inlineFlagMatch && !isSimpleSearch) {
+        const inlineFlags = inlineFlagMatch[1];
+        // Remove inline flags from pattern
+        processedPattern = processedPattern.replace(/^\(\?[imsu]+\)/, '');
+        // Apply inline flags to flagString
+        if (inlineFlags.includes('i') && !flagString.includes('i')) flagString += 'i';
+        if (inlineFlags.includes('m') && !flagString.includes('m')) flagString += 'm';
+        if (inlineFlags.includes('s') && !flagString.includes('s')) flagString += 's';
+        if (inlineFlags.includes('u') && !flagString.includes('u')) flagString += 'u';
+        tracker.setProgress(5, `🔧 Converted inline flags (?${inlineFlags}) to JS flags`);
+    }
+
     if (isSimpleSearch) {
         // Escape all regex special characters for literal search
         processedPattern = escapeRegex(args.pattern);
@@ -2421,13 +2439,13 @@ export async function handleExtractJson(
 
                         // Build IV list - if autoIV, try extracting from first 16 bytes first
                         const ivsToTry: { iv: Uint8Array; label: string }[] = [];
-                        
+
                         if (params.autoIV && encryptedHex.length >= 32) {
                             // First 32 hex chars = first 16 bytes = IV (hubstream style)
                             const ivHex = encryptedHex.substring(0, 32);
                             ivsToTry.push({ iv: hexToBytes(ivHex), label: 'autoIV (first 16 bytes)' });
                         }
-                        
+
                         // Add manual IV list
                         for (const ivStr of params.ivList) {
                             ivsToTry.push({ iv: new TextEncoder().encode(ivStr), label: ivStr });
@@ -2436,7 +2454,7 @@ export async function handleExtractJson(
                         for (const { iv: ivData, label: ivLabel } of ivsToTry) {
                             try {
                                 const keyData = new TextEncoder().encode(params.key);
-                                
+
                                 // If using autoIV, encrypted data starts after first 32 hex chars (16 bytes)
                                 const isAutoIV = ivLabel.startsWith('autoIV');
                                 const dataHex = isAutoIV ? encryptedHex.substring(32) : encryptedHex;
@@ -2458,7 +2476,7 @@ export async function handleExtractJson(
                                 const sourceMatch = /"source":"([^"]+)"/.exec(decryptedText);
                                 const mp4Match = /"mp4":"([^"]+)"/.exec(decryptedText);
                                 const hlsMatch = /"hls":"([^"]+)"/.exec(decryptedText);
-                                
+
                                 const streamUrl = sourceMatch ? sourceMatch[1].replace(/\\\//g, '/') : null;
                                 const mp4Url = mp4Match ? mp4Match[1].replace(/\\\//g, '/') : null;
                                 const hlsUrl = hlsMatch ? hlsMatch[1].replace(/\\\//g, '/') : null;
@@ -3227,8 +3245,8 @@ export async function handleNetworkRecorder(
                     await request.respond({
                         status: mockConfig.statusCode || 200,
                         contentType: 'application/json',
-                        body: typeof mockConfig.response === 'string' 
-                            ? mockConfig.response 
+                        body: typeof mockConfig.response === 'string'
+                            ? mockConfig.response
                             : JSON.stringify(mockConfig.response)
                     });
                     return;
@@ -3278,9 +3296,9 @@ export async function handleNetworkRecorder(
 
                     // Collect API endpoints
                     if (category === 'api' || resourceType === 'xhr' || resourceType === 'fetch') {
-                        apis.push({ 
-                            url, 
-                            method, 
+                        apis.push({
+                            url,
+                            method,
                             type: resourceType,
                             payload: entry.payload
                         });
@@ -3304,7 +3322,7 @@ export async function handleNetworkRecorder(
             // Cleanup on error
             try {
                 await page.setRequestInterception(false);
-            } catch {}
+            } catch { }
         }
     } else {
         // ============================================================
@@ -3331,14 +3349,14 @@ export async function handleNetworkRecorder(
                 // Collect API endpoints
                 if (category === 'api' || resourceType === 'xhr' || resourceType === 'fetch') {
                     const apiEntry: any = { url, method, type: resourceType };
-                    
+
                     // Capture POST data if enabled
                     if (capturePayloads && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
                         try {
                             apiEntry.payload = response.request()?.postData?.();
-                        } catch {}
+                        } catch { }
                     }
-                    
+
                     apis.push(apiEntry);
                 }
 
@@ -4045,11 +4063,11 @@ export async function handleLinkHarvester(
             const pageNumbers = Array.from(document.querySelectorAll('.pagination a, .page-numbers a, nav a, .pager a'))
                 .map(a => ({
                     num: parseInt(a.textContent || '0', 10),
-                    isActive: a.classList.contains('active') || a.classList.contains('current') || 
-                              a.getAttribute('aria-current') === 'page'
+                    isActive: a.classList.contains('active') || a.classList.contains('current') ||
+                        a.getAttribute('aria-current') === 'page'
                 }))
                 .filter(p => !isNaN(p.num) && p.num > 0);
-            
+
             if (pageNumbers.length > 0) {
                 totalPages = Math.max(...pageNumbers.map(p => p.num));
                 const active = pageNumbers.find(p => p.isActive);
@@ -4152,13 +4170,13 @@ export async function handleLinkHarvester(
     pagesScraped = 1;
     visitedPages.add(page.url());
     lastPagination = firstPage.pagination;
-    
+
     const shouldStop = processLinks(firstPage.links, 1);
 
     // Follow pagination if enabled
     if (followPagination && !shouldStop && firstPage.pagination.nextPage) {
         let nextUrl: string | undefined = firstPage.pagination.nextPage;
-        
+
         while (nextUrl && pagesScraped < maxPages && !(args.maxLinks && processedLinks.length >= args.maxLinks)) {
             // Check if we've already visited this page
             if (visitedPages.has(nextUrl)) {
@@ -4173,11 +4191,11 @@ export async function handleLinkHarvester(
 
             try {
                 // Navigate to next page
-                await page.goto(nextUrl, { 
-                    waitUntil: 'domcontentloaded', 
-                    timeout: 15000 
+                await page.goto(nextUrl, {
+                    waitUntil: 'domcontentloaded',
+                    timeout: 15000
                 });
-                
+
                 // Wait for content to load
                 await new Promise(r => setTimeout(r, delayBetweenPages));
 
@@ -4676,10 +4694,10 @@ export interface CookieManagerArgs {
 export async function handleM3u8Parser(
     page: Page,
     args: M3u8ParserArgs
-): Promise<{ 
-    found: boolean; 
-    streams: any[]; 
-    masterPlaylist?: string; 
+): Promise<{
+    found: boolean;
+    streams: any[];
+    masterPlaylist?: string;
     qualities: string[];
     variants?: { quality: string; bandwidth: number; url: string; resolution?: string }[];
     segments?: { url: string; duration: number; index: number }[];
@@ -4799,7 +4817,7 @@ export async function handleM3u8Parser(
                     const bandwidth = parseInt(match[1], 10);
                     const resolution = match[2] || undefined;
                     let variantUrl = match[3].trim();
-                    
+
                     // Make relative URLs absolute
                     if (!variantUrl.startsWith('http')) {
                         const baseUrl = masterPlaylist.substring(0, masterPlaylist.lastIndexOf('/') + 1);
@@ -4852,7 +4870,7 @@ export async function handleM3u8Parser(
 
                 for (let i = 0; i < lines.length; i++) {
                     const line = lines[i].trim();
-                    
+
                     // Parse duration from #EXTINF
                     if (line.startsWith('#EXTINF:')) {
                         currentDuration = parseFloat(line.replace('#EXTINF:', '').split(',')[0]);
@@ -6319,10 +6337,10 @@ export async function handleStreamExtractor(
     // NEW: AUTO-SELECT BEST QUALITY
     // ============================================================
     let bestQuality: { url: string; format: string; quality: string; source?: string } | undefined;
-    
+
     if (args.autoSelectBest || args.preferredQuality) {
         const preferredQ = args.preferredQuality || 'highest';
-        
+
         if (preferredQ === 'highest') {
             // Sort by quality priority (highest first)
             const sorted = [...directUrls].sort((a, b) => {
@@ -6368,7 +6386,7 @@ export async function handleStreamExtractor(
     if (args.extractSubtitles) {
         const subData = await page.evaluate(() => {
             const subs: { url: string; language?: string; label?: string }[] = [];
-            
+
             // HTML5 track elements
             document.querySelectorAll('track[kind="subtitles"], track[kind="captions"]').forEach(track => {
                 const src = track.getAttribute('src');
@@ -6380,21 +6398,21 @@ export async function handleStreamExtractor(
                     });
                 }
             });
-            
+
             // VTT/SRT links
             document.querySelectorAll('a[href*=".vtt"], a[href*=".srt"], a[href*=".ass"]').forEach(link => {
                 const href = (link as HTMLAnchorElement).href;
                 subs.push({ url: href, label: link.textContent?.trim() || undefined });
             });
-            
+
             // Look in scripts for subtitle URLs
             const html = document.documentElement.innerHTML;
             const vttMatches = html.match(/https?:\/\/[^\s"']+\.vtt[^\s"']*/gi);
             const srtMatches = html.match(/https?:\/\/[^\s"']+\.srt[^\s"']*/gi);
-            
+
             if (vttMatches) vttMatches.forEach(url => subs.push({ url }));
             if (srtMatches) srtMatches.forEach(url => subs.push({ url }));
-            
+
             // Deduplicate
             const seen = new Set<string>();
             return subs.filter(s => {
@@ -6403,7 +6421,7 @@ export async function handleStreamExtractor(
                 return true;
             });
         });
-        
+
         subtitles.push(...subData);
     }
 
@@ -6609,7 +6627,7 @@ export async function handleJsScrape(
 
     // Determine URLs to scrape
     const urlList = args.urls || (args.url ? [args.url] : []);
-    
+
     if (urlList.length === 0) {
         return {
             success: false,
@@ -6628,10 +6646,10 @@ export async function handleJsScrape(
     const concurrency = Math.min(args.concurrency || 3, 10); // Max 10 concurrent
     const continueOnError = args.continueOnError !== false;
     const delayBetween = args.delayBetween || 500;
-    
+
     const results: JsScrapeResult[] = [];
     const browser = page.browser();
-    
+
     if (!browser) {
         return {
             success: false,
@@ -6651,10 +6669,10 @@ export async function handleJsScrape(
         try {
             // Create new page for each URL
             newPage = await browser.newPage();
-            
+
             // Copy settings from original page if needed
             await newPage.setViewport({ width: 1280, height: 720 });
-            
+
             const result = await scrapeSingleUrl(newPage, url, args);
             return result;
         } catch (error) {
@@ -6682,24 +6700,24 @@ export async function handleJsScrape(
     // Process all URLs with concurrency control
     const processBatch = async (): Promise<void> => {
         const promises: Promise<void>[] = [];
-        
+
         while (queue.length > 0 || activeCount > 0) {
             // Start new tasks up to concurrency limit
             while (activeCount < concurrency && queue.length > 0) {
                 const url = queue.shift()!;
                 activeCount++;
-                
+
                 const promise = (async () => {
                     try {
                         // Add delay between starting each scrape
                         if (results.length > 0) {
                             await new Promise(r => setTimeout(r, delayBetween));
                         }
-                        
+
                         const result = await processUrl(url);
                         if (result) {
                             results.push(result);
-                            
+
                             if (!result.success && !continueOnError) {
                                 // Clear queue to stop processing
                                 queue.length = 0;
@@ -6710,19 +6728,19 @@ export async function handleJsScrape(
                         activeCount--;
                     }
                 })();
-                
+
                 promises.push(promise);
             }
-            
+
             // Wait for at least one to complete before continuing
             if (promises.length > 0) {
                 await Promise.race(promises);
             }
-            
+
             // Small delay to prevent tight loop
             await new Promise(r => setTimeout(r, 50));
         }
-        
+
         // Wait for all remaining promises
         await Promise.all(promises);
     };
@@ -6791,9 +6809,9 @@ export async function handleExecuteJs(
         // Auto-detect if code contains await and wrap with async IIFE
         const hasAwait = /\bawait\b/.test(args.code);
         const isAlreadyAsync = /^\s*\(async\s+function|\(\s*async\s*\(|\(async\s*\(\)\s*=>/.test(args.code.trim());
-        
+
         // Wrap code with async IIFE if it contains await but isn't already async
-        const codeToExecute = (hasAwait && !isAlreadyAsync) 
+        const codeToExecute = (hasAwait && !isAlreadyAsync)
             ? `(async () => { ${args.code} })()`
             : args.code;
 
@@ -7317,7 +7335,7 @@ const FIELD_PATTERNS: Record<string, RegExp[]> = {
 function detectFieldType(attributes: { name?: string; id?: string; type?: string; placeholder?: string; label?: string; autocomplete?: string }): string {
     const { name = '', id = '', type = '', placeholder = '', label = '', autocomplete = '' } = attributes;
     const combined = `${name} ${id} ${type} ${placeholder} ${label} ${autocomplete}`.toLowerCase();
-    
+
     for (const [fieldType, patterns] of Object.entries(FIELD_PATTERNS)) {
         for (const pattern of patterns) {
             if (pattern.test(combined)) {
@@ -7325,7 +7343,7 @@ function detectFieldType(attributes: { name?: string; id?: string; type?: string
             }
         }
     }
-    
+
     return 'unknown';
 }
 
@@ -7335,17 +7353,17 @@ export async function handleFormAutomator(page: Page, args: FormAutomatorArgs): 
     const humanLike = args.humanLike !== false;
     const clearFields = args.clearFields !== false;
     const delayBetweenFields = args.delayBetweenFields || 500;
-    
+
     try {
         // Get form fields
         const getFormFields = async () => {
             return await page.evaluate((selector: string) => {
                 const form = document.querySelector(selector);
                 if (!form) return [];
-                
+
                 const inputs = form.querySelectorAll('input, textarea, select');
                 const fields: any[] = [];
-                
+
                 inputs.forEach((input: any, index: number) => {
                     // Find associated label
                     let label = '';
@@ -7357,7 +7375,7 @@ export async function handleFormAutomator(page: Page, args: FormAutomatorArgs): 
                         const parent = input.closest('label');
                         if (parent) label = (parent as HTMLElement).textContent?.replace(input.value || '', '').trim() || '';
                     }
-                    
+
                     fields.push({
                         index,
                         tagName: input.tagName.toLowerCase(),
@@ -7370,39 +7388,39 @@ export async function handleFormAutomator(page: Page, args: FormAutomatorArgs): 
                         required: input.required,
                         value: input.value || '',
                         visible: input.offsetWidth > 0 && input.offsetHeight > 0,
-                        selector: input.id ? `#${input.id}` : 
-                                 input.name ? `[name="${input.name}"]` : 
-                                 `${selector} ${input.tagName.toLowerCase()}:nth-of-type(${index + 1})`
+                        selector: input.id ? `#${input.id}` :
+                            input.name ? `[name="${input.name}"]` :
+                                `${selector} ${input.tagName.toLowerCase()}:nth-of-type(${index + 1})`
                     });
                 });
-                
+
                 return fields;
             }, formSelector);
         };
-        
+
         // Human-like typing function
         const humanType = async (selector: string, text: string) => {
             const element = await page.$(selector);
             if (!element) throw new Error(`Element not found: ${selector}`);
-            
+
             // Focus and clear field
             await element.click();
             await page.keyboard.down('Control');
             await page.keyboard.press('a');
             await page.keyboard.up('Control');
             await page.keyboard.press('Backspace');
-            
+
             const minDelay = 50;
             const maxDelay = 150;
             const errorRate = 0.02;
-            
+
             for (let i = 0; i < text.length; i++) {
                 const char = text[i];
-                
+
                 // Random delay between keystrokes
                 const delay = minDelay + Math.random() * (maxDelay - minDelay);
                 await new Promise(r => setTimeout(r, delay));
-                
+
                 // Simulate occasional typo
                 if (Math.random() < errorRate && i > 0 && i < text.length - 1) {
                     const wrongChar = String.fromCharCode(char.charCodeAt(0) + (Math.random() > 0.5 ? 1 : -1));
@@ -7411,11 +7429,11 @@ export async function handleFormAutomator(page: Page, args: FormAutomatorArgs): 
                     await page.keyboard.press('Backspace');
                     await new Promise(r => setTimeout(r, 50 + Math.random() * 50));
                 }
-                
+
                 await page.keyboard.type(char);
             }
         };
-        
+
         // Handle different actions
         switch (action) {
             case 'getFields': {
@@ -7433,12 +7451,12 @@ export async function handleFormAutomator(page: Page, args: FormAutomatorArgs): 
                     message: `Found ${fields.length} fields in form`
                 };
             }
-            
+
             case 'fillField': {
                 if (!args.fieldSelector || !args.fieldValue) {
                     throw new Error('fieldSelector and fieldValue are required for fillField action');
                 }
-                
+
                 if (humanLike) {
                     await humanType(args.fieldSelector, args.fieldValue);
                 } else {
@@ -7447,7 +7465,7 @@ export async function handleFormAutomator(page: Page, args: FormAutomatorArgs): 
                     }
                     await page.type(args.fieldSelector, args.fieldValue);
                 }
-                
+
                 return {
                     success: true,
                     field: args.fieldSelector,
@@ -7455,22 +7473,22 @@ export async function handleFormAutomator(page: Page, args: FormAutomatorArgs): 
                     message: `Field filled successfully`
                 };
             }
-            
+
             case 'submit': {
                 const submitSelector = args.submitSelector || 'button[type="submit"], input[type="submit"]';
                 const waitForNav = args.waitForNavigation !== false;
-                
+
                 const submitButton = await page.$(submitSelector);
-                
+
                 if (waitForNav) {
                     const navigationPromise = page.waitForNavigation({ timeout: 30000 }).catch(() => null);
-                    
+
                     if (submitButton) {
                         await submitButton.click();
                     } else {
                         await page.$eval(formSelector, (f: any) => f.submit());
                     }
-                    
+
                     await navigationPromise;
                 } else {
                     if (submitButton) {
@@ -7479,7 +7497,7 @@ export async function handleFormAutomator(page: Page, args: FormAutomatorArgs): 
                         await page.$eval(formSelector, (f: any) => f.submit());
                     }
                 }
-                
+
                 return {
                     success: true,
                     submitted: true,
@@ -7487,7 +7505,7 @@ export async function handleFormAutomator(page: Page, args: FormAutomatorArgs): 
                     message: 'Form submitted successfully'
                 };
             }
-            
+
             case 'autoFill': {
                 // Default test data
                 const defaultData: Record<string, string> = {
@@ -7508,32 +7526,32 @@ export async function handleFormAutomator(page: Page, args: FormAutomatorArgs): 
                     message: 'This is a test message.',
                     ...args.data
                 };
-                
+
                 args.data = defaultData;
                 // Fall through to fill action
             }
-            
+
             case 'fill':
             default: {
                 const data = args.data || {};
                 const fields = await getFormFields();
                 const filledFields: any[] = [];
                 const errors: any[] = [];
-                
+
                 for (const field of fields) {
                     if (!field.visible) continue;
-                    
+
                     // Detect field type
                     const fieldType = detectFieldType(field);
-                    
+
                     // Find matching data
                     let value: any = null;
                     if (data[field.name]) value = data[field.name];
                     else if (data[field.id]) value = data[field.id];
                     else if (data[fieldType]) value = data[fieldType];
-                    
+
                     if (!value) continue;
-                    
+
                     try {
                         if (field.tagName === 'select') {
                             await page.select(field.selector, value);
@@ -7557,18 +7575,18 @@ export async function handleFormAutomator(page: Page, args: FormAutomatorArgs): 
                                 await page.type(field.selector, String(value));
                             }
                         }
-                        
+
                         filledFields.push({
                             field: field.name || field.id || field.selector,
                             type: fieldType,
                             success: true
                         });
-                        
+
                         // Delay between fields
                         if (humanLike) {
                             await new Promise(r => setTimeout(r, delayBetweenFields * (0.5 + Math.random())));
                         }
-                        
+
                     } catch (err: any) {
                         errors.push({
                             field: field.name || field.id || field.selector,
@@ -7576,14 +7594,14 @@ export async function handleFormAutomator(page: Page, args: FormAutomatorArgs): 
                         });
                     }
                 }
-                
+
                 // Submit if requested
                 let submitted = false;
                 if (args.submitAfter) {
                     try {
                         const submitSelector = args.submitSelector || 'button[type="submit"], input[type="submit"]';
                         const submitButton = await page.$(submitSelector);
-                        
+
                         if (args.waitForNavigation !== false) {
                             const navigationPromise = page.waitForNavigation({ timeout: 30000 }).catch(() => null);
                             if (submitButton) {
@@ -7604,7 +7622,7 @@ export async function handleFormAutomator(page: Page, args: FormAutomatorArgs): 
                         errors.push({ field: 'submit', error: err.message });
                     }
                 }
-                
+
                 return {
                     success: errors.length === 0,
                     filledFields,
@@ -7616,7 +7634,7 @@ export async function handleFormAutomator(page: Page, args: FormAutomatorArgs): 
                 };
             }
         }
-        
+
     } catch (error) {
         return {
             success: false,
