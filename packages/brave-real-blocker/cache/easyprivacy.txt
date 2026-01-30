@@ -1,9 +1,9 @@
 [Adblock Plus 1.1]
-! Version: 202601301237
+! Version: 202601301837
 ! Title: EasyPrivacy
-! Last modified: 30 Jan 2026 12:37 UTC
+! Last modified: 30 Jan 2026 18:37 UTC
 ! Expires: 4 days (update frequency)
-! Commit: 87933beddf8496ba9b32d562e192f02fd18874ff
+! Commit: 0a5de60a2a8877567f0b0520989e0e5c3968d255
 ! *** easylist:template_header.txt ***
 ! 
 ! Please report any unblocked adverts or problems
@@ -3706,6 +3706,7 @@ omni.soundestlink.com$image
 ||o1ych4jb.com^
 ||ofgreencolumn.com^
 ||omtrdc.net^
+||op-mobile.opera.com^
 ||openfpcdn.io^
 ||oppuz.com^
 ||opti-digital.com^
@@ -5093,6 +5094,7 @@ omni.soundestlink.com$image
 ||leadforensics.com^$third-party
 ||leadid.com^$third-party
 ||leadin.com^$third-party
+||leadinfo.eu^$third-party
 ||leadinfo.net^$third-party
 ||leadintel.io^$third-party
 ||leadintelligence.co.uk^$third-party
