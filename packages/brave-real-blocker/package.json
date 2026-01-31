@@ -1,6 +1,6 @@
 {
   "name": "brave-real-blocker",
-  "version": "1.9.2",
+  "version": "1.9.3",
   "description": "Advanced uBlock Origin management and stealth features for Brave Real Browser",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
