@@ -3,20 +3,19 @@
  * Brave Real Browser - Unified Entry Point
  * 
  * Usage:
- *   node src/index.js mcp        - Start MCP Server (default)
- *   node src/index.js lsp        - Start LSP Server
- *   node src/index.js --help     - Show help
+ *   node src/index.js             - Start both MCP + LSP together (default)
+ *   node src/index.js mcp         - Start MCP Server only
+ *   node src/index.js lsp         - Start LSP Server only (STDIO)
+ *   node src/index.js --help      - Show help
  * 
  * npm scripts:
- *   npm run dev                  - Start MCP server
- *   npm run mcp                  - Start MCP server
- *   npm run lsp                  - Start LSP server
+ *   npm run dev                   - Start MCP + LSP together
+ *   npm run mcp                   - Start MCP server only
+ *   npm run lsp                   - Start LSP server only
  * 
- * For AI Assistants (MCP):
- *   Claude Desktop, Cursor, Copilot, etc.
- * 
- * For IDEs (LSP):
- *   VS Code, Neovim, Sublime Text, etc.
+ * Architecture:
+ *   MCP Server → STDIO transport (for AI agents: Claude, Cursor, Copilot)
+ *   LSP Server → TCP :7777 (for IDEs: VS Code, Neovim)
  */
 
 const { TOOLS, TOOL_DISPLAY, CATEGORIES } = require('./shared/tools.js');
@@ -45,8 +44,9 @@ ${colors.bright}USAGE:${colors.reset}
   node src/index.js [mode] [options]
 
 ${colors.bright}MODES:${colors.reset}
-  ${colors.green}mcp${colors.reset}           Start MCP Server for AI agents (default)
-  ${colors.green}lsp${colors.reset}           Start LSP Server for IDE intelligence
+  ${colors.green}(default)${colors.reset}     Start both MCP + LSP servers together
+  ${colors.green}mcp${colors.reset}           Start MCP Server only (for AI agents)
+  ${colors.green}lsp${colors.reset}           Start LSP Server only (for IDEs)
 
 ${colors.bright}OPTIONS:${colors.reset}
   ${colors.yellow}--help, -h${colors.reset}    Show this help message
@@ -54,23 +54,25 @@ ${colors.bright}OPTIONS:${colors.reset}
   ${colors.yellow}--list${colors.reset}        List all available tools
 
 ${colors.bright}EXAMPLES:${colors.reset}
-  node src/index.js mcp          # Start MCP server
-  node src/index.js lsp          # Start LSP server
+  node src/index.js              # Start MCP + LSP together
+  node src/index.js mcp          # Start MCP server only
+  node src/index.js lsp          # Start LSP server only
   node src/index.js --list       # List all tools
 
 ${colors.bright}NPM SCRIPTS:${colors.reset}
-  npm run dev                    # Start MCP server
-  npm run mcp                    # Start MCP server
-  npm run lsp                    # Start LSP server
+  npm run dev                    # Start MCP + LSP together
+  npm run mcp                    # Start MCP server only
+  npm run lsp                    # Start LSP server only (STDIO)
+
+${colors.bright}ARCHITECTURE:${colors.reset}
+  ${colors.cyan}MCP Server${colors.reset} → STDIO transport → AI Agents (Claude, Cursor, Copilot)
+  ${colors.cyan}LSP Server${colors.reset} → TCP :7777      → IDEs (VS Code, Neovim)
 
 ${colors.bright}TOOL CATEGORIES (${TOOLS.length} tools):${colors.reset}
 ${Object.entries(CATEGORIES).map(([key, cat]) => {
   const count = TOOLS.filter(t => t.category === key).length;
   return `  ${cat.emoji} ${colors.yellow}${cat.name.padEnd(15)}${colors.reset} ${colors.dim}(${count} tools)${colors.reset}`;
 }).join('\n')}
-
-${colors.dim}MCP: For AI assistants (Claude, Cursor, Copilot)
-LSP: For IDE code intelligence (VS Code, Neovim)${colors.reset}
   `);
 }
 
@@ -88,11 +90,43 @@ function listTools() {
     console.log(`${colors.dim}${'─'.repeat(50)}${colors.reset}`);
     
     for (const tool of tools) {
-      const required = tool.inputSchema?.required || [];
       console.log(`  ${tool.emoji} ${colors.yellow}${tool.name.padEnd(25)}${colors.reset} ${colors.dim}${tool.description.substring(0, 40)}${colors.reset}`);
     }
     console.log('');
   }
+}
+
+/**
+ * Start both MCP and LSP servers together
+ */
+async function startBothServers() {
+  console.error('');
+  console.error(`${colors.bright}${colors.cyan}╔════════════════════════════════════════════════════════════╗${colors.reset}`);
+  console.error(`${colors.bright}${colors.cyan}║${colors.reset}  ${colors.bright}${colors.magenta}🦁 Brave Real Browser - Unified Server${colors.reset}                  ${colors.cyan}║${colors.reset}`);
+  console.error(`${colors.bright}${colors.cyan}║${colors.reset}  ${colors.dim}MCP (AI Agents) + LSP (IDE Intelligence)${colors.reset}                 ${colors.cyan}║${colors.reset}`);
+  console.error(`${colors.bright}${colors.cyan}╚════════════════════════════════════════════════════════════╝${colors.reset}`);
+  console.error('');
+
+  // Start LSP Server on TCP first (background)
+  console.error(`${colors.bright}${colors.blue}📡 Starting LSP Server...${colors.reset}`);
+  
+  try {
+    const { startTcpServer, LSP_PORT } = require('./lsp/server.js');
+    const { port } = await startTcpServer();
+    console.error(`${colors.bright}${colors.green}✅ LSP Server running on TCP :${port}${colors.reset}`);
+    console.error(`${colors.dim}   IDEs can connect to: 127.0.0.1:${port}${colors.reset}`);
+  } catch (err) {
+    console.error(`${colors.yellow}⚠️  LSP Server failed: ${err.message}${colors.reset}`);
+    console.error(`${colors.dim}   Continuing with MCP only...${colors.reset}`);
+  }
+
+  console.error('');
+  
+  // Start MCP Server on STDIO (foreground)
+  console.error(`${colors.bright}${colors.blue}🚀 Starting MCP Server...${colors.reset}`);
+  
+  // Import and run MCP server
+  require('./mcp/index.js');
 }
 
 /**
@@ -104,7 +138,7 @@ async function main() {
   // Parse arguments
   const hasHelp = args.includes('--help') || args.includes('-h');
   const hasList = args.includes('--list');
-  const mode = args.find(a => ['mcp', 'lsp'].includes(a.toLowerCase())) || 'mcp';
+  const mode = args.find(a => ['mcp', 'lsp'].includes(a.toLowerCase()));
   
   if (hasHelp) {
     showHelp();
@@ -116,13 +150,16 @@ async function main() {
     process.exit(0);
   }
   
-  // Start appropriate server
-  if (mode.toLowerCase() === 'lsp') {
-    // Start LSP Server
+  // Start appropriate server(s)
+  if (mode?.toLowerCase() === 'lsp') {
+    // Start LSP Server only (STDIO mode)
     require('./lsp/index.js');
-  } else {
-    // Start MCP Server (default)
+  } else if (mode?.toLowerCase() === 'mcp') {
+    // Start MCP Server only
     require('./mcp/index.js');
+  } else {
+    // Default: Start both servers together
+    await startBothServers();
   }
 }
 
@@ -133,6 +170,7 @@ module.exports = {
   CATEGORIES,
   startMCP: () => require('./mcp/index.js'),
   startLSP: () => require('./lsp/index.js'),
+  startBoth: startBothServers,
 };
 
 // Run if called directly

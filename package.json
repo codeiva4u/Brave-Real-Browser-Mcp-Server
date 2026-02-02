@@ -28,10 +28,11 @@
   },
   "scripts": {
     "start": "node src/index.js",
-    "dev": "node src/index.js mcp",
+    "dev": "node src/index.js",
     "mcp": "node src/index.js mcp",
     "mcp:verbose": "node src/index.js mcp --verbose",
     "lsp": "node src/index.js lsp",
+    "lsp:tcp": "node src/lsp/server.js --tcp",
     "list": "node src/index.js --list",
     "build": "echo 'Root package uses pre-built lib/ - no build needed'",
     "build:self": "echo 'Root package uses pre-built lib/ - no build needed'",
