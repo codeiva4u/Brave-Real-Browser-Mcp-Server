@@ -1,6 +1,18 @@
 node_modules
+dist
 test_results*.txt
 *.log
+*.vtt
 .DS_Store
-Thumbs.dbnul
+Thumbs.db
 nul
+.env
+.env.*
+coverage
+.nyc_output
+*.tgz
+
+# Test artifacts
+dhurandhar_*.md
+moviesdrive_*.md
+test_*.md
