@@ -22,6 +22,8 @@
     "node": ">=18.0.0"
   },
   "scripts": {
+    "build": "echo 'Root package uses pre-built lib/ - no build needed'",
+    "build:self": "echo 'Root package uses pre-built lib/ - no build needed'",
     "test": "npm run cjs_test && npm run esm_test",
     "esm_test": "node ./test/esm/test.js",
     "cjs_test": "node ./test/cjs/test.js",
