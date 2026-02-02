@@ -1,6 +1,6 @@
 {
   "name": "brave-real-browser-mcp-server",
-  "version": "2.36.0",
+  "version": "2.37.0",
   "description": "MCP Server for Brave Real Browser - Puppeteer with Brave Browser, Stealth Mode, Ad Blocker, and Turnstile Auto-Solver for undetectable web automation.",
   "main": "lib/cjs/index.js",
   "module": "lib/esm/index.mjs",
@@ -71,7 +71,7 @@
   "license": "ISC",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.25.3",
-    "brave-real-puppeteer-core": "^24.51.0",
+    "brave-real-puppeteer-core": "^24.52.0",
     "ghost-cursor": "^1.4.2",
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
