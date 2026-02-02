@@ -3,9 +3,10 @@
  * Re-exports puppeteer-core with stealth patches applied at install time
  * 
  * Ecosystem Chain:
- *   brave-real-launcher (browser launch + blocker init)
- *       └── brave-real-puppeteer-core (uses launcher + auto-enable blocker)
- *           └── brave-real-browser (top level)
+ *   brave-real-browser-mcp-server (top level)
+ *       └── brave-real-puppeteer-core (you are here)
+ *           └── brave-real-launcher
+ *               └── brave-real-blocker (singleton)
  */
 
 // Re-export everything from puppeteer-core

@@ -1,5 +1,5 @@
 
-import { connect } from 'brave-real-browser';
+import puppeteer from 'puppeteer-core';
 import { log } from '../src/logger.js';
 import assert from 'assert';
 import * as fs from 'fs';
@@ -19,11 +19,12 @@ async function runVisualTest() {
     logToFile('Starting Visual Test for Brave Real Blocker...');
 
     try {
-        const { browser, page } = await connect({
+        // Use puppeteer-core directly for testing
+        const browser = await puppeteer.launch({
             headless: false,
-            args: [],
-            plugins: [StealthPlugin()]  // Enable stealth plugin!
+            args: []
         });
+        const page = await browser.newPage();
 
         logToFile('Browser launched with Blocker enabled');
 

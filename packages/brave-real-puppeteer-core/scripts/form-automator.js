@@ -1,7 +1,7 @@
 /**
  * Form Automator Module
  * Features: Auto-fill forms, human-like typing, field detection, smart form submission
- * Compatible with brave-real-browser ecosystem
+ * Compatible with brave-real-browser-mcp-server ecosystem
  */
 
 // Field type detection patterns

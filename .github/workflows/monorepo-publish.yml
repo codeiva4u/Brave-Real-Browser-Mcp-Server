@@ -54,7 +54,6 @@ jobs:
       launcher_changed: ${{ steps.changes.outputs.launcher }}
       puppeteer_changed: ${{ steps.changes.outputs.puppeteer }}
       blocker_changed: ${{ steps.changes.outputs.blocker }}
-      browser_changed: ${{ steps.changes.outputs.browser }}
       mcp_changed: ${{ steps.changes.outputs.mcp }}
       any_changed: ${{ steps.changes.outputs.any }}
     
@@ -73,7 +72,6 @@ jobs:
             echo "launcher=true" >> $GITHUB_OUTPUT
             echo "puppeteer=true" >> $GITHUB_OUTPUT
             echo "blocker=true" >> $GITHUB_OUTPUT
-            echo "browser=true" >> $GITHUB_OUTPUT
             echo "mcp=true" >> $GITHUB_OUTPUT
             echo "any=true" >> $GITHUB_OUTPUT
             echo "📦 Manual/Schedule trigger - all packages will be processed"
@@ -94,7 +92,6 @@ jobs:
           LAUNCHER_CHANGED=false
           PUPPETEER_CHANGED=false
           BLOCKER_CHANGED=false
-          BROWSER_CHANGED=false
           MCP_CHANGED=false
 
           if echo "$CHANGED_FILES" | grep -q "^packages/brave-real-launcher/"; then
@@ -110,11 +107,6 @@ jobs:
           if echo "$CHANGED_FILES" | grep -q "^packages/brave-real-blocker/"; then
             BLOCKER_CHANGED=true
             echo "📦 blocker changed"
-          fi
-
-          if echo "$CHANGED_FILES" | grep -q "^packages/brave-real-browser/"; then
-            BROWSER_CHANGED=true
-            echo "📦 browser changed"
           fi
 
           if echo "$CHANGED_FILES" | grep -qE "^src/|^package\.json$|^tsconfig\.json$"; then
@@ -148,14 +140,13 @@ jobs:
           fi
 
           ANY_CHANGED=false
-          if [ "$LAUNCHER_CHANGED" = "true" ] || [ "$PUPPETEER_CHANGED" = "true" ] || [ "$BLOCKER_CHANGED" = "true" ] || [ "$BROWSER_CHANGED" = "true" ] || [ "$MCP_CHANGED" = "true" ]; then
+          if [ "$LAUNCHER_CHANGED" = "true" ] || [ "$PUPPETEER_CHANGED" = "true" ] || [ "$BLOCKER_CHANGED" = "true" ] || [ "$MCP_CHANGED" = "true" ]; then
             ANY_CHANGED=true
           fi
 
           echo "launcher=$LAUNCHER_CHANGED" >> $GITHUB_OUTPUT
           echo "puppeteer=$PUPPETEER_CHANGED" >> $GITHUB_OUTPUT
           echo "blocker=$BLOCKER_CHANGED" >> $GITHUB_OUTPUT
-          echo "browser=$BROWSER_CHANGED" >> $GITHUB_OUTPUT
           echo "mcp=$MCP_CHANGED" >> $GITHUB_OUTPUT
           echo "any=$ANY_CHANGED" >> $GITHUB_OUTPUT
 

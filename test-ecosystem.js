@@ -2,9 +2,10 @@
  * Ecosystem Chain Test
  * 
  * Test करता है कि:
- * 1. brave-real-browser (Top Level) से connect होता है
- * 2. brave-real-launcher browser launch करता है
- * 3. brave-real-blocker auto-enable होता है सभी pages पर
+ * 1. brave-real-browser-mcp-server (Top Level) से connect होता है
+ * 2. brave-real-puppeteer-core uses brave-real-launcher
+ * 3. brave-real-launcher uses brave-real-blocker
+ * 4. brave-real-blocker auto-enable होता है सभी pages पर
  */
 
 const { connect } = require('./lib/cjs/index.js');
@@ -12,11 +13,11 @@ const { connect } = require('./lib/cjs/index.js');
 async function testEcosystem() {
     console.log('='.repeat(60));
     console.log('ECOSYSTEM CHAIN TEST');
-    console.log('brave-real-browser -> brave-real-launcher -> brave-real-blocker');
+    console.log('mcp-server -> puppeteer-core -> launcher -> blocker');
     console.log('='.repeat(60));
     
     try {
-        console.log('\n[1] Connecting via brave-real-browser...');
+        console.log('\n[1] Connecting via brave-real-browser-mcp-server...');
         const { browser, page, blocker } = await connect({
             headless: false,
             args: ['--no-sandbox']
