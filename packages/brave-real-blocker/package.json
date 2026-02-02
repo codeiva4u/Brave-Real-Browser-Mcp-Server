@@ -1,6 +1,6 @@
 {
   "name": "brave-real-blocker",
-  "version": "1.9.5",
+  "version": "1.9.6",
   "description": "Advanced uBlock Origin management and stealth features for Brave Real Browser",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -63,7 +63,7 @@
     "@types/adm-zip": "^0.5.5",
     "@types/fs-extra": "^11.0.4",
     "@types/node": "^20.0.0",
-    "brave-real-puppeteer-core": "^24.48.5",
+    "brave-real-puppeteer-core": "^24.48.6",
     "mocha": "^10.4.0",
     "puppeteer-core": "^24.35.0",
     "sinon": "^17.0.1",
