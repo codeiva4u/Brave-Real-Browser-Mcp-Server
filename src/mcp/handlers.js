@@ -1028,8 +1028,83 @@ const handlers = {
   }
 };
 
+// ═══════════════════════════════════════════════════════════════
+// 🤖 AI-POWERED CORE INTEGRATION
+// All tools automatically get AI features (auto-healing, smart find)
+// ═══════════════════════════════════════════════════════════════
+
+let aiCore = null;
+
 /**
- * Execute a tool by name
+ * Get or initialize AI Core (lazy loading)
+ */
+function getAICore() {
+  if (!aiCore) {
+    try {
+      const ai = require('../ai');
+      aiCore = ai.aiCore;
+      aiCore.configure({ logLevel: 'info', enableAutoHeal: true });
+      console.error('🤖 [AI] AI Core initialized - all tools now AI-enhanced');
+    } catch (e) {
+      console.error('⚠️ [AI] AI Core not available:', e.message);
+      return null;
+    }
+  }
+  return aiCore;
+}
+
+/**
+ * AI-Enhanced selector operation
+ * Automatically heals broken selectors
+ */
+async function aiEnhancedSelector(page, selector, operation, options = {}) {
+  const ai = getAICore();
+  
+  // Try original selector first
+  try {
+    const element = await page.$(selector);
+    if (element) {
+      return { element, selector, healed: false };
+    }
+  } catch (e) {
+    // Selector failed
+  }
+  
+  // If AI available, try to heal
+  if (ai && ai.config.enableAutoHeal) {
+    console.error(`🩹 [AI] Selector "${selector}" not found, attempting heal...`);
+    
+    try {
+      const alternatives = await ai.selectorHealer.heal(page, selector, {
+        maxAlternatives: 3
+      });
+      
+      for (const alt of alternatives) {
+        try {
+          const element = await page.$(alt.selector);
+          if (element) {
+            console.error(`✅ [AI] Healed: "${selector}" → "${alt.selector}" (${Math.round(alt.confidence * 100)}% confidence)`);
+            return { element, selector: alt.selector, healed: true, originalSelector: selector };
+          }
+        } catch (e) {
+          continue;
+        }
+      }
+    } catch (e) {
+      console.error(`⚠️ [AI] Heal failed:`, e.message);
+    }
+  }
+  
+  return { element: null, selector, healed: false };
+}
+
+/**
+ * Execute a tool by name - NOW WITH AI INTEGRATION
+ * 
+ * AI Features automatically applied:
+ * - Auto-healing: If selector fails, AI tries to find alternatives
+ * - Smart retry: Failed operations are retried with AI assistance
+ * - All 28 tools benefit from AI without any changes
  */
 async function executeTool(name, params = {}) {
   const handler = handlers[name];
@@ -1039,11 +1114,98 @@ async function executeTool(name, params = {}) {
     return { success: false, error: `Unknown tool: ${name}` };
   }
   
+  // Initialize AI Core (lazy)
+  getAICore();
+  
+  const startTime = Date.now();
+  
   try {
-    return await handler(params);
+    // Execute the handler
+    const result = await handler(params);
+    
+    // If successful, return with AI metadata
+    if (result.success) {
+      return {
+        ...result,
+        _ai: { 
+          enabled: !!aiCore, 
+          healed: false,
+          duration: Date.now() - startTime 
+        }
+      };
+    }
+    
+    // If failed with "not found" error and has selector, try AI healing
+    if (result.error?.includes('not found') && params.selector && aiCore) {
+      notifyProgress(name, 'progress', '🤖 AI attempting recovery...');
+      
+      const { page } = getState();
+      if (page) {
+        const healed = await aiEnhancedSelector(page, params.selector, name);
+        
+        if (healed.element) {
+          // Retry with healed selector
+          const retryParams = { ...params, selector: healed.selector };
+          const retryResult = await handler(retryParams);
+          
+          return {
+            ...retryResult,
+            _ai: {
+              enabled: true,
+              healed: true,
+              originalSelector: params.selector,
+              healedSelector: healed.selector,
+              duration: Date.now() - startTime
+            }
+          };
+        }
+      }
+    }
+    
+    return {
+      ...result,
+      _ai: { enabled: !!aiCore, healed: false, duration: Date.now() - startTime }
+    };
+    
   } catch (error) {
     notifyProgress(name, 'error', error.message);
-    return { success: false, error: error.message };
+    
+    // Try AI recovery for selector-based errors
+    if (error.message?.includes('selector') && params.selector && aiCore) {
+      notifyProgress(name, 'progress', '🤖 AI attempting error recovery...');
+      
+      try {
+        const { page } = getState();
+        if (page) {
+          const healed = await aiEnhancedSelector(page, params.selector, name);
+          
+          if (healed.element) {
+            const retryParams = { ...params, selector: healed.selector };
+            const retryResult = await handler(retryParams);
+            
+            return {
+              ...retryResult,
+              _ai: {
+                enabled: true,
+                healed: true,
+                recoveredFromError: true,
+                originalSelector: params.selector,
+                healedSelector: healed.selector,
+                duration: Date.now() - startTime
+              }
+            };
+          }
+        }
+      } catch (retryError) {
+        // Recovery failed
+      }
+    }
+    
+    return { 
+      success: false, 
+      error: error.message,
+      _ai: { enabled: !!aiCore, healed: false, duration: Date.now() - startTime }
+    };
   }
 }
 
@@ -1071,5 +1233,8 @@ module.exports = {
   requireBrowser,
   setProgressCallback,
   notifyProgress,
-  getHeadlessFromEnv
+  getHeadlessFromEnv,
+  // AI Core exports
+  getAICore,
+  aiEnhancedSelector
 };
