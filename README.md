@@ -1,7 +1,8 @@
 # Brave Real Browser MCP Server
 
-[![CI](https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server/actions/workflows/ci.yml/badge.svg)](https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/brave-real-browser-mcp-server.svg)](https://www.npmjs.com/package/brave-real-browser-mcp-server)
+[![Auto-Update](https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server/actions/workflows/auto-update-deps.yml/badge.svg)](https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server/actions/workflows/auto-update-deps.yml)
+[![Monorepo Publish](https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server/actions/workflows/monorepo-publish.yml/badge.svg)](https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server/actions/workflows/monorepo-publish.yml)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
 [![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://opensource.org/licenses/ISC)
 
@@ -9,7 +10,7 @@
 
 A production-ready MCP (Model Context Protocol) server that combines Puppeteer with Brave Browser for undetectable web automation. Passes all major bot detectors including Cloudflare, DataDome, and reCAPTCHA v3.
 
-## Features
+## Key Features
 
 | Feature | Description |
 |---------|-------------|
@@ -24,17 +25,73 @@ A production-ready MCP (Model Context Protocol) server that combines Puppeteer w
 | Auto-Install | Brave auto-installs if missing |
 | TypeScript Support | Full type definitions included |
 | ESM + CJS | Dual module support |
+| **Auto-Update** | Daily automatic dependency updates |
+| **Auto-Publish** | Automatic NPM publishing on updates |
+| **Monorepo** | npm workspaces with linked packages |
+| **Singleton Blocker** | Single shared blocker instance |
 
-## Ecosystem Chain
+---
+
+## Monorepo Ecosystem
 
 ```
 brave-real-browser-mcp-server (Top Level - MCP Server)
     └── brave-real-puppeteer-core (Stealth patches)
         └── brave-real-launcher (Browser launch)
-            └── brave-real-blocker (Ad/Tracker blocking - Auto-enabled)
+            └── brave-real-blocker (Ad/Tracker blocking - Singleton)
 ```
 
-The blocker is automatically enabled on all pages via the ecosystem chain. No manual setup required.
+### Package Details
+
+| Package | Description | npm |
+|---------|-------------|-----|
+| `brave-real-browser-mcp-server` | MCP Server + Puppeteer integration | [![npm](https://img.shields.io/npm/v/brave-real-browser-mcp-server.svg)](https://www.npmjs.com/package/brave-real-browser-mcp-server) |
+| `brave-real-puppeteer-core` | 50+ stealth patches for Puppeteer/Playwright | [![npm](https://img.shields.io/npm/v/brave-real-puppeteer-core.svg)](https://www.npmjs.com/package/brave-real-puppeteer-core) |
+| `brave-real-launcher` | Brave Browser launcher with auto-detection | [![npm](https://img.shields.io/npm/v/brave-real-launcher.svg)](https://www.npmjs.com/package/brave-real-launcher) |
+| `brave-real-blocker` | uBlock Origin-based ad/tracker blocker | [![npm](https://img.shields.io/npm/v/brave-real-blocker.svg)](https://www.npmjs.com/package/brave-real-blocker) |
+
+---
+
+## Automation & CI/CD
+
+### GitHub Actions Workflows
+
+| Workflow | Schedule | Description |
+|----------|----------|-------------|
+| `auto-update-deps.yml` | Daily 6 AM UTC | Auto-updates all dependencies across all packages |
+| `monorepo-publish.yml` | Daily 6 AM UTC + Push/PR | Version bump + NPM publish for all packages |
+
+### Auto-Update Flow
+
+```
+Daily 6 AM UTC
+      ↓
+Check all packages for outdated dependencies
+      ↓
+┌─────────────────────────────────────────┐
+│  brave-real-blocker                      │
+│  brave-real-launcher                     │
+│  brave-real-puppeteer-core               │
+│  brave-real-browser-mcp-server           │
+└─────────────────────────────────────────┘
+      ↓
+Update found? → Install → Build → Test → Commit → Push
+      ↓
+Trigger NPM Publish Workflow
+      ↓
+All packages published to NPM automatically
+```
+
+### Dependencies Auto-Updated
+
+| Package | Auto-Updated Dependencies |
+|---------|---------------------------|
+| **blocker** | `@cliqz/adblocker-puppeteer`, `cross-fetch`, `fs-extra` |
+| **launcher** | `which`, `escape-string-regexp`, `is-wsl` |
+| **puppeteer-core** | `puppeteer-core`, `playwright-core`, `yargs` |
+| **root** | `ghost-cursor`, `puppeteer-extra`, `puppeteer-extra-plugin-stealth` |
+
+---
 
 ## Installation
 
@@ -46,6 +103,8 @@ For Linux (required for headless mode):
 ```bash
 sudo apt-get install xvfb
 ```
+
+---
 
 ## Quick Start
 
@@ -84,6 +143,8 @@ await page.realClick('#button');
 await browser.close();
 ```
 
+---
+
 ## Connect Options
 
 | Option | Type | Default | Description |
@@ -120,6 +181,8 @@ await browser.close();
 | `port` | `number` | Yes | Proxy port |
 | `username` | `string` | No | Proxy username |
 | `password` | `string` | No | Proxy password |
+
+---
 
 ## Usage Examples
 
@@ -209,26 +272,79 @@ const { browser, page } = await connect({
 });
 ```
 
-## Environment Variables
+### Singleton Blocker Usage
 
-Create a `.env` file in your project root:
+The blocker is a singleton - only one instance is created and shared:
 
-```env
-# Headless mode (true = headless, false = GUI)
-HEADLESS=true
+```javascript
+// From brave-real-blocker package
+import { 
+  getBraveBlockerSingleton, 
+  initBraveBlockerSingleton,
+  isBraveBlockerInitialized 
+} from 'brave-real-blocker/singleton';
+
+// Initialize once at startup
+const blocker = await initBraveBlockerSingleton({
+  enableAdBlocking: true,
+  enableStealth: true,
+});
+
+// Get the same instance anywhere else
+const sameBlocker = getBraveBlockerSingleton();
+console.log(blocker === sameBlocker); // true
 ```
 
-The library automatically reads `.env` files and respects the `HEADLESS` variable.
+---
 
 ## Commands
 
+### Root Level
+
 | Command | Description |
 |---------|-------------|
-| `npm install` | Install dependencies |
+| `npm install` | Install all dependencies with workspace linking |
 | `npm test` | Run all tests (CJS + ESM) |
 | `npm run cjs_test` | Run CommonJS tests only |
 | `npm run esm_test` | Run ESM tests only |
+| `npm run build` | Build root package |
+| `npm run build:all` | Build all workspace packages |
 | `npm run lint` | Run linter |
+
+### Workspace Scripts
+
+| Command | Description |
+|---------|-------------|
+| `node scripts/prepare-publish.js` | Sync dependency versions before publish |
+| `node scripts/restore-workspace.js` | Verify workspace linking |
+| `node scripts/version-bump.js patch` | Increment all versions (patch/minor/major) |
+
+### Package: brave-real-puppeteer-core
+
+| Command | Description |
+|---------|-------------|
+| `npm run patch-puppeteer` | Apply stealth patches to puppeteer-core |
+| `npm run patch-playwright` | Apply stealth patches to playwright-core |
+| `npm run patch-both` | Apply patches to both engines |
+| `npm run setup-puppeteer` | Full puppeteer setup with patches |
+| `npm run test-bot-detector` | Run bot detection tests |
+| `npm run ai-agent` | Run AI agent tests |
+
+### Package: brave-real-launcher
+
+| Command | Description |
+|---------|-------------|
+| `npm run build` | Build the launcher |
+| `npm run test:detection` | Test Brave browser detection |
+
+### Package: brave-real-blocker
+
+| Command | Description |
+|---------|-------------|
+| `npm run build` | Build the blocker |
+| `npm run visual-test` | Run visual blocking tests |
+
+---
 
 ## Testing
 
@@ -249,13 +365,15 @@ All 7 bot detection tests pass:
 
 | Test | Description | Status |
 |------|-------------|--------|
-| DrissionPage Detector | Chinese bot detector | Pass |
-| Sannysoft WebDriver | WebDriver detection | Pass |
-| Cloudflare WAF | Full page challenge | Pass |
-| Cloudflare Turnstile | CAPTCHA widget | Pass |
-| FingerprintJS | Browser fingerprinting | Pass |
-| Datadome | Anti-bot detection | Pass |
-| reCAPTCHA v3 | Google score test | Pass |
+| DrissionPage Detector | Chinese bot detector | ✅ Pass |
+| Sannysoft WebDriver | WebDriver detection | ✅ Pass |
+| Cloudflare WAF | Full page challenge | ✅ Pass |
+| Cloudflare Turnstile | CAPTCHA widget | ✅ Pass |
+| FingerprintJS | Browser fingerprinting | ✅ Pass |
+| Datadome | Anti-bot detection | ✅ Pass |
+| reCAPTCHA v3 | Google score test (0.7+) | ✅ Pass |
+
+---
 
 ## Docker
 
@@ -280,6 +398,59 @@ docker run brave-real-browser-mcp-server npm run esm_test
 - Health check included
 - Headless mode enabled by default
 
+---
+
+## Project Structure
+
+```
+brave-real-browser-mcp-server/
+├── lib/
+│   ├── cjs/                    # CommonJS build
+│   └── esm/                    # ESM build
+├── packages/
+│   ├── brave-real-blocker/     # Ad/Tracker blocker (singleton)
+│   │   ├── src/
+│   │   │   ├── brave-blocker.ts
+│   │   │   ├── singleton.ts    # Singleton pattern
+│   │   │   ├── stealth.ts
+│   │   │   ├── cosmetic.ts
+│   │   │   └── scriptlets.ts
+│   │   └── package.json
+│   ├── brave-real-launcher/    # Browser launcher
+│   │   └── package.json
+│   └── brave-real-puppeteer-core/  # Stealth patches
+│       └── package.json
+├── scripts/
+│   ├── prepare-publish.js      # Sync versions before publish
+│   ├── restore-workspace.js    # Verify workspace
+│   └── version-bump.js         # Version management
+├── .github/
+│   └── workflows/
+│       ├── auto-update-deps.yml    # Daily dependency updates
+│       └── monorepo-publish.yml    # Auto-publish to NPM
+├── test/
+│   ├── cjs/                    # CJS tests
+│   └── esm/                    # ESM tests
+├── Dockerfile
+├── typings.d.ts
+└── package.json                # Root with workspaces
+```
+
+---
+
+## Environment Variables
+
+Create a `.env` file in your project root:
+
+```env
+# Headless mode (true = headless, false = GUI)
+HEADLESS=true
+```
+
+The library automatically reads `.env` files and respects the `HEADLESS` variable.
+
+---
+
 ## Re-exports
 
 Access brave-real-launcher features directly:
@@ -294,6 +465,8 @@ const {
   DEFAULT_FLAGS  // Default browser flags
 } = require('brave-real-browser-mcp-server');
 ```
+
+---
 
 ## TypeScript
 
@@ -314,6 +487,8 @@ const options: Options = {
 
 const { browser, page, blocker }: ConnectResult = await connect(options);
 ```
+
+---
 
 ## FAQ
 
@@ -353,26 +528,15 @@ const { browser, page } = await connect({
 });
 ```
 
-## Project Structure
+### How does the singleton blocker work?
 
-```
-brave-real-browser-mcp-server/
-├── lib/
-│   ├── cjs/           # CommonJS build
-│   └── esm/           # ESM build
-├── packages/
-│   ├── brave-real-blocker/        # Ad/Tracker blocker
-│   ├── brave-real-launcher/       # Browser launcher
-│   └── brave-real-puppeteer-core/ # Puppeteer with patches
-├── test/
-│   ├── cjs/           # CJS tests
-│   └── esm/           # ESM tests
-├── .github/
-│   └── workflows/     # CI/CD workflows
-├── Dockerfile         # Docker configuration
-├── typings.d.ts       # TypeScript definitions
-└── package.json
-```
+The blocker uses a global Symbol-based singleton pattern. No matter how many times you import it, the same instance is shared across the entire Node.js process, preventing duplicate filter loading and saving memory.
+
+### How does npm workspaces linking work?
+
+When packages are listed in the root `package.json` `workspaces` array, npm automatically creates symlinks to local packages instead of downloading from npm registry. This enables seamless local development.
+
+---
 
 ## Requirements
 
@@ -380,17 +544,23 @@ brave-real-browser-mcp-server/
 - Brave Browser (auto-installed if missing)
 - Linux: xvfb package for headless mode
 
+---
+
 ## License
 
 ISC - See [LICENSE](https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server/blob/main/LICENSE.md)
+
+---
 
 ## Credits
 
 - **rebrowser** - Runtime patches
 - **ghost-cursor** - Human-like mouse movements
 - **brave-real-launcher** - Brave Browser launcher
-- **@aspect-dev/adblocker-puppeteer** - Ad blocking engine
+- **@cliqz/adblocker-puppeteer** - Ad blocking engine
 - **uBlock Origin** - Filter lists
+
+---
 
 ## Contributing
 
@@ -400,7 +570,15 @@ ISC - See [LICENSE](https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server/b
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
+---
+
 ## Support
 
 - GitHub Issues: [Report bugs](https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server/issues)
 - Documentation: [README.md](https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server#readme)
+
+---
+
+## Changelog
+
+See [Releases](https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server/releases) for version history and changes.
