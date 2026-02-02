@@ -1,6 +1,6 @@
 {
   "name": "brave-real-launcher",
-  "version": "1.15.9",
+  "version": "1.15.10",
   "description": "Launch Brave Browser with ease from node. Based on chrome-launcher with Brave-specific support.",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -54,7 +54,7 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "brave-real-blocker": "^1.9.9",
+    "brave-real-blocker": "^1.9.10",
     "escape-string-regexp": "^4.0.0",
     "is-wsl": "^2.2.0",
     "which": "^4.0.0"
