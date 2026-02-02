@@ -60,7 +60,7 @@ jobs:
           
       - name: 🚀 Trigger Release
         if: steps.update.outputs.updated == 'true'
-        uses: actions/github-script@v6
+        uses: actions/github-script@v8
         with:
           script: |
             // Trigger the publish workflow
