@@ -22,12 +22,14 @@
     "node": ">=18.0.0"
   },
   "bin": {
-    "brave-mcp": "./dist/index.js"
+    "brave-mcp": "./dist/index.js",
+    "brave-lsp": "./src/lsp/index.js"
   },
   "scripts": {
     "dev": "node src/mcp/index.js",
     "mcp": "node src/mcp/index.js",
     "mcp:verbose": "node src/mcp/index.js --verbose",
+    "lsp": "node src/lsp/index.js",
     "build": "echo 'Root package uses pre-built lib/ - no build needed'",
     "build:self": "echo 'Root package uses pre-built lib/ - no build needed'",
     "test": "npm run cjs_test && npm run esm_test",
@@ -70,6 +72,8 @@
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
     "tree-kill": "^1.2.2",
+    "vscode-languageserver": "^9.0.1",
+    "vscode-languageserver-textdocument": "^1.0.12",
     "xvfb": "^0.4.0"
   },
   "devDependencies": {
