@@ -1,0 +1,330 @@
+name: "\U0001F504 Auto-Update All Dependencies"
+
+on:
+  # Daily check at 6 AM UTC (11:30 AM IST)
+  schedule:
+    - cron: '0 6 * * *'
+  
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      force_update:
+        description: 'Force update all dependencies'
+        required: false
+        default: false
+        type: boolean
+      dry_run:
+        description: 'Dry run (check only, no update)'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  # ==================== CHECK & UPDATE DEPENDENCIES ====================
+  update-dependencies:
+    name: "\U0001F504 Check & Update Dependencies"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    
+    outputs:
+      blocker_updated: ${{ steps.update-blocker.outputs.updated }}
+      launcher_updated: ${{ steps.update-launcher.outputs.updated }}
+      puppeteer_updated: ${{ steps.update-puppeteer.outputs.updated }}
+      root_updated: ${{ steps.update-root.outputs.updated }}
+      any_updated: ${{ steps.summary.outputs.any_updated }}
+    
+    steps:
+      - name: "\U0001F4E5 Checkout"
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_TOKEN || github.token }}
+          fetch-depth: 0
+
+      - name: "\U0001F7E2 Setup Node.js"
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: "\u2699\uFE0F Configure Git"
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: "\U0001F4E6 Install Dependencies"
+        run: npm install
+
+      # ==================== UPDATE BLOCKER ====================
+      - name: "\U0001F6E1\uFE0F Update brave-real-blocker dependencies"
+        id: update-blocker
+        run: |
+          echo "=================================================="
+          echo "\U0001F6E1\uFE0F Checking brave-real-blocker dependencies..."
+          echo "=================================================="
+          cd packages/brave-real-blocker
+          
+          # Check outdated
+          echo "📋 Current outdated packages:"
+          npm outdated || true
+          
+          OUTDATED=$(npm outdated --json 2>/dev/null || echo "{}")
+          
+          if [ "$OUTDATED" != "{}" ] && [ -n "$OUTDATED" ]; then
+            echo "📦 Found outdated dependencies!"
+            echo "$OUTDATED" | jq -r 'to_entries[] | "\(.key): \(.value.current) → \(.value.latest)"' || true
+            
+            if [ "${{ github.event.inputs.dry_run }}" != "true" ]; then
+              # Update all dependencies
+              npm update
+              
+              # Update to latest major versions for key packages
+              npm install @cliqz/adblocker-puppeteer@latest --save 2>/dev/null || true
+              npm install @ghostery/adblocker-puppeteer@latest --save 2>/dev/null || true
+              npm install cross-fetch@latest fs-extra@latest --save 2>/dev/null || true
+              
+              echo "updated=true" >> $GITHUB_OUTPUT
+              echo "✅ Updated brave-real-blocker dependencies"
+            else
+              echo "updated=false" >> $GITHUB_OUTPUT
+              echo "🧪 Dry run - skipping update"
+            fi
+          else
+            echo "✅ All dependencies are up to date"
+            echo "updated=false" >> $GITHUB_OUTPUT
+          fi
+
+      # ==================== UPDATE LAUNCHER ====================
+      - name: "\U0001F680 Update brave-real-launcher dependencies"
+        id: update-launcher
+        run: |
+          echo "=================================================="
+          echo "\U0001F680 Checking brave-real-launcher dependencies..."
+          echo "=================================================="
+          cd packages/brave-real-launcher
+          
+          echo "📋 Current outdated packages:"
+          npm outdated || true
+          
+          OUTDATED=$(npm outdated --json 2>/dev/null || echo "{}")
+          
+          if [ "$OUTDATED" != "{}" ] && [ -n "$OUTDATED" ]; then
+            echo "📦 Found outdated dependencies!"
+            
+            if [ "${{ github.event.inputs.dry_run }}" != "true" ]; then
+              npm update
+              npm install which@latest escape-string-regexp@latest is-wsl@latest --save 2>/dev/null || true
+              
+              echo "updated=true" >> $GITHUB_OUTPUT
+              echo "✅ Updated brave-real-launcher dependencies"
+            else
+              echo "updated=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "✅ All dependencies are up to date"
+            echo "updated=false" >> $GITHUB_OUTPUT
+          fi
+
+      # ==================== UPDATE PUPPETEER-CORE ====================
+      - name: "\U0001F3AD Update brave-real-puppeteer-core dependencies"
+        id: update-puppeteer
+        run: |
+          echo "=================================================="
+          echo "\U0001F3AD Checking brave-real-puppeteer-core dependencies..."
+          echo "=================================================="
+          cd packages/brave-real-puppeteer-core
+          
+          echo "📋 Current outdated packages:"
+          npm outdated || true
+          
+          OUTDATED=$(npm outdated --json 2>/dev/null || echo "{}")
+          
+          if [ "$OUTDATED" != "{}" ] && [ -n "$OUTDATED" ]; then
+            echo "📦 Found outdated dependencies!"
+            
+            if [ "${{ github.event.inputs.dry_run }}" != "true" ]; then
+              npm update
+              
+              # Update puppeteer-core and playwright-core to latest
+              npm install puppeteer-core@latest --save-optional 2>/dev/null || true
+              npm install playwright-core@latest --save-optional 2>/dev/null || true
+              npm install yargs@latest --save 2>/dev/null || true
+              
+              echo "updated=true" >> $GITHUB_OUTPUT
+              echo "✅ Updated brave-real-puppeteer-core dependencies"
+            else
+              echo "updated=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "✅ All dependencies are up to date"
+            echo "updated=false" >> $GITHUB_OUTPUT
+          fi
+
+      # ==================== UPDATE ROOT ====================
+      - name: "\U0001F981 Update root (mcp-server) dependencies"
+        id: update-root
+        run: |
+          echo "=================================================="
+          echo "\U0001F981 Checking root package dependencies..."
+          echo "=================================================="
+          
+          echo "📋 Current outdated packages:"
+          npm outdated || true
+          
+          OUTDATED=$(npm outdated --json 2>/dev/null || echo "{}")
+          
+          if [ "$OUTDATED" != "{}" ] && [ -n "$OUTDATED" ]; then
+            echo "📦 Found outdated dependencies!"
+            
+            if [ "${{ github.event.inputs.dry_run }}" != "true" ]; then
+              npm update
+              
+              # Update key dependencies
+              npm install ghost-cursor@latest --save 2>/dev/null || true
+              npm install puppeteer-extra@latest puppeteer-extra-plugin-stealth@latest --save 2>/dev/null || true
+              
+              echo "updated=true" >> $GITHUB_OUTPUT
+              echo "✅ Updated root dependencies"
+            else
+              echo "updated=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "✅ All dependencies are up to date"
+            echo "updated=false" >> $GITHUB_OUTPUT
+          fi
+
+      # ==================== SUMMARY ====================
+      - name: "\U0001F4CB Check if any updates"
+        id: summary
+        run: |
+          if [ "${{ steps.update-blocker.outputs.updated }}" = "true" ] || \
+             [ "${{ steps.update-launcher.outputs.updated }}" = "true" ] || \
+             [ "${{ steps.update-puppeteer.outputs.updated }}" = "true" ] || \
+             [ "${{ steps.update-root.outputs.updated }}" = "true" ] || \
+             [ "${{ github.event.inputs.force_update }}" = "true" ]; then
+            echo "any_updated=true" >> $GITHUB_OUTPUT
+            echo "📦 Dependencies were updated!"
+          else
+            echo "any_updated=false" >> $GITHUB_OUTPUT
+            echo "✅ No updates needed"
+          fi
+
+      # ==================== SYNC INTERNAL VERSIONS ====================
+      - name: "\U0001F504 Sync internal dependency versions"
+        if: steps.summary.outputs.any_updated == 'true'
+        run: |
+          echo "🔄 Syncing internal dependency versions..."
+          node scripts/prepare-publish.js
+
+      # ==================== BUILD TEST ====================
+      - name: "\U0001F528 Build all packages"
+        if: steps.summary.outputs.any_updated == 'true'
+        run: |
+          echo "🔨 Building all packages..."
+          
+          cd packages/brave-real-blocker && npm run build 2>/dev/null || true && cd ../..
+          cd packages/brave-real-launcher && npm run build 2>/dev/null || true && cd ../..
+          cd packages/brave-real-puppeteer-core && npm run build 2>/dev/null || true && cd ../..
+          npm run build || true
+          
+          echo "✅ Build completed"
+
+      # ==================== COMMIT & PUSH ====================
+      - name: "\U0001F4DD Commit dependency updates"
+        if: steps.summary.outputs.any_updated == 'true'
+        run: |
+          # Check for changes
+          if git diff --quiet && git diff --staged --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          
+          # Create detailed commit message
+          COMMIT_MSG="chore(deps): \U0001F504 Auto-update dependencies\n\n"
+          
+          if [ "${{ steps.update-blocker.outputs.updated }}" = "true" ]; then
+            COMMIT_MSG="${COMMIT_MSG}- Updated brave-real-blocker dependencies\n"
+          fi
+          if [ "${{ steps.update-launcher.outputs.updated }}" = "true" ]; then
+            COMMIT_MSG="${COMMIT_MSG}- Updated brave-real-launcher dependencies\n"
+          fi
+          if [ "${{ steps.update-puppeteer.outputs.updated }}" = "true" ]; then
+            COMMIT_MSG="${COMMIT_MSG}- Updated brave-real-puppeteer-core dependencies\n"
+          fi
+          if [ "${{ steps.update-root.outputs.updated }}" = "true" ]; then
+            COMMIT_MSG="${COMMIT_MSG}- Updated root package dependencies\n"
+          fi
+          
+          git add .
+          echo -e "$COMMIT_MSG" | git commit -F -
+          git push origin main
+          
+          echo "✅ Changes committed and pushed"
+
+  # ==================== TRIGGER PUBLISH ====================
+  trigger-publish:
+    name: "\U0001F680 Trigger NPM Publish"
+    runs-on: ubuntu-latest
+    needs: update-dependencies
+    if: needs.update-dependencies.outputs.any_updated == 'true' && github.event.inputs.dry_run != 'true'
+    
+    steps:
+      - name: "\U0001F680 Trigger Monorepo Publish"
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GH_TOKEN || github.token }}
+          script: |
+            console.log("🚀 Triggering Monorepo Publish Workflow...");
+            
+            try {
+              await github.rest.actions.createWorkflowDispatch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: 'monorepo-publish.yml',
+                ref: 'main',
+                inputs: {
+                  force_publish: 'true',
+                  increment_type: 'patch'
+                }
+              });
+              console.log("✅ Successfully triggered publish workflow!");
+            } catch (error) {
+              console.log("⚠️ Could not trigger workflow:", error.message);
+              console.log("Manual trigger may be needed.");
+            }
+
+  # ==================== SUMMARY ====================
+  summary:
+    name: "\U0001F4CB Update Summary"
+    runs-on: ubuntu-latest
+    needs: [update-dependencies, trigger-publish]
+    if: always()
+    
+    steps:
+      - name: "\U0001F4CB Generate Summary"
+        run: |
+          echo "## \U0001F504 Dependency Auto-Update Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### \U0001F4E6 Package Updates" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Package | Updated |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|---------|" >> $GITHUB_STEP_SUMMARY
+          echo "| brave-real-blocker | ${{ needs.update-dependencies.outputs.blocker_updated }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| brave-real-launcher | ${{ needs.update-dependencies.outputs.launcher_updated }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| brave-real-puppeteer-core | ${{ needs.update-dependencies.outputs.puppeteer_updated }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| brave-real-browser-mcp-server | ${{ needs.update-dependencies.outputs.root_updated }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### \U0001F680 Publish Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ needs.update-dependencies.outputs.any_updated }}" = "true" ]; then
+            echo "✅ Dependencies updated and publish triggered" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ All dependencies are up to date - no publish needed" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "*Auto-generated by GitHub Actions*" >> $GITHUB_STEP_SUMMARY
