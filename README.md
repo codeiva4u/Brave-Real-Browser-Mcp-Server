@@ -14,7 +14,8 @@ A production-ready MCP (Model Context Protocol) server that combines Puppeteer w
 
 | Feature | Description |
 |---------|-------------|
-| MCP Server | Model Context Protocol compatible server |
+| **MCP Server** | Model Context Protocol compatible server with 28 tools |
+| **LSP Server** | Language Server Protocol for IDE code intelligence |
 | Brave Browser | Uses Brave instead of Chromium for better privacy |
 | 50+ Stealth Features | Passes all major bot detectors |
 | Built-in Ad Blocker | uBlock Origin filters with auto-update |
@@ -25,6 +26,7 @@ A production-ready MCP (Model Context Protocol) server that combines Puppeteer w
 | Auto-Install | Brave auto-installs if missing |
 | TypeScript Support | Full type definitions included |
 | ESM + CJS | Dual module support |
+| **Multi-language** | English & Hindi language support |
 | **Auto-Update** | Daily automatic dependency updates |
 | **Auto-Publish** | Automatic NPM publishing on updates |
 | **Monorepo** | npm workspaces with linked packages |
@@ -124,6 +126,113 @@ User: Download the main image
 
 AI: [Calls file_downloader with url="..."] -> Downloaded to ./downloads/image.png
 ```
+
+---
+
+## LSP Server (Language Server Protocol)
+
+This package also includes a full-featured **LSP Server** for IDE code intelligence when writing browser automation scripts.
+
+### Quick Start LSP Server
+
+```bash
+# Start the LSP server
+npm run lsp
+```
+
+### LSP Capabilities
+
+| Feature | Description |
+|---------|-------------|
+| **Autocomplete** | Tool names, parameters, and enum values |
+| **Hover** | Full documentation on hover |
+| **Diagnostics** | Error & warning detection (missing browser_init, etc.) |
+| **Snippets** | Code templates for common workflows |
+| **Refactoring** | Quick fixes (add browser_init, try-catch, etc.) |
+| **Simulation** | Workflow simulation in IDE |
+| **Multi-language** | English & Hindi support |
+
+### VS Code Setup
+
+Create `.vscode/settings.json` in your project:
+
+```json
+{
+  "braveRealBrowser.language": "en",
+  "braveRealBrowser.maxDiagnostics": 100,
+  "braveRealBrowser.enableSnippets": true,
+  "braveRealBrowser.enableSimulation": true,
+  "braveRealBrowser.enableRefactoring": true
+}
+```
+
+### Diagnostic Features
+
+The LSP detects common issues:
+
+- Missing `browser_init()` before page operations
+- Missing `navigate()` before content extraction
+- Invalid selectors and URLs
+- Missing required parameters
+- Unclosed browser sessions
+- Security issues (eval usage, etc.)
+
+### Quick Fixes
+
+When diagnostics are detected, quick fixes are offered:
+
+- Add `browser_init()` at start
+- Add `navigate()` before page tools
+- Add `browser_close()` at end
+- Wrap in try-catch
+- Extract to function
+
+---
+
+## Unified Architecture
+
+Both MCP and LSP servers share the same tool definitions:
+
+```
+src/
+├── shared/
+│   └── tools.js         # Single source of truth (28 tools)
+├── mcp/
+│   ├── server.js        # MCP server for AI agents
+│   └── handlers.js      # Tool implementations
+├── lsp/
+│   ├── server.js        # LSP server for IDEs
+│   └── capabilities/    # Autocomplete, hover, diagnostics, etc.
+└── index.js             # Unified entry point
+```
+
+### Unified CLI
+
+```bash
+# List all tools
+node src/index.js --list
+
+# Start MCP server (default)
+node src/index.js mcp
+
+# Start LSP server
+node src/index.js lsp
+
+# Show help
+node src/index.js --help
+```
+
+### Tool Categories
+
+| Category | Tools | Description |
+|----------|-------|-------------|
+| **Browser** | 3 | Browser lifecycle (init, close, cookies) |
+| **Navigation** | 1 | Page navigation |
+| **Interaction** | 8 | User actions (click, type, scroll, etc.) |
+| **Extraction** | 10 | Content scraping (HTML, JSON, links, etc.) |
+| **Network** | 3 | Network operations (recorder, download, trace) |
+| **Analysis** | 1 | Page analysis (SEO, performance, etc.) |
+| **Utility** | 2 | Helpers (wait, progress tracker) |
 
 ---
 
@@ -398,9 +507,12 @@ console.log(blocker === sameBlocker); // true
 
 | Command | Description |
 |---------|-------------|
+| `npm start` | Start unified server (MCP by default) |
 | `npm run dev` | Start MCP server |
 | `npm run mcp` | Start MCP server (alias) |
 | `npm run mcp:verbose` | Start MCP server with tool details |
+| `npm run lsp` | Start LSP server for IDE intelligence |
+| `npm run list` | List all 28 tools with categories |
 | `npm install` | Install all dependencies with workspace linking |
 | `npm test` | Run all tests (CJS + ESM) |
 | `npm run cjs_test` | Run CommonJS tests only |
