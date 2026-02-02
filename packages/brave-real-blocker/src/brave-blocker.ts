@@ -9,6 +9,23 @@ import { FilterUpdater, getFilterUpdater, FilterUpdaterOptions } from './filter-
 import * as fs from 'fs';
 import * as path from 'path';
 
+// Get directory of this module (works in both ESM and CJS)
+function getCurrentDir(): string {
+    // Try CommonJS __dirname first
+    if (typeof __dirname !== 'undefined') {
+        return __dirname;
+    }
+    // For ESM, use import.meta.url if available
+    try {
+        const { fileURLToPath } = require('url');
+        const url = new URL('.', (globalThis as any).import?.meta?.url || 'file://' + process.cwd());
+        return fileURLToPath(url);
+    } catch {
+        return process.cwd();
+    }
+}
+const currentDir = getCurrentDir();
+
 export interface BraveBlockerOptions {
     /** Enable standard network request blocking (Ads/Trackers) */
     enableAdBlocking?: boolean;
@@ -158,7 +175,7 @@ export class BraveBlocker {
      */
     private loadLocalCustomFiltersString(): string {
         const customFiltersPath = this.options.customFiltersPath || 
-            path.join(__dirname, '..', 'assets', 'ublock-custom-filters.txt');
+            path.join(currentDir, '..', 'assets', 'ublock-custom-filters.txt');
         
         try {
             if (fs.existsSync(customFiltersPath)) {

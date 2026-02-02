@@ -7,6 +7,23 @@ import fetch from 'cross-fetch';
 import * as fs from 'fs';
 import * as path from 'path';
 
+// Get directory of this module (works in both ESM and CJS)
+function getCurrentDir(): string {
+    // Try CommonJS __dirname first
+    if (typeof __dirname !== 'undefined') {
+        return __dirname;
+    }
+    // For ESM, use import.meta.url if available
+    try {
+        const { fileURLToPath } = require('url');
+        const url = new URL('.', (globalThis as any).import?.meta?.url || 'file://' + process.cwd());
+        return fileURLToPath(url);
+    } catch {
+        return process.cwd();
+    }
+}
+const currentDir = getCurrentDir();
+
 // uBlock Origin official filter list URLs
 export const UBLOCK_FILTER_LISTS = {
     // Core uBlock Origin filters
@@ -61,7 +78,7 @@ export interface FilterUpdaterOptions {
 }
 
 const DEFAULT_OPTIONS: Required<FilterUpdaterOptions> = {
-    cacheDir: path.join(__dirname, '..', 'cache'),
+    cacheDir: path.join(currentDir, '..', 'cache'),
     cacheExpiry: 7 * 24 * 60 * 60 * 1000, // 7 days
     enabledLists: [
         'ublock_filters',
@@ -72,7 +89,7 @@ const DEFAULT_OPTIONS: Required<FilterUpdaterOptions> = {
         'easylist',
         'easyprivacy'
     ],
-    customFiltersPath: path.join(__dirname, '..', 'assets', 'ublock-custom-filters.txt'),
+    customFiltersPath: path.join(currentDir, '..', 'assets', 'ublock-custom-filters.txt'),
     forceUpdate: false,
     fetchTimeout: 30000
 };

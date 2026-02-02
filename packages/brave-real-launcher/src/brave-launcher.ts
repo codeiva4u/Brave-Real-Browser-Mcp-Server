@@ -203,7 +203,7 @@ function getBravePath(): string {
 }
 
 function killAll(): Array<Error> {
-  let errors = [];
+  let errors: Error[] = [];
   for (const instance of instances) {
     try {
       instance.kill();
@@ -211,7 +211,7 @@ function killAll(): Array<Error> {
       // this means erroring instances remain in the Set
       instances.delete(instance);
     } catch (err) {
-      errors.push(err);
+      errors.push(err as Error);
     }
   }
   return errors;

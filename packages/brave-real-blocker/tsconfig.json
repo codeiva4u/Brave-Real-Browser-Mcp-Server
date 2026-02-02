@@ -11,12 +11,10 @@
         "declarationMap": true,
         "sourceMap": true,
         "outDir": "./dist",
-        "rootDir": "./",
         "strict": true,
         "esModuleInterop": true,
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
-        "composite": true,
         "baseUrl": ".",
         "paths": {
             "brave-real-puppeteer-core": [
@@ -25,8 +23,7 @@
         }
     },
     "include": [
-        "src/**/*",
-        "test/**/*"
+        "src/**/*"
     ],
     "exclude": [
         "node_modules",
