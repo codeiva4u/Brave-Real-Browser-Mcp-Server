@@ -283,13 +283,11 @@ jobs:
           # Get new versions
           PUPPETEER_VERSION=$(node -p "require('./packages/brave-real-puppeteer-core/package.json').version")
           BLOCKER_VERSION=$(node -p "require('./packages/brave-real-blocker/package.json').version")
-          BROWSER_VERSION=$(node -p "require('./packages/brave-real-browser/package.json').version")
           LAUNCHER_VERSION=$(node -p "require('./packages/brave-real-launcher/package.json').version")
           MCP_VERSION=$(node -p "require('./package.json').version")
           
           echo "puppeteer_version=$PUPPETEER_VERSION" >> $GITHUB_OUTPUT
           echo "blocker_version=$BLOCKER_VERSION" >> $GITHUB_OUTPUT
-          echo "browser_version=$BROWSER_VERSION" >> $GITHUB_OUTPUT
           echo "launcher_version=$LAUNCHER_VERSION" >> $GITHUB_OUTPUT
           echo "mcp_version=$MCP_VERSION" >> $GITHUB_OUTPUT
 
