@@ -5,7 +5,7 @@
         "outDir": "dist",
         "target": "es2019",
         "declaration": true,
-        "noImplicitAny": true,
+        "noImplicitAny": false,
         "inlineSourceMap": true,
         "noEmitOnError": false,
         "strictNullChecks": true,

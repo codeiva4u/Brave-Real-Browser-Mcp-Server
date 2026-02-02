@@ -46,6 +46,7 @@
     "@types/mocha": "^10.0.6",
     "@types/node": "^20.0.0",
     "@types/sinon": "^17.0.3",
+    "@types/which": "^3.0.0",
     "clang-format": "^1.0.50",
     "mocha": "^10.4.0",
     "sinon": "^17.0.1",
