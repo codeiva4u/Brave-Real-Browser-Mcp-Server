@@ -132,7 +132,7 @@
     "test-version": "node ./scripts/test-version-management.js"
   },
   "dependencies": {
-    "brave-real-launcher": "workspace:*",
+    "brave-real-launcher": "^1.15.11",
     "get-east-asian-width": "^1.4.0",
     "yargs": "^18.0.0"
   },
