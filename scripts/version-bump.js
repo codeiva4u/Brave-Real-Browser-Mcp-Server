@@ -94,15 +94,9 @@ for (const pkg of PACKAGES) {
     if (pkgJson.dependencies) {
         for (const [depName, depVersion] of Object.entries(pkgJson.dependencies)) {
             if (newVersions[depName]) {
-                // Keep workspace:* for local, update version for publish
-                if (depVersion.startsWith('workspace:')) {
-                    // Don't change workspace references here
-                    console.log(`  📎 ${pkgJson.name}: ${depName} → workspace:* (kept)`);
-                } else {
-                    pkgJson.dependencies[depName] = `^${newVersions[depName]}`;
-                    console.log(`  🔗 ${pkgJson.name}: ${depName} → ^${newVersions[depName]}`);
-                    updated = true;
-                }
+                pkgJson.dependencies[depName] = `^${newVersions[depName]}`;
+                console.log(`  🔗 ${pkgJson.name}: ${depName} → ^${newVersions[depName]}`);
+                updated = true;
             }
         }
     }
@@ -110,7 +104,7 @@ for (const pkg of PACKAGES) {
     // Update devDependencies
     if (pkgJson.devDependencies) {
         for (const [depName, depVersion] of Object.entries(pkgJson.devDependencies)) {
-            if (newVersions[depName] && !depVersion.startsWith('workspace:')) {
+            if (newVersions[depName]) {
                 pkgJson.devDependencies[depName] = `^${newVersions[depName]}`;
                 console.log(`  🔗 ${pkgJson.name} (dev): ${depName} → ^${newVersions[depName]}`);
                 updated = true;
