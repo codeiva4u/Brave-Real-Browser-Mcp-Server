@@ -32,6 +32,101 @@ A production-ready MCP (Model Context Protocol) server that combines Puppeteer w
 
 ---
 
+## MCP Server (Model Context Protocol)
+
+This package is a fully-featured MCP Server with **28 browser automation tools** for AI assistants like Claude, Cursor, Copilot, and other MCP-compatible clients.
+
+### Quick Start MCP Server
+
+```bash
+# Start the MCP server
+npm run dev
+
+# Or with verbose mode (shows all tool details)
+npm run mcp:verbose
+```
+
+### MCP Configuration
+
+Add to your MCP client configuration (e.g., Claude Desktop):
+
+```json
+{
+  "mcpServers": {
+    "brave-browser": {
+      "command": "npx",
+      "args": ["brave-real-browser-mcp-server"]
+    }
+  }
+}
+```
+
+Or if installed globally:
+
+```json
+{
+  "mcpServers": {
+    "brave-browser": {
+      "command": "brave-mcp"
+    }
+  }
+}
+```
+
+### Available MCP Tools (28)
+
+| # | Tool | Emoji | Description |
+|---|------|-------|-------------|
+| 1 | `browser_init` | :rocket: | Initialize Brave browser with stealth mode |
+| 2 | `navigate` | :compass: | Navigate to a URL |
+| 3 | `get_content` | :page_facing_up: | Get page content (HTML, text, markdown) |
+| 4 | `wait` | :hourglass: | Wait for element, navigation, or timeout |
+| 5 | `click` | :point_up: | Click with human-like behavior |
+| 6 | `type` | :keyboard: | Type text into input fields |
+| 7 | `browser_close` | :red_circle: | Close browser and cleanup |
+| 8 | `solve_captcha` | :unlock: | Solve CAPTCHA (Turnstile, reCAPTCHA) |
+| 9 | `random_scroll` | :scroll: | Human-like random scrolling |
+| 10 | `find_element` | :mag: | Find elements by selector/xpath/text |
+| 11 | `save_content_as_markdown` | :memo: | Save page as Markdown file |
+| 12 | `redirect_tracer` | :twisted_rightwards_arrows: | Trace URL redirects |
+| 13 | `search_regex` | :mag_right: | Search content with regex |
+| 14 | `extract_json` | :bar_chart: | Extract JSON from page/scripts |
+| 15 | `scrape_meta_tags` | :label: | Get meta tags, OG, Twitter cards |
+| 16 | `press_key` | :musical_keyboard: | Press keyboard keys |
+| 17 | `progress_tracker` | :chart_with_upwards_trend: | Track automation progress |
+| 18 | `deep_analysis` | :brain: | SEO, performance, accessibility analysis |
+| 19 | `network_recorder` | :satellite: | Record network requests |
+| 20 | `link_harvester` | :link: | Extract all links from page |
+| 21 | `cookie_manager` | :cookie: | Manage browser cookies |
+| 22 | `file_downloader` | :arrow_down: | Download files from URLs |
+| 23 | `iframe_handler` | :framed_picture: | Handle iframe content |
+| 24 | `stream_extractor` | :clapper: | Extract video/audio streams |
+| 25 | `js_scrape` | :zap: | Scrape JS-rendered content |
+| 26 | `execute_js` | :computer: | Execute custom JavaScript |
+| 27 | `player_api_hook` | :video_game: | Hook video player APIs |
+| 28 | `form_automator` | :clipboard: | Auto-fill and submit forms |
+
+### MCP Example Usage
+
+```
+User: Open a browser and go to example.com
+
+AI: I'll use browser_init to start the browser, then navigate to the URL.
+
+[Calls browser_init] -> Browser started
+[Calls navigate with url="https://example.com"] -> Page loaded
+
+User: Get all links on the page
+
+AI: [Calls link_harvester] -> Found 15 links...
+
+User: Download the main image
+
+AI: [Calls file_downloader with url="..."] -> Downloaded to ./downloads/image.png
+```
+
+---
+
 ## Monorepo Ecosystem
 
 ```
@@ -303,6 +398,9 @@ console.log(blocker === sameBlocker); // true
 
 | Command | Description |
 |---------|-------------|
+| `npm run dev` | Start MCP server |
+| `npm run mcp` | Start MCP server (alias) |
+| `npm run mcp:verbose` | Start MCP server with tool details |
 | `npm install` | Install all dependencies with workspace linking |
 | `npm test` | Run all tests (CJS + ESM) |
 | `npm run cjs_test` | Run CommonJS tests only |
@@ -404,36 +502,42 @@ docker run brave-real-browser-mcp-server npm run esm_test
 
 ```
 brave-real-browser-mcp-server/
+├── src/
+│   └── mcp/                      # MCP Server
+│       ├── index.js              # Entry point with startup logs
+│       ├── server.js             # MCP server with STDIO transport
+│       ├── handlers.js           # 28 tool implementations
+│       └── tools.js              # Tool definitions with schemas
 ├── lib/
-│   ├── cjs/                    # CommonJS build
-│   └── esm/                    # ESM build
+│   ├── cjs/                      # CommonJS build
+│   └── esm/                      # ESM build
 ├── packages/
-│   ├── brave-real-blocker/     # Ad/Tracker blocker (singleton)
+│   ├── brave-real-blocker/       # Ad/Tracker blocker (singleton)
 │   │   ├── src/
 │   │   │   ├── brave-blocker.ts
-│   │   │   ├── singleton.ts    # Singleton pattern
+│   │   │   ├── singleton.ts      # Singleton pattern
 │   │   │   ├── stealth.ts
 │   │   │   ├── cosmetic.ts
 │   │   │   └── scriptlets.ts
 │   │   └── package.json
-│   ├── brave-real-launcher/    # Browser launcher
+│   ├── brave-real-launcher/      # Browser launcher
 │   │   └── package.json
 │   └── brave-real-puppeteer-core/  # Stealth patches
 │       └── package.json
 ├── scripts/
-│   ├── prepare-publish.js      # Sync versions before publish
-│   ├── restore-workspace.js    # Verify workspace
-│   └── version-bump.js         # Version management
+│   ├── prepare-publish.js        # Sync versions before publish
+│   ├── restore-workspace.js      # Verify workspace
+│   └── version-bump.js           # Version management
 ├── .github/
 │   └── workflows/
-│       ├── auto-update-deps.yml    # Daily dependency updates
-│       └── monorepo-publish.yml    # Auto-publish to NPM
+│       ├── auto-update-deps.yml      # Daily dependency updates
+│       └── monorepo-publish.yml      # Auto-publish to NPM
 ├── test/
-│   ├── cjs/                    # CJS tests
-│   └── esm/                    # ESM tests
+│   ├── cjs/                      # CJS tests
+│   └── esm/                      # ESM tests
 ├── Dockerfile
 ├── typings.d.ts
-└── package.json                # Root with workspaces
+└── package.json                  # Root with workspaces
 ```
 
 ---
