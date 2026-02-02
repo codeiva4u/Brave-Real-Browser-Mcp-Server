@@ -2,6 +2,10 @@
  * Brave Real Browser MCP Server - Tool Handlers
  * 
  * Implementation of all 28 browser automation tools
+ * 
+ * Environment Variables:
+ *   HEADLESS=true   - Run browser in headless mode
+ *   HEADLESS=false  - Run browser in GUI mode (visible)
  */
 
 const path = require('path');
@@ -14,6 +18,61 @@ let blockerInstance = null;
 let networkRecords = [];
 let isRecordingNetwork = false;
 let progressTasks = {};
+
+// Progress notification callback (set by server)
+let progressCallback = null;
+
+/**
+ * Set progress callback for real-time notifications
+ */
+function setProgressCallback(callback) {
+  progressCallback = callback;
+}
+
+/**
+ * Send real-time progress notification
+ */
+function notifyProgress(toolName, status, message, data = {}) {
+  const notification = {
+    tool: toolName,
+    status, // 'started' | 'progress' | 'completed' | 'error'
+    message,
+    timestamp: new Date().toISOString(),
+    ...data
+  };
+  
+  // Log to stderr for visibility
+  const emoji = {
+    started: '🚀',
+    progress: '⏳',
+    completed: '✅',
+    error: '❌'
+  }[status] || '📌';
+  
+  console.error(`${emoji} [${toolName}] ${message}`);
+  
+  // Call progress callback if set
+  if (progressCallback) {
+    progressCallback(notification);
+  }
+  
+  return notification;
+}
+
+/**
+ * Get headless setting from environment
+ */
+function getHeadlessFromEnv() {
+  const envHeadless = process.env.HEADLESS;
+  
+  if (envHeadless === undefined || envHeadless === null || envHeadless === '') {
+    return false; // Default: GUI mode
+  }
+  
+  // Parse string to boolean
+  const value = envHeadless.toLowerCase().trim();
+  return value === 'true' || value === '1' || value === 'yes';
+}
 
 /**
  * Get browser and page instances
@@ -38,9 +97,17 @@ function requireBrowser() {
 const handlers = {
   // 1. Browser Init
   async browser_init(params = {}) {
+    notifyProgress('browser_init', 'started', 'Initializing browser...');
+    
     const { connect } = require('../../lib/cjs/index.js');
     
-    const { headless = false, proxy = {}, turnstile = false, enableBlocker = true } = params;
+    // Get headless from params OR environment variable
+    const envHeadless = getHeadlessFromEnv();
+    const headless = params.headless !== undefined ? params.headless : envHeadless;
+    
+    const { proxy = {}, turnstile = false, enableBlocker = true } = params;
+    
+    notifyProgress('browser_init', 'progress', `Mode: ${headless ? 'Headless' : 'GUI (Visible)'}`, { headless });
     
     const result = await connect({
       headless,
@@ -53,10 +120,18 @@ const handlers = {
     pageInstance = result.page;
     blockerInstance = result.blocker;
     
+    const pid = browserInstance.process()?.pid;
+    
+    notifyProgress('browser_init', 'completed', `Browser started (PID: ${pid})`, { 
+      headless, 
+      pid,
+      blockerEnabled: enableBlocker 
+    });
+    
     return {
       success: true,
-      message: 'Browser initialized successfully',
-      pid: browserInstance.process()?.pid,
+      message: `Browser initialized in ${headless ? 'headless' : 'GUI'} mode`,
+      pid,
       headless,
       blockerEnabled: enableBlocker
     };
@@ -67,12 +142,18 @@ const handlers = {
     const { page } = requireBrowser();
     const { url, waitUntil = 'networkidle2', timeout = 30000 } = params;
     
+    notifyProgress('navigate', 'started', `Navigating to: ${url}`);
+    
     await page.goto(url, { waitUntil, timeout });
+    
+    const title = await page.title();
+    
+    notifyProgress('navigate', 'completed', `Loaded: ${title}`, { url: page.url(), title });
     
     return {
       success: true,
       url: page.url(),
-      title: await page.title()
+      title
     };
   },
 
@@ -81,11 +162,14 @@ const handlers = {
     const { page } = requireBrowser();
     const { format = 'text', selector } = params;
     
+    notifyProgress('get_content', 'started', `Extracting ${format} content${selector ? ` from ${selector}` : ''}`);
+    
     let content;
     
     if (selector) {
       const element = await page.$(selector);
       if (!element) {
+        notifyProgress('get_content', 'error', `Element not found: ${selector}`);
         return { success: false, error: `Element not found: ${selector}` };
       }
       
@@ -99,7 +183,6 @@ const handlers = {
         content = await page.content();
       } else if (format === 'markdown') {
         content = await page.evaluate(() => {
-          // Simple HTML to Markdown conversion
           const body = document.body.innerText;
           return body;
         });
@@ -107,6 +190,8 @@ const handlers = {
         content = await page.evaluate(() => document.body.innerText);
       }
     }
+    
+    notifyProgress('get_content', 'completed', `Extracted ${content.length} characters`, { format, length: content.length });
     
     return {
       success: true,
@@ -120,6 +205,8 @@ const handlers = {
   async wait(params) {
     const { page } = requireBrowser();
     const { type = 'timeout', value, timeout = 30000 } = params;
+    
+    notifyProgress('wait', 'started', `Waiting for ${type}: ${value}`);
     
     switch (type) {
       case 'selector':
@@ -136,6 +223,8 @@ const handlers = {
         await new Promise(r => setTimeout(r, parseInt(value) || 1000));
     }
     
+    notifyProgress('wait', 'completed', `Wait completed: ${type}`, { type, value });
+    
     return { success: true, type, value };
   },
 
@@ -144,18 +233,22 @@ const handlers = {
     const { page } = requireBrowser();
     const { selector, humanLike = true, clickCount = 1, delay = 0 } = params;
     
+    notifyProgress('click', 'started', `Clicking: ${selector}`);
+    
     if (humanLike) {
       try {
         const { createCursor } = require('ghost-cursor');
         const cursor = createCursor(page);
         await cursor.click(selector);
+        notifyProgress('click', 'progress', 'Used human-like cursor movement');
       } catch (e) {
-        // Fallback to regular click
         await page.click(selector, { clickCount, delay });
       }
     } else {
       await page.click(selector, { clickCount, delay });
     }
+    
+    notifyProgress('click', 'completed', `Clicked: ${selector}`, { selector, humanLike });
     
     return { success: true, selector, clicked: true };
   },
@@ -165,12 +258,17 @@ const handlers = {
     const { page } = requireBrowser();
     const { selector, text, delay = 50, clear = false } = params;
     
+    notifyProgress('type', 'started', `Typing ${text.length} characters into ${selector}`);
+    
     if (clear) {
       await page.click(selector, { clickCount: 3 });
       await page.keyboard.press('Backspace');
+      notifyProgress('type', 'progress', 'Cleared existing text');
     }
     
     await page.type(selector, text, { delay });
+    
+    notifyProgress('type', 'completed', `Typed ${text.length} characters`, { selector, textLength: text.length });
     
     return { success: true, selector, textLength: text.length };
   },
@@ -179,18 +277,24 @@ const handlers = {
   async browser_close(params = {}) {
     const { force = false } = params;
     
+    notifyProgress('browser_close', 'started', 'Closing browser...');
+    
     if (browserInstance) {
       try {
         await browserInstance.close();
+        notifyProgress('browser_close', 'progress', 'Browser closed gracefully');
       } catch (e) {
         if (force) {
           browserInstance.process()?.kill('SIGKILL');
+          notifyProgress('browser_close', 'progress', 'Browser force killed');
         }
       }
       browserInstance = null;
       pageInstance = null;
       blockerInstance = null;
     }
+    
+    notifyProgress('browser_close', 'completed', 'Browser closed');
     
     return { success: true, message: 'Browser closed' };
   },
@@ -200,22 +304,32 @@ const handlers = {
     const { page } = requireBrowser();
     const { type = 'auto', timeout = 30000 } = params;
     
-    // Wait for turnstile/captcha to be solved (handled by turnstile option in connect)
+    notifyProgress('solve_captcha', 'started', `Solving ${type} captcha...`);
+    
     const start = Date.now();
+    let attempts = 0;
     
     while (Date.now() - start < timeout) {
+      attempts++;
+      
       const turnstileToken = await page.evaluate(() => {
         const input = document.querySelector('input[name="cf-turnstile-response"]');
         return input ? input.value : null;
       });
       
       if (turnstileToken) {
+        notifyProgress('solve_captcha', 'completed', `Captcha solved after ${attempts} checks`, { type: 'turnstile', attempts });
         return { success: true, type: 'turnstile', solved: true };
+      }
+      
+      if (attempts % 10 === 0) {
+        notifyProgress('solve_captcha', 'progress', `Still solving... (${attempts} checks)`, { attempts });
       }
       
       await new Promise(r => setTimeout(r, 500));
     }
     
+    notifyProgress('solve_captcha', 'error', 'Captcha solving timeout');
     return { success: false, error: 'Captcha solving timeout' };
   },
 
@@ -229,10 +343,14 @@ const handlers = {
       ? (Math.random() > 0.5 ? 'down' : 'up') 
       : direction;
     
+    notifyProgress('random_scroll', 'started', `Scrolling ${scrollDirection} ${scrollAmount}px`);
+    
     await page.evaluate(({ scrollAmount, scrollDirection, smooth }) => {
       const y = scrollDirection === 'down' ? scrollAmount : -scrollAmount;
       window.scrollBy({ top: y, behavior: smooth ? 'smooth' : 'auto' });
     }, { scrollAmount, scrollDirection, smooth });
+    
+    notifyProgress('random_scroll', 'completed', `Scrolled ${scrollDirection} ${scrollAmount}px`, { direction: scrollDirection, amount: scrollAmount });
     
     return { success: true, direction: scrollDirection, amount: scrollAmount };
   },
@@ -241,6 +359,8 @@ const handlers = {
   async find_element(params = {}) {
     const { page } = requireBrowser();
     const { selector, xpath, text, multiple = false } = params;
+    
+    notifyProgress('find_element', 'started', `Finding element: ${selector || xpath || text}`);
     
     let elements = [];
     
@@ -278,6 +398,8 @@ const handlers = {
       );
     }
     
+    notifyProgress('find_element', 'completed', `Found ${elements.length} element(s)`, { found: elements.length });
+    
     return { success: true, found: elements.length, elements };
   },
 
@@ -285,6 +407,8 @@ const handlers = {
   async save_content_as_markdown(params) {
     const { page } = requireBrowser();
     const { filename, selector, includeImages = true, includeMeta = true } = params;
+    
+    notifyProgress('save_content_as_markdown', 'started', `Saving to: ${filename}`);
     
     let markdown = '';
     
@@ -304,6 +428,8 @@ const handlers = {
     const outputPath = path.resolve(filename);
     fs.writeFileSync(outputPath, markdown);
     
+    notifyProgress('save_content_as_markdown', 'completed', `Saved ${markdown.length} bytes to ${filename}`, { filename: outputPath, size: markdown.length });
+    
     return { success: true, filename: outputPath, size: markdown.length };
   },
 
@@ -311,6 +437,8 @@ const handlers = {
   async redirect_tracer(params) {
     const { page } = requireBrowser();
     const { url, maxRedirects = 10, includeHeaders = false } = params;
+    
+    notifyProgress('redirect_tracer', 'started', `Tracing redirects for: ${url}`);
     
     const redirects = [];
     
@@ -321,6 +449,7 @@ const handlers = {
           status: response.status(),
           headers: includeHeaders ? response.headers() : undefined
         });
+        notifyProgress('redirect_tracer', 'progress', `Redirect ${redirects.length}: ${response.status()}`, { status: response.status() });
       }
     };
     
@@ -329,6 +458,8 @@ const handlers = {
     await page.goto(url, { waitUntil: 'networkidle2' });
     
     page.off('response', responseHandler);
+    
+    notifyProgress('redirect_tracer', 'completed', `Found ${redirects.length} redirects`, { redirectCount: redirects.length, finalUrl: page.url() });
     
     return {
       success: true,
@@ -344,6 +475,8 @@ const handlers = {
     const { page } = requireBrowser();
     const { pattern, flags = 'gi', source = 'html' } = params;
     
+    notifyProgress('search_regex', 'started', `Searching pattern: ${pattern}`);
+    
     let content;
     if (source === 'html') {
       content = await page.content();
@@ -356,6 +489,8 @@ const handlers = {
     const regex = new RegExp(pattern, flags);
     const matches = content.match(regex) || [];
     
+    notifyProgress('search_regex', 'completed', `Found ${matches.length} matches`, { matchCount: matches.length });
+    
     return { success: true, pattern, matchCount: matches.length, matches: matches.slice(0, 100) };
   },
 
@@ -363,6 +498,8 @@ const handlers = {
   async extract_json(params = {}) {
     const { page } = requireBrowser();
     const { source = 'page', selector, jsonPath } = params;
+    
+    notifyProgress('extract_json', 'started', `Extracting JSON from: ${source}`);
     
     let jsonData = [];
     
@@ -384,6 +521,8 @@ const handlers = {
       try { jsonData = [JSON.parse(text)]; } catch {}
     }
     
+    notifyProgress('extract_json', 'completed', `Extracted ${jsonData.length} JSON objects`, { count: jsonData.length });
+    
     return { success: true, source, count: jsonData.length, data: jsonData };
   },
 
@@ -391,6 +530,8 @@ const handlers = {
   async scrape_meta_tags(params = {}) {
     const { page } = requireBrowser();
     const { types = ['all'] } = params;
+    
+    notifyProgress('scrape_meta_tags', 'started', 'Extracting meta tags...');
     
     const meta = await page.evaluate(() => {
       const result = { meta: {}, og: {}, twitter: {} };
@@ -415,6 +556,9 @@ const handlers = {
       return result;
     });
     
+    const tagCount = Object.keys(meta.meta).length + Object.keys(meta.og).length + Object.keys(meta.twitter).length;
+    notifyProgress('scrape_meta_tags', 'completed', `Extracted ${tagCount} meta tags`, { tagCount });
+    
     return { success: true, ...meta };
   },
 
@@ -422,6 +566,8 @@ const handlers = {
   async press_key(params) {
     const { page } = requireBrowser();
     const { key, modifiers = [], count = 1 } = params;
+    
+    notifyProgress('press_key', 'started', `Pressing: ${modifiers.length ? modifiers.join('+') + '+' : ''}${key} x${count}`);
     
     for (let i = 0; i < count; i++) {
       if (modifiers.length > 0) {
@@ -431,6 +577,8 @@ const handlers = {
         await page.keyboard.press(key);
       }
     }
+    
+    notifyProgress('press_key', 'completed', `Pressed ${key} ${count} time(s)`, { key, modifiers, count });
     
     return { success: true, key, modifiers, count };
   },
@@ -442,16 +590,20 @@ const handlers = {
     switch (action) {
       case 'start':
         progressTasks[taskName] = { progress: 0, startTime: Date.now() };
+        notifyProgress('progress_tracker', 'started', `Task started: ${taskName}`);
         break;
       case 'update':
         if (progressTasks[taskName]) {
           progressTasks[taskName].progress = progress;
+          notifyProgress('progress_tracker', 'progress', `${taskName}: ${progress}%`, { taskName, progress });
         }
         break;
       case 'complete':
         if (progressTasks[taskName]) {
           progressTasks[taskName].progress = 100;
           progressTasks[taskName].endTime = Date.now();
+          const duration = progressTasks[taskName].endTime - progressTasks[taskName].startTime;
+          notifyProgress('progress_tracker', 'completed', `${taskName} completed in ${duration}ms`, { taskName, duration });
         }
         break;
     }
@@ -463,6 +615,8 @@ const handlers = {
   async deep_analysis(params = {}) {
     const { page } = requireBrowser();
     const { types = ['all'], detailed = true } = params;
+    
+    notifyProgress('deep_analysis', 'started', 'Analyzing page...');
     
     const analysis = await page.evaluate(() => {
       const result = {
@@ -495,6 +649,8 @@ const handlers = {
       return result;
     });
     
+    notifyProgress('deep_analysis', 'completed', `Analysis complete: ${analysis.performance.domElements} DOM elements`, { domElements: analysis.performance.domElements });
+    
     return { success: true, url: page.url(), analysis };
   },
 
@@ -517,12 +673,15 @@ const handlers = {
             });
           }
         });
+        notifyProgress('network_recorder', 'started', 'Network recording started');
         break;
       case 'stop':
         isRecordingNetwork = false;
+        notifyProgress('network_recorder', 'completed', `Recording stopped: ${networkRecords.length} requests captured`);
         break;
       case 'clear':
         networkRecords = [];
+        notifyProgress('network_recorder', 'completed', 'Network records cleared');
         break;
     }
     
@@ -542,6 +701,8 @@ const handlers = {
   async link_harvester(params = {}) {
     const { page } = requireBrowser();
     const { types = ['all'], selector, includeText = true } = params;
+    
+    notifyProgress('link_harvester', 'started', 'Harvesting links...');
     
     const currentHost = new URL(page.url()).hostname;
     
@@ -566,6 +727,8 @@ const handlers = {
       });
     }
     
+    notifyProgress('link_harvester', 'completed', `Found ${links.length} links`, { count: links.length });
+    
     return { success: true, count: links.length, links };
   },
 
@@ -574,24 +737,30 @@ const handlers = {
     const { page } = requireBrowser();
     const { action = 'get', name, value, domain, expires } = params;
     
+    notifyProgress('cookie_manager', 'started', `Cookie action: ${action}`);
+    
     switch (action) {
       case 'get':
         const cookies = await page.cookies();
+        notifyProgress('cookie_manager', 'completed', `Retrieved ${cookies.length} cookies`);
         return { success: true, cookies: name ? cookies.filter(c => c.name === name) : cookies };
       
       case 'set':
         await page.setCookie({ name, value, domain: domain || new URL(page.url()).hostname, expires });
+        notifyProgress('cookie_manager', 'completed', `Cookie set: ${name}`);
         return { success: true, message: `Cookie ${name} set` };
       
       case 'delete':
         const toDelete = await page.cookies();
         const filtered = name ? toDelete.filter(c => c.name === name) : toDelete;
         await page.deleteCookie(...filtered);
+        notifyProgress('cookie_manager', 'completed', `Deleted ${filtered.length} cookie(s)`);
         return { success: true, message: `Deleted ${filtered.length} cookie(s)` };
       
       case 'clear':
         const allCookies = await page.cookies();
         await page.deleteCookie(...allCookies);
+        notifyProgress('cookie_manager', 'completed', `Cleared ${allCookies.length} cookies`);
         return { success: true, message: `Cleared ${allCookies.length} cookies` };
     }
     
@@ -603,12 +772,12 @@ const handlers = {
     const { page } = requireBrowser();
     const { url, filename, directory = './downloads' } = params;
     
-    // Ensure directory exists
+    notifyProgress('file_downloader', 'started', `Downloading: ${url}`);
+    
     if (!fs.existsSync(directory)) {
       fs.mkdirSync(directory, { recursive: true });
     }
     
-    // Use page to download
     const response = await page.goto(url, { waitUntil: 'networkidle2' });
     const buffer = await response.buffer();
     
@@ -616,6 +785,8 @@ const handlers = {
     const outputPath = path.join(directory, outputFilename);
     
     fs.writeFileSync(outputPath, buffer);
+    
+    notifyProgress('file_downloader', 'completed', `Downloaded: ${outputFilename} (${buffer.length} bytes)`, { filename: outputPath, size: buffer.length });
     
     return { success: true, filename: outputPath, size: buffer.length };
   },
@@ -625,10 +796,13 @@ const handlers = {
     const { page } = requireBrowser();
     const { action = 'list', selector, index } = params;
     
+    notifyProgress('iframe_handler', 'started', `iFrame action: ${action}`);
+    
     const frames = page.frames();
     
     switch (action) {
       case 'list':
+        notifyProgress('iframe_handler', 'completed', `Found ${frames.length} frames`);
         return {
           success: true,
           count: frames.length,
@@ -641,8 +815,10 @@ const handlers = {
           : frames[index];
         
         if (targetFrame) {
+          notifyProgress('iframe_handler', 'completed', `Switched to frame: ${targetFrame.url()}`);
           return { success: true, switched: true, url: targetFrame.url() };
         }
+        notifyProgress('iframe_handler', 'error', 'Frame not found');
         return { success: false, error: 'Frame not found' };
       
       case 'content':
@@ -652,11 +828,13 @@ const handlers = {
         
         if (frame) {
           const content = await frame.content();
+          notifyProgress('iframe_handler', 'completed', `Got frame content: ${content.length} chars`);
           return { success: true, content };
         }
         return { success: false, error: 'Frame not found' };
       
       case 'exit':
+        notifyProgress('iframe_handler', 'completed', 'Returned to main frame');
         return { success: true, message: 'Returned to main frame' };
     }
     
@@ -668,22 +846,21 @@ const handlers = {
     const { page } = requireBrowser();
     const { types = ['all'], quality = 'best' } = params;
     
+    notifyProgress('stream_extractor', 'started', 'Extracting streams...');
+    
     const streams = await page.evaluate(() => {
       const result = { video: [], audio: [], hls: [], dash: [] };
       
-      // Video elements
       document.querySelectorAll('video source, video').forEach(el => {
         const src = el.src || el.getAttribute('src');
         if (src) result.video.push({ src, type: el.type || 'video' });
       });
       
-      // Audio elements
       document.querySelectorAll('audio source, audio').forEach(el => {
         const src = el.src || el.getAttribute('src');
         if (src) result.audio.push({ src, type: el.type || 'audio' });
       });
       
-      // Find HLS/DASH in scripts
       const scripts = [...document.querySelectorAll('script')].map(s => s.textContent).join('\n');
       const hlsMatches = scripts.match(/https?:\/\/[^\s"']+\.m3u8[^\s"']*/gi) || [];
       const dashMatches = scripts.match(/https?:\/\/[^\s"']+\.mpd[^\s"']*/gi) || [];
@@ -694,6 +871,9 @@ const handlers = {
       return result;
     });
     
+    const totalStreams = streams.video.length + streams.audio.length + streams.hls.length + streams.dash.length;
+    notifyProgress('stream_extractor', 'completed', `Found ${totalStreams} streams`, { totalStreams });
+    
     return { success: true, streams };
   },
 
@@ -702,8 +882,11 @@ const handlers = {
     const { page } = requireBrowser();
     const { selector, waitForJS = true, timeout = 10000 } = params;
     
+    notifyProgress('js_scrape', 'started', `Scraping: ${selector}`);
+    
     if (waitForJS) {
       await page.waitForSelector(selector, { timeout });
+      notifyProgress('js_scrape', 'progress', 'Element found, extracting content...');
     }
     
     const content = await page.$eval(selector, el => ({
@@ -711,6 +894,8 @@ const handlers = {
       text: el.innerText,
       attributes: Object.fromEntries([...el.attributes].map(a => [a.name, a.value]))
     }));
+    
+    notifyProgress('js_scrape', 'completed', `Scraped ${content.text.length} characters`, { selector });
     
     return { success: true, selector, content };
   },
@@ -720,7 +905,11 @@ const handlers = {
     const { page } = requireBrowser();
     const { code, returnValue = true } = params;
     
+    notifyProgress('execute_js', 'started', 'Executing JavaScript...');
+    
     const result = await page.evaluate(code);
+    
+    notifyProgress('execute_js', 'completed', 'JavaScript executed', { hasResult: result !== undefined });
     
     return { success: true, result: returnValue ? result : undefined };
   },
@@ -730,8 +919,9 @@ const handlers = {
     const { page } = requireBrowser();
     const { playerType = 'auto', action = 'info' } = params;
     
+    notifyProgress('player_api_hook', 'started', `Player ${action}: ${playerType}`);
+    
     const playerInfo = await page.evaluate(({ playerType, action }) => {
-      // Try to detect player
       if (window.player || window.videoPlayer || window.jwplayer) {
         const player = window.player || window.videoPlayer || (window.jwplayer && window.jwplayer());
         
@@ -763,7 +953,6 @@ const handlers = {
         }
       }
       
-      // Fallback to HTML5 video
       const video = document.querySelector('video');
       if (video) {
         if (action === 'play') video.play();
@@ -782,6 +971,8 @@ const handlers = {
       return { detected: false };
     }, { playerType, action });
     
+    notifyProgress('player_api_hook', 'completed', playerInfo.detected ? `Player detected: ${playerInfo.type}` : 'No player found', { detected: playerInfo.detected });
+    
     return { success: true, ...playerInfo };
   },
 
@@ -791,6 +982,11 @@ const handlers = {
     const { selector, data, submit = false, humanLike = true } = params;
     
     const formSelector = selector || 'form';
+    const fields = Object.keys(data || {});
+    
+    notifyProgress('form_automator', 'started', `Filling form with ${fields.length} fields`);
+    
+    let filledCount = 0;
     
     for (const [field, value] of Object.entries(data || {})) {
       const inputSelector = `${formSelector} [name="${field}"], ${formSelector} #${field}, ${formSelector} [placeholder*="${field}" i]`;
@@ -813,6 +1009,8 @@ const handlers = {
               await page.type(inputSelector, String(value));
             }
           }
+          filledCount++;
+          notifyProgress('form_automator', 'progress', `Filled: ${field}`, { field, filledCount });
         }
       } catch (e) {
         // Field not found, continue
@@ -821,9 +1019,12 @@ const handlers = {
     
     if (submit) {
       await page.click(`${formSelector} [type="submit"], ${formSelector} button`);
+      notifyProgress('form_automator', 'progress', 'Form submitted');
     }
     
-    return { success: true, formSelector, fieldsProcessed: Object.keys(data || {}).length, submitted: submit };
+    notifyProgress('form_automator', 'completed', `Filled ${filledCount}/${fields.length} fields`, { filledCount, submitted: submit });
+    
+    return { success: true, formSelector, fieldsProcessed: filledCount, submitted: submit };
   }
 };
 
@@ -834,12 +1035,14 @@ async function executeTool(name, params = {}) {
   const handler = handlers[name];
   
   if (!handler) {
+    notifyProgress(name, 'error', `Unknown tool: ${name}`);
     return { success: false, error: `Unknown tool: ${name}` };
   }
   
   try {
     return await handler(params);
   } catch (error) {
+    notifyProgress(name, 'error', error.message);
     return { success: false, error: error.message };
   }
 }
@@ -865,5 +1068,8 @@ module.exports = {
   executeTool,
   cleanup,
   getState,
-  requireBrowser
+  requireBrowser,
+  setProgressCallback,
+  notifyProgress,
+  getHeadlessFromEnv
 };
