@@ -1,0 +1,79 @@
+{
+  "name": "brave-real-browser-mcp-server",
+  "version": "1.0.1",
+  "description": "MCP Server for Brave Real Browser - Puppeteer with Brave Browser, Stealth Mode, Ad Blocker, and Turnstile Auto-Solver for undetectable web automation.",
+  "main": "lib/cjs/index.js",
+  "module": "lib/esm/index.mjs",
+  "type": "commonjs",
+  "workspaces": [
+    "packages/brave-real-blocker",
+    "packages/brave-real-launcher",
+    "packages/brave-real-puppeteer-core"
+  ],
+  "exports": {
+    ".": {
+      "require": "./lib/cjs/index.js",
+      "import": "./lib/esm/index.mjs",
+      "types": "./typings.d.ts"
+    }
+  },
+  "typings": "typings.d.ts",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "test": "npm run cjs_test && npm run esm_test",
+    "esm_test": "node ./test/esm/test.js",
+    "cjs_test": "node ./test/cjs/test.js",
+    "lint": "echo 'No linting configured'",
+    "prepublishOnly": "npm test",
+    "build:all": "npm run build --workspaces --if-present",
+    "clean:all": "npm run clean --workspaces --if-present",
+    "test:all": "npm run test --workspaces --if-present"
+  },
+  "keywords": [
+    "mcp-server",
+    "model-context-protocol",
+    "brave-browser",
+    "puppeteer-fingerprint",
+    "puppeteer-cloudflare",
+    "undetectable-puppeteer",
+    "undetect",
+    "undetectable",
+    "puppeteer-undetectable",
+    "puppeteer-undetect",
+    "puppeteer-undetectable-bypass",
+    "puppeteer-undetect-bypass",
+    "puppeteer-undetectable-cloudflare",
+    "puppeteer-undetect-cloudflare",
+    "puppeteer-undetectable-cf",
+    "puppeteer-undetect-cf",
+    "puppeteer-undetectable-cf-bypass",
+    "anti-bot",
+    "stealth",
+    "cloudflare-bypass",
+    "turnstile-solver"
+  ],
+  "author": "codeiva4u",
+  "license": "ISC",
+  "dependencies": {
+    "brave-real-puppeteer-core": "workspace:*",
+    "ghost-cursor": "^1.4.2",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "tree-kill": "^1.2.2",
+    "xvfb": "^0.4.0"
+  },
+  "devDependencies": {
+    "puppeteer-extra-plugin-adblocker": "^2.13.6"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server.git"
+  },
+  "bugs": {
+    "url": "https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server/issues"
+  },
+  "homepage": "https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server",
+  "readme": "README.md"
+}

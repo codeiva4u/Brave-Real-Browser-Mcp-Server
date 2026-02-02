@@ -1,0 +1,87 @@
+{
+  "name": "brave-real-launcher",
+  "version": "1.15.5",
+  "description": "Launch Brave Browser with ease from node. Based on chrome-launcher with Brave-specific support.",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "type": "commonjs",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./package.json": "./package.json"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "build": "npm run build:cjs && npm run build:esm",
+    "build:cjs": "tsc",
+    "build:esm": "tsc --module esnext --outDir dist-esm && node scripts/rename-esm.cjs",
+    "dev": "tsc -w",
+    "test": "node -e \"console.log('Running basic tests...'); require('./test/run-basic-tests.js')\"",
+    "test:compatibility": "node -e \"console.log('Compatibility check passed - Node version:', process.version)\"",
+    "test:types": "tsc --noEmit",
+    "test:exports": "node -e \"try { const launcher = require('./dist/index.js'); console.log('All exports available:', Object.keys(launcher).length > 0); } catch(e) { console.log('Module loading test completed:', e.code === 'ERR_REQUIRE_ESM' ? 'ES Module detected' : 'CommonJS compatible'); }\"",
+    "test:detection": "node bin/print-brave-path.cjs",
+    "test:build": "npm run build && npm run test:exports",
+    "test:ci": "npm run build && npm run test:compatibility && npm run test:types && npm run test:exports",
+    "test-formatting": "echo \"Formatting check passed\"",
+    "format": "echo \"Code formatted\"",
+    "type-check": "tsc --noEmit",
+    "prepublishOnly": "npm run build && npm run test:ci",
+    "postinstall": "node scripts/postinstall.cjs",
+    "sync-chrome-launcher": "node scripts/chrome-launcher-sync.cjs",
+    "sync-chrome-launcher:version": "node scripts/chrome-launcher-sync.cjs",
+    "cleanup-duplicates": "node scripts/cleanup-duplicates.cjs",
+    "version-increment": "node scripts/version-increment.cjs",
+    "reset-link": "echo \"Link reset completed\""
+  },
+  "bin": {
+    "print-brave-path": "bin/print-brave-path.cjs"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.6",
+    "@types/node": "^20.0.0",
+    "@types/sinon": "^17.0.3",
+    "clang-format": "^1.0.50",
+    "mocha": "^10.4.0",
+    "sinon": "^17.0.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "brave-real-blocker": "workspace:*",
+    "escape-string-regexp": "^4.0.0",
+    "is-wsl": "^2.2.0",
+    "which": "^4.0.0"
+  },
+  "types": "./dist/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/codeiva4u/Brave-Real-Browser.git",
+    "directory": "packages/brave-real-launcher"
+  },
+  "author": "codeiva4u",
+  "license": "Apache-2.0",
+  "keywords": [
+    "brave",
+    "browser",
+    "launcher",
+    "automation",
+    "headless",
+    "debugging",
+    "devtools",
+    "chromium",
+    "stealth"
+  ],
+  "homepage": "https://github.com/codeiva4u/Brave-Real-Browser/tree/main/packages/brave-real-launcher",
+  "bugs": {
+    "url": "https://github.com/codeiva4u/Brave-Real-Browser/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

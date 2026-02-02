@@ -1,0 +1,79 @@
+{
+  "name": "brave-real-blocker",
+  "version": "1.9.5",
+  "description": "Advanced uBlock Origin management and stealth features for Brave Real Browser",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./singleton": {
+      "import": "./dist/singleton.mjs",
+      "require": "./dist/singleton.js",
+      "types": "./dist/singleton.d.ts"
+    }
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "visual-test": "npx tsx test/visual-test.ts",
+    "lint": "eslint src/**/*.ts",
+    "clean": "rimraf dist",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "brave",
+    "ublock",
+    "adblocker",
+    "stealth",
+    "privacy",
+    "ad-blocking",
+    "tracker-blocking"
+  ],
+  "author": "withlinda13",
+  "license": "MIT",
+  "files": [
+    "dist"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/codeiva4u/Brave-Real-Browser.git",
+    "directory": "packages/brave-real-blocker"
+  },
+  "bugs": {
+    "url": "https://github.com/codeiva4u/Brave-Real-Browser/issues"
+  },
+  "homepage": "https://github.com/codeiva4u/Brave-Real-Browser/tree/main/packages/brave-real-blocker",
+  "dependencies": {
+    "@cliqz/adblocker-puppeteer": "^1.23.8",
+    "adm-zip": "^0.5.10",
+    "cross-fetch": "^4.1.0",
+    "fs-extra": "^11.2.0",
+    "got": "^13.0.0"
+  },
+  "devDependencies": {
+    "@types/adm-zip": "^0.5.5",
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^20.0.0",
+    "brave-real-browser": "^2.13.5",
+    "brave-real-puppeteer-core": "^24.48.5",
+    "mocha": "^10.4.0",
+    "puppeteer-core": "^24.35.0",
+    "sinon": "^17.0.1",
+    "ts-node": "^10.9.2",
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^4.0.17"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

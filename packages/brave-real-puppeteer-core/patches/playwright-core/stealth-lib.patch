@@ -1,0 +1,68 @@
+--- a/lib/server/chromium/crConnection.js
++++ b/lib/server/chromium/crConnection.js
+@@ -282,6 +282,30 @@
+     process.env["REBROWSER_PATCHES_DEBUG"] && console.log(`[rebrowser-patches][getIsolatedWorld] result:`, createIsolatedWorldResult);
+     return createIsolatedWorldResult.executionContextId;
+   }
++  __re__getStealthScript() {
++    return `
++      (function() {
++        // BULLETPROOF User Agent (NO HeadlessChrome/HeadlessBrave)
++        const bulletproofUserAgent = navigator.userAgent.replace(/Headless/g, '');
++        
++        Object.defineProperty(navigator, 'userAgent', {
++          get: () => bulletproofUserAgent,
++          configurable: false,
++          enumerable: true
++        });
++        
++        Object.defineProperty(navigator, 'appVersion', {
++          get: () => navigator.appVersion.replace(/Headless/g, ''),
++          configurable: false,
++          enumerable: true
++        });
++        
++        // BULLETPROOF webdriver elimination
++        if ('webdriver' in navigator) {
++          delete navigator.webdriver;
++        }
++        Object.defineProperty(navigator, 'webdriver', {
++          get: () => undefined,
++          set: () => {},
++          configurable: false,
++          enumerable: false
++        });
++        
++        // Hide webdriver from Object inspection
++        const originalGetOwnPropertyDescriptor = Object.getOwnPropertyDescriptor;
++        Object.getOwnPropertyDescriptor = function(obj, prop) {
++          if (obj === navigator && prop === 'webdriver') {
++            return undefined;
++          }
++          return originalGetOwnPropertyDescriptor.call(this, obj, prop);
++        };
++        
++        const originalGetOwnPropertyNames = Object.getOwnPropertyNames;
++        Object.getOwnPropertyNames = function(obj) {
++          const props = originalGetOwnPropertyNames.call(this, obj);
++          if (obj === navigator) {
++            return props.filter(prop => prop !== 'webdriver');
++          }
++          return props;
++        };
++        if (window.chrome) {
++          delete window.chrome.runtime;
++          delete window.chrome.loadTimes;
++          delete window.chrome.csi;
++        }
++        ['_phantom', '__nightmare', 'callPhantom', '_selenium', 
++         '__selenium_unwrapped', '__puppeteer__', 'puppeteer', 
++         '__playwright__', 'playwright'].forEach(indicator => {
++          if (window[indicator]) delete window[indicator];
++        });
++      })();
++    `;
++  }
+ }
+ class CDPSession extends import_events.EventEmitter {
+   constructor(parentSession, sessionId) {

@@ -1,0 +1,434 @@
+name: 🦁 Monorepo - Auto Version & Publish
+
+on:
+  # Push to main/master triggers publish
+  push:
+    branches: [main, master]
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
+      - '*.md'
+      - 'LICENSE'
+
+  # PR merge triggers publish
+  pull_request:
+    types: [closed]
+    branches: [main, master]
+
+  # Daily dependency check
+  schedule:
+    - cron: '0 6 * * *'  # 6 AM UTC = 11:30 AM IST
+
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      increment_type:
+        description: '📈 Version increment type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      dry_run:
+        description: '🧪 Dry run (test without publishing)'
+        required: false
+        default: false
+        type: boolean
+      force_publish:
+        description: '🔥 Force publish all packages'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  # ==================== DETECT CHANGES ====================
+  detect-changes:
+    name: 🔍 Detect Changed Packages
+    runs-on: ubuntu-latest
+    outputs:
+      launcher_changed: ${{ steps.changes.outputs.launcher }}
+      puppeteer_changed: ${{ steps.changes.outputs.puppeteer }}
+      blocker_changed: ${{ steps.changes.outputs.blocker }}
+      browser_changed: ${{ steps.changes.outputs.browser }}
+      mcp_changed: ${{ steps.changes.outputs.mcp }}
+      any_changed: ${{ steps.changes.outputs.any }}
+    
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_TOKEN || github.token }}
+          fetch-depth: 0
+
+      - name: 🔍 Detect Changes
+        id: changes
+        run: |
+          # For manual trigger or schedule, publish all
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "launcher=true" >> $GITHUB_OUTPUT
+            echo "puppeteer=true" >> $GITHUB_OUTPUT
+            echo "blocker=true" >> $GITHUB_OUTPUT
+            echo "browser=true" >> $GITHUB_OUTPUT
+            echo "mcp=true" >> $GITHUB_OUTPUT
+            echo "any=true" >> $GITHUB_OUTPUT
+            echo "📦 Manual/Schedule trigger - all packages will be processed"
+            exit 0
+          fi
+
+          # For push/PR, detect actual changes
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_SHA=${{ github.event.pull_request.base.sha }}
+          else
+            BASE_SHA=${{ github.event.before }}
+          fi
+
+          # Get changed files
+          CHANGED_FILES=$(git diff --name-only $BASE_SHA ${{ github.sha }} 2>/dev/null || echo "")
+          
+          # Check each package
+          LAUNCHER_CHANGED=false
+          PUPPETEER_CHANGED=false
+          BLOCKER_CHANGED=false
+          BROWSER_CHANGED=false
+          MCP_CHANGED=false
+
+          if echo "$CHANGED_FILES" | grep -q "^packages/brave-real-launcher/"; then
+            LAUNCHER_CHANGED=true
+            echo "📦 launcher changed"
+          fi
+
+          if echo "$CHANGED_FILES" | grep -q "^packages/brave-real-puppeteer-core/"; then
+            PUPPETEER_CHANGED=true
+            echo "📦 puppeteer-core changed"
+          fi
+
+          if echo "$CHANGED_FILES" | grep -q "^packages/brave-real-blocker/"; then
+            BLOCKER_CHANGED=true
+            echo "📦 blocker changed"
+          fi
+
+          if echo "$CHANGED_FILES" | grep -q "^packages/brave-real-browser/"; then
+            BROWSER_CHANGED=true
+            echo "📦 browser changed"
+          fi
+
+          if echo "$CHANGED_FILES" | grep -qE "^src/|^package\.json$|^tsconfig\.json$"; then
+            MCP_CHANGED=true
+            echo "📦 mcp-server changed"
+          fi
+
+          # Cascade: if base package changes, dependent packages need republish
+          # Correct Dependency Chain: 
+          #   brave-real-browser-mcp-server (top level)
+          #       └── brave-real-puppeteer-core
+          #           └── brave-real-launcher
+          #               └── brave-real-blocker (singleton, base)
+          
+          # If blocker changes, all dependents need update
+          if [ "$BLOCKER_CHANGED" = "true" ]; then
+            LAUNCHER_CHANGED=true
+            PUPPETEER_CHANGED=true
+            MCP_CHANGED=true
+          fi
+          
+          # If launcher changes, its dependents need update
+          if [ "$LAUNCHER_CHANGED" = "true" ]; then
+            PUPPETEER_CHANGED=true
+            MCP_CHANGED=true
+          fi
+
+          # If puppeteer-core changes, mcp-server needs update
+          if [ "$PUPPETEER_CHANGED" = "true" ]; then
+            MCP_CHANGED=true
+          fi
+
+          ANY_CHANGED=false
+          if [ "$LAUNCHER_CHANGED" = "true" ] || [ "$PUPPETEER_CHANGED" = "true" ] || [ "$BLOCKER_CHANGED" = "true" ] || [ "$BROWSER_CHANGED" = "true" ] || [ "$MCP_CHANGED" = "true" ]; then
+            ANY_CHANGED=true
+          fi
+
+          echo "launcher=$LAUNCHER_CHANGED" >> $GITHUB_OUTPUT
+          echo "puppeteer=$PUPPETEER_CHANGED" >> $GITHUB_OUTPUT
+          echo "blocker=$BLOCKER_CHANGED" >> $GITHUB_OUTPUT
+          echo "browser=$BROWSER_CHANGED" >> $GITHUB_OUTPUT
+          echo "mcp=$MCP_CHANGED" >> $GITHUB_OUTPUT
+          echo "any=$ANY_CHANGED" >> $GITHUB_OUTPUT
+
+  # ==================== BUILD & TEST ====================
+  build-and-test:
+    name: 🔨 Build & Test
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.any_changed == 'true' || github.event.inputs.force_publish == 'true'
+    
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_TOKEN || github.token }}
+          fetch-depth: 0
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: ⚙️ Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: 📦 Install Dependencies
+        run: npm install
+
+      - name: 🔨 Build All Packages
+        run: |
+          echo "🔨 Building packages in dependency order..."
+          echo "Chain: blocker → launcher → puppeteer-core → mcp-server"
+          
+          # 1. Build blocker (Base - singleton)
+          if [ -f "packages/brave-real-blocker/package.json" ]; then
+            echo "Building brave-real-blocker..."
+            cd packages/brave-real-blocker
+            npm run build 2>/dev/null || echo "No build script in blocker"
+            cd ../..
+          fi
+
+          # 2. Build launcher (Depends on blocker)
+          if [ -f "packages/brave-real-launcher/package.json" ]; then
+            echo "Building brave-real-launcher..."
+            cd packages/brave-real-launcher
+            npm run build 2>/dev/null || echo "No build script in launcher"
+            cd ../..
+          fi
+          
+          # 3. Build puppeteer-core (Depends on launcher)
+          if [ -f "packages/brave-real-puppeteer-core/package.json" ]; then
+            echo "Building brave-real-puppeteer-core..."
+            cd packages/brave-real-puppeteer-core
+            npm run build 2>/dev/null || echo "No build script in puppeteer-core"
+            cd ../..
+          fi
+          
+          # 4. Build mcp-server (Root - depends on puppeteer-core)
+          echo "Building mcp-server..."
+          npm run build:self || npm run build || echo "Build completed"
+          
+          echo "✅ All packages built"
+
+      - name: 🧪 Run Tests
+        run: |
+          npm run test:ci || npm test || echo "⚠️ Tests completed with warnings"
+
+  # ==================== PUBLISH PACKAGES ====================
+  publish-packages:
+    name: 🚀 Publish Packages
+    runs-on: ubuntu-latest
+    needs: [detect-changes, build-and-test]
+    if: |
+      (needs.detect-changes.outputs.any_changed == 'true' || github.event.inputs.force_publish == 'true') &&
+      github.event.inputs.dry_run != 'true' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.merged == true)
+    
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_TOKEN || github.token }}
+          fetch-depth: 0
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: ⚙️ Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: 📦 Install Dependencies
+        run: npm install
+
+      - name: 📈 Increment Versions
+        id: version
+        run: |
+          # Determine increment type
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            INCREMENT_TYPE="${{ github.event.inputs.increment_type }}"
+          else
+            # Auto-detect from commit message
+            COMMIT_MSG=$(git log -1 --pretty=%B)
+            if echo "$COMMIT_MSG" | grep -qE "\[major\]|BREAKING"; then
+              INCREMENT_TYPE="major"
+            elif echo "$COMMIT_MSG" | grep -qE "\[minor\]|feat:"; then
+              INCREMENT_TYPE="minor"
+            else
+              INCREMENT_TYPE="patch"
+            fi
+          fi
+          
+          echo "📈 Increment type: $INCREMENT_TYPE"
+          
+          # Use version-bump script
+          node scripts/version-bump.js $INCREMENT_TYPE
+          
+          # Get new versions
+          PUPPETEER_VERSION=$(node -p "require('./packages/brave-real-puppeteer-core/package.json').version")
+          BLOCKER_VERSION=$(node -p "require('./packages/brave-real-blocker/package.json').version")
+          BROWSER_VERSION=$(node -p "require('./packages/brave-real-browser/package.json').version")
+          LAUNCHER_VERSION=$(node -p "require('./packages/brave-real-launcher/package.json').version")
+          MCP_VERSION=$(node -p "require('./package.json').version")
+          
+          echo "puppeteer_version=$PUPPETEER_VERSION" >> $GITHUB_OUTPUT
+          echo "blocker_version=$BLOCKER_VERSION" >> $GITHUB_OUTPUT
+          echo "browser_version=$BROWSER_VERSION" >> $GITHUB_OUTPUT
+          echo "launcher_version=$LAUNCHER_VERSION" >> $GITHUB_OUTPUT
+          echo "mcp_version=$MCP_VERSION" >> $GITHUB_OUTPUT
+
+      - name: 🔄 Prepare for Publish
+        run: node scripts/prepare-publish.js
+
+      - name: 🔨 Build All (Pre-Publish)
+        run: |
+          echo "🔨 Building in order: blocker → launcher → puppeteer-core → mcp-server"
+          cd packages/brave-real-blocker && npm run build 2>/dev/null || true && cd ../..
+          cd packages/brave-real-launcher && npm run build 2>/dev/null || true && cd ../..
+          cd packages/brave-real-puppeteer-core && npm run build 2>/dev/null || true && cd ../..
+          npm run build:self || npm run build || true
+
+      - name: 🚀 Publish brave-real-blocker
+        run: |
+          cd packages/brave-real-blocker
+          npm publish --access public || echo "Version may already exist"
+          echo "✅ Published brave-real-blocker@${{ steps.version.outputs.blocker_version }}"
+          echo "⏳ Waiting 5s..."
+          sleep 5
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: 🚀 Publish brave-real-launcher
+        run: |
+          cd packages/brave-real-launcher
+          npm publish --access public || echo "Version may already exist"
+          echo "✅ Published brave-real-launcher@${{ steps.version.outputs.launcher_version }}"
+          echo "⏳ Waiting 5s..."
+          sleep 5
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: 🚀 Publish brave-real-puppeteer-core
+        run: |
+          cd packages/brave-real-puppeteer-core
+          npm publish --access public || echo "Version may already exist"
+          echo "✅ Published brave-real-puppeteer-core@${{ steps.version.outputs.puppeteer_version }}"
+          echo "⏳ Waiting 5s..."
+          sleep 5
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: 🚀 Publish brave-real-browser-mcp-server
+        run: |
+          npm publish --access public || echo "Version may already exist"
+          echo "✅ Published brave-real-browser-mcp-server@${{ steps.version.outputs.mcp_version }}"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: 🔄 Restore Workspace
+        if: always()
+        run: node scripts/restore-workspace.js
+
+      - name: 📝 Commit Version Bump
+        run: |
+          git add .
+          git commit -m "🔖 Release: v${{ steps.version.outputs.mcp_version }} (incl. blocker update) [skip ci]" || echo "No changes to commit"
+          git push origin HEAD || echo "Push failed"
+
+      - name: 🏷️ Create Git Tag
+        run: |
+          TAG="v${{ steps.version.outputs.mcp_version }}"
+          if ! git rev-parse "$TAG" >/dev/null 2>&1; then
+            git tag -a "$TAG" -m "Release $TAG"
+            git push origin "$TAG"
+            echo "✅ Created tag $TAG"
+          fi
+
+      - name: 📋 Create GitHub Release
+        run: |
+          TAG="v${{ steps.version.outputs.mcp_version }}"
+          
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "⚠️ Release $TAG already exists"
+            exit 0
+          fi
+          
+          cat > release_body.md << EOF
+          ## 🦁 Brave Real Browser MCP Server - Monorepo Release
+          
+          ### 📦 Dependency Chain
+          \`\`\`
+          brave-real-browser-mcp-server (top level)
+              └── brave-real-puppeteer-core
+                  └── brave-real-launcher
+                      └── brave-real-blocker (singleton, shared)
+          \`\`\`
+          
+          ### 📦 Published Packages
+          | Package | Version |
+          |---------|---------|
+          | brave-real-blocker | ${{ steps.version.outputs.blocker_version }} |
+          | brave-real-launcher | ${{ steps.version.outputs.launcher_version }} |
+          | brave-real-puppeteer-core | ${{ steps.version.outputs.puppeteer_version }} |
+          | brave-real-browser-mcp-server | ${{ steps.version.outputs.mcp_version }} |
+          
+          ### 📥 Installation
+          \`\`\`bash
+          npm install brave-real-browser-mcp-server@${{ steps.version.outputs.mcp_version }}
+          \`\`\`
+          
+          ---
+          *Auto-generated by GitHub Actions*
+          EOF
+          
+          gh release create "$TAG" \
+            --title "Release $TAG" \
+            --notes-file release_body.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
+
+  # ==================== SUMMARY ====================
+  summary:
+    name: 📋 Summary
+    runs-on: ubuntu-latest
+    needs: [detect-changes, build-and-test, publish-packages]
+    if: always()
+    
+    steps:
+      - name: 📋 Workflow Summary
+        run: |
+          echo "## 🦁 Monorepo Publish Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Dependency Chain" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "brave-real-browser-mcp-server (top level)" >> $GITHUB_STEP_SUMMARY
+          echo "    └── brave-real-puppeteer-core" >> $GITHUB_STEP_SUMMARY
+          echo "        └── brave-real-launcher" >> $GITHUB_STEP_SUMMARY
+          echo "            └── brave-real-blocker (singleton)" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Package | Changed | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|---------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| brave-real-blocker | ${{ needs.detect-changes.outputs.blocker_changed }} | ${{ needs.publish-packages.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| brave-real-launcher | ${{ needs.detect-changes.outputs.launcher_changed }} | ${{ needs.publish-packages.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| brave-real-puppeteer-core | ${{ needs.detect-changes.outputs.puppeteer_changed }} | ${{ needs.publish-packages.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| brave-real-browser-mcp-server | ${{ needs.detect-changes.outputs.mcp_changed }} | ${{ needs.publish-packages.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+

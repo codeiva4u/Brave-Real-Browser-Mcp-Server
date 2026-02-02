@@ -1,0 +1,79 @@
+--- a/lib/cjs/puppeteer/common/util.js
++++ b/lib/cjs/puppeteer/common/util.js
+@@ -264,6 +264,29 @@
+  * @internal
+  */
+ function getSourceUrlComment(url) {
++    // rebrowser-stealth: advanced source URL spoofing
++    if (process.env['REBROWSER_STEALTH_SOURCE_URL'] !== '0') {
++        const stealthUrls = [
++            'jquery-3.6.0.min.js',
++            'bootstrap.min.js',
++            'lodash.min.js',
++            'axios.min.js',
++            'react.production.min.js'
++        ];
++        url = process.env['REBROWSER_STEALTH_SOURCE_URL'] || 
++              stealthUrls[Math.floor(Math.random() * stealthUrls.length)];
++    }
+     // rebrowser-patches: change sourceUrl to generic script name
+     if (process.env['REBROWSER_PATCHES_SOURCE_URL'] !== '0') {
+         url = process.env['REBROWSER_PATCHES_SOURCE_URL'] || 'app.js';
+     }
+     return `//# sourceURL=${url}`;
+ }
++
++/**
++ * @internal
++ * rebrowser-stealth: inject navigator spoofing
++ */
++function injectNavigatorSpoofing() {
++    return `
++        // Navigator properties spoofing
++        (function() {
++            const originalNavigator = window.navigator;
++            
++            // Remove webdriver property
++            if ('webdriver' in navigator) {
++                Object.defineProperty(navigator, 'webdriver', {
++                    get: () => undefined,
++                    configurable: true
++                });
++            }
++            
++            // Spoof plugins
++            const mockPlugins = [
++                { name: 'Chrome PDF Plugin', filename: 'internal-pdf-viewer' },
++                { name: 'Chrome PDF Viewer', filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai' },
++                { name: 'Native Client', filename: 'internal-nacl-plugin' }
++            ];
++            
++            Object.defineProperty(navigator, 'plugins', {
++                get: () => mockPlugins,
++                configurable: true
++            });
++            
++            // Spoof languages consistently
++            Object.defineProperty(navigator, 'languages', {
++                get: () => ['en-US', 'en'],
++                configurable: true
++            });
++            
++            // Remove chrome runtime
++            if (window.chrome && window.chrome.runtime) {
++                delete window.chrome.runtime;
++            }
++            
++            // Spoof permissions
++            const originalQuery = navigator.permissions.query;
++            navigator.permissions.query = (parameters) => {
++                if (parameters.name === 'notifications') {
++                    return Promise.resolve({ state: 'default' });
++                }
++                return originalQuery.call(navigator.permissions, parameters);
++            };
++        })();
++    `;
++}
++
++exports.injectNavigatorSpoofing = injectNavigatorSpoofing;
