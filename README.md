@@ -16,6 +16,7 @@ A production-ready MCP (Model Context Protocol) server that combines Puppeteer w
 |---------|-------------|
 | **MCP Server** | Model Context Protocol compatible server with 28 tools |
 | **LSP Server** | Language Server Protocol for IDE code intelligence |
+| **AI Core** | Automatic AI enhancement for all tools (auto-healing, smart retry) |
 | Brave Browser | Uses Brave instead of Chromium for better privacy |
 | 50+ Stealth Features | Passes all major bot detectors |
 | Built-in Ad Blocker | uBlock Origin filters with auto-update |
@@ -189,6 +190,95 @@ When diagnostics are detected, quick fixes are offered:
 
 ---
 
+## AI Core (Automatic Enhancement)
+
+All 28 tools are automatically enhanced with AI capabilities. No configuration needed - AI features work transparently.
+
+### How It Works
+
+```
+AI Agent calls any tool (e.g., click, type, find_element)
+                │
+                ▼
+        ┌───────────────────┐
+        │   AI Core Check   │
+        │ (Lazy initialize) │
+        └───────────────────┘
+                │
+                ▼
+        Execute Original Tool
+                │
+        ┌───────┴───────┐
+        │               │
+     Success         Failed (selector not found)
+        │               │
+        ▼               ▼
+   Return result    ┌─────────────────┐
+   with _ai meta    │ AI Auto-Healing │
+                    │ - Find alts     │
+                    │ - Try healed    │
+                    │ - Retry op      │
+                    └─────────────────┘
+                            │
+                            ▼
+                    Return healed result
+```
+
+### AI Features
+
+| Feature | Description |
+|---------|-------------|
+| **Auto-Healing Selectors** | If a CSS selector fails, AI finds alternative selectors |
+| **Smart Retry** | Failed operations are automatically retried with AI assistance |
+| **Confidence Scoring** | AI provides confidence scores for healed selectors |
+| **Caching** | Healed selectors are cached for performance |
+| **Zero Configuration** | Works out of the box with all 28 tools |
+
+### Example Response with AI Metadata
+
+When AI heals a broken selector:
+
+```json
+{
+  "success": true,
+  "selector": "#new-login-btn",
+  "clicked": true,
+  "_ai": {
+    "enabled": true,
+    "healed": true,
+    "originalSelector": "#old-login-button",
+    "healedSelector": "#new-login-btn",
+    "duration": 245
+  }
+}
+```
+
+### AI Modules
+
+| Module | Description |
+|--------|-------------|
+| `AICore` | Central AI intelligence singleton |
+| `ElementFinder` | Smart element finding with multiple strategies |
+| `SelectorHealer` | Auto-fix broken CSS selectors |
+| `PageAnalyzer` | Page structure analysis |
+| `ActionParser` | Natural language command parsing |
+
+### Programmatic Access
+
+For advanced usage, you can access AI features directly:
+
+```javascript
+const { getAICore, aiEnhancedSelector } = require('./src/mcp/handlers');
+
+// Get AI Core instance
+const ai = getAICore();
+
+// Use AI-enhanced selector finding
+const { element, selector, healed } = await aiEnhancedSelector(page, '#old-selector', 'click');
+```
+
+---
+
 ## Unified Architecture
 
 Both MCP and LSP servers share the same tool definitions:
@@ -197,9 +287,16 @@ Both MCP and LSP servers share the same tool definitions:
 src/
 ├── shared/
 │   └── tools.js         # Single source of truth (28 tools)
+├── ai/                  # AI Core Module (Auto-enhancement)
+│   ├── index.js         # AI module exports
+│   ├── core.js          # AI Core singleton
+│   ├── element-finder.js# Smart element finding
+│   ├── selector-healer.js# Auto-heal selectors
+│   ├── page-analyzer.js # Page analysis
+│   └── action-parser.js # NL command parsing
 ├── mcp/
 │   ├── server.js        # MCP server for AI agents
-│   └── handlers.js      # Tool implementations
+│   └── handlers.js      # Tool implementations + AI integration
 ├── lsp/
 │   ├── server.js        # LSP server for IDEs
 │   └── capabilities/    # Autocomplete, hover, diagnostics, etc.
