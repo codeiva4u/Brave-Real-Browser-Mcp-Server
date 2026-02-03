@@ -39,41 +39,11 @@ test.after(async () => {
 });
 
 test('DrissionPage Detector', async () => {
-    try {
-        // web.archive.org can be slow/unreliable - use timeout
-        await page.goto("https://web.archive.org/web/20240913054632/https://drissionpage.pages.dev/", {
-            timeout: 30000,
-            waitUntil: 'domcontentloaded'
-        });
-
-        // Wait for page to load with retries
-        let detectorBtn = await page.$('#detector');
-        if (!detectorBtn) {
-            // Try original site if archive fails
-            await page.goto("https://drissionpage.pages.dev/", { timeout: 20000, waitUntil: 'domcontentloaded' }).catch(() => null);
-            detectorBtn = await page.$('#detector');
-        }
-
-        if (!detectorBtn) {
-            console.log('⚠️  DrissionPage site unavailable - test skipped');
-            assert.strictEqual(true, true, "DrissionPage site unavailable - skipped");
-            return;
-        }
-
-        await page.realClick("#detector");
-        await new Promise(r => setTimeout(r, 3000));
-
-        let result = await page.evaluate(() => {
-            const span = document.querySelector('#isBot span');
-            return span && span.textContent.includes("not") ? true : false;
-        });
-        assert.strictEqual(result, true, "DrissionPage Detector test failed!")
-    } catch (error) {
-        console.log('⚠️  DrissionPage test skipped due to site issues:', error.message);
-        assert.strictEqual(true, true, "DrissionPage site unavailable - skipped");
-    }
+    await page.goto("https://web.archive.org/web/20240913054632/https://drissionpage.pages.dev/");
+    await page.realClick("#detector")
+    let result = await page.evaluate(() => { return document.querySelector('#isBot span').textContent.includes("not") ? true : false })
+    assert.strictEqual(result, true, "DrissionPage Detector test failed!")
 })
-
 
 test('Sannysoft WebDriver Detector', async () => {
     await page.goto("https://bot.sannysoft.com/");
@@ -85,25 +55,19 @@ test('Sannysoft WebDriver Detector', async () => {
     assert.strictEqual(result, true, "Sannysoft WebDriver Detector test failed! Browser detected as bot.")
 })
 
-// Cloudflare WAF Challenge Test
-// Uses 2captcha demo which is more reliable than nopecha.com
 test('Cloudflare WAF', async () => {
-    // Navigate to a Cloudflare protected page
-    await page.goto("https://2captcha.com/demo/cloudflare-turnstile", { timeout: 60000, waitUntil: 'domcontentloaded' });
-
-    // Wait for page to fully load and turnstile to potentially auto-solve
-    await new Promise(r => setTimeout(r, 5000));
-
-    // Check if we're on the page (not blocked)
-    let result = await page.evaluate(() => {
-        // If we can see the turnstile widget or main content, we passed WAF
-        return document.querySelector('.cf-turnstile') ||
-            document.querySelector('[data-turnstile-widget]') ||
-            document.querySelector('h1') ||
-            document.body.textContent.includes('Cloudflare') ? true : false;
-    }).catch(() => false);
-
-    assert.strictEqual(result, true, "Cloudflare WAF test failed! Could not access the page.")
+    await page.goto("https://nopecha.com/demo/cloudflare");
+    let verify = null
+    let startDate = Date.now()
+    // Increased timeout to 60 seconds to allow turnstile to be solved
+    while (!verify && (Date.now() - startDate) < 50000) {
+        verify = await page.evaluate(() => {
+            // Check if we passed the challenge - look for main content
+            return document.querySelector('.link_row') || document.querySelector('a[href*="nopecha"]') ? true : null
+        }).catch(() => null)
+        await new Promise(r => setTimeout(r, 2000));
+    }
+    assert.strictEqual(verify === true, true, "Cloudflare WAF test failed! (Site may be blocking automated access)")
 })
 
 
@@ -127,9 +91,10 @@ test('Cloudflare Turnstile', async () => {
 })
 
 
+
 test('Fingerprint JS Bot Detector', async () => {
     await page.goto("https://fingerprint.com/products/bot-detection/");
-    await new Promise(r => setTimeout(r, 8000));
+    await new Promise(r => setTimeout(r, 5000));
     const detect = await page.evaluate(() => {
         // Check for bot detection result in page content
         const pageText = document.body.innerText.toLowerCase();
@@ -177,51 +142,28 @@ test('Datadome Bot Detector', async (t) => {
 })
 
 // If this test fails, please first check if you can access https://antcpt.com/score_detector/
-// Score >= 0.7 required for passing - this validates genuine anti-detection
 test('Recaptcha V3 Score (hard)', async () => {
-    await page.goto("https://antcpt.com/score_detector/", { timeout: 30000 });
+    await page.goto("https://antcpt.com/score_detector/");
 
-    // Extended human-like warm-up interactions before clicking
-    // 1. Wait for page to fully render
-    await new Promise(r => setTimeout(r, 2000));
-
-    // 2. Random mouse movements using realCursor - multiple positions
-    await page.realCursor.move('body', { paddingPercentage: 30 });
+    // Human-like warm-up interactions before clicking
+    // 1. Random mouse movements using realCursor
+    await page.realCursor.move('body', { paddingPercentage: 20 });
     await new Promise(r => setTimeout(r, 500 + Math.random() * 500));
 
-    await page.realCursor.move('h1', { paddingPercentage: 20 }).catch(() => { });
-    await new Promise(r => setTimeout(r, 300 + Math.random() * 300));
+    // 2. Scroll down a bit to simulate reading
+    await page.mouse.wheel({ deltaY: 100 + Math.random() * 100 });
+    await new Promise(r => setTimeout(r, 800 + Math.random() * 400));
 
-    // 3. Scroll down slowly to simulate reading
-    await page.mouse.wheel({ deltaY: 50 });
-    await new Promise(r => setTimeout(r, 300));
-    await page.mouse.wheel({ deltaY: 80 + Math.random() * 50 });
-    await new Promise(r => setTimeout(r, 500 + Math.random() * 400));
-
-    // 4. Move mouse around the page naturally
-    await page.realCursor.move('body', { paddingPercentage: 50 });
-    await new Promise(r => setTimeout(r, 400 + Math.random() * 300));
-
-    // 5. Move mouse towards button area naturally with hesitation
-    await page.realCursor.move('button', { paddingPercentage: 20 });
-    await new Promise(r => setTimeout(r, 200 + Math.random() * 200));
+    // 3. Move mouse towards button area naturally
     await page.realCursor.move('button', { paddingPercentage: 10 });
     await new Promise(r => setTimeout(r, 300 + Math.random() * 300));
 
-    // 6. Now click the button
-    await page.realClick("button");
-    await new Promise(r => setTimeout(r, 8000));
+    // 4. Now click the button
+    await page.realClick("button")
+    await new Promise(r => setTimeout(r, 5000));
 
     const score = await page.evaluate(() => {
-        const big = document.querySelector('big');
-        return big ? big.textContent.replace(/[^0-9.]/g, '') : '0';
-    });
-
-    const numScore = Number(score);
-    console.log(`📊 Recaptcha V3 Score: ${numScore}`);
-
-    // Score >= 0.3 validates anti-detection is working (score heavily depends on IP reputation)
-    assert.strictEqual(numScore >= 0.3, true,
-        `Recaptcha V3 Score should be >=0.3. Got: ${numScore}. Note: Score heavily depends on IP reputation.`)
+        return document.querySelector('big').textContent.replace(/[^0-9.]/g, '')
+    })
+    assert.strictEqual(Number(score) >= 0.7, true, "(please first check if you can access https://antcpt.com/score_detector/.) Recaptcha V3 Score (hard) should be >=0.7. Score Result: " + score)
 })
-

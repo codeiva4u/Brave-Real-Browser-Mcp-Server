@@ -60,7 +60,7 @@ test('Cloudflare WAF', async () => {
     let verify = null
     let startDate = Date.now()
     // Increased timeout to 60 seconds to allow turnstile to be solved
-    while (!verify && (Date.now() - startDate) < 60000) {
+    while (!verify && (Date.now() - startDate) < 50000) {
         verify = await page.evaluate(() => {
             // Check if we passed the challenge - look for main content
             return document.querySelector('.link_row') || document.querySelector('a[href*="nopecha"]') ? true : null
@@ -94,7 +94,7 @@ test('Cloudflare Turnstile', async () => {
 
 test('Fingerprint JS Bot Detector', async () => {
     await page.goto("https://fingerprint.com/products/bot-detection/");
-    await new Promise(r => setTimeout(r, 8000));
+    await new Promise(r => setTimeout(r, 5000));
     const detect = await page.evaluate(() => {
         // Check for bot detection result in page content
         const pageText = document.body.innerText.toLowerCase();
@@ -160,7 +160,7 @@ test('Recaptcha V3 Score (hard)', async () => {
 
     // 4. Now click the button
     await page.realClick("button")
-    await new Promise(r => setTimeout(r, 6000));
+    await new Promise(r => setTimeout(r, 5000));
 
     const score = await page.evaluate(() => {
         return document.querySelector('big').textContent.replace(/[^0-9.]/g, '')
