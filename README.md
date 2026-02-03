@@ -281,21 +281,6 @@ node src/index.js lsp
 # Show help
 node src/index.js --help
 ```
-
-### Tool Categories
-
-| Category | Tools | Description |
-|----------|-------|-------------|
-| **Browser** | 3 | Browser lifecycle (init, close, cookies) |
-| **Navigation** | 1 | Page navigation |
-| **Interaction** | 8 | User actions (click, type, scroll, etc.) |
-| **Extraction** | 10 | Content scraping (HTML, JSON, links, etc.) |
-| **Network** | 3 | Network operations (recorder, download, trace) |
-| **Analysis** | 1 | Page analysis (SEO, performance, etc.) |
-| **Utility** | 2 | Helpers (wait, progress tracker) |
-
----
-
 ## Monorepo Ecosystem
 
 ```
@@ -362,53 +347,6 @@ All packages published to NPM automatically
 ```bash
 npm install brave-real-browser-mcp-server
 ```
-
-For Linux (required for headless mode):
-```bash
-sudo apt-get install xvfb
-```
-
----
-
-## Quick Start
-
-### CommonJS
-
-```javascript
-const { connect } = require('brave-real-browser-mcp-server');
-
-(async () => {
-  const { browser, page, blocker } = await connect({
-    headless: false,
-    turnstile: true,  // Auto-solve Cloudflare
-  });
-
-  await page.goto('https://example.com');
-
-  // Human-like click with ghost-cursor
-  await page.realClick('#button');
-
-  await browser.close();
-})();
-```
-
-### ESM
-
-```javascript
-import { connect } from 'brave-real-browser-mcp-server';
-
-const { browser, page, blocker } = await connect({
-  headless: false,
-  turnstile: true,
-});
-
-await page.goto('https://example.com');
-await page.realClick('#button');
-await browser.close();
-```
-
----
-
 ## Connect Options
 
 | Option | Type | Default | Description |
