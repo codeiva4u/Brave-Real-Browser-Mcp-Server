@@ -1029,8 +1029,8 @@ const handlers = {
 };
 
 // ═══════════════════════════════════════════════════════════════
-// 🤖 AI-POWERED CORE + SIMPLE SELF-HEALING
-// Hindi message + Auto Training
+// 🤖 AI-POWERED CORE INTEGRATION
+// All tools automatically get AI features (auto-healing, smart find)
 // ═══════════════════════════════════════════════════════════════
 
 let aiCore = null;
@@ -1043,30 +1043,14 @@ function getAICore() {
     try {
       const ai = require('../ai');
       aiCore = ai.aiCore;
-      aiCore.configure({ 
-        logLevel: 'info', 
-        enableAutoHeal: true,
-        enableSelfHealing: true
-      });
-      console.error('🤖 [AI] AI Core initialized');
-      console.error('🔧 [AI] Self-Healing: Hindi messages + Auto Training ACTIVE');
+      aiCore.configure({ logLevel: 'info', enableAutoHeal: true });
+      console.error('🤖 [AI] AI Core initialized - all tools now AI-enhanced');
     } catch (e) {
       console.error('⚠️ [AI] AI Core not available:', e.message);
       return null;
     }
   }
   return aiCore;
-}
-
-/**
- * Get training statistics
- */
-function getTrainingStats() {
-  const ai = getAICore();
-  if (ai) {
-    return ai.getTrainingStats();
-  }
-  return null;
 }
 
 /**
@@ -1115,12 +1099,12 @@ async function aiEnhancedSelector(page, selector, operation, options = {}) {
 }
 
 /**
- * Execute a tool by name - WITH SELF-HEALING + AUTO TRAINING
+ * Execute a tool by name - NOW WITH AI INTEGRATION
  * 
- * Every tool use = Training
- * - Success patterns stored
- * - Failure patterns stored  
- * - System gets smarter over time
+ * AI Features automatically applied:
+ * - Auto-healing: If selector fails, AI tries to find alternatives
+ * - Smart retry: Failed operations are retried with AI assistance
+ * - All 28 tools benefit from AI without any changes
  */
 async function executeTool(name, params = {}) {
   const handler = handlers[name];
@@ -1131,142 +1115,67 @@ async function executeTool(name, params = {}) {
   }
   
   // Initialize AI Core (lazy)
-  const ai = getAICore();
+  getAICore();
   
   const startTime = Date.now();
   
   try {
     // Execute the handler
     const result = await handler(params);
-    const duration = Date.now() - startTime;
     
-    // Add AI metadata
-    result._ai = { 
-      enabled: !!ai, 
-      duration
-    };
-    
-    // Get page info for context
-    const { page } = getState();
-    const context = {
-      duration,
-      url: page?.url?.(),
-      params
-    };
-    
-    // ═══════════════════════════════════════════════════════════════
-    // CASE 1: Tool SUCCESS - Validate result for 100% accuracy
-    // ═══════════════════════════════════════════════════════════════
+    // If successful, return with AI metadata
     if (result.success) {
-      if (ai) {
-        // ⭐ ADVANCED VALIDATION: Check if result is 100% as expected
-        const validation = ai.validateResult(name, result, params, context);
-        
-        // Add validation score to result
-        result._validation = {
-          score: validation.score,
-          isValid: validation.isValid,
-          issueCount: validation.issues.length
-        };
-        
-        // If not 100%, add Hindi warning message
-        if (validation.score < 100 && validation.hindiMessage) {
-          result.hindiMessage = validation.hindiMessage;
-          result._issues = validation.issues;
-          notifyProgress(name, 'progress', `⚠️ Result validation: ${validation.score}%`);
+      return {
+        ...result,
+        _ai: { 
+          enabled: !!aiCore, 
+          healed: false,
+          duration: Date.now() - startTime 
         }
-        
-        // Also check for legacy issues (performance, healed selectors)
-        const issues = ai.detectIssues(name, result, context);
-        if (issues.length > 0 && !result.hindiMessage) {
-          result.hindiMessage = ai.buildIssueMessage(name, issues);
-          result._issues = issues;
-        }
-        
-        // 🧠 TRAIN: Learn from this execution (success or with issues)
-        ai.learnFromExecution(name, params, result, context);
-      }
-      
-      return result;
+      };
     }
     
-    // ═══════════════════════════════════════════════════════════════
-    // CASE 2: Tool FAILED (success: false) - try healing first
-    // ═══════════════════════════════════════════════════════════════
-    if (result.error?.includes('not found') && params.selector && ai) {
+    // If failed with "not found" error and has selector, try AI healing
+    if (result.error?.includes('not found') && params.selector && aiCore) {
       notifyProgress(name, 'progress', '🤖 AI attempting recovery...');
       
+      const { page } = getState();
       if (page) {
         const healed = await aiEnhancedSelector(page, params.selector, name);
         
         if (healed.element) {
+          // Retry with healed selector
           const retryParams = { ...params, selector: healed.selector };
           const retryResult = await handler(retryParams);
           
-          retryResult._ai = {
-            enabled: true,
-            healed: true,
-            originalSelector: params.selector,
-            healedSelector: healed.selector,
-            duration: Date.now() - startTime
+          return {
+            ...retryResult,
+            _ai: {
+              enabled: true,
+              healed: true,
+              originalSelector: params.selector,
+              healedSelector: healed.selector,
+              duration: Date.now() - startTime
+            }
           };
-          
-          // Healed = there was an issue in source code
-          retryResult.hindiMessage = `\n⚠️ चेतावनी: Selector समस्या थी\n\n` +
-            `🔸 Original selector "${params.selector}" काम नहीं किया\n` +
-            `🔸 AI ने "${healed.selector}" से fix किया\n\n` +
-            `💡 सुझाव: Source code में selector update करें:\n` +
-            `   पहले: "${params.selector}"\n` +
-            `   बाद:  "${healed.selector}"\n\n` +
-            `⚠️ कृपया source code में यह fix करें!`;
-          
-          // 🧠 TRAIN: Learn the selector correction
-          ai.learnFromExecution(name, params, retryResult, context);
-          
-          return retryResult;
         }
       }
     }
     
-    // ═══════════════════════════════════════════════════════════════
-    // CASE 3: Tool FAILED completely - Hindi error message
-    // ═══════════════════════════════════════════════════════════════
-    if (result.error) {
-      if (ai) {
-        try {
-          const selfHealResult = await ai.selfHeal(name, result.error, context);
-          
-          if (selfHealResult) {
-            result.hindiMessage = selfHealResult.hindiMessage;
-          }
-          
-          // 🧠 TRAIN: Learn from failure
-          ai.learnFromExecution(name, params, result, context);
-        } catch (aiError) {
-          console.error('⚠️ [AI] Self-heal failed:', aiError.message);
-          result.hindiMessage = `🔴 समस्या: ${result.error}\n\n💡 AI recovery failed.`;
-        }
-      } else {
-        // No AI - simple fallback message
-        result.hindiMessage = `🔴 Error: ${result.error}`;
-      }
-    }
-    
-    return result;
+    return {
+      ...result,
+      _ai: { enabled: !!aiCore, healed: false, duration: Date.now() - startTime }
+    };
     
   } catch (error) {
-    // ═══════════════════════════════════════════════════════════════
-    // CASE 4: Tool EXCEPTION (threw error)
-    // ═══════════════════════════════════════════════════════════════
     notifyProgress(name, 'error', error.message);
-    
-    const duration = Date.now() - startTime;
-    const { page } = getState();
-    const context = { duration, url: page?.url?.(), params };
     
     // Try AI recovery for selector-based errors
     if (error.message?.includes('selector') && params.selector && aiCore) {
+      notifyProgress(name, 'progress', '🤖 AI attempting error recovery...');
+      
       try {
+        const { page } = getState();
         if (page) {
           const healed = await aiEnhancedSelector(page, params.selector, name);
           
@@ -1274,25 +1183,17 @@ async function executeTool(name, params = {}) {
             const retryParams = { ...params, selector: healed.selector };
             const retryResult = await handler(retryParams);
             
-            retryResult._ai = {
-              enabled: true,
-              healed: true,
-              recoveredFromError: true,
-              originalSelector: params.selector,
-              healedSelector: healed.selector,
-              duration: Date.now() - startTime
+            return {
+              ...retryResult,
+              _ai: {
+                enabled: true,
+                healed: true,
+                recoveredFromError: true,
+                originalSelector: params.selector,
+                healedSelector: healed.selector,
+                duration: Date.now() - startTime
+              }
             };
-            
-            retryResult.hindiMessage = `\n⚠️ चेतावनी: Error recover हुआ लेकिन fix जरूरी है\n\n` +
-              `🔸 Error आया था: ${error.message}\n` +
-              `🔸 AI ने selector "${healed.selector}" से recover किया\n\n` +
-              `💡 सुझाव: Source code में selector update करें\n\n` +
-              `⚠️ कृपया source code में यह fix करें!`;
-            
-            // 🧠 TRAIN: Learn recovery pattern
-            aiCore.learnFromExecution(name, params, retryResult, context);
-            
-            return retryResult;
           }
         }
       } catch (retryError) {
@@ -1300,34 +1201,11 @@ async function executeTool(name, params = {}) {
       }
     }
     
-    // Hindi message for exception
-    const result = { 
+    return { 
       success: false, 
       error: error.message,
-      _ai: { enabled: !!aiCore, duration }
+      _ai: { enabled: !!aiCore, healed: false, duration: Date.now() - startTime }
     };
-    
-    if (aiCore) {
-      try {
-        const selfHealResult = await aiCore.selfHeal(name, error, context);
-        
-        if (selfHealResult) {
-          result.hindiMessage = selfHealResult.hindiMessage;
-        }
-        
-        // 🧠 TRAIN: Learn from exception
-        aiCore.learnFromExecution(name, params, result, context);
-      } catch (aiError) {
-        // AI failed, but still return the error with fallback Hindi message
-        console.error('⚠️ [AI] Self-heal failed:', aiError.message);
-        result.hindiMessage = `🔴 समस्या: ${error.message}\n\n💡 AI recovery failed, please check manually.`;
-      }
-    } else {
-      // No AI available - simple Hindi fallback
-      result.hindiMessage = `🔴 Error: ${error.message}`;
-    }
-    
-    return result;
   }
 }
 
@@ -1356,8 +1234,7 @@ module.exports = {
   setProgressCallback,
   notifyProgress,
   getHeadlessFromEnv,
-  // AI exports
+  // AI Core exports
   getAICore,
-  aiEnhancedSelector,
-  getTrainingStats
+  aiEnhancedSelector
 };

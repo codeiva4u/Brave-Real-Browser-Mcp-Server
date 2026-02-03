@@ -61,14 +61,13 @@ function createServer() {
       // Execute the tool
       const result = await executeTool(name, args || {});
 
-      // Format response - include full result with hindiMessage
+      // Format response
       if (result.success === false && result.error) {
         return {
           content: [
             {
               type: 'text',
-              // Return FULL result including hindiMessage, _ai, etc.
-              text: JSON.stringify(result, null, 2),
+              text: JSON.stringify({ error: result.error }, null, 2),
             },
           ],
           isError: true,
@@ -84,16 +83,11 @@ function createServer() {
         ],
       };
     } catch (error) {
-      // Even server-level exceptions get Hindi message
       return {
         content: [
           {
             type: 'text',
-            text: JSON.stringify({ 
-              success: false,
-              error: error.message,
-              hindiMessage: `🔴 Server Error: ${error.message}\n\n💡 यह unexpected error है, please check logs.`
-            }, null, 2),
+            text: JSON.stringify({ error: error.message }, null, 2),
           },
         ],
         isError: true,

@@ -16,8 +16,7 @@ A production-ready MCP (Model Context Protocol) server that combines Puppeteer w
 |---------|-------------|
 | **MCP Server** | Model Context Protocol compatible server with 28 tools |
 | **LSP Server** | Language Server Protocol for IDE code intelligence |
-| **AI Core** | Automatic AI enhancement for all tools (runtime recovery, smart retry) |
-| **Hindi Reporting** | Hindi error messages with fix suggestions (user must fix manually) |
+| **AI Core** | Automatic AI enhancement for all tools (auto-healing, smart retry) |
 | Brave Browser | Uses Brave instead of Chromium for better privacy |
 | 50+ Stealth Features | Passes all major bot detectors |
 | Built-in Ad Blocker | uBlock Origin filters with auto-update |
@@ -229,7 +228,7 @@ AI Agent calls any tool (e.g., click, type, find_element)
 
 | Feature | Description |
 |---------|-------------|
-| **Runtime Recovery** | If a CSS selector fails, AI finds alternative selectors (temporary fix) |
+| **Auto-Healing Selectors** | If a CSS selector fails, AI finds alternative selectors |
 | **Smart Retry** | Failed operations are automatically retried with AI assistance |
 | **Confidence Scoring** | AI provides confidence scores for healed selectors |
 | **Caching** | Healed selectors are cached for performance |
@@ -263,9 +262,6 @@ When AI heals a broken selector:
 | `SelectorHealer` | Auto-fix broken CSS selectors |
 | `PageAnalyzer` | Page structure analysis |
 | `ActionParser` | Natural language command parsing |
-| `ErrorCollector` | Capture and categorize tool errors |
-| `HindiSuggester` | Generate Hindi fix suggestions |
-| `PatternLearner` | Store error patterns in JSON (Pattern Storage) |
 
 ### Programmatic Access
 
@@ -283,67 +279,7 @@ const { element, selector, healed } = await aiEnhancedSelector(page, '#old-selec
 
 ---
 
-## Error Detection + Hindi Reporting
-
-The MCP server includes **Error Detection** with **Hindi messages** to help users understand and fix issues. 
-
-> **Important:** This is NOT auto-healing or auto-training. The system only detects and reports errors - **you must fix the code manually**.
-
-### What It Actually Does
-
-| Feature | What It Does | What It Does NOT Do |
-|---------|--------------|---------------------|
-| **Error Detection** | Catches and categorizes errors | Does not auto-fix code |
-| **Hindi Messages** | Explains error in Hindi with suggestions | Does not modify source files |
-| **Pattern Storage** | Saves error patterns to JSON file | Does not learn or improve over time |
-| **Runtime Recovery** | Tries alternate selector temporarily | Does not permanently fix selectors |
-
-### Example Response with Hindi Message
-
-When a tool fails:
-
-```json
-{
-  "success": false,
-  "error": "Element not found: #non-existent-btn",
-  "hindiMessage": "
-    🔴 समस्या: Element नहीं मिला
-    📛 Tool: click
-    
-    📋 कारण: CSS selector page में element नहीं ढूंढ पाता
-    
-    💡 सुझाव: waitForSelector पहले use करें
-    
-    ⚠️ कृपया source code में यह fix करें!
-  "
-}
-```
-
-### Error Categories Detected
-
-| Category | Example | Hindi Message |
-|----------|---------|---------------|
-| `selector_not_found` | Element missing | "Element नहीं मिला" |
-| `browser_not_initialized` | No browser | "Browser initialize करें" |
-| `timeout` | Page slow | "Timeout हो गया" |
-| `navigation_failed` | URL error | "Navigation fail" |
-
-### Pattern Storage (Not Training)
-
-Errors are saved to `data/errors.json` for analysis. This is simple JSON storage, not machine learning:
-
-```json
-{
-  "errors": [
-    {
-      "toolName": "click",
-      "category": "selector_not_found",
-      "message": "Element not found: #btn",
-      "timestamp": "2026-02-03T01:30:00Z"
-    }
-  ]
-}
-```
+## Unified Architecture
 
 Both MCP and LSP servers share the same tool definitions:
 
@@ -351,24 +287,19 @@ Both MCP and LSP servers share the same tool definitions:
 src/
 ├── shared/
 │   └── tools.js         # Single source of truth (28 tools)
-├── ai/                  # AI Core Module
+├── ai/                  # AI Core Module (Auto-enhancement)
 │   ├── index.js         # AI module exports
 │   ├── core.js          # AI Core singleton
 │   ├── element-finder.js# Smart element finding
-│   ├── selector-healer.js# Runtime selector recovery
+│   ├── selector-healer.js# Auto-heal selectors
 │   ├── page-analyzer.js # Page analysis
-│   ├── action-parser.js # NL command parsing
-│   ├── error-collector.js # Error capture & categorization
-│   ├── hindi-suggester.js # Hindi message generation
-│   └── pattern-learner.js # Pattern storage (JSON)
+│   └── action-parser.js # NL command parsing
 ├── mcp/
 │   ├── server.js        # MCP server for AI agents
 │   └── handlers.js      # Tool implementations + AI integration
 ├── lsp/
 │   ├── server.js        # LSP server for IDEs
 │   └── capabilities/    # Autocomplete, hover, diagnostics, etc.
-├── data/                # Error logs (not training data)
-│   └── errors.json      # Stored errors (gitignored)
 └── index.js             # Unified entry point
 ```
 
