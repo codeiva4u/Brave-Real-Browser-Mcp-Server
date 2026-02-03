@@ -1216,15 +1216,25 @@ async function executeTool(name, params = {}) {
     // ═══════════════════════════════════════════════════════════════
     // CASE 3: Tool FAILED completely - Hindi error message
     // ═══════════════════════════════════════════════════════════════
-    if (ai && result.error) {
-      const selfHealResult = await ai.selfHeal(name, result.error, context);
-      
-      if (selfHealResult) {
-        result.hindiMessage = selfHealResult.hindiMessage;
+    if (result.error) {
+      if (ai) {
+        try {
+          const selfHealResult = await ai.selfHeal(name, result.error, context);
+          
+          if (selfHealResult) {
+            result.hindiMessage = selfHealResult.hindiMessage;
+          }
+          
+          // 🧠 TRAIN: Learn from failure
+          ai.learnFromExecution(name, params, result, context);
+        } catch (aiError) {
+          console.error('⚠️ [AI] Self-heal failed:', aiError.message);
+          result.hindiMessage = `🔴 समस्या: ${result.error}\n\n💡 AI recovery failed.`;
+        }
+      } else {
+        // No AI - simple fallback message
+        result.hindiMessage = `🔴 Error: ${result.error}`;
       }
-      
-      // 🧠 TRAIN: Learn from failure
-      ai.learnFromExecution(name, params, result, context);
     }
     
     return result;
@@ -1283,14 +1293,23 @@ async function executeTool(name, params = {}) {
     };
     
     if (aiCore) {
-      const selfHealResult = await aiCore.selfHeal(name, error, context);
-      
-      if (selfHealResult) {
-        result.hindiMessage = selfHealResult.hindiMessage;
+      try {
+        const selfHealResult = await aiCore.selfHeal(name, error, context);
+        
+        if (selfHealResult) {
+          result.hindiMessage = selfHealResult.hindiMessage;
+        }
+        
+        // 🧠 TRAIN: Learn from exception
+        aiCore.learnFromExecution(name, params, result, context);
+      } catch (aiError) {
+        // AI failed, but still return the error with fallback Hindi message
+        console.error('⚠️ [AI] Self-heal failed:', aiError.message);
+        result.hindiMessage = `🔴 समस्या: ${error.message}\n\n💡 AI recovery failed, please check manually.`;
       }
-      
-      // 🧠 TRAIN: Learn from exception
-      aiCore.learnFromExecution(name, params, result, context);
+    } else {
+      // No AI available - simple Hindi fallback
+      result.hindiMessage = `🔴 Error: ${error.message}`;
     }
     
     return result;
