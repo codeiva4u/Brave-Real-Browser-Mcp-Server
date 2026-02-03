@@ -215,17 +215,6 @@ When AI heals a broken selector:
   }
 }
 ```
-
-### AI Modules
-
-| Module | Description |
-|--------|-------------|
-| `AICore` | Central AI intelligence singleton |
-| `ElementFinder` | Smart element finding with multiple strategies |
-| `SelectorHealer` | Auto-fix broken CSS selectors |
-| `PageAnalyzer` | Page structure analysis |
-| `ActionParser` | Natural language command parsing |
-
 ### Programmatic Access
 
 For advanced usage, you can access AI features directly:
