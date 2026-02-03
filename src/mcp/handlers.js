@@ -1155,15 +1155,30 @@ async function executeTool(name, params = {}) {
     };
     
     // ═══════════════════════════════════════════════════════════════
-    // CASE 1: Tool SUCCESS but may have issues
+    // CASE 1: Tool SUCCESS - Validate result for 100% accuracy
     // ═══════════════════════════════════════════════════════════════
     if (result.success) {
       if (ai) {
-        // Check for quality/performance issues
-        const issues = ai.detectIssues(name, result, context);
+        // ⭐ ADVANCED VALIDATION: Check if result is 100% as expected
+        const validation = ai.validateResult(name, result, params, context);
         
-        if (issues.length > 0) {
-          // Tool worked but has issues - Hindi warning
+        // Add validation score to result
+        result._validation = {
+          score: validation.score,
+          isValid: validation.isValid,
+          issueCount: validation.issues.length
+        };
+        
+        // If not 100%, add Hindi warning message
+        if (validation.score < 100 && validation.hindiMessage) {
+          result.hindiMessage = validation.hindiMessage;
+          result._issues = validation.issues;
+          notifyProgress(name, 'progress', `⚠️ Result validation: ${validation.score}%`);
+        }
+        
+        // Also check for legacy issues (performance, healed selectors)
+        const issues = ai.detectIssues(name, result, context);
+        if (issues.length > 0 && !result.hindiMessage) {
           result.hindiMessage = ai.buildIssueMessage(name, issues);
           result._issues = issues;
         }

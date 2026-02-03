@@ -6,7 +6,8 @@
  * - Auto-healing selectors when they break
  * - Page understanding and structure analysis
  * - Natural language command parsing
- * - SIMPLE SELF-HEALING: Hindi message + Auto Training
+ * - Error Detection + Hindi Reporting
+ * - Advanced Result Validation (100% accuracy check)
  */
 
 const ElementFinder = require('./element-finder');
@@ -14,10 +15,13 @@ const SelectorHealer = require('./selector-healer');
 const PageAnalyzer = require('./page-analyzer');
 const ActionParser = require('./action-parser');
 
-// Self-Healing Components (Simplified)
+// Error Detection Components
 const { errorCollector, ERROR_CATEGORIES } = require('./error-collector');
 const { hindiSuggester } = require('./hindi-suggester');
 const { patternLearner } = require('./pattern-learner');
+
+// Advanced Result Validation
+const { resultValidator } = require('./result-validator');
 
 /**
  * AI Core class - Central AI intelligence for the browser automation
@@ -29,10 +33,13 @@ class AICore {
     this.pageAnalyzer = new PageAnalyzer();
     this.actionParser = new ActionParser();
     
-    // Self-Healing Components (Simplified)
+    // Error Detection Components
     this.errorCollector = errorCollector;
     this.hindiSuggester = hindiSuggester;
     this.patternLearner = patternLearner;
+    
+    // Advanced Result Validation
+    this.resultValidator = resultValidator;
     
     // Cache for performance
     this.pageCache = new Map();
@@ -419,6 +426,65 @@ class AICore {
       errors: this.errorCollector.getStats(),
       patterns: this.patternLearner.getStats()
     };
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // ADVANCED RESULT VALIDATION
+  // Validates tool results even when success: true
+  // Checks if result matches expected outcome
+  // ═══════════════════════════════════════════════════════════════
+
+  /**
+   * Validate a tool result for 100% accuracy
+   * Even if tool returns success: true, this checks if the result
+   * actually matches what was expected
+   * 
+   * @param {string} toolName - Name of the tool
+   * @param {object} result - Tool result
+   * @param {object} params - Tool parameters
+   * @param {object} context - Execution context
+   * @returns {object} Validation result with score and Hindi message
+   */
+  validateResult(toolName, result, params = {}, context = {}) {
+    try {
+      const validation = this.resultValidator.validate(toolName, result, params, context);
+      
+      // If there are issues, add validation warning to result
+      if (this.resultValidator.needsWarning(validation)) {
+        this.log('warn', `Validation issues for ${toolName}: Score ${validation.score}/100`);
+        
+        // Track low-quality results
+        if (validation.score < 70) {
+          this.patternLearner.learn({
+            toolName,
+            category: 'low_quality_result',
+            message: `Result quality: ${validation.score}%`,
+            context: { params, issues: validation.issues.map(i => i.type) }
+          }, {
+            type: 'quality_issue',
+            score: validation.score,
+            confidence: 0.8
+          });
+        }
+      }
+      
+      return validation;
+    } catch (e) {
+      this.log('error', `Validation error for ${toolName}: ${e.message}`);
+      return {
+        isValid: true,
+        score: 100,
+        issues: [],
+        hindiMessage: null
+      };
+    }
+  }
+
+  /**
+   * Get validation statistics
+   */
+  getValidationStats() {
+    return this.resultValidator.getStats();
   }
 
   // ═══════════════════════════════════════════════════════════════

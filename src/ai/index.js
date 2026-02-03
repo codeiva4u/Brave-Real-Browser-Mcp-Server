@@ -6,7 +6,8 @@
  * 2. Selector Auto-Healing
  * 3. Page Understanding
  * 4. Natural Language Commands
- * 5. SIMPLE SELF-HEALING: Hindi message + Auto Training
+ * 5. Error Detection + Hindi Reporting
+ * 6. Advanced Result Validation (100% accuracy check)
  */
 
 const {
@@ -37,10 +38,13 @@ const SelectorHealer = require('./selector-healer');
 const PageAnalyzer = require('./page-analyzer');
 const ActionParser = require('./action-parser');
 
-// Self-Healing modules
+// Error Detection modules
 const ErrorCollectorModule = require('./error-collector');
 const HindiSuggesterModule = require('./hindi-suggester');
 const PatternLearnerModule = require('./pattern-learner');
+
+// Advanced Result Validation
+const ResultValidatorModule = require('./result-validator');
 
 module.exports = {
   // Main AI Core
@@ -56,13 +60,18 @@ module.exports = {
   wrapHandler,
   configure,
   
-  // Simple Self-Healing + Auto Training
+  // Error Detection + Hindi Reporting
   selfHeal,
   detectIssues,
   buildIssueMessage,
   learnFromExecution,
   getTrainingStats,
   getExecutionStats,
+  
+  // Advanced Result Validation
+  validateResult: (toolName, result, params, context) => aiCore.validateResult(toolName, result, params, context),
+  getValidationStats: () => aiCore.getValidationStats(),
+  resultValidator: ResultValidatorModule.resultValidator,
   
   // Component instances
   errorCollector,
@@ -71,6 +80,7 @@ module.exports = {
   
   // Constants
   ERROR_CATEGORIES,
+  VALIDATION_RULES: ResultValidatorModule.VALIDATION_RULES,
   
   // Individual modules
   ElementFinder,
@@ -82,9 +92,10 @@ module.exports = {
   ErrorCollector: ErrorCollectorModule.ErrorCollector,
   HindiSuggester: HindiSuggesterModule.HindiSuggester,
   PatternLearner: PatternLearnerModule.PatternLearner,
+  ResultValidator: ResultValidatorModule.ResultValidator,
   
   // Version
-  version: '2.0.0',
+  version: '2.1.0',
   
   // Features
   features: {
@@ -92,8 +103,9 @@ module.exports = {
     autoHealing: true,
     pageAnalysis: true,
     naturalLanguage: true,
-    selfHealing: true,
+    errorDetection: true,
     hindiMessages: true,
-    autoTraining: true
+    patternStorage: true,
+    advancedValidation: true  // NEW: 100% result accuracy check
   }
 };
