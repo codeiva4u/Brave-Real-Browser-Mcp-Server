@@ -153,43 +153,6 @@ npm run lsp
 | **Simulation** | Workflow simulation in IDE |
 | **Multi-language** | English & Hindi support |
 
-### VS Code Setup
-
-Create `.vscode/settings.json` in your project:
-
-```json
-{
-  "braveRealBrowser.language": "en",
-  "braveRealBrowser.maxDiagnostics": 100,
-  "braveRealBrowser.enableSnippets": true,
-  "braveRealBrowser.enableSimulation": true,
-  "braveRealBrowser.enableRefactoring": true
-}
-```
-
-### Diagnostic Features
-
-The LSP detects common issues:
-
-- Missing `browser_init()` before page operations
-- Missing `navigate()` before content extraction
-- Invalid selectors and URLs
-- Missing required parameters
-- Unclosed browser sessions
-- Security issues (eval usage, etc.)
-
-### Quick Fixes
-
-When diagnostics are detected, quick fixes are offered:
-
-- Add `browser_init()` at start
-- Add `navigate()` before page tools
-- Add `browser_close()` at end
-- Wrap in try-catch
-- Extract to function
-
----
-
 ## AI Core (Automatic Enhancement)
 
 All 28 tools are automatically enhanced with AI capabilities. No configuration needed - AI features work transparently.
