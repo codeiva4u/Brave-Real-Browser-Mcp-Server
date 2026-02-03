@@ -137,8 +137,8 @@
     "yargs": "^18.0.0"
   },
   "optionalDependencies": {
-    "playwright-core": "^1.57.0",
-    "puppeteer-core": "^24.34.0"
+    "playwright-core": "^1.58.1",
+    "puppeteer-core": "^24.36.1"
   },
   "devDependencies": {
     "test": "^3.3.0"

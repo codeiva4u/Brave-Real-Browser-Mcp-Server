@@ -55,9 +55,9 @@
   },
   "dependencies": {
     "brave-real-blocker": "^1.13.1",
-    "escape-string-regexp": "^4.0.0",
-    "is-wsl": "^2.2.0",
-    "which": "^4.0.0"
+    "escape-string-regexp": "^5.0.0",
+    "is-wsl": "^3.1.0",
+    "which": "^6.0.0"
   },
   "types": "./dist/index.d.ts",
   "repository": {
