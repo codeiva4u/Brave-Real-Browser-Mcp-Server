@@ -17,6 +17,7 @@ A production-ready MCP (Model Context Protocol) server that combines Puppeteer w
 | **MCP Server** | Model Context Protocol compatible server with 28 tools |
 | **LSP Server** | Language Server Protocol for IDE code intelligence |
 | **AI Core** | Automatic AI enhancement for all tools (auto-healing, smart retry) |
+| **Self-Healing** | Hindi error messages + Auto Training on every execution |
 | Brave Browser | Uses Brave instead of Chromium for better privacy |
 | 50+ Stealth Features | Passes all major bot detectors |
 | Built-in Ad Blocker | uBlock Origin filters with auto-update |
@@ -262,6 +263,9 @@ When AI heals a broken selector:
 | `SelectorHealer` | Auto-fix broken CSS selectors |
 | `PageAnalyzer` | Page structure analysis |
 | `ActionParser` | Natural language command parsing |
+| `ErrorCollector` | Capture and categorize tool errors |
+| `HindiSuggester` | Generate Hindi fix suggestions |
+| `PatternLearner` | Learn from executions (Auto Training) |
 
 ### Programmatic Access
 
@@ -279,7 +283,121 @@ const { element, selector, healed } = await aiEnhancedSelector(page, '#old-selec
 
 ---
 
-## Unified Architecture
+## Self-Healing System (Hindi Messages + Auto Training)
+
+The MCP server includes a **Self-Healing System** that provides Hindi error messages and learns from every tool execution.
+
+### How It Works
+
+```
+Every Tool Execution
+        │
+        ▼
+┌─────────────────────────────────────────────────────────┐
+│                   SELF-HEALING SYSTEM                    │
+├─────────────────────────────────────────────────────────┤
+│                                                          │
+│  ┌─────────────┐     ┌─────────────┐     ┌───────────┐  │
+│  │   SUCCESS   │     │   FAILED    │     │  ISSUES   │  │
+│  └──────┬──────┘     └──────┬──────┘     └─────┬─────┘  │
+│         │                   │                   │        │
+│         ▼                   ▼                   ▼        │
+│  ┌─────────────────────────────────────────────────────┐│
+│  │               AUTO TRAINING                          ││
+│  │  - Success patterns stored in data/patterns.json    ││
+│  │  - Failure patterns analyzed                        ││
+│  │  - System improves over time                        ││
+│  └─────────────────────────────────────────────────────┘│
+│         │                   │                   │        │
+│         ▼                   ▼                   ▼        │
+│  ┌─────────────────────────────────────────────────────┐│
+│  │               HINDI MESSAGE (in response)            ││
+│  │  - Error explanation in Hindi                       ││
+│  │  - Suggested fixes                                  ││
+│  │  - Source code location                             ││
+│  └─────────────────────────────────────────────────────┘│
+│                                                          │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Self-Healing Features
+
+| Feature | Description |
+|---------|-------------|
+| **Hindi Error Messages** | When tool fails, response includes `hindiMessage` field with explanation |
+| **Auto Training** | Every execution (success/failure) trains the system |
+| **Pattern Learning** | Similar errors get better suggestions over time |
+| **Smart Retry** | Failed selectors are auto-healed with AI |
+| **Issue Detection** | Slow, empty, or partial results trigger warnings |
+
+### Example Response with Hindi Message
+
+When a tool fails or has issues:
+
+```json
+{
+  "success": false,
+  "error": "Element not found: #non-existent-btn",
+  "_ai": {
+    "enabled": true,
+    "healed": false,
+    "duration": 150
+  },
+  "hindiMessage": "
+    🔴 समस्या: Element नहीं मिला
+    📛 Tool: click
+    ❌ Error: Element not found: #non-existent-btn
+    
+    📋 कारण: CSS selector page में element नहीं ढूंढ पाता...
+    
+    🔍 संभावित कारण:
+       • Page पूरी तरह load नहीं हुआ
+       • Selector गलत है
+    
+    📍 Location: src/mcp/handlers.js:156
+    
+    💡 सुझाव: waitForSelector पहले use करें
+    
+    ⚠️ कृपया source code में यह fix करें!
+  "
+}
+```
+
+### Issue Detection Types
+
+The system detects these issues even when tool "succeeds":
+
+| Issue | Detection | Hindi Message |
+|-------|-----------|---------------|
+| **Slow Execution** | Duration > 5000ms | "⚠️ Tool धीमा चल रहा है" |
+| **Empty Results** | Empty content/links | "⚠️ कोई result नहीं मिला" |
+| **Healed Selector** | AI fixed selector | "⚠️ Selector fix करें source code में" |
+| **Partial Success** | Missing expected data | "⚠️ Complete data नहीं मिला" |
+
+### Auto Training Data
+
+Patterns are stored in `data/patterns.json`:
+
+```json
+{
+  "patterns": [
+    {
+      "id": "p_12345",
+      "toolName": "click",
+      "category": "SELECTOR_NOT_FOUND",
+      "messagePattern": "Element not found: *",
+      "fixApplied": "waitForSelector",
+      "successRate": 0.85,
+      "occurrences": 12
+    }
+  ],
+  "stats": {
+    "totalPatterns": 45,
+    "successfulMatches": 38,
+    "learnedFixes": 22
+  }
+}
+```
 
 Both MCP and LSP servers share the same tool definitions:
 
@@ -289,17 +407,22 @@ src/
 │   └── tools.js         # Single source of truth (28 tools)
 ├── ai/                  # AI Core Module (Auto-enhancement)
 │   ├── index.js         # AI module exports
-│   ├── core.js          # AI Core singleton
+│   ├── core.js          # AI Core singleton + Self-Healing
 │   ├── element-finder.js# Smart element finding
 │   ├── selector-healer.js# Auto-heal selectors
 │   ├── page-analyzer.js # Page analysis
-│   └── action-parser.js # NL command parsing
+│   ├── action-parser.js # NL command parsing
+│   ├── error-collector.js # Error capture & categorization
+│   ├── hindi-suggester.js # Hindi message generation
+│   └── pattern-learner.js # Auto Training patterns
 ├── mcp/
 │   ├── server.js        # MCP server for AI agents
 │   └── handlers.js      # Tool implementations + AI integration
 ├── lsp/
 │   ├── server.js        # LSP server for IDEs
 │   └── capabilities/    # Autocomplete, hover, diagnostics, etc.
+├── data/                # Auto-generated training data
+│   └── patterns.json    # Learned patterns (gitignored)
 └── index.js             # Unified entry point
 ```
 

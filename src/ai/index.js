@@ -1,34 +1,12 @@
 /**
  * AI Module - Main Entry Point
  * 
- * This module provides AI-powered features that automatically enhance
- * ALL tools in the browser automation project.
- * 
  * Features:
- * 1. Smart Element Finding - Find elements using natural language
- * 2. Selector Auto-Healing - Automatically fix broken selectors
- * 3. Page Understanding - Analyze and understand page structure
- * 4. Natural Language Commands - Execute actions from text commands
- * 
- * Usage:
- * ```javascript
- * const { aiCore, smartFind, smartClick, executeCommand } = require('./ai');
- * 
- * // Smart find
- * const elements = await smartFind(page, 'login button');
- * 
- * // Smart click with auto-healing
- * await smartClick(page, '#old-selector');
- * 
- * // Execute natural language command
- * await executeCommand(page, 'click the submit button');
- * ```
- * 
- * Integration with existing tools:
- * All existing handlers can be wrapped with AI capabilities using:
- * ```javascript
- * const enhancedHandler = wrapHandler(originalHandler, 'handlerName');
- * ```
+ * 1. Smart Element Finding
+ * 2. Selector Auto-Healing
+ * 3. Page Understanding
+ * 4. Natural Language Commands
+ * 5. SIMPLE SELF-HEALING: Hindi message + Auto Training
  */
 
 const {
@@ -40,15 +18,30 @@ const {
   understandPage,
   executeCommand,
   wrapHandler,
-  configure
+  configure,
+  selfHeal,
+  detectIssues,
+  buildIssueMessage,
+  learnFromExecution,
+  getTrainingStats,
+  getExecutionStats,
+  errorCollector,
+  hindiSuggester,
+  patternLearner,
+  ERROR_CATEGORIES
 } = require('./core');
 
+// Individual modules
 const ElementFinder = require('./element-finder');
 const SelectorHealer = require('./selector-healer');
 const PageAnalyzer = require('./page-analyzer');
 const ActionParser = require('./action-parser');
 
-// Export everything
+// Self-Healing modules
+const ErrorCollectorModule = require('./error-collector');
+const HindiSuggesterModule = require('./hindi-suggester');
+const PatternLearnerModule = require('./pattern-learner');
+
 module.exports = {
   // Main AI Core
   AICore,
@@ -63,20 +56,44 @@ module.exports = {
   wrapHandler,
   configure,
   
-  // Individual modules (for advanced usage)
+  // Simple Self-Healing + Auto Training
+  selfHeal,
+  detectIssues,
+  buildIssueMessage,
+  learnFromExecution,
+  getTrainingStats,
+  getExecutionStats,
+  
+  // Component instances
+  errorCollector,
+  hindiSuggester,
+  patternLearner,
+  
+  // Constants
+  ERROR_CATEGORIES,
+  
+  // Individual modules
   ElementFinder,
   SelectorHealer,
   PageAnalyzer,
   ActionParser,
   
-  // Version info
-  version: '1.0.0',
+  // Module classes
+  ErrorCollector: ErrorCollectorModule.ErrorCollector,
+  HindiSuggester: HindiSuggesterModule.HindiSuggester,
+  PatternLearner: PatternLearnerModule.PatternLearner,
   
-  // Feature flags
+  // Version
+  version: '2.0.0',
+  
+  // Features
   features: {
     smartFind: true,
     autoHealing: true,
     pageAnalysis: true,
-    naturalLanguage: true
+    naturalLanguage: true,
+    selfHealing: true,
+    hindiMessages: true,
+    autoTraining: true
   }
 };

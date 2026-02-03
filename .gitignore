@@ -16,3 +16,8 @@ coverage
 dhurandhar_*.md
 moviesdrive_*.md
 test_*.md
+
+# Self-Healing data (errors, patterns, backups)
+data/*.json
+data/backups/
+*.bak
