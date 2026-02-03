@@ -14,7 +14,7 @@ A production-ready MCP (Model Context Protocol) server that combines Puppeteer w
 
 | Feature | Description |
 |---------|-------------|
-| **MCP Server** | Model Context Protocol compatible server with 28 tools |
+| **MCP Server** | Model Context Protocol compatible server with 23 optimized tools |
 | **LSP Server** | Language Server Protocol for IDE code intelligence |
 | **AI Core** | Automatic AI enhancement for all tools (auto-healing, smart retry) |
 | Brave Browser | Uses Brave instead of Chromium for better privacy |
@@ -32,12 +32,15 @@ A production-ready MCP (Model Context Protocol) server that combines Puppeteer w
 | **Auto-Publish** | Automatic NPM publishing on updates |
 | **Monorepo** | npm workspaces with linked packages |
 | **Singleton Blocker** | Single shared blocker instance |
+| **Decoder Utilities** | URL, Base64, AES decryption built-in |
+| **Batch Operations** | Extract from multiple URLs/pages at once |
+| **Nested Iframe Support** | Scan 3+ levels deep in iframes |
 
 ---
 
 ## MCP Server (Model Context Protocol)
 
-This package is a fully-featured MCP Server with **28 browser automation tools** for AI assistants like Claude, Cursor, Copilot, and other MCP-compatible clients.
+This package is a fully-featured MCP Server with **23 optimized browser automation tools** for AI assistants like Claude, Cursor, Copilot, and other MCP-compatible clients. Tools intelligently merged for maximum efficiency with AI auto-healing capabilities.
 
 ### Quick Start MCP Server
 
@@ -76,38 +79,47 @@ Or if installed globally:
 }
 ```
 
-### Available MCP Tools (28)
+### Available MCP Tools (23 Optimized)
 
-| # | Tool | Emoji | Description |
-|---|------|-------|-------------|
-| 1 | `browser_init` | :rocket: | Initialize Brave browser with stealth mode |
-| 2 | `navigate` | :compass: | Navigate to a URL |
-| 3 | `get_content` | :page_facing_up: | Get page content (HTML, text, markdown) |
-| 4 | `wait` | :hourglass: | Wait for element, navigation, or timeout |
-| 5 | `click` | :point_up: | Click with human-like behavior |
-| 6 | `type` | :keyboard: | Type text into input fields |
-| 7 | `browser_close` | :red_circle: | Close browser and cleanup |
-| 8 | `solve_captcha` | :unlock: | Solve CAPTCHA (Turnstile, reCAPTCHA) |
-| 9 | `random_scroll` | :scroll: | Human-like random scrolling |
-| 10 | `find_element` | :mag: | Find elements by selector/xpath/text |
-| 11 | `save_content_as_markdown` | :memo: | Save page as Markdown file |
-| 12 | `redirect_tracer` | :twisted_rightwards_arrows: | Trace URL redirects |
-| 13 | `search_regex` | :mag_right: | Search content with regex |
-| 14 | `extract_json` | :bar_chart: | Extract JSON from page/scripts |
-| 15 | `scrape_meta_tags` | :label: | Get meta tags, OG, Twitter cards |
-| 16 | `press_key` | :musical_keyboard: | Press keyboard keys |
-| 17 | `progress_tracker` | :chart_with_upwards_trend: | Track automation progress |
-| 18 | `deep_analysis` | :brain: | SEO, performance, accessibility analysis |
-| 19 | `network_recorder` | :satellite: | Record network requests |
-| 20 | `link_harvester` | :link: | Extract all links from page |
-| 21 | `cookie_manager` | :cookie: | Manage browser cookies |
-| 22 | `file_downloader` | :arrow_down: | Download files from URLs |
-| 23 | `iframe_handler` | :framed_picture: | Handle iframe content |
-| 24 | `stream_extractor` | :clapper: | Extract video/audio streams |
-| 25 | `js_scrape` | :zap: | Scrape JS-rendered content |
-| 26 | `execute_js` | :computer: | Execute custom JavaScript |
-| 27 | `player_api_hook` | :video_game: | Hook video player APIs |
-| 28 | `form_automator` | :clipboard: | Auto-fill and submit forms |
+| # | Tool | Emoji | Description | Status |
+|---|------|-------|-------------|--------|
+| 1 | `browser_init` | 🚀 | Initialize Brave browser with stealth, anti-detection & AI healing | ✅ |
+| 2 | `navigate` | 🧭 | Navigate to URL with smart retry, context recovery & AI healing | ✅ |
+| 3 | `get_content` | 📄 | Get page content with JS rendering, smart selectors & AI healing | ✅ Enhanced |
+| 4 | `wait` | ⏳ | Smart wait with AI prediction for optimal timing | ✅ |
+| 5 | `click` | 👆 | Human-like click with AI healing and auto-retry | ✅ |
+| 6 | `type` | ⌨️ | Type text with human speed variation and smart clearing | ✅ |
+| 7 | `browser_close` | 🔴 | Close browser with cleanup and session save | ✅ |
+| 8 | `solve_captcha` | 🔓 | Auto-solve CAPTCHA (Turnstile, reCAPTCHA, hCaptcha) | ✅ |
+| 9 | `random_scroll` | 📜 | Human-like random scrolling with AI pattern detection | ✅ |
+| 10 | `find_element` | 🔍 | Find elements by selector/xpath/text with AI healing | ✅ |
+| 11 | `save_content_as_markdown` | 📝 | Save page as AI-enhanced Markdown file | ✅ |
+| 12 | `redirect_tracer` | 🔀 | Trace all redirects including JS-based and meta refreshes | ✅ |
+| 13 | **`extract_data`** | 🔎 | **MERGED:** Extract data using regex, JSON, meta tags, or structured selectors | ✅ **New** |
+| 14 | `press_key` | 🎹 | Press keyboard keys with human-like timing | ✅ |
+| 15 | `progress_tracker` | 📈 | Track automation progress with AI predictions | ✅ |
+| 16 | `deep_analysis` | 🧠 | Deep page analysis with AI insights and recommendations | ✅ |
+| 17 | `network_recorder` | 📡 | Record network with AI media detection and stream extraction | ✅ |
+| 18 | `link_harvester` | 🔗 | Extract all links including hidden, encoded, and obfuscated | ✅ |
+| 19 | `cookie_manager` | 🍪 | Smart cookie management with AI session persistence | ✅ |
+| 20 | `file_downloader` | ⬇️ | Download files with resume, batch, and auto-decrypt support | ✅ |
+| 21 | **`media_extractor`** | 🎬 | **MERGED:** Universal media extraction (iframes, streams, players, decoders) | ✅ **New** |
+| 22 | `execute_js` | 💻 | Execute custom JavaScript with async support | ✅ |
+| 23 | `form_automator` | 📋 | Smart form automation with AI field detection | ✅ |
+
+#### Tool Optimization Summary
+
+**Merged Tools (5 → 2):**
+- ✅ `iframe_handler` + `stream_extractor` + `player_api_hook` → **`media_extractor`**
+- ✅ `search_regex` + `extract_json` + `scrape_meta_tags` → **`extract_data`**
+- ✅ `get_content` enhanced with `js_scrape` features
+
+**Benefits:**
+- 🎯 **18% reduction** in tool count (28 → 23)
+- 🚀 **Simpler API** for AI agents
+- 💪 **More powerful** combined features
+- 🤖 **AI-first design** with auto-healing
+- 📦 **Decoder utilities** built-in (URL, Base64, AES)
 
 ### MCP Example Usage
 
@@ -192,7 +204,7 @@ When diagnostics are detected, quick fixes are offered:
 
 ## AI Core (Automatic Enhancement)
 
-All 28 tools are automatically enhanced with AI capabilities. No configuration needed - AI features work transparently.
+All 23 tools are automatically enhanced with AI capabilities. No configuration needed - AI features work transparently.
 
 ### How It Works
 
@@ -232,7 +244,7 @@ AI Agent calls any tool (e.g., click, type, find_element)
 | **Smart Retry** | Failed operations are automatically retried with AI assistance |
 | **Confidence Scoring** | AI provides confidence scores for healed selectors |
 | **Caching** | Healed selectors are cached for performance |
-| **Zero Configuration** | Works out of the box with all 28 tools |
+| **Zero Configuration** | Works out of the box with all 23 tools |
 
 ### Example Response with AI Metadata
 
@@ -303,10 +315,70 @@ src/
 └── index.js             # Unified entry point
 ```
 
+## Decoder Utilities (Built-in)
+
+Powerful decoding capabilities for obfuscated content extraction:
+
+| Decoder | Description | Use Cases |
+|---------|-------------|-----------|
+| **URL Decoder** | Multi-layer URL decoding | Obfuscated links, redirect chains |
+| **Base64 Decoder** | Standard, URL-safe, padded variants | Encoded parameters, tokens |
+| **AES Decryptor** | AES-256-CBC/ECB decryption | Encrypted streams, secure tokens |
+| **tryAll()** | Attempts all decoders automatically | Unknown encoding detection |
+
+### Usage Examples
+
+```javascript
+// Automatic decoder (via media_extractor)
+{
+  "action": "decode_url",
+  "encodedData": "aHR0cHM6Ly9leGFtcGxlLmNvbQ==",
+  "decoderType": "auto"  // Tries all decoders
+}
+
+// Manual decoding options
+{
+  "action": "decode_url",
+  "encodedData": "U2Fsd2Fy...",
+  "decoderType": "aes",
+  "aesKey": "my-secret-key",
+  "aesIV": "initialization-vec"
+}
+```
+
+### Real-World Example: Movie Download Chain
+
+```javascript
+// 1. Navigate to movie page
+{ "tool": "navigate", "params": { "url": "https://moviesdrive.surf/movies/dhurandhar-2025/" }}
+
+// 2. Click download button to get redirect
+{ "tool": "click", "params": { "selector": "#hubcloud-480p" }}
+
+// 3. Trace full redirect chain
+{ "tool": "redirect_tracer", "params": { "url": "current_page_url", "followJS": true }}
+
+// 4. Extract and decode obfuscated links
+{ "tool": "extract_data", "params": { 
+  "type": "regex", 
+  "pattern": "hubcloud\\.fans/drive/[^\"']+",
+  "autoDecode": true  // Auto-decode found URLs
+}}
+
+// 5. Get direct download link from nested iframes
+{ "tool": "media_extractor", "params": { 
+  "action": "extract",
+  "types": ["download"],
+  "deep": true  // Scan nested iframes
+}}
+```
+
+---
+
 ### Unified CLI
 
 ```bash
-# List all tools
+# List all tools (23 optimized)
 node src/index.js --list
 
 # Start MCP server (default)
@@ -324,12 +396,12 @@ node src/index.js --help
 | Category | Tools | Description |
 |----------|-------|-------------|
 | **Browser** | 3 | Browser lifecycle (init, close, cookies) |
-| **Navigation** | 1 | Page navigation |
-| **Interaction** | 8 | User actions (click, type, scroll, etc.) |
-| **Extraction** | 10 | Content scraping (HTML, JSON, links, etc.) |
+| **Navigation** | 1 | Page navigation with smart retry |
+| **Interaction** | 4 | User actions with AI healing (click, type, scroll, key press) |
+| **Extraction** | 5 | Content scraping (get_content, extract_data, link_harvester, media_extractor, deep_analysis) |
 | **Network** | 3 | Network operations (recorder, download, trace) |
-| **Analysis** | 1 | Page analysis (SEO, performance, etc.) |
-| **Utility** | 2 | Helpers (wait, progress tracker) |
+| **Analysis** | 2 | Page analysis and form automation |
+| **Utility** | 5 | Helpers (wait, progress, elements, cookies, JavaScript) |
 
 ---
 
@@ -609,7 +681,7 @@ console.log(blocker === sameBlocker); // true
 | `npm run mcp` | Start MCP server (alias) |
 | `npm run mcp:verbose` | Start MCP server with tool details |
 | `npm run lsp` | Start LSP server for IDE intelligence |
-| `npm run list` | List all 28 tools with categories |
+| `npm run list` | List all 23 optimized tools with categories |
 | `npm install` | Install all dependencies with workspace linking |
 | `npm test` | Run all tests (CJS + ESM) |
 | `npm run cjs_test` | Run CommonJS tests only |
@@ -712,11 +784,22 @@ docker run brave-real-browser-mcp-server npm run esm_test
 ```
 brave-real-browser-mcp-server/
 ├── src/
-│   └── mcp/                      # MCP Server
-│       ├── index.js              # Entry point with startup logs
-│       ├── server.js             # MCP server with STDIO transport
-│       ├── handlers.js           # 28 tool implementations
-│       └── tools.js              # Tool definitions with schemas
+│   ├── shared/
+│   │   └── tools.js              # Single source of truth (23 optimized tools)
+│   ├── mcp/                      # MCP Server
+│   │   ├── index.js              # Entry point with startup logs
+│   │   ├── server.js             # MCP server with STDIO transport
+│   │   ├── handlers.js           # 23 optimized tool implementations + decoders
+│   │   └── tools.js              # Re-export from shared
+│   ├── lsp/                      # LSP Server
+│   │   ├── server.js             # LSP server for IDE intelligence
+│   │   └── capabilities/         # Autocomplete, hover, diagnostics
+│   └── ai/                       # AI Core Module
+│       ├── core.js               # AI Core singleton
+│       ├── element-finder.js     # Smart element finding
+│       ├── selector-healer.js    # Auto-heal broken selectors
+│       ├── page-analyzer.js      # Page analysis
+│       └── action-parser.js      # Natural language parsing
 ├── lib/
 │   ├── cjs/                      # CommonJS build
 │   └── esm/                      # ESM build
@@ -799,6 +882,263 @@ const options: Options = {
 };
 
 const { browser, page, blocker }: ConnectResult = await connect(options);
+```
+
+---
+
+## Real-World Examples
+
+### Example 1: Complete Movie Download Chain
+
+**Use Case:** Extract download links from movie streaming sites with multi-layer redirects
+
+```javascript
+// Step 1: Initialize browser with all protections
+{
+  "tool": "browser_init",
+  "params": {
+    "headless": false,
+    "turnstile": true,
+    "enableBlocker": true
+  }
+}
+
+// Step 2: Navigate to movie page
+{
+  "tool": "navigate",
+  "params": {
+    "url": "https://moviesdrive.surf/movies/dhurandhar-2025/",
+    "waitUntil": "networkidle2",
+    "smartWait": true
+  }
+}
+
+// Step 3: Find and click quality selector
+{
+  "tool": "click",
+  "params": {
+    "selector": "a[href*='hubcloud']",
+    "humanLike": true,
+    "aiHeal": true
+  }
+}
+
+// Step 4: Wait for redirect chain to complete
+{
+  "tool": "wait",
+  "params": {
+    "type": "smart",
+    "value": "2000",
+    "aiOptimize": true
+  }
+}
+
+// Step 5: Trace complete redirect chain
+{
+  "tool": "redirect_tracer",
+  "params": {
+    "url": "current",
+    "followJS": true,
+    "followMeta": true,
+    "decodeURLs": true
+  }
+}
+
+// Step 6: Extract obfuscated download links
+{
+  "tool": "extract_data",
+  "params": {
+    "type": "regex",
+    "pattern": "https?://[^\"'<>\\s]+\\.(mkv|mp4|avi)",
+    "autoDecode": true,
+    "source": "all"
+  }
+}
+
+// Step 7: Extract from nested iframes if present
+{
+  "tool": "media_extractor",
+  "params": {
+    "action": "extract",
+    "types": ["download", "video"],
+    "deep": true,
+    "aiOptimize": true
+  }
+}
+
+// Step 8: Download the file
+{
+  "tool": "file_downloader",
+  "params": {
+    "url": "extracted_download_link",
+    "directory": "./downloads",
+    "resume": true
+  }
+}
+
+// Step 9: Cleanup
+{
+  "tool": "browser_close",
+  "params": {
+    "saveSession": false
+  }
+}
+```
+
+### Example 2: TV Show Episode Batch Extraction
+
+**Use Case:** Extract all episodes from a TV show season
+
+```javascript
+// Navigate to TV show page
+{
+  "tool": "navigate",
+  "params": { "url": "https://multimovies.gripe/tvshows/sacred-games/" }
+}
+
+// Extract all episode links
+{
+  "tool": "extract_data",
+  "params": {
+    "type": "structured",
+    "selector": ".episode-item a",
+    "extractAttributes": true
+  }
+}
+
+// For each episode, extract streaming sources
+{
+  "tool": "media_extractor",
+  "params": {
+    "action": "batch_extract",
+    "urls": ["episode1_url", "episode2_url", "..."],
+    "types": ["hls", "dash", "download"],
+    "deep": true
+  }
+}
+
+// Get network recorded streams
+{
+  "tool": "network_recorder",
+  "params": {
+    "action": "get_media",
+    "aiDetectStreams": true
+  }
+}
+```
+
+### Example 3: Advanced Link Harvesting with Decoding
+
+**Use Case:** Find hidden/obfuscated links on complex pages
+
+```javascript
+// Navigate to target
+{
+  "tool": "navigate",
+  "params": { "url": "https://example-site.com/protected-content/" }
+}
+
+// Harvest all links including hidden/encoded ones
+{
+  "tool": "link_harvester",
+  "params": {
+    "includeHidden": true,
+    "autoDecode": true,
+    "detectObfuscation": true,
+    "searchIframes": true,
+    "types": ["all"]
+  }
+}
+
+// Decode any obfuscated links found
+{
+  "tool": "media_extractor",
+  "params": {
+    "action": "decode_url",
+    "encodedData": "aHR0cHM6Ly9leGFtcGxlLmNvbQ==",
+    "decoderType": "auto"
+  }
+}
+```
+
+### Example 4: Form Automation with AI Detection
+
+**Use Case:** Automatically fill and submit complex forms
+
+```javascript
+// Navigate to form page
+{
+  "tool": "navigate",
+  "params": { "url": "https://example.com/contact-form/" }
+}
+
+// AI-powered form detection and filling
+{
+  "tool": "form_automator",
+  "params": {
+    "data": {
+      "name": "John Doe",
+      "email": "john@example.com",
+      "message": "Hello, this is a test message",
+      "country": "United States"
+    },
+    "aiMatch": true,
+    "aiValidate": true,
+    "humanLike": true,
+    "captcha": true,
+    "submit": true
+  }
+}
+```
+
+### Example 5: Streaming Media Extraction
+
+**Use Case:** Extract video streams from JWPlayer, VideoJS, custom players
+
+```javascript
+// Navigate to video page
+{
+  "tool": "navigate",
+  "params": { 
+    "url": "https://multimovies.gripe/movies/movie-name/",
+    "waitUntil": "networkidle0"
+  }
+}
+
+// Start recording network
+{
+  "tool": "network_recorder",
+  "params": { "action": "start", "aiDetectStreams": true }
+}
+
+// Extract all media types
+{
+  "tool": "media_extractor",
+  "params": {
+    "action": "extract",
+    "types": ["hls", "dash", "video", "audio", "download"],
+    "quality": "all",
+    "deep": true
+  }
+}
+
+// Get all recorded streams
+{
+  "tool": "network_recorder",
+  "params": { 
+    "action": "get_media",
+    "filter": { "type": "m3u8" }
+  }
+}
+
+// Control player if needed
+{
+  "tool": "media_extractor",
+  "params": {
+    "action": "player_control",
+    "playerAction": "sources"
+  }
+}
 ```
 
 ---
