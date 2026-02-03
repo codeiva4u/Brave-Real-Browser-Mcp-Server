@@ -1,10 +1,18 @@
 /**
  * Brave Real Browser MCP Server - Shared Tool Definitions
  * 
- * SINGLE SOURCE OF TRUTH for all 28 browser automation tools
- * Used by both MCP Server and LSP Server
+ * OPTIMIZED: 23 tools (merged from 28)
  * 
- * Supports: Claude, Cursor, Copilot, and other MCP-compatible AI assistants
+ * Merges Applied:
+ * - iframe_handler + stream_extractor + player_api_hook → media_extractor
+ * - get_content + js_scrape → get_content (enhanced)
+ * - search_regex + extract_json + scrape_meta_tags → extract_data
+ * 
+ * New Features:
+ * - URL/Base64/AES Decoders built into media_extractor
+ * - AI Auto-Healing Selectors
+ * - Smart Retry Mechanisms
+ * - Batch Operations
  */
 
 const TOOLS = [
@@ -12,22 +20,17 @@ const TOOLS = [
   {
     name: 'browser_init',
     emoji: '🚀',
-    description: 'Initialize and start the Brave browser with stealth mode',
-    descriptionHindi: 'ब्राउज़र शुरू करना',
+    description: 'Initialize Brave browser with stealth, anti-detection, and AI healing',
+    descriptionHindi: 'ब्राउज़र शुरू करना (stealth + AI healing)',
     category: 'browser',
     requiresBrowser: false,
     requiresPage: false,
     inputSchema: {
       type: 'object',
       properties: {
-        headless: {
-          type: 'boolean',
-          description: 'Run browser in headless mode',
-          default: false
-        },
+        headless: { type: 'boolean', default: false },
         proxy: {
           type: 'object',
-          description: 'Proxy configuration',
           properties: {
             host: { type: 'string' },
             port: { type: 'number' },
@@ -35,16 +38,9 @@ const TOOLS = [
             password: { type: 'string' }
           }
         },
-        turnstile: {
-          type: 'boolean',
-          description: 'Enable Cloudflare Turnstile auto-solver',
-          default: false
-        },
-        enableBlocker: {
-          type: 'boolean',
-          description: 'Enable ad/tracker blocker',
-          default: true
-        }
+        turnstile: { type: 'boolean', default: true, description: 'Auto-solve Cloudflare Turnstile' },
+        enableBlocker: { type: 'boolean', default: true, description: 'Block ads and trackers' },
+        aiHealing: { type: 'boolean', default: true, description: 'Enable AI auto-healing for broken selectors' }
       }
     }
   },
@@ -53,54 +49,42 @@ const TOOLS = [
   {
     name: 'navigate',
     emoji: '🧭',
-    description: 'Navigate to a URL',
-    descriptionHindi: 'URL पर जाना',
+    description: 'Navigate to URL with smart retry, context recovery, and AI healing',
+    descriptionHindi: 'URL पर जाना (smart retry + recovery)',
     category: 'navigation',
     requiresBrowser: true,
     requiresPage: false,
     inputSchema: {
       type: 'object',
       properties: {
-        url: {
-          type: 'string',
-          description: 'URL to navigate to'
-        },
-        waitUntil: {
-          type: 'string',
-          enum: ['load', 'domcontentloaded', 'networkidle0', 'networkidle2'],
-          default: 'networkidle2'
-        },
-        timeout: {
-          type: 'number',
-          description: 'Navigation timeout in milliseconds',
-          default: 30000
-        }
+        url: { type: 'string' },
+        waitUntil: { type: 'string', enum: ['load', 'domcontentloaded', 'networkidle0', 'networkidle2'], default: 'networkidle2' },
+        timeout: { type: 'number', default: 30000 },
+        retries: { type: 'number', default: 3, description: 'Auto-retry on failures' },
+        smartWait: { type: 'boolean', default: true, description: 'AI-powered smart waiting' }
       },
       required: ['url']
     }
   },
 
-  // 3. Get Content
+  // 3. Get Content (MERGED: get_content + js_scrape)
   {
     name: 'get_content',
     emoji: '📄',
-    description: 'Get page content (HTML, text, or structured)',
-    descriptionHindi: 'पेज का कंटेंट लेना',
+    description: 'Get page content with JS rendering, smart selectors, and AI healing',
+    descriptionHindi: 'पेज का कंटेंट लेना (JS rendering + AI healing)',
     category: 'extraction',
     requiresBrowser: true,
     requiresPage: true,
     inputSchema: {
       type: 'object',
       properties: {
-        format: {
-          type: 'string',
-          enum: ['html', 'text', 'markdown'],
-          default: 'text'
-        },
-        selector: {
-          type: 'string',
-          description: 'Optional CSS selector to get specific content'
-        }
+        format: { type: 'string', enum: ['html', 'text', 'markdown'], default: 'text' },
+        selector: { type: 'string', description: 'CSS selector (AI will auto-heal if broken)' },
+        waitForJS: { type: 'boolean', default: true, description: 'Wait for JavaScript to render' },
+        timeout: { type: 'number', default: 10000 },
+        aiHeal: { type: 'boolean', default: true, description: 'Auto-fix broken selectors' },
+        extractAttributes: { type: 'boolean', default: false, description: 'Extract all element attributes' }
       }
     }
   },
@@ -109,27 +93,18 @@ const TOOLS = [
   {
     name: 'wait',
     emoji: '⏳',
-    description: 'Wait for element, navigation, or timeout',
-    descriptionHindi: 'किसी चीज़ का इंतजार करना',
+    description: 'Smart wait with AI prediction for optimal timing',
+    descriptionHindi: 'स्मार्ट इंतजार (AI prediction)',
     category: 'utility',
     requiresBrowser: true,
     requiresPage: true,
     inputSchema: {
       type: 'object',
       properties: {
-        type: {
-          type: 'string',
-          enum: ['selector', 'navigation', 'timeout', 'networkidle'],
-          default: 'timeout'
-        },
-        value: {
-          type: 'string',
-          description: 'Selector or timeout value'
-        },
-        timeout: {
-          type: 'number',
-          default: 30000
-        }
+        type: { type: 'string', enum: ['selector', 'navigation', 'timeout', 'networkidle', 'smart'], default: 'smart' },
+        value: { type: 'string', description: 'Selector or timeout value' },
+        timeout: { type: 'number', default: 30000 },
+        aiOptimize: { type: 'boolean', default: true, description: 'AI optimizes wait time based on page load patterns' }
       },
       required: ['value']
     }
@@ -139,32 +114,20 @@ const TOOLS = [
   {
     name: 'click',
     emoji: '👆',
-    description: 'Click on an element with human-like behavior',
-    descriptionHindi: 'क्लिक करना',
+    description: 'Human-like click with AI healing and auto-retry',
+    descriptionHindi: 'क्लिक करना (AI healing + human-like)',
     category: 'interaction',
     requiresBrowser: true,
     requiresPage: true,
     inputSchema: {
       type: 'object',
       properties: {
-        selector: {
-          type: 'string',
-          description: 'CSS selector of element to click'
-        },
-        humanLike: {
-          type: 'boolean',
-          description: 'Use ghost-cursor for human-like movement',
-          default: true
-        },
-        clickCount: {
-          type: 'number',
-          default: 1
-        },
-        delay: {
-          type: 'number',
-          description: 'Delay between clicks in ms',
-          default: 0
-        }
+        selector: { type: 'string', description: 'CSS selector (AI auto-heals if element not found)' },
+        humanLike: { type: 'boolean', default: true, description: 'Ghost cursor human movement' },
+        aiHeal: { type: 'boolean', default: true, description: 'Auto-find alternative selector if broken' },
+        retries: { type: 'number', default: 3 },
+        clickCount: { type: 'number', default: 1 },
+        delay: { type: 'number', default: 0 }
       },
       required: ['selector']
     }
@@ -174,32 +137,19 @@ const TOOLS = [
   {
     name: 'type',
     emoji: '⌨️',
-    description: 'Type text into an input field',
-    descriptionHindi: 'टेक्स्ट टाइप करना',
+    description: 'Type text with human speed variation and smart clearing',
+    descriptionHindi: 'टेक्स्ट टाइप करना (human speed)',
     category: 'interaction',
     requiresBrowser: true,
     requiresPage: true,
     inputSchema: {
       type: 'object',
       properties: {
-        selector: {
-          type: 'string',
-          description: 'CSS selector of input element'
-        },
-        text: {
-          type: 'string',
-          description: 'Text to type'
-        },
-        delay: {
-          type: 'number',
-          description: 'Delay between keystrokes in ms',
-          default: 50
-        },
-        clear: {
-          type: 'boolean',
-          description: 'Clear existing text before typing',
-          default: false
-        }
+        selector: { type: 'string' },
+        text: { type: 'string' },
+        delay: { type: 'number', default: 50, description: 'Keystroke delay with natural variation' },
+        clear: { type: 'boolean', default: true },
+        aiHeal: { type: 'boolean', default: true }
       },
       required: ['selector', 'text']
     }
@@ -209,7 +159,7 @@ const TOOLS = [
   {
     name: 'browser_close',
     emoji: '🔴',
-    description: 'Close the browser and cleanup resources',
+    description: 'Close browser with cleanup and session save',
     descriptionHindi: 'ब्राउज़र बंद करना',
     category: 'browser',
     requiresBrowser: true,
@@ -217,11 +167,8 @@ const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        force: {
-          type: 'boolean',
-          description: 'Force close even if operations pending',
-          default: false
-        }
+        force: { type: 'boolean', default: false },
+        saveSession: { type: 'boolean', default: false, description: 'Save cookies and storage for next session' }
       }
     }
   },
@@ -230,23 +177,17 @@ const TOOLS = [
   {
     name: 'solve_captcha',
     emoji: '🔓',
-    description: 'Solve CAPTCHA challenges (Turnstile, reCAPTCHA)',
-    descriptionHindi: 'CAPTCHA हल करना',
+    description: 'Auto-solve CAPTCHA with AI (Turnstile, reCAPTCHA, hCaptcha)',
+    descriptionHindi: 'CAPTCHA हल करना (AI-powered)',
     category: 'interaction',
     requiresBrowser: true,
     requiresPage: true,
     inputSchema: {
       type: 'object',
       properties: {
-        type: {
-          type: 'string',
-          enum: ['turnstile', 'recaptcha', 'hcaptcha', 'auto'],
-          default: 'auto'
-        },
-        timeout: {
-          type: 'number',
-          default: 30000
-        }
+        type: { type: 'string', enum: ['turnstile', 'recaptcha', 'hcaptcha', 'auto'], default: 'auto' },
+        timeout: { type: 'number', default: 30000 },
+        aiMode: { type: 'boolean', default: true, description: 'Use AI vision for complex CAPTCHAs' }
       }
     }
   },
@@ -255,28 +196,18 @@ const TOOLS = [
   {
     name: 'random_scroll',
     emoji: '📜',
-    description: 'Scroll the page randomly like a human',
-    descriptionHindi: 'स्क्रॉल करना',
+    description: 'Human-like scroll with AI pattern detection',
+    descriptionHindi: 'स्क्रॉल करना (human-like + AI)',
     category: 'interaction',
     requiresBrowser: true,
     requiresPage: true,
     inputSchema: {
       type: 'object',
       properties: {
-        direction: {
-          type: 'string',
-          enum: ['up', 'down', 'random'],
-          default: 'down'
-        },
-        amount: {
-          type: 'number',
-          description: 'Scroll amount in pixels (0 for random)',
-          default: 0
-        },
-        smooth: {
-          type: 'boolean',
-          default: true
-        }
+        direction: { type: 'string', enum: ['up', 'down', 'random', 'smart'], default: 'smart' },
+        amount: { type: 'number', default: 0, description: '0 = AI decides based on content' },
+        smooth: { type: 'boolean', default: true },
+        aiDetectLazyLoad: { type: 'boolean', default: true, description: 'Auto-detect lazy loading patterns' }
       }
     }
   },
@@ -285,31 +216,20 @@ const TOOLS = [
   {
     name: 'find_element',
     emoji: '🔍',
-    description: 'Find element(s) on the page',
-    descriptionHindi: 'एलीमेंट खोजना',
+    description: 'Find elements with AI-powered selector healing and smart search',
+    descriptionHindi: 'एलीमेंट खोजना (AI healing)',
     category: 'extraction',
     requiresBrowser: true,
     requiresPage: true,
     inputSchema: {
       type: 'object',
       properties: {
-        selector: {
-          type: 'string',
-          description: 'CSS selector'
-        },
-        xpath: {
-          type: 'string',
-          description: 'XPath selector (alternative to CSS)'
-        },
-        text: {
-          type: 'string',
-          description: 'Find by text content'
-        },
-        multiple: {
-          type: 'boolean',
-          description: 'Return multiple elements',
-          default: false
-        }
+        selector: { type: 'string', description: 'CSS selector (AI heals if broken)' },
+        xpath: { type: 'string', description: 'XPath alternative' },
+        text: { type: 'string', description: 'Find by text content' },
+        multiple: { type: 'boolean', default: false },
+        aiHeal: { type: 'boolean', default: true, description: 'Auto-find alternatives if selector fails' },
+        smartAttributes: { type: 'boolean', default: true, description: 'Extract smart element attributes' }
       }
     }
   },
@@ -318,30 +238,19 @@ const TOOLS = [
   {
     name: 'save_content_as_markdown',
     emoji: '📝',
-    description: 'Save page content as Markdown file',
-    descriptionHindi: 'कंटेंट MD में सेव करना',
+    description: 'Save page content with AI-enhanced formatting',
+    descriptionHindi: 'कंटेंट MD में सेव करना (AI-enhanced)',
     category: 'extraction',
     requiresBrowser: true,
     requiresPage: true,
     inputSchema: {
       type: 'object',
       properties: {
-        filename: {
-          type: 'string',
-          description: 'Output filename'
-        },
-        selector: {
-          type: 'string',
-          description: 'Optional selector for specific content'
-        },
-        includeImages: {
-          type: 'boolean',
-          default: true
-        },
-        includeMeta: {
-          type: 'boolean',
-          default: true
-        }
+        filename: { type: 'string' },
+        selector: { type: 'string' },
+        includeImages: { type: 'boolean', default: true },
+        includeMeta: { type: 'boolean', default: true },
+        aiClean: { type: 'boolean', default: true, description: 'AI removes ads and clutter' }
       },
       required: ['filename']
     }
@@ -351,118 +260,53 @@ const TOOLS = [
   {
     name: 'redirect_tracer',
     emoji: '🔀',
-    description: 'Trace URL redirects and get final destination',
-    descriptionHindi: 'रीडायरेक्ट ट्रेस करना',
+    description: 'Trace all redirects including JS-based and meta refreshes',
+    descriptionHindi: 'रीडायरेक्ट ट्रेस करना (HTTP + JS + Meta)',
     category: 'network',
     requiresBrowser: true,
     requiresPage: false,
     inputSchema: {
       type: 'object',
       properties: {
-        url: {
-          type: 'string',
-          description: 'URL to trace'
-        },
-        maxRedirects: {
-          type: 'number',
-          default: 10
-        },
-        includeHeaders: {
-          type: 'boolean',
-          default: false
-        }
+        url: { type: 'string' },
+        maxRedirects: { type: 'number', default: 20 },
+        includeHeaders: { type: 'boolean', default: false },
+        followJS: { type: 'boolean', default: true, description: 'Track JS navigations' },
+        followMeta: { type: 'boolean', default: true, description: 'Track meta refresh redirects' },
+        decodeURLs: { type: 'boolean', default: true, description: 'Auto-decode encoded URLs in chain' }
       },
       required: ['url']
     }
   },
 
-  // 13. Search Regex
+  // 13. Extract Data (MERGED: search_regex + extract_json + scrape_meta_tags)
   {
-    name: 'search_regex',
+    name: 'extract_data',
     emoji: '🔎',
-    description: 'Search page content using regex patterns',
-    descriptionHindi: 'Regex सर्च',
+    description: 'Universal data extractor - regex, JSON, meta tags, structured data',
+    descriptionHindi: 'डेटा निकालना (regex + JSON + meta + structured)',
     category: 'extraction',
     requiresBrowser: true,
     requiresPage: true,
     inputSchema: {
       type: 'object',
       properties: {
-        pattern: {
-          type: 'string',
-          description: 'Regex pattern'
-        },
-        flags: {
-          type: 'string',
-          description: 'Regex flags (g, i, m)',
-          default: 'gi'
-        },
-        source: {
-          type: 'string',
-          enum: ['html', 'text', 'scripts'],
-          default: 'html'
-        }
-      },
-      required: ['pattern']
-    }
-  },
-
-  // 14. Extract JSON
-  {
-    name: 'extract_json',
-    emoji: '📊',
-    description: 'Extract JSON data from page or scripts',
-    descriptionHindi: 'JSON निकालना',
-    category: 'extraction',
-    requiresBrowser: true,
-    requiresPage: true,
-    inputSchema: {
-      type: 'object',
-      properties: {
-        source: {
-          type: 'string',
-          enum: ['page', 'scripts', 'ld+json', 'api'],
-          default: 'page'
-        },
-        selector: {
-          type: 'string',
-          description: 'CSS selector for specific element'
-        },
-        jsonPath: {
-          type: 'string',
-          description: 'JSONPath expression to extract specific data'
-        }
+        type: { type: 'string', enum: ['regex', 'json', 'meta', 'structured', 'auto'], default: 'auto' },
+        pattern: { type: 'string', description: 'For regex: pattern to search' },
+        selector: { type: 'string', description: 'For structured: CSS selector' },
+        jsonPath: { type: 'string', description: 'For JSON: path expression' },
+        source: { type: 'string', enum: ['html', 'text', 'scripts', 'ld+json', 'api', 'all'], default: 'all' },
+        autoDecode: { type: 'boolean', default: true, description: 'Auto-decode Base64/URL in results' },
+        flags: { type: 'string', default: 'gi', description: 'Regex flags' }
       }
     }
   },
 
-  // 15. Scrape Meta Tags
-  {
-    name: 'scrape_meta_tags',
-    emoji: '🏷️',
-    description: 'Extract meta tags, Open Graph, and Twitter cards',
-    descriptionHindi: 'Meta tags निकालना',
-    category: 'extraction',
-    requiresBrowser: true,
-    requiresPage: true,
-    inputSchema: {
-      type: 'object',
-      properties: {
-        types: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'Types: meta, og, twitter, all',
-          default: ['all']
-        }
-      }
-    }
-  },
-
-  // 16. Press Key
+  // 14. Press Key
   {
     name: 'press_key',
     emoji: '🎹',
-    description: 'Press keyboard key(s)',
+    description: 'Press keyboard keys with human-like timing',
     descriptionHindi: 'की प्रेस करना',
     category: 'interaction',
     requiresBrowser: true,
@@ -470,379 +314,241 @@ const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        key: {
-          type: 'string',
-          description: 'Key to press (Enter, Escape, Tab, etc.)'
-        },
-        modifiers: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'Modifier keys (Ctrl, Alt, Shift, Meta)'
-        },
-        count: {
-          type: 'number',
-          default: 1
-        }
+        key: { type: 'string' },
+        modifiers: { type: 'array', items: { type: 'string' } },
+        count: { type: 'number', default: 1 },
+        humanDelay: { type: 'boolean', default: true, description: 'Natural delay between presses' }
       },
       required: ['key']
     }
   },
 
-  // 17. Progress Tracker
+  // 15. Progress Tracker
   {
     name: 'progress_tracker',
     emoji: '📈',
-    description: 'Track automation progress and stats',
-    descriptionHindi: 'प्रोग्रेस ट्रैक करना',
+    description: 'Track automation progress with AI predictions',
+    descriptionHindi: 'प्रोग्रेस ट्रैक करना (AI predictions)',
     category: 'utility',
     requiresBrowser: false,
     requiresPage: false,
     inputSchema: {
       type: 'object',
       properties: {
-        action: {
-          type: 'string',
-          enum: ['start', 'update', 'complete', 'get'],
-          default: 'get'
-        },
-        taskName: {
-          type: 'string'
-        },
-        progress: {
-          type: 'number',
-          description: 'Progress percentage (0-100)'
-        }
+        action: { type: 'string', enum: ['start', 'update', 'complete', 'get'], default: 'get' },
+        taskName: { type: 'string' },
+        progress: { type: 'number', description: '0-100' },
+        aiEstimate: { type: 'boolean', default: true, description: 'AI estimates remaining time' }
       }
     }
   },
 
-  // 18. Deep Analysis
+  // 16. Deep Analysis
   {
     name: 'deep_analysis',
     emoji: '🧠',
-    description: 'Deep analysis of page structure, performance, and content',
-    descriptionHindi: 'गहरा विश्लेषण',
+    description: 'Deep page analysis with AI insights and recommendations',
+    descriptionHindi: 'गहरा विश्लेषण (AI insights)',
     category: 'analysis',
     requiresBrowser: true,
     requiresPage: true,
     inputSchema: {
       type: 'object',
       properties: {
-        types: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'Analysis types: seo, performance, accessibility, security',
-          default: ['all']
-        },
-        detailed: {
-          type: 'boolean',
-          default: true
-        }
+        types: { type: 'array', items: { type: 'string' }, default: ['all'] },
+        detailed: { type: 'boolean', default: true },
+        aiInsights: { type: 'boolean', default: true, description: 'AI provides recommendations' },
+        detectAntiBot: { type: 'boolean', default: true, description: 'Detect anti-bot measures' }
       }
     }
   },
 
-  // 19. Network Recorder
+  // 17. Network Recorder
   {
     name: 'network_recorder',
     emoji: '📡',
-    description: 'Record and analyze network requests',
-    descriptionHindi: 'नेटवर्क रिकॉर्ड करना',
+    description: 'Record network with AI media detection and stream extraction',
+    descriptionHindi: 'नेटवर्क रिकॉर्ड करना (AI media detection)',
     category: 'network',
     requiresBrowser: true,
     requiresPage: false,
     inputSchema: {
       type: 'object',
       properties: {
-        action: {
-          type: 'string',
-          enum: ['start', 'stop', 'get', 'clear'],
-          default: 'get'
-        },
+        action: { type: 'string', enum: ['start', 'stop', 'get', 'clear', 'get_media', 'get_navigations'], default: 'get' },
         filter: {
           type: 'object',
           properties: {
             resourceType: { type: 'string' },
             urlPattern: { type: 'string' },
-            method: { type: 'string' }
+            type: { type: 'string' },
+            mediaOnly: { type: 'boolean' }
           }
-        }
+        },
+        aiDetectStreams: { type: 'boolean', default: true, description: 'AI detects video/audio streams' }
       }
     }
   },
 
-  // 20. Link Harvester
+  // 18. Link Harvester
   {
     name: 'link_harvester',
     emoji: '🔗',
-    description: 'Extract all links from the page',
-    descriptionHindi: 'लिंक्स निकालना',
+    description: 'Extract all links including hidden, encoded, and obfuscated',
+    descriptionHindi: 'लिंक्स निकालना (hidden + encoded + obfuscated)',
     category: 'extraction',
     requiresBrowser: true,
     requiresPage: true,
     inputSchema: {
       type: 'object',
       properties: {
-        types: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'Link types: internal, external, media, all',
-          default: ['all']
-        },
-        selector: {
-          type: 'string',
-          description: 'Limit to specific container'
-        },
-        includeText: {
-          type: 'boolean',
-          default: true
-        }
+        types: { type: 'array', items: { type: 'string' }, default: ['all'] },
+        selector: { type: 'string' },
+        includeText: { type: 'boolean', default: true },
+        includeHidden: { type: 'boolean', default: true },
+        searchIframes: { type: 'boolean', default: true },
+        autoDecode: { type: 'boolean', default: true, description: 'Auto-decode Base64/URL encoded links' },
+        detectObfuscation: { type: 'boolean', default: true, description: 'Detect and bypass obfuscation' }
       }
     }
   },
 
-  // 21. Cookie Manager
+  // 19. Cookie Manager
   {
     name: 'cookie_manager',
     emoji: '🍪',
-    description: 'Manage browser cookies',
-    descriptionHindi: 'कुकीज़ मैनेज करना',
+    description: 'Smart cookie management with AI session persistence',
+    descriptionHindi: 'कुकीज़ मैनेज करना (smart)',
     category: 'browser',
     requiresBrowser: true,
     requiresPage: false,
     inputSchema: {
       type: 'object',
       properties: {
-        action: {
-          type: 'string',
-          enum: ['get', 'set', 'delete', 'clear'],
-          default: 'get'
-        },
-        name: {
-          type: 'string'
-        },
-        value: {
-          type: 'string'
-        },
-        domain: {
-          type: 'string'
-        },
-        expires: {
-          type: 'number'
-        }
+        action: { type: 'string', enum: ['get', 'set', 'delete', 'clear', 'export', 'import'], default: 'get' },
+        name: { type: 'string' },
+        value: { type: 'string' },
+        domain: { type: 'string' },
+        expires: { type: 'number' },
+        aiOptimize: { type: 'boolean', default: true, description: 'AI optimizes cookie persistence' }
       }
     }
   },
 
-  // 22. File Downloader
+  // 20. File Downloader
   {
     name: 'file_downloader',
     emoji: '⬇️',
-    description: 'Download files from URLs',
-    descriptionHindi: 'फाइल डाउनलोड करना',
+    description: 'Download files with resume, batch, and auto-decrypt support',
+    descriptionHindi: 'फाइल डाउनलोड करना (resume + batch)',
     category: 'network',
     requiresBrowser: true,
     requiresPage: false,
     inputSchema: {
       type: 'object',
       properties: {
-        url: {
-          type: 'string',
-          description: 'File URL to download'
-        },
-        filename: {
-          type: 'string',
-          description: 'Output filename'
-        },
-        directory: {
-          type: 'string',
-          description: 'Output directory',
-          default: './downloads'
-        }
-      },
-      required: ['url']
-    }
-  },
-
-  // 23. iFrame Handler
-  {
-    name: 'iframe_handler',
-    emoji: '🖼️',
-    description: 'Handle iFrame content and interactions',
-    descriptionHindi: 'iFrame हैंडल करना',
-    category: 'interaction',
-    requiresBrowser: true,
-    requiresPage: true,
-    inputSchema: {
-      type: 'object',
-      properties: {
-        action: {
-          type: 'string',
-          enum: ['list', 'switch', 'content', 'exit'],
-          default: 'list'
-        },
-        selector: {
-          type: 'string',
-          description: 'iFrame selector'
-        },
-        index: {
-          type: 'number',
-          description: 'iFrame index'
-        }
+        url: { type: 'string' },
+        filename: { type: 'string' },
+        directory: { type: 'string', default: './downloads' },
+        resume: { type: 'boolean', default: true, description: 'Resume interrupted downloads' },
+        batch: { type: 'array', items: { type: 'string' }, description: 'Multiple URLs for batch download' },
+        autoDecode: { type: 'boolean', default: true, description: 'Auto-decode Base64/URL encoded URLs' },
+        decryptKey: { type: 'string', description: 'AES key for encrypted files' }
       }
     }
   },
 
-  // 24. Stream Extractor
+  // 21. Media Extractor (MERGED: iframe_handler + stream_extractor + player_api_hook)
   {
-    name: 'stream_extractor',
+    name: 'media_extractor',
     emoji: '🎬',
-    description: 'Extract video/audio stream URLs',
-    descriptionHindi: 'स्ट्रीम URL निकालना',
+    description: 'Universal media extractor - streams, players, iframes, with decoders',
+    descriptionHindi: 'मीडिया निकालना (streams + players + iframes + decoders)',
     category: 'extraction',
     requiresBrowser: true,
     requiresPage: true,
     inputSchema: {
       type: 'object',
       properties: {
-        types: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'Stream types: video, audio, hls, dash, all',
-          default: ['all']
+        action: { 
+          type: 'string', 
+          enum: ['extract', 'list_iframes', 'switch_iframe', 'player_control', 'decode_url', 'batch_extract'], 
+          default: 'extract' 
         },
-        quality: {
-          type: 'string',
-          enum: ['best', 'worst', 'all'],
-          default: 'best'
-        }
+        // For extraction
+        types: { type: 'array', items: { type: 'string' }, default: ['all'], description: 'video, audio, hls, dash, download, iframes' },
+        quality: { type: 'string', enum: ['best', 'worst', 'all'], default: 'best' },
+        deep: { type: 'boolean', default: true, description: 'Deep scan scripts and data attributes' },
+        searchIframes: { type: 'boolean', default: true },
+        // For iframe control
+        selector: { type: 'string', description: 'iFrame selector' },
+        index: { type: 'number', description: 'iFrame index' },
+        // For player control
+        playerAction: { type: 'string', enum: ['info', 'play', 'pause', 'seek', 'sources'], default: 'info' },
+        // For decoders
+        encodedData: { type: 'string', description: 'For decode_url action' },
+        decoderType: { type: 'string', enum: ['auto', 'url', 'base64', 'aes'], default: 'auto' },
+        aesKey: { type: 'string', description: 'AES decryption key' },
+        aesIV: { type: 'string', description: 'AES IV (optional)' },
+        // Batch operations
+        urls: { type: 'array', items: { type: 'string' }, description: 'Multiple URLs for batch extraction' },
+        aiOptimize: { type: 'boolean', default: true, description: 'AI optimizes extraction strategy' }
       }
     }
   },
 
-  // 25. JS Scrape
-  {
-    name: 'js_scrape',
-    emoji: '⚡',
-    description: 'Scrape JavaScript-rendered content',
-    descriptionHindi: 'JS-rendered कंटेंट स्क्रैप करना',
-    category: 'extraction',
-    requiresBrowser: true,
-    requiresPage: true,
-    inputSchema: {
-      type: 'object',
-      properties: {
-        selector: {
-          type: 'string',
-          description: 'CSS selector'
-        },
-        waitForJS: {
-          type: 'boolean',
-          description: 'Wait for JS to fully render',
-          default: true
-        },
-        timeout: {
-          type: 'number',
-          default: 10000
-        }
-      },
-      required: ['selector']
-    }
-  },
-
-  // 26. Execute JS
+  // 22. Execute JS
   {
     name: 'execute_js',
     emoji: '💻',
-    description: 'Execute custom JavaScript in page context',
-    descriptionHindi: 'कस्टम JS चलाना',
+    description: 'Execute custom JavaScript with async support and error handling',
+    descriptionHindi: 'कस्टम JS चलाना (async + error handling)',
     category: 'interaction',
     requiresBrowser: true,
     requiresPage: true,
     inputSchema: {
       type: 'object',
       properties: {
-        code: {
-          type: 'string',
-          description: 'JavaScript code to execute'
-        },
-        returnValue: {
-          type: 'boolean',
-          description: 'Return the result of execution',
-          default: true
-        }
+        code: { type: 'string' },
+        returnValue: { type: 'boolean', default: true },
+        async: { type: 'boolean', default: false, description: 'Execute async code' },
+        timeout: { type: 'number', default: 30000 },
+        iframe: { type: 'number', description: 'Execute in specific iframe index' }
       },
       required: ['code']
     }
   },
 
-  // 27. Player API Hook
-  {
-    name: 'player_api_hook',
-    emoji: '🎮',
-    description: 'Hook into video player APIs to extract data',
-    descriptionHindi: 'वीडियो प्लेयर से डेटा निकालना',
-    category: 'extraction',
-    requiresBrowser: true,
-    requiresPage: true,
-    inputSchema: {
-      type: 'object',
-      properties: {
-        playerType: {
-          type: 'string',
-          enum: ['youtube', 'vimeo', 'jwplayer', 'videojs', 'auto'],
-          default: 'auto'
-        },
-        action: {
-          type: 'string',
-          enum: ['info', 'sources', 'play', 'pause', 'seek'],
-          default: 'info'
-        }
-      }
-    }
-  },
-
-  // 28. Form Automator
+  // 23. Form Automator
   {
     name: 'form_automator',
     emoji: '📋',
-    description: 'Automatically fill and submit forms',
-    descriptionHindi: 'फॉर्म भरना',
+    description: 'Smart form automation with AI field detection and validation',
+    descriptionHindi: 'फॉर्म भरना (AI detection)',
     category: 'interaction',
     requiresBrowser: true,
     requiresPage: true,
     inputSchema: {
       type: 'object',
       properties: {
-        selector: {
-          type: 'string',
-          description: 'Form selector'
-        },
-        data: {
-          type: 'object',
-          description: 'Form data as key-value pairs'
-        },
-        submit: {
-          type: 'boolean',
-          description: 'Submit form after filling',
-          default: false
-        },
-        humanLike: {
-          type: 'boolean',
-          description: 'Fill with human-like delays',
-          default: true
-        }
+        selector: { type: 'string', description: 'Form selector (AI auto-detects if not provided)' },
+        data: { type: 'object', description: 'Field data (AI matches fields if names differ)' },
+        submit: { type: 'boolean', default: false },
+        humanLike: { type: 'boolean', default: true },
+        aiMatch: { type: 'boolean', default: true, description: 'AI matches fields even if names differ' },
+        aiValidate: { type: 'boolean', default: true, description: 'AI validates form before submission' },
+        captcha: { type: 'boolean', default: true, description: 'Auto-solve CAPTCHA if present' }
       },
       required: ['data']
     }
   }
 ];
 
-// Tool categories for organization
+// Tool categories
 const CATEGORIES = {
   browser: { name: 'Browser', emoji: '🌐', description: 'Browser lifecycle management' },
   navigation: { name: 'Navigation', emoji: '🧭', description: 'Page navigation' },
-  interaction: { name: 'Interaction', emoji: '👆', description: 'User interactions (click, type, scroll)' },
+  interaction: { name: 'Interaction', emoji: '👆', description: 'User interactions' },
   extraction: { name: 'Extraction', emoji: '📄', description: 'Content extraction and scraping' },
   network: { name: 'Network', emoji: '📡', description: 'Network operations' },
   analysis: { name: 'Analysis', emoji: '🧠', description: 'Page analysis' },
@@ -858,7 +564,7 @@ const getRequiredParams = (toolName) => {
   return tool?.inputSchema?.required || [];
 };
 
-// Export tool names with emojis for logging
+// Export
 const TOOL_DISPLAY = TOOLS.map(t => ({
   name: t.name,
   emoji: t.emoji,

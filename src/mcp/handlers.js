@@ -1,7 +1,7 @@
 /**
  * Brave Real Browser MCP Server - Tool Handlers
  * 
- * Implementation of all 28 browser automation tools
+ * Implementation of all 23 browser automation tools (optimized from 28)
  * 
  * Environment Variables:
  *   HEADLESS=true   - Run browser in headless mode
@@ -10,6 +10,7 @@
 
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 
 // Browser state management
 let browserInstance = null;
@@ -92,6 +93,149 @@ function requireBrowser() {
 }
 
 /**
+ * DECODER UTILITIES - URL, Base64, AES Decryption
+ */
+const decoders = {
+  // URL Decoder
+  urlDecode: (encodedUrl) => {
+    try {
+      // Handle multiple encoding layers
+      let decoded = encodedUrl;
+      let iterations = 0;
+      const maxIterations = 5;
+      
+      while (iterations < maxIterations) {
+        const newDecoded = decodeURIComponent(decoded);
+        if (newDecoded === decoded) break;
+        decoded = newDecoded;
+        iterations++;
+      }
+      
+      return { success: true, decoded, iterations, original: encodedUrl };
+    } catch (error) {
+      return { success: false, error: error.message, original: encodedUrl };
+    }
+  },
+  
+  // Base64 Decoder
+  base64Decode: (encodedData) => {
+    try {
+      // Try multiple approaches
+      const approaches = [];
+      
+      // Standard Base64
+      try {
+        const decoded = Buffer.from(encodedData, 'base64').toString('utf-8');
+        if (decoded && decoded !== encodedData) {
+          approaches.push({ method: 'standard', decoded });
+        }
+      } catch (e) {}
+      
+      // URL-safe Base64 (replace - with +, _ with /)
+      try {
+        const normalized = encodedData.replace(/-/g, '+').replace(/_/g, '/');
+        const decoded = Buffer.from(normalized, 'base64').toString('utf-8');
+        if (decoded && decoded !== encodedData) {
+          approaches.push({ method: 'url-safe', decoded });
+        }
+      } catch (e) {}
+      
+      // With padding
+      try {
+        const padding = 4 - (encodedData.length % 4);
+        if (padding !== 4) {
+          const padded = encodedData + '='.repeat(padding);
+          const decoded = Buffer.from(padded, 'base64').toString('utf-8');
+          if (decoded && decoded !== encodedData) {
+            approaches.push({ method: 'padded', decoded });
+          }
+        }
+      } catch (e) {}
+      
+      if (approaches.length === 0) {
+        return { success: false, error: 'Could not decode base64', original: encodedData };
+      }
+      
+      return { success: true, decoded: approaches[0].decoded, approaches, original: encodedData };
+    } catch (error) {
+      return { success: false, error: error.message, original: encodedData };
+    }
+  },
+  
+  // AES Decryptor
+  decryptAES: (encryptedData, key, iv = null, algorithm = 'aes-256-cbc') => {
+    try {
+      // Convert inputs to buffers if needed
+      const keyBuffer = Buffer.isBuffer(key) ? key : Buffer.from(key, 'utf-8');
+      
+      // Handle different input formats
+      let encryptedBuffer;
+      if (Buffer.isBuffer(encryptedData)) {
+        encryptedBuffer = encryptedData;
+      } else if (encryptedData.includes('%')) {
+        // URL encoded
+        encryptedBuffer = Buffer.from(decodeURIComponent(encryptedData), 'base64');
+      } else {
+        encryptedBuffer = Buffer.from(encryptedData, 'base64');
+      }
+      
+      let decipher;
+      if (iv) {
+        const ivBuffer = Buffer.isBuffer(iv) ? iv : Buffer.from(iv, 'utf-8');
+        decipher = crypto.createDecipheriv(algorithm, keyBuffer, ivBuffer);
+      } else {
+        // Try without IV (ECB mode - less secure but sometimes used)
+        decipher = crypto.createDecipheriv(algorithm.replace('-cbc', '-ecb'), keyBuffer, Buffer.alloc(0));
+      }
+      
+      let decrypted = decipher.update(encryptedBuffer);
+      decrypted = Buffer.concat([decrypted, decipher.final()]);
+      
+      const result = decrypted.toString('utf-8');
+      return { success: true, decrypted: result, algorithm };
+    } catch (error) {
+      return { success: false, error: error.message, algorithm };
+    }
+  },
+  
+  // Try all decoders
+  tryAll: (data, options = {}) => {
+    const results = {
+      original: data,
+      attempts: []
+    };
+    
+    // Try URL decode
+    const urlResult = decoders.urlDecode(data);
+    if (urlResult.success && urlResult.iterations > 0) {
+      results.attempts.push({ type: 'url', result: urlResult.decoded });
+    }
+    
+    // Try Base64
+    const base64Result = decoders.base64Decode(data);
+    if (base64Result.success) {
+      results.attempts.push({ type: 'base64', result: base64Result.decoded });
+      
+      // Try nested decoding
+      const nestedUrl = decoders.urlDecode(base64Result.decoded);
+      if (nestedUrl.success && nestedUrl.iterations > 0) {
+        results.attempts.push({ type: 'base64+url', result: nestedUrl.decoded });
+      }
+    }
+    
+    // Try AES if key provided
+    if (options.key) {
+      const aesResult = decoders.decryptAES(data, options.key, options.iv, options.algorithm);
+      if (aesResult.success) {
+        results.attempts.push({ type: 'aes', result: aesResult.decrypted });
+      }
+    }
+    
+    return results;
+  }
+};
+
+/**
  * Tool Handlers Object
  */
 const handlers = {
@@ -137,24 +281,87 @@ const handlers = {
     };
   },
 
-  // 2. Navigate
+  // 2. Navigate (ENHANCED - handles context destroyed errors, retries)
   async navigate(params) {
     const { page } = requireBrowser();
-    const { url, waitUntil = 'networkidle2', timeout = 30000 } = params;
+    const { url, waitUntil = 'networkidle2', timeout = 30000, retries = 2 } = params;
     
     notifyProgress('navigate', 'started', `Navigating to: ${url}`);
     
-    await page.goto(url, { waitUntil, timeout });
+    let lastError = null;
     
-    const title = await page.title();
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        // Wait a bit if this is a retry
+        if (attempt > 0) {
+          notifyProgress('navigate', 'progress', `Retry attempt ${attempt}...`);
+          await new Promise(r => setTimeout(r, 1000));
+        }
+        
+        await page.goto(url, { waitUntil, timeout });
+        
+        // Wait for page to stabilize after navigation
+        await new Promise(r => setTimeout(r, 500));
+        
+        // Try to get title with error handling
+        let title = '';
+        try {
+          title = await page.title();
+        } catch (e) {
+          // Title might fail if page is still loading
+          title = 'Loading...';
+        }
+        
+        notifyProgress('navigate', 'completed', `Loaded: ${title}`, { url: page.url(), title });
+        
+        return {
+          success: true,
+          url: page.url(),
+          title
+        };
+      } catch (error) {
+        lastError = error;
+        
+        // Handle specific errors that might be recoverable
+        if (error.message?.includes('Execution context was destroyed') ||
+            error.message?.includes('context') ||
+            error.message?.includes('Target closed')) {
+          
+          notifyProgress('navigate', 'progress', `Navigation interrupted (${error.message.substring(0, 50)}...), waiting for page...`);
+          
+          // Wait for any ongoing navigation to complete
+          try {
+            await page.waitForNavigation({ timeout: 5000, waitUntil: 'domcontentloaded' }).catch(() => {});
+          } catch (e) {
+            // Ignore timeout
+          }
+          
+          // Check if we actually landed on the page
+          try {
+            const currentUrl = page.url();
+            if (currentUrl && currentUrl !== 'about:blank') {
+              const title = await page.title().catch(() => 'Unknown');
+              notifyProgress('navigate', 'completed', `Loaded after recovery: ${title}`, { url: currentUrl, title });
+              return {
+                success: true,
+                url: currentUrl,
+                title,
+                recovered: true
+              };
+            }
+          } catch (e) {
+            // Continue to retry
+          }
+        } else {
+          // Non-recoverable error, throw immediately
+          throw error;
+        }
+      }
+    }
     
-    notifyProgress('navigate', 'completed', `Loaded: ${title}`, { url: page.url(), title });
-    
-    return {
-      success: true,
-      url: page.url(),
-      title
-    };
+    // All retries failed
+    notifyProgress('navigate', 'error', `Navigation failed after ${retries + 1} attempts: ${lastError?.message}`);
+    throw lastError || new Error('Navigation failed');
   },
 
   // 3. Get Content
@@ -433,40 +640,117 @@ const handlers = {
     return { success: true, filename: outputPath, size: markdown.length };
   },
 
-  // 12. Redirect Tracer
+  // 12. Redirect Tracer (ENHANCED - tracks HTTP + JS + Meta redirects)
   async redirect_tracer(params) {
     const { page } = requireBrowser();
-    const { url, maxRedirects = 10, includeHeaders = false } = params;
+    const { url, maxRedirects = 20, includeHeaders = false, followJS = true, timeout = 30000 } = params;
     
     notifyProgress('redirect_tracer', 'started', `Tracing redirects for: ${url}`);
     
     const redirects = [];
+    const jsNavigations = [];
+    let currentUrl = url;
     
+    // HTTP redirect handler
     const responseHandler = response => {
       if ([301, 302, 303, 307, 308].includes(response.status())) {
         redirects.push({
           url: response.url(),
           status: response.status(),
+          type: 'http',
           headers: includeHeaders ? response.headers() : undefined
         });
-        notifyProgress('redirect_tracer', 'progress', `Redirect ${redirects.length}: ${response.status()}`, { status: response.status() });
+        notifyProgress('redirect_tracer', 'progress', `HTTP Redirect ${redirects.length}: ${response.status()}`, { status: response.status() });
+      }
+    };
+    
+    // JS/Navigation handler for tracking window.location changes
+    const frameNavigatedHandler = frame => {
+      if (frame === page.mainFrame()) {
+        const newUrl = frame.url();
+        if (newUrl !== currentUrl && newUrl !== 'about:blank') {
+          jsNavigations.push({
+            url: newUrl,
+            type: 'js_navigation',
+            fromUrl: currentUrl,
+            timestamp: Date.now()
+          });
+          notifyProgress('redirect_tracer', 'progress', `JS Navigation: ${newUrl}`, { type: 'js' });
+          currentUrl = newUrl;
+        }
       }
     };
     
     page.on('response', responseHandler);
+    page.on('framenavigated', frameNavigatedHandler);
     
-    await page.goto(url, { waitUntil: 'networkidle2' });
+    try {
+      await page.goto(url, { waitUntil: 'networkidle2', timeout });
+      
+      // If followJS is enabled, wait a bit and check for meta refreshes and JS redirects
+      if (followJS) {
+        // Check for meta refresh tags
+        const metaRefresh = await page.evaluate(() => {
+          const meta = document.querySelector('meta[http-equiv="refresh"]');
+          if (meta) {
+            const content = meta.getAttribute('content');
+            const match = content?.match(/url=(.+)/i);
+            return match ? match[1].trim().replace(/['"]/g, '') : null;
+          }
+          return null;
+        }).catch(() => null);
+        
+        if (metaRefresh) {
+          jsNavigations.push({
+            url: metaRefresh,
+            type: 'meta_refresh',
+            fromUrl: page.url()
+          });
+        }
+        
+        // Extract any onclick/href javascript: URLs
+        const jsLinks = await page.evaluate(() => {
+          const links = [];
+          document.querySelectorAll('a[href^="javascript:"], [onclick]').forEach(el => {
+            const onclick = el.getAttribute('onclick');
+            const href = el.getAttribute('href');
+            if (onclick) {
+              const match = onclick.match(/location\.href\s*=\s*['"]([^'"]+)['"]/);
+              if (match) links.push({ url: match[1], type: 'onclick' });
+            }
+            if (href && href.includes('location')) {
+              links.push({ url: href, type: 'javascript_href' });
+            }
+          });
+          return links;
+        }).catch(() => []);
+        
+        jsNavigations.push(...jsLinks);
+      }
+    } catch (e) {
+      notifyProgress('redirect_tracer', 'progress', `Navigation error: ${e.message}`);
+    }
     
     page.off('response', responseHandler);
+    page.off('framenavigated', frameNavigatedHandler);
     
-    notifyProgress('redirect_tracer', 'completed', `Found ${redirects.length} redirects`, { redirectCount: redirects.length, finalUrl: page.url() });
+    const allRedirects = [
+      ...redirects,
+      ...jsNavigations.filter(nav => nav.url && nav.url.startsWith('http'))
+    ];
+    
+    notifyProgress('redirect_tracer', 'completed', 
+      `Found ${redirects.length} HTTP + ${jsNavigations.length} JS redirects`, 
+      { httpRedirects: redirects.length, jsNavigations: jsNavigations.length, finalUrl: page.url() });
     
     return {
       success: true,
       originalUrl: url,
       finalUrl: page.url(),
-      redirectCount: redirects.length,
-      redirects
+      redirectCount: allRedirects.length,
+      httpRedirects: redirects,
+      jsNavigations: jsNavigations,
+      allRedirects: allRedirects
     };
   },
 
@@ -654,35 +938,104 @@ const handlers = {
     return { success: true, url: page.url(), analysis };
   },
 
-  // 19. Network Recorder
+  // 19. Network Recorder (ENHANCED - captures responses, headers, and video streams)
   async network_recorder(params = {}) {
     const { page } = requireBrowser();
-    const { action = 'get', filter = {} } = params;
+    const { action = 'get', filter = {}, captureResponses = false } = params;
     
     switch (action) {
       case 'start':
         networkRecords = [];
         isRecordingNetwork = true;
+        
+        // Request handler
         page.on('request', req => {
           if (isRecordingNetwork) {
             networkRecords.push({
+              type: 'request',
               url: req.url(),
               method: req.method(),
               resourceType: req.resourceType(),
+              headers: req.headers(),
               timestamp: Date.now()
             });
           }
         });
-        notifyProgress('network_recorder', 'started', 'Network recording started');
+        
+        // Response handler for capturing video/media URLs
+        page.on('response', async res => {
+          if (isRecordingNetwork) {
+            const url = res.url();
+            const contentType = res.headers()['content-type'] || '';
+            const isMedia = contentType.includes('video') || 
+                           contentType.includes('audio') || 
+                           contentType.includes('mpegurl') ||
+                           url.includes('.m3u8') || 
+                           url.includes('.mpd') ||
+                           url.includes('.mp4') ||
+                           url.includes('.ts');
+            
+            const record = {
+              type: 'response',
+              url: url,
+              status: res.status(),
+              contentType: contentType,
+              isMedia: isMedia,
+              timestamp: Date.now()
+            };
+            
+            // For media URLs, try to get more details
+            if (isMedia) {
+              record.mediaType = url.includes('.m3u8') ? 'hls' : 
+                                url.includes('.mpd') ? 'dash' : 
+                                url.includes('.mp4') ? 'mp4' : 'other';
+            }
+            
+            networkRecords.push(record);
+          }
+        });
+        
+        // Frame navigation handler for JS redirects
+        page.on('framenavigated', frame => {
+          if (isRecordingNetwork && frame === page.mainFrame()) {
+            networkRecords.push({
+              type: 'navigation',
+              url: frame.url(),
+              timestamp: Date.now()
+            });
+          }
+        });
+        
+        notifyProgress('network_recorder', 'started', 'Enhanced network recording started (requests + responses + navigations)');
         break;
+        
       case 'stop':
         isRecordingNetwork = false;
-        notifyProgress('network_recorder', 'completed', `Recording stopped: ${networkRecords.length} requests captured`);
+        notifyProgress('network_recorder', 'completed', `Recording stopped: ${networkRecords.length} events captured`);
         break;
+        
       case 'clear':
         networkRecords = [];
         notifyProgress('network_recorder', 'completed', 'Network records cleared');
         break;
+        
+      case 'get_media':
+        // Special action to get only media URLs
+        const mediaRecords = networkRecords.filter(r => r.isMedia);
+        return { 
+          success: true, 
+          count: mediaRecords.length, 
+          mediaUrls: mediaRecords.map(r => ({ url: r.url, type: r.mediaType }))
+        };
+        
+      case 'get_navigations':
+        // Get only navigation events (for tracking JS redirects)
+        const navRecords = networkRecords.filter(r => r.type === 'navigation');
+        return { 
+          success: true, 
+          count: navRecords.length, 
+          navigations: navRecords 
+        };
     }
     
     let records = networkRecords;
@@ -693,41 +1046,195 @@ const handlers = {
       const regex = new RegExp(filter.urlPattern);
       records = records.filter(r => regex.test(r.url));
     }
+    if (filter.type) {
+      records = records.filter(r => r.type === filter.type);
+    }
+    if (filter.mediaOnly) {
+      records = records.filter(r => r.isMedia);
+    }
     
-    return { success: true, recording: isRecordingNetwork, count: records.length, records: records.slice(-100) };
+    return { success: true, recording: isRecordingNetwork, count: records.length, records: records.slice(-200) };
   },
 
-  // 20. Link Harvester
+  // 20. Link Harvester (ENHANCED - finds hidden links, data attributes, onclick handlers)
   async link_harvester(params = {}) {
     const { page } = requireBrowser();
-    const { types = ['all'], selector, includeText = true } = params;
+    const { types = ['all'], selector, includeText = true, includeHidden = true, searchIframes = false } = params;
     
-    notifyProgress('link_harvester', 'started', 'Harvesting links...');
+    notifyProgress('link_harvester', 'started', 'Harvesting links (enhanced mode)...');
     
     const currentHost = new URL(page.url()).hostname;
     
-    let links = await page.$$eval(selector ? `${selector} a` : 'a', (anchors, includeText) => 
-      anchors.map(a => ({
-        href: a.href,
-        text: includeText ? a.textContent?.trim().substring(0, 100) : undefined,
-        rel: a.rel
-      })).filter(l => l.href && l.href.startsWith('http')),
-      includeText
-    );
+    // Enhanced link extraction
+    const extractLinks = async (context) => {
+      return await context.evaluate(({ includeText, includeHidden }) => {
+        const allLinks = [];
+        const seenUrls = new Set();
+        
+        const addLink = (href, text, source, element) => {
+          if (!href || seenUrls.has(href)) return;
+          if (!href.startsWith('http') && !href.startsWith('//')) return;
+          
+          // Handle protocol-relative URLs
+          if (href.startsWith('//')) {
+            href = window.location.protocol + href;
+          }
+          
+          seenUrls.add(href);
+          allLinks.push({
+            href,
+            text: includeText ? (text || '').trim().substring(0, 100) : undefined,
+            source,
+            hidden: element ? (
+              element.offsetParent === null || 
+              getComputedStyle(element).display === 'none' ||
+              getComputedStyle(element).visibility === 'hidden'
+            ) : false
+          });
+        };
+        
+        // 1. Standard anchor tags
+        document.querySelectorAll('a[href]').forEach(a => {
+          addLink(a.href, a.textContent, 'anchor', a);
+        });
+        
+        // 2. Data attributes containing URLs
+        const dataAttrs = ['data-href', 'data-url', 'data-link', 'data-src', 'data-file', 'data-download'];
+        dataAttrs.forEach(attr => {
+          document.querySelectorAll(`[${attr}]`).forEach(el => {
+            const url = el.getAttribute(attr);
+            addLink(url, el.textContent, `${attr}`, el);
+          });
+        });
+        
+        // 3. OnClick handlers with URLs
+        if (includeHidden) {
+          document.querySelectorAll('[onclick]').forEach(el => {
+            const onclick = el.getAttribute('onclick');
+            // Look for URL patterns in onclick
+            const urlMatches = onclick.match(/https?:\/\/[^\s"'<>]+/gi) || [];
+            urlMatches.forEach(url => {
+              addLink(url, el.textContent, 'onclick', el);
+            });
+            
+            // Look for location.href assignments
+            const hrefMatch = onclick.match(/location\.href\s*=\s*['"]([^'"]+)['"]/);
+            if (hrefMatch) {
+              addLink(hrefMatch[1], el.textContent, 'onclick-location', el);
+            }
+            
+            // Look for window.open calls
+            const openMatch = onclick.match(/window\.open\s*\(\s*['"]([^'"]+)['"]/);
+            if (openMatch) {
+              addLink(openMatch[1], el.textContent, 'onclick-window-open', el);
+            }
+          });
+        }
+        
+        // 4. JavaScript href links
+        document.querySelectorAll('a[href^="javascript:"]').forEach(a => {
+          const href = a.getAttribute('href');
+          const urlMatch = href.match(/https?:\/\/[^\s"'<>]+/gi);
+          if (urlMatch) {
+            urlMatch.forEach(url => addLink(url, a.textContent, 'javascript-href', a));
+          }
+        });
+        
+        // 5. Hidden inputs with URLs
+        document.querySelectorAll('input[type="hidden"]').forEach(input => {
+          const value = input.value;
+          if (value && (value.startsWith('http') || value.startsWith('//'))) {
+            addLink(value, input.name || input.id, 'hidden-input', input);
+          }
+        });
+        
+        // 6. Script content analysis for URLs (limited for performance)
+        if (includeHidden) {
+          const scripts = [...document.querySelectorAll('script')].slice(0, 20);
+          scripts.forEach(script => {
+            const content = script.textContent || '';
+            // Look for download/stream URLs
+            const patterns = [
+              /["']?(https?:\/\/[^"'\s<>]+\.(mp4|mkv|avi|m3u8|mpd|zip|rar|pdf))[^"'\s<>]*["']?/gi,
+              /download[_-]?url\s*[:=]\s*["']([^"']+)["']/gi,
+              /file\s*[:=]\s*["']([^"']+)["']/gi
+            ];
+            
+            patterns.forEach(pattern => {
+              let match;
+              while ((match = pattern.exec(content)) !== null) {
+                addLink(match[1], 'script-extracted', 'script', null);
+              }
+            });
+          });
+        }
+        
+        // 7. Meta refresh URLs
+        const metaRefresh = document.querySelector('meta[http-equiv="refresh"]');
+        if (metaRefresh) {
+          const content = metaRefresh.getAttribute('content');
+          const urlMatch = content?.match(/url=(.+)/i);
+          if (urlMatch) {
+            addLink(urlMatch[1].trim().replace(/['"]/g, ''), 'meta-refresh', 'meta', null);
+          }
+        }
+        
+        // 8. Iframe sources
+        document.querySelectorAll('iframe[src]').forEach(iframe => {
+          addLink(iframe.src, 'iframe', 'iframe', iframe);
+        });
+        
+        return allLinks;
+      }, { includeText, includeHidden }).catch(() => []);
+    };
     
+    let links = await extractLinks(page);
+    
+    // Search iframes if enabled
+    if (searchIframes) {
+      const frames = page.frames();
+      for (let i = 1; i < frames.length && i < 5; i++) {
+        try {
+          const frame = frames[i];
+          if (frame.url() && frame.url() !== 'about:blank') {
+            const frameLinks = await extractLinks(frame);
+            frameLinks.forEach(link => link.source = `iframe:${link.source}`);
+            links = [...links, ...frameLinks];
+          }
+        } catch (e) {}
+      }
+    }
+    
+    // Filter by type
     if (!types.includes('all')) {
       links = links.filter(link => {
         const isInternal = link.href.includes(currentHost);
-        const isMedia = /\.(jpg|jpeg|png|gif|mp4|mp3|pdf|zip)/i.test(link.href);
+        const isMedia = /\.(jpg|jpeg|png|gif|mp4|mp3|mkv|avi|pdf|zip|rar|m3u8|mpd)/i.test(link.href);
+        const isDownload = /download|file|drive/i.test(link.href);
         
         if (types.includes('internal') && isInternal) return true;
         if (types.includes('external') && !isInternal) return true;
         if (types.includes('media') && isMedia) return true;
+        if (types.includes('download') && isDownload) return true;
+        if (types.includes('hidden') && link.hidden) return true;
         return false;
       });
     }
     
-    notifyProgress('link_harvester', 'completed', `Found ${links.length} links`, { count: links.length });
+    // Remove hidden links if not requested
+    if (!includeHidden) {
+      links = links.filter(link => !link.hidden);
+    }
+    
+    // Deduplicate
+    const seen = new Set();
+    links = links.filter(link => {
+      if (seen.has(link.href)) return false;
+      seen.add(link.href);
+      return true;
+    });
+    
+    notifyProgress('link_harvester', 'completed', `Found ${links.length} links (including hidden)`, { count: links.length });
     
     return { success: true, count: links.length, links };
   },
@@ -841,40 +1348,155 @@ const handlers = {
     return { success: false, error: 'Invalid action' };
   },
 
-  // 24. Stream Extractor
+  // 24. Stream Extractor (ENHANCED - searches iframes, detects obfuscated sources)
   async stream_extractor(params = {}) {
     const { page } = requireBrowser();
-    const { types = ['all'], quality = 'best' } = params;
+    const { types = ['all'], quality = 'best', searchIframes = true, deep = true } = params;
     
-    notifyProgress('stream_extractor', 'started', 'Extracting streams...');
+    notifyProgress('stream_extractor', 'started', 'Extracting streams (enhanced mode)...');
     
-    const streams = await page.evaluate(() => {
-      const result = { video: [], audio: [], hls: [], dash: [] };
+    // Helper function to extract streams from a frame/page context
+    const extractFromContext = async (context, contextName = 'main') => {
+      return await context.evaluate(() => {
+        const result = { video: [], audio: [], hls: [], dash: [], download: [], embedded: [] };
+        
+        // 1. Direct video/audio elements
+        document.querySelectorAll('video source, video').forEach(el => {
+          const src = el.src || el.getAttribute('src') || el.currentSrc;
+          if (src && src.startsWith('http')) result.video.push({ src, type: el.type || 'video' });
+        });
+        
+        document.querySelectorAll('audio source, audio').forEach(el => {
+          const src = el.src || el.getAttribute('src');
+          if (src && src.startsWith('http')) result.audio.push({ src, type: el.type || 'audio' });
+        });
+        
+        // 2. Script content analysis for HLS/DASH/MP4
+        const scripts = [...document.querySelectorAll('script')].map(s => s.textContent).join('\n');
+        const html = document.documentElement.innerHTML;
+        const combined = scripts + html;
+        
+        // HLS streams
+        const hlsMatches = combined.match(/https?:\/\/[^\s"'<>]+\.m3u8[^\s"'<>]*/gi) || [];
+        result.hls = [...new Set(hlsMatches)].map(src => ({ src: src.replace(/\\"/g, ''), type: 'hls' }));
+        
+        // DASH streams
+        const dashMatches = combined.match(/https?:\/\/[^\s"'<>]+\.mpd[^\s"'<>]*/gi) || [];
+        result.dash = [...new Set(dashMatches)].map(src => ({ src: src.replace(/\\"/g, ''), type: 'dash' }));
+        
+        // Direct MP4/video links
+        const mp4Matches = combined.match(/https?:\/\/[^\s"'<>]+\.(mp4|mkv|avi|webm)[^\s"'<>]*/gi) || [];
+        result.download = [...new Set(mp4Matches)].map(src => ({ src: src.replace(/\\"/g, ''), type: 'direct' }));
+        
+        // 3. Data attributes and hidden sources
+        document.querySelectorAll('[data-src], [data-video], [data-url], [data-file]').forEach(el => {
+          const dataSrc = el.dataset.src || el.dataset.video || el.dataset.url || el.dataset.file;
+          if (dataSrc && dataSrc.startsWith('http')) {
+            result.video.push({ src: dataSrc, type: 'data-attribute' });
+          }
+        });
+        
+        // 4. Embedded player iframes (just URLs, not content)
+        document.querySelectorAll('iframe[src]').forEach(el => {
+          const src = el.src;
+          if (src && src.startsWith('http')) {
+            result.embedded.push({ src, type: 'iframe' });
+          }
+        });
+        
+        // 5. JWPlayer / VideoJS / Plyr sources
+        if (window.jwplayer) {
+          try {
+            const jw = window.jwplayer();
+            const playlist = jw.getPlaylist?.() || [];
+            playlist.forEach(item => {
+              if (item.file) result.video.push({ src: item.file, type: 'jwplayer' });
+              (item.sources || []).forEach(s => {
+                if (s.file) result.video.push({ src: s.file, type: 'jwplayer-source' });
+              });
+            });
+          } catch (e) {}
+        }
+        
+        if (window.player && window.player.src) {
+          try {
+            const src = typeof window.player.src === 'function' ? window.player.src() : window.player.src;
+            if (src) result.video.push({ src, type: 'player-api' });
+          } catch (e) {}
+        }
+        
+        // 6. Look for common piracy site patterns
+        const patterns = [
+          /file\s*:\s*["']([^"']+)["']/gi,
+          /source\s*:\s*["']([^"']+)["']/gi,
+          /src\s*:\s*["']([^"']+\.(?:m3u8|mp4|mkv))["']/gi,
+          /url\s*:\s*["']([^"']+\.(?:m3u8|mp4))["']/gi,
+          /video_url\s*=\s*["']([^"']+)["']/gi,
+          /sources\s*:\s*\[([^\]]+)\]/gi
+        ];
+        
+        patterns.forEach(pattern => {
+          let match;
+          while ((match = pattern.exec(combined)) !== null) {
+            const url = match[1];
+            if (url && url.startsWith('http') && (url.includes('.mp4') || url.includes('.m3u8'))) {
+              result.download.push({ src: url, type: 'pattern-match' });
+            }
+          }
+        });
+        
+        return result;
+      }).catch(() => ({ video: [], audio: [], hls: [], dash: [], download: [], embedded: [] }));
+    };
+    
+    // Extract from main page
+    const mainStreams = await extractFromContext(page, 'main');
+    let allStreams = { ...mainStreams };
+    
+    // Search in iframes if enabled
+    if (searchIframes) {
+      const frames = page.frames();
+      notifyProgress('stream_extractor', 'progress', `Searching ${frames.length} frames...`);
       
-      document.querySelectorAll('video source, video').forEach(el => {
-        const src = el.src || el.getAttribute('src');
-        if (src) result.video.push({ src, type: el.type || 'video' });
-      });
-      
-      document.querySelectorAll('audio source, audio').forEach(el => {
-        const src = el.src || el.getAttribute('src');
-        if (src) result.audio.push({ src, type: el.type || 'audio' });
-      });
-      
-      const scripts = [...document.querySelectorAll('script')].map(s => s.textContent).join('\n');
-      const hlsMatches = scripts.match(/https?:\/\/[^\s"']+\.m3u8[^\s"']*/gi) || [];
-      const dashMatches = scripts.match(/https?:\/\/[^\s"']+\.mpd[^\s"']*/gi) || [];
-      
-      result.hls = hlsMatches.map(src => ({ src, type: 'hls' }));
-      result.dash = dashMatches.map(src => ({ src, type: 'dash' }));
-      
-      return result;
+      for (let i = 1; i < frames.length && i < 10; i++) { // Limit to 10 frames
+        try {
+          const frame = frames[i];
+          const frameUrl = frame.url();
+          if (frameUrl && frameUrl !== 'about:blank') {
+            const frameStreams = await extractFromContext(frame, `frame-${i}`);
+            
+            // Merge frame streams
+            Object.keys(frameStreams).forEach(key => {
+              if (Array.isArray(frameStreams[key])) {
+                frameStreams[key].forEach(stream => {
+                  stream.source = `iframe: ${frameUrl}`;
+                });
+                allStreams[key] = [...(allStreams[key] || []), ...frameStreams[key]];
+              }
+            });
+          }
+        } catch (e) {
+          // Frame access error, skip
+        }
+      }
+    }
+    
+    // Deduplicate by URL
+    Object.keys(allStreams).forEach(key => {
+      if (Array.isArray(allStreams[key])) {
+        const seen = new Set();
+        allStreams[key] = allStreams[key].filter(item => {
+          if (seen.has(item.src)) return false;
+          seen.add(item.src);
+          return true;
+        });
+      }
     });
     
-    const totalStreams = streams.video.length + streams.audio.length + streams.hls.length + streams.dash.length;
-    notifyProgress('stream_extractor', 'completed', `Found ${totalStreams} streams`, { totalStreams });
+    const totalStreams = Object.values(allStreams).reduce((sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0), 0);
+    notifyProgress('stream_extractor', 'completed', `Found ${totalStreams} streams (including iframes)`, { totalStreams });
     
-    return { success: true, streams };
+    return { success: true, streams: allStreams, totalCount: totalStreams };
   },
 
   // 25. JS Scrape
@@ -914,64 +1536,198 @@ const handlers = {
     return { success: true, result: returnValue ? result : undefined };
   },
 
-  // 27. Player API Hook
+  // 27. Player API Hook (ENHANCED - searches iframes, detects more player types)
   async player_api_hook(params = {}) {
     const { page } = requireBrowser();
-    const { playerType = 'auto', action = 'info' } = params;
+    const { playerType = 'auto', action = 'info', searchIframes = true } = params;
     
     notifyProgress('player_api_hook', 'started', `Player ${action}: ${playerType}`);
     
-    const playerInfo = await page.evaluate(({ playerType, action }) => {
-      if (window.player || window.videoPlayer || window.jwplayer) {
-        const player = window.player || window.videoPlayer || (window.jwplayer && window.jwplayer());
-        
-        if (action === 'info' && player) {
-          return {
-            detected: true,
-            type: window.jwplayer ? 'jwplayer' : 'generic',
-            duration: player.getDuration?.() || player.duration,
-            currentTime: player.getCurrentTime?.() || player.currentTime,
-            volume: player.getVolume?.() || player.volume
-          };
-        }
-        
-        if (action === 'sources' && player) {
-          return {
-            detected: true,
-            sources: player.getSources?.() || player.getPlaylist?.() || []
-          };
-        }
-        
-        if (action === 'play' && player) {
-          player.play?.();
-          return { detected: true, action: 'play', executed: true };
-        }
-        
-        if (action === 'pause' && player) {
-          player.pause?.();
-          return { detected: true, action: 'pause', executed: true };
-        }
-      }
-      
-      const video = document.querySelector('video');
-      if (video) {
-        if (action === 'play') video.play();
-        if (action === 'pause') video.pause();
-        
-        return {
-          detected: true,
-          type: 'html5',
-          duration: video.duration,
-          currentTime: video.currentTime,
-          src: video.src || video.currentSrc,
-          paused: video.paused
+    // Enhanced player detection function
+    const detectPlayer = async (context, contextName = 'main') => {
+      return await context.evaluate(({ playerType, action }) => {
+        const result = {
+          detected: false,
+          type: null,
+          sources: [],
+          info: {}
         };
-      }
-      
-      return { detected: false };
-    }, { playerType, action });
+        
+        // 1. JWPlayer detection
+        if (window.jwplayer) {
+          try {
+            const jw = window.jwplayer();
+            if (jw) {
+              result.detected = true;
+              result.type = 'jwplayer';
+              result.info = {
+                duration: jw.getDuration?.(),
+                currentTime: jw.getPosition?.(),
+                volume: jw.getVolume?.(),
+                state: jw.getState?.()
+              };
+              
+              if (action === 'sources') {
+                const playlist = jw.getPlaylist?.() || [];
+                playlist.forEach(item => {
+                  if (item.file) result.sources.push({ src: item.file, type: 'jwplayer' });
+                  (item.sources || []).forEach(s => {
+                    if (s.file) result.sources.push({ src: s.file, type: 'jwplayer-source', label: s.label });
+                  });
+                });
+              }
+              
+              if (action === 'play') jw.play?.();
+              if (action === 'pause') jw.pause?.();
+            }
+          } catch (e) {}
+        }
+        
+        // 2. Video.js detection
+        if (window.videojs && !result.detected) {
+          try {
+            const players = document.querySelectorAll('.video-js');
+            if (players.length > 0) {
+              const player = window.videojs(players[0].id || players[0]);
+              result.detected = true;
+              result.type = 'videojs';
+              result.info = {
+                duration: player.duration?.(),
+                currentTime: player.currentTime?.(),
+                volume: player.volume?.()
+              };
+              
+              if (action === 'sources') {
+                const src = player.currentSrc?.();
+                if (src) result.sources.push({ src, type: 'videojs' });
+              }
+              
+              if (action === 'play') player.play?.();
+              if (action === 'pause') player.pause?.();
+            }
+          } catch (e) {}
+        }
+        
+        // 3. Plyr detection
+        if (window.Plyr && !result.detected) {
+          try {
+            const plyrElements = document.querySelectorAll('.plyr');
+            if (plyrElements.length > 0 && plyrElements[0].plyr) {
+              const player = plyrElements[0].plyr;
+              result.detected = true;
+              result.type = 'plyr';
+              result.info = {
+                duration: player.duration,
+                currentTime: player.currentTime,
+                volume: player.volume
+              };
+              
+              if (action === 'sources') {
+                const src = player.source;
+                if (src) result.sources.push({ src, type: 'plyr' });
+              }
+            }
+          } catch (e) {}
+        }
+        
+        // 4. Generic window.player
+        if ((window.player || window.videoPlayer) && !result.detected) {
+          try {
+            const player = window.player || window.videoPlayer;
+            result.detected = true;
+            result.type = 'generic';
+            result.info = {
+              duration: player.getDuration?.() || player.duration,
+              currentTime: player.getCurrentTime?.() || player.currentTime,
+              volume: player.getVolume?.() || player.volume
+            };
+            
+            if (action === 'sources') {
+              const sources = player.getSources?.() || player.getPlaylist?.() || [];
+              sources.forEach(s => {
+                if (s.file || s.src) result.sources.push({ src: s.file || s.src, type: 'generic' });
+              });
+            }
+          } catch (e) {}
+        }
+        
+        // 5. HTML5 Video fallback
+        if (!result.detected) {
+          const video = document.querySelector('video');
+          if (video) {
+            result.detected = true;
+            result.type = 'html5';
+            result.info = {
+              duration: video.duration,
+              currentTime: video.currentTime,
+              volume: video.volume,
+              paused: video.paused,
+              src: video.src || video.currentSrc
+            };
+            
+            if (action === 'sources') {
+              if (video.src) result.sources.push({ src: video.src, type: 'html5' });
+              if (video.currentSrc && video.currentSrc !== video.src) {
+                result.sources.push({ src: video.currentSrc, type: 'html5-current' });
+              }
+              video.querySelectorAll('source').forEach(s => {
+                if (s.src) result.sources.push({ src: s.src, type: 'html5-source' });
+              });
+            }
+            
+            if (action === 'play') video.play();
+            if (action === 'pause') video.pause();
+          }
+        }
+        
+        // 6. Look for common obfuscated player variables
+        const commonPlayerVars = ['player', 'videoPlayer', 'mediaPlayer', 'vPlayer', 'hls', 'flv'];
+        for (const varName of commonPlayerVars) {
+          if (window[varName] && !result.detected) {
+            try {
+              const p = window[varName];
+              if (typeof p === 'object' && (p.play || p.getDuration || p.src)) {
+                result.detected = true;
+                result.type = `${varName}-object`;
+                result.info = { raw: true };
+              }
+            } catch (e) {}
+          }
+        }
+        
+        return result;
+      }, { playerType, action }).catch(() => ({ detected: false }));
+    };
     
-    notifyProgress('player_api_hook', 'completed', playerInfo.detected ? `Player detected: ${playerInfo.type}` : 'No player found', { detected: playerInfo.detected });
+    // Try main page first
+    let playerInfo = await detectPlayer(page, 'main');
+    
+    // Search iframes if no player found and searchIframes is enabled
+    if (!playerInfo.detected && searchIframes) {
+      const frames = page.frames();
+      notifyProgress('player_api_hook', 'progress', `Searching ${frames.length} frames for player...`);
+      
+      for (let i = 1; i < frames.length && i < 10; i++) {
+        try {
+          const frame = frames[i];
+          const frameUrl = frame.url();
+          if (frameUrl && frameUrl !== 'about:blank') {
+            const framePlayer = await detectPlayer(frame, `frame-${i}`);
+            if (framePlayer.detected) {
+              playerInfo = { ...framePlayer, frameSource: frameUrl };
+              notifyProgress('player_api_hook', 'progress', `Found player in iframe: ${frameUrl}`);
+              break;
+            }
+          }
+        } catch (e) {
+          // Frame access error, skip
+        }
+      }
+    }
+    
+    notifyProgress('player_api_hook', 'completed', 
+      playerInfo.detected ? `Player detected: ${playerInfo.type}${playerInfo.frameSource ? ' (in iframe)' : ''}` : 'No player found', 
+      { detected: playerInfo.detected, type: playerInfo.type });
     
     return { success: true, ...playerInfo };
   },
@@ -1025,6 +1781,783 @@ const handlers = {
     notifyProgress('form_automator', 'completed', `Filled ${filledCount}/${fields.length} fields`, { filledCount, submitted: submit });
     
     return { success: true, formSelector, fieldsProcessed: filledCount, submitted: submit };
+  },
+
+  // 21. Media Extractor (MERGED: iframe_handler + stream_extractor + player_api_hook + decoders)
+  async media_extractor(params = {}) {
+    const { page } = requireBrowser();
+    const { 
+      action = 'extract', 
+      types = ['all'], 
+      quality = 'best', 
+      searchIframes = true, 
+      deep = true,
+      selector, 
+      index,
+      playerAction = 'info',
+      encodedData,
+      decoderType = 'auto',
+      aesKey,
+      aesIV,
+      urls,
+      aiOptimize = true 
+    } = params;
+    
+    notifyProgress('media_extractor', 'started', `Media extraction action: ${action}`);
+    
+    // Helper: Extract streams from a context
+    const extractStreamsFromContext = async (context, contextName = 'main') => {
+      return await context.evaluate(() => {
+        const result = { video: [], audio: [], hls: [], dash: [], download: [], embedded: [] };
+        
+        // 1. Direct video/audio elements
+        document.querySelectorAll('video source, video').forEach(el => {
+          const src = el.src || el.getAttribute('src') || el.currentSrc;
+          if (src && src.startsWith('http')) result.video.push({ src, type: el.type || 'video' });
+        });
+        
+        document.querySelectorAll('audio source, audio').forEach(el => {
+          const src = el.src || el.getAttribute('src');
+          if (src && src.startsWith('http')) result.audio.push({ src, type: el.type || 'audio' });
+        });
+        
+        // 2. Script content analysis for HLS/DASH/MP4
+        const scripts = [...document.querySelectorAll('script')].map(s => s.textContent).join('\n');
+        const html = document.documentElement.innerHTML;
+        const combined = scripts + html;
+        
+        // HLS streams
+        const hlsMatches = combined.match(/https?:\/\/[^\s"'<>]+\.m3u8[^\s"'<>]*/gi) || [];
+        result.hls = [...new Set(hlsMatches)].map(src => ({ src: src.replace(/\\"/g, ''), type: 'hls' }));
+        
+        // DASH streams
+        const dashMatches = combined.match(/https?:\/\/[^\s"'<>]+\.mpd[^\s"'<>]*/gi) || [];
+        result.dash = [...new Set(dashMatches)].map(src => ({ src: src.replace(/\\"/g, ''), type: 'dash' }));
+        
+        // Direct MP4/video links
+        const mp4Matches = combined.match(/https?:\/\/[^\s"'<>]+\.(mp4|mkv|avi|webm)[^\s"'<>]*/gi) || [];
+        result.download = [...new Set(mp4Matches)].map(src => ({ src: src.replace(/\\"/g, ''), type: 'direct' }));
+        
+        // 3. Data attributes and hidden sources
+        document.querySelectorAll('[data-src], [data-video], [data-url], [data-file]').forEach(el => {
+          const dataSrc = el.dataset.src || el.dataset.video || el.dataset.url || el.dataset.file;
+          if (dataSrc && dataSrc.startsWith('http')) {
+            result.video.push({ src: dataSrc, type: 'data-attribute' });
+          }
+        });
+        
+        // 4. Embedded player iframes
+        document.querySelectorAll('iframe[src]').forEach(el => {
+          const src = el.src;
+          if (src && src.startsWith('http')) {
+            result.embedded.push({ src, type: 'iframe' });
+          }
+        });
+        
+        // 5. JWPlayer / VideoJS / Plyr sources
+        if (window.jwplayer) {
+          try {
+            const jw = window.jwplayer();
+            const playlist = jw.getPlaylist?.() || [];
+            playlist.forEach(item => {
+              if (item.file) result.video.push({ src: item.file, type: 'jwplayer' });
+              (item.sources || []).forEach(s => {
+                if (s.file) result.video.push({ src: s.file, type: 'jwplayer-source' });
+              });
+            });
+          } catch (e) {}
+        }
+        
+        if (window.player && window.player.src) {
+          try {
+            const src = typeof window.player.src === 'function' ? window.player.src() : window.player.src;
+            if (src) result.video.push({ src, type: 'player-api' });
+          } catch (e) {}
+        }
+        
+        // 6. Look for common patterns
+        const patterns = [
+          /file\s*:\s*["']([^"']+)["']/gi,
+          /source\s*:\s*["']([^"']+)["']/gi,
+          /src\s*:\s*["']([^"']+\.(?:m3u8|mp4|mkv))["']/gi,
+          /url\s*:\s*["']([^"']+\.(?:m3u8|mp4))["']/gi,
+          /video_url\s*=\s*["']([^"']+)["']/gi,
+          /sources\s*:\s*\[([^\]]+)\]/gi
+        ];
+        
+        patterns.forEach(pattern => {
+          let match;
+          while ((match = pattern.exec(combined)) !== null) {
+            const url = match[1];
+            if (url && url.startsWith('http') && (url.includes('.mp4') || url.includes('.m3u8'))) {
+              result.download.push({ src: url, type: 'pattern-match' });
+            }
+          }
+        });
+        
+        return result;
+      }).catch(() => ({ video: [], audio: [], hls: [], dash: [], download: [], embedded: [] }));
+    };
+    
+    // Helper: Detect player in context
+    const detectPlayer = async (context, contextName = 'main') => {
+      return await context.evaluate((playerAction) => {
+        const result = { detected: false, type: null, sources: [], info: {} };
+        
+        // 1. JWPlayer detection
+        if (window.jwplayer) {
+          try {
+            const jw = window.jwplayer();
+            if (jw) {
+              result.detected = true;
+              result.type = 'jwplayer';
+              result.info = {
+                duration: jw.getDuration?.(),
+                currentTime: jw.getPosition?.(),
+                volume: jw.getVolume?.(),
+                state: jw.getState?.()
+              };
+              
+              if (playerAction === 'sources') {
+                const playlist = jw.getPlaylist?.() || [];
+                playlist.forEach(item => {
+                  if (item.file) result.sources.push({ src: item.file, type: 'jwplayer' });
+                  (item.sources || []).forEach(s => {
+                    if (s.file) result.sources.push({ src: s.file, type: 'jwplayer-source', label: s.label });
+                  });
+                });
+              }
+              
+              if (playerAction === 'play') jw.play?.();
+              if (playerAction === 'pause') jw.pause?.();
+              if (playerAction === 'seek' && params.seekTime) jw.seek?.(params.seekTime);
+            }
+          } catch (e) {}
+        }
+        
+        // 2. Video.js detection
+        if (window.videojs && !result.detected) {
+          try {
+            const players = document.querySelectorAll('.video-js');
+            if (players.length > 0) {
+              const player = window.videojs(players[0].id || players[0]);
+              result.detected = true;
+              result.type = 'videojs';
+              result.info = { duration: player.duration?.(), currentTime: player.currentTime?.(), volume: player.volume?.() };
+              
+              if (playerAction === 'sources') {
+                const src = player.currentSrc?.();
+                if (src) result.sources.push({ src, type: 'videojs' });
+              }
+              
+              if (playerAction === 'play') player.play?.();
+              if (playerAction === 'pause') player.pause?.();
+              if (playerAction === 'seek' && params.seekTime) player.currentTime?.(params.seekTime);
+            }
+          } catch (e) {}
+        }
+        
+        // 3. Plyr detection
+        if (window.Plyr && !result.detected) {
+          try {
+            const plyrElements = document.querySelectorAll('.plyr');
+            if (plyrElements.length > 0 && plyrElements[0].plyr) {
+              const player = plyrElements[0].plyr;
+              result.detected = true;
+              result.type = 'plyr';
+              result.info = { duration: player.duration, currentTime: player.currentTime, volume: player.volume };
+              
+              if (playerAction === 'sources') {
+                const src = player.source;
+                if (src) result.sources.push({ src, type: 'plyr' });
+              }
+              
+              if (playerAction === 'play') player.play?.();
+              if (playerAction === 'pause') player.pause?.();
+            }
+          } catch (e) {}
+        }
+        
+        // 4. Generic window.player
+        if ((window.player || window.videoPlayer) && !result.detected) {
+          try {
+            const player = window.player || window.videoPlayer;
+            result.detected = true;
+            result.type = 'generic';
+            result.info = {
+              duration: player.getDuration?.() || player.duration,
+              currentTime: player.getCurrentTime?.() || player.currentTime,
+              volume: player.getVolume?.() || player.volume
+            };
+            
+            if (playerAction === 'sources') {
+              const sources = player.getSources?.() || player.getPlaylist?.() || [];
+              sources.forEach(s => {
+                if (s.file || s.src) result.sources.push({ src: s.file || s.src, type: 'generic' });
+              });
+            }
+          } catch (e) {}
+        }
+        
+        // 5. HTML5 Video fallback
+        if (!result.detected) {
+          const video = document.querySelector('video');
+          if (video) {
+            result.detected = true;
+            result.type = 'html5';
+            result.info = { duration: video.duration, currentTime: video.currentTime, volume: video.volume, paused: video.paused, src: video.src || video.currentSrc };
+            
+            if (playerAction === 'sources') {
+              if (video.src) result.sources.push({ src: video.src, type: 'html5' });
+              video.querySelectorAll('source').forEach(s => { if (s.src) result.sources.push({ src: s.src, type: 'html5-source' }); });
+            }
+            
+            if (playerAction === 'play') video.play();
+            if (playerAction === 'pause') video.pause();
+            if (playerAction === 'seek' && params.seekTime) video.currentTime = params.seekTime;
+          }
+        }
+        
+        return result;
+      }, playerAction).catch(() => ({ detected: false }));
+    };
+    
+    // Helper: Deduplicate streams
+    const deduplicateStreams = (streams) => {
+      Object.keys(streams).forEach(key => {
+        if (Array.isArray(streams[key])) {
+          const seen = new Set();
+          streams[key] = streams[key].filter(item => {
+            if (seen.has(item.src)) return false;
+            seen.add(item.src);
+            return true;
+          });
+        }
+      });
+      return streams;
+    };
+    
+    // Helper: Auto-detect decoder type
+    const autoDetectDecoder = (data) => {
+      if (data.includes('%')) return 'url';
+      if (/^[A-Za-z0-9+/=]+$/.test(data) && data.length % 4 === 0) return 'base64';
+      return 'url';
+    };
+    
+    switch (action) {
+      case 'extract': {
+        // Comprehensive extraction - streams, iframes, and players
+        notifyProgress('media_extractor', 'progress', 'Extracting all media...');
+        
+        // Get iframes
+        const frames = page.frames();
+        const iframes = frames.map((f, i) => ({ index: i, name: f.name(), url: f.url() }));
+        
+        // Extract streams from main page
+        let allStreams = await extractStreamsFromContext(page, 'main');
+        
+        // Search in iframes
+        if (searchIframes) {
+          for (let i = 1; i < frames.length && i < 10; i++) {
+            try {
+              const frame = frames[i];
+              const frameUrl = frame.url();
+              if (frameUrl && frameUrl !== 'about:blank') {
+                const frameStreams = await extractStreamsFromContext(frame, `frame-${i}`);
+                Object.keys(frameStreams).forEach(key => {
+                  if (Array.isArray(frameStreams[key])) {
+                    frameStreams[key].forEach(stream => { stream.source = `iframe: ${frameUrl}`; });
+                    allStreams[key] = [...(allStreams[key] || []), ...frameStreams[key]];
+                  }
+                });
+              }
+            } catch (e) {}
+          }
+        }
+        
+        // Deduplicate
+        allStreams = deduplicateStreams(allStreams);
+        
+        // Detect players
+        let playerInfo = await detectPlayer(page, 'main');
+        if (!playerInfo.detected && searchIframes) {
+          for (let i = 1; i < frames.length && i < 10; i++) {
+            try {
+              const frame = frames[i];
+              const frameUrl = frame.url();
+              if (frameUrl && frameUrl !== 'about:blank') {
+                const framePlayer = await detectPlayer(frame, `frame-${i}`);
+                if (framePlayer.detected) {
+                  playerInfo = { ...framePlayer, frameSource: frameUrl };
+                  break;
+                }
+              }
+            } catch (e) {}
+          }
+        }
+        
+        const totalStreams = Object.values(allStreams).reduce((sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0), 0);
+        notifyProgress('media_extractor', 'completed', `Extracted ${totalStreams} streams, ${iframes.length} iframes, player: ${playerInfo.detected ? playerInfo.type : 'none'}`);
+        
+        return { 
+          success: true, 
+          action: 'extract',
+          streams: allStreams, 
+          iframes,
+          player: playerInfo,
+          totalStreams,
+          iframeCount: iframes.length
+        };
+      }
+      
+      case 'list_iframes': {
+        const frames = page.frames();
+        const iframes = frames.map((f, i) => ({ index: i, name: f.name(), url: f.url() }));
+        notifyProgress('media_extractor', 'completed', `Found ${iframes.length} iframes`);
+        return { success: true, action: 'list_iframes', count: iframes.length, iframes };
+      }
+      
+      case 'switch_iframe': {
+        const frames = page.frames();
+        const targetFrame = selector 
+          ? await page.$(selector).then(el => el?.contentFrame())
+          : frames[index];
+        
+        if (targetFrame) {
+          notifyProgress('media_extractor', 'completed', `Switched to iframe: ${targetFrame.url()}`);
+          return { success: true, action: 'switch_iframe', switched: true, url: targetFrame.url(), frameIndex: index };
+        }
+        notifyProgress('media_extractor', 'error', 'Iframe not found');
+        return { success: false, error: 'Iframe not found' };
+      }
+      
+      case 'player_control': {
+        const { playerType, seekTime, volume } = params;
+        notifyProgress('media_extractor', 'progress', `Player control: ${playerAction}`);
+        
+        // Try main page first
+        let result = await detectPlayer(page, 'main');
+        
+        // Search iframes if no player found
+        if (!result.detected && searchIframes) {
+          const frames = page.frames();
+          for (let i = 1; i < frames.length && i < 10; i++) {
+            try {
+              const frame = frames[i];
+              const frameUrl = frame.url();
+              if (frameUrl && frameUrl !== 'about:blank') {
+                const frameResult = await detectPlayer(frame, `frame-${i}`);
+                if (frameResult.detected) {
+                  result = { ...frameResult, frameSource: frameUrl };
+                  break;
+                }
+              }
+            } catch (e) {}
+          }
+        }
+        
+        notifyProgress('media_extractor', 'completed', result.detected ? `Player ${playerAction} executed: ${result.type}` : 'No player found');
+        return { success: true, action: 'player_control', playerAction, ...result };
+      }
+      
+      case 'decode_url': {
+        if (!encodedData) {
+          return { success: false, error: 'encodedData is required for decode_url action' };
+        }
+        
+        const type = decoderType === 'auto' ? autoDetectDecoder(encodedData) : decoderType;
+        let decoded;
+        
+        notifyProgress('media_extractor', 'progress', `Decoding with ${type}...`);
+        
+        switch (type) {
+          case 'url':
+            decoded = decoders.urlDecode(encodedData);
+            break;
+          case 'base64':
+            decoded = decoders.base64Decode(encodedData);
+            break;
+          case 'aes':
+            if (!aesKey) {
+              return { success: false, error: 'aesKey is required for AES decryption' };
+            }
+            decoded = decoders.decryptAES(encodedData, aesKey, aesIV);
+            break;
+          default:
+            decoded = { success: false, error: 'Unknown decoder type' };
+        }
+        
+        notifyProgress('media_extractor', 'completed', decoded.success ? 'Decoding successful' : 'Decoding failed');
+        return { success: decoded.success, action: 'decode_url', decoderType: type, ...decoded };
+      }
+      
+      case 'batch_extract': {
+        if (!urls || !Array.isArray(urls) || urls.length === 0) {
+          return { success: false, error: 'urls array is required for batch_extract action' };
+        }
+        
+        notifyProgress('media_extractor', 'progress', `Batch extracting from ${urls.length} URLs...`);
+        
+        const results = [];
+        const errors = [];
+        
+        for (let i = 0; i < urls.length; i++) {
+          const url = urls[i];
+          try {
+            notifyProgress('media_extractor', 'progress', `Processing ${i + 1}/${urls.length}: ${url}`);
+            
+            // Navigate to URL
+            await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
+            await page.waitForTimeout(2000); // Wait for media to load
+            
+            // Extract streams
+            const streams = await extractStreamsFromContext(page, 'main');
+            const dedupedStreams = deduplicateStreams(streams);
+            const totalCount = Object.values(dedupedStreams).reduce((sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0), 0);
+            
+            // Get page metadata
+            const meta = await page.evaluate(() => ({
+              title: document.title,
+              url: window.location.href
+            }));
+            
+            results.push({ 
+              url, 
+              success: true, 
+              streams: dedupedStreams, 
+              totalCount,
+              title: meta.title,
+              finalUrl: meta.url
+            });
+          } catch (error) {
+            errors.push({ url, error: error.message });
+            results.push({ url, success: false, error: error.message });
+          }
+        }
+        
+        const successCount = results.filter(r => r.success).length;
+        notifyProgress('media_extractor', 'completed', `Batch extraction complete: ${successCount}/${urls.length} successful`);
+        
+        return { 
+          success: true, 
+          action: 'batch_extract',
+          totalUrls: urls.length,
+          successful: successCount,
+          failed: urls.length - successCount,
+          results,
+          errors
+        };
+      }
+      
+      default:
+        return { success: false, error: `Unknown action: ${action}. Supported: extract, list_iframes, switch_iframe, player_control, decode_url, batch_extract` };
+    }
+  },
+
+  // 22. Extract Data (MERGED: search_regex + extract_json + scrape_meta_tags)
+  async extract_data(params = {}) {
+    const { page } = requireBrowser();
+    const { 
+      type = 'auto',
+      pattern,
+      selector,
+      jsonPath,
+      source = 'all',
+      autoDecode = true,
+      flags = 'gi',
+      types = ['all'],
+      includeTitle = true,
+      includeCanonical = true,
+      maxMatches = 100,
+      maxJsonObjects = 50,
+      waitForSelector = false,
+      selectorTimeout = 10000
+    } = params;
+    
+    notifyProgress('extract_data', 'started', `Extracting data (type: ${type})...`);
+    
+    const results = {
+      success: true,
+      type,
+      url: page.url(),
+      extracted: {}
+    };
+    
+    // Helper: Extract regex matches
+    const extractRegex = async (regexPattern, regexFlags, contentSource) => {
+      let content;
+      if (contentSource === 'html') {
+        content = await page.content();
+      } else if (contentSource === 'scripts') {
+        content = await page.$$eval('script', scripts => scripts.map(s => s.textContent).join('\n'));
+      } else if (contentSource === 'text') {
+        content = await page.evaluate(() => document.body.innerText);
+      } else {
+        // 'all' - search in both HTML and scripts
+        const html = await page.content();
+        const scripts = await page.$$eval('script', scripts => scripts.map(s => s.textContent).join('\n'));
+        content = html + '\n' + scripts;
+      }
+      
+      const regex = new RegExp(regexPattern, regexFlags);
+      const matches = content.match(regex) || [];
+      
+      return {
+        pattern: regexPattern,
+        flags: regexFlags,
+        matchCount: matches.length,
+        matches: matches.slice(0, maxMatches)
+      };
+    };
+    
+    // Helper: Extract JSON data
+    const extractJson = async (jsonSource, sel, path) => {
+      const jsonData = [];
+      
+      if (jsonSource === 'ld+json') {
+        const ldJson = await page.$$eval('script[type="application/ld+json"]', scripts => 
+          scripts.map(s => {
+            try { return JSON.parse(s.textContent); } catch { return null; }
+          }).filter(Boolean)
+        );
+        jsonData.push(...ldJson);
+      } else if (jsonSource === 'scripts') {
+        const content = await page.$$eval('script', scripts => scripts.map(s => s.textContent).join('\n'));
+        // Look for JSON objects in scripts
+        const jsonRegex = /\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}|\[[^\[\]]*(?:\[[^\[\]]*\][^\[\]]*)*\]/g;
+        const matches = content.match(jsonRegex) || [];
+        for (const match of matches.slice(0, maxJsonObjects)) {
+          try {
+            const parsed = JSON.parse(match);
+            jsonData.push(parsed);
+          } catch {}
+        }
+      } else if (jsonSource === 'api') {
+        // Try to find API responses in page data
+        const apiData = await page.evaluate(() => {
+          const data = [];
+          // Look for common API data storage patterns
+          if (window.__DATA__) data.push(window.__DATA__);
+          if (window.__INITIAL_STATE__) data.push(window.__INITIAL_STATE__);
+          if (window.__APP_DATA__) data.push(window.__APP_DATA__);
+          if (window.data) data.push(window.data);
+          if (window.config) data.push(window.config);
+          return data;
+        });
+        jsonData.push(...apiData);
+      } else if (sel) {
+        try {
+          const text = await page.$eval(sel, el => el.textContent);
+          const parsed = JSON.parse(text);
+          jsonData.push(parsed);
+        } catch {}
+      } else {
+        // 'page' - try all sources
+        const ldJson = await page.$$eval('script[type="application/ld+json"]', scripts => 
+          scripts.map(s => {
+            try { return JSON.parse(s.textContent); } catch { return null; }
+          }).filter(Boolean)
+        );
+        jsonData.push(...ldJson);
+      }
+      
+      // Apply JSONPath if specified
+      if (path && jsonData.length > 0) {
+        // Simple JSONPath implementation
+        const getPath = (obj, pathStr) => {
+          const parts = pathStr.replace(/^\$\./, '').split('.');
+          let current = obj;
+          for (const part of parts) {
+            if (current === null || current === undefined) return undefined;
+            if (part.includes('[') && part.includes(']')) {
+              const arrName = part.substring(0, part.indexOf('['));
+              const idx = parseInt(part.match(/\[(\d+)\]/)?.[1] || '0');
+              current = current[arrName]?.[idx];
+            } else {
+              current = current[part];
+            }
+          }
+          return current;
+        };
+        
+        return jsonData.map(obj => ({
+          original: obj,
+          extracted: getPath(obj, path)
+        }));
+      }
+      
+      return jsonData;
+    };
+    
+    // Helper: Extract meta tags
+    const extractMeta = async (metaTypes) => {
+      const meta = await page.evaluate((includeTitle, includeCanonical) => {
+        const result = { meta: {}, og: {}, twitter: {} };
+        
+        document.querySelectorAll('meta').forEach(tag => {
+          const name = tag.getAttribute('name') || tag.getAttribute('property');
+          const content = tag.getAttribute('content');
+          if (name && content) {
+            if (name.startsWith('og:')) {
+              result.og[name.replace('og:', '')] = content;
+            } else if (name.startsWith('twitter:')) {
+              result.twitter[name.replace('twitter:', '')] = content;
+            } else {
+              result.meta[name] = content;
+            }
+          }
+        });
+        
+        if (includeTitle) {
+          result.title = document.title;
+        }
+        if (includeCanonical) {
+          result.canonical = document.querySelector('link[rel="canonical"]')?.href;
+        }
+        
+        return result;
+      }, includeTitle, includeCanonical);
+      
+      // Filter by requested types
+      const filtered = {};
+      if (metaTypes.includes('all')) {
+        return meta;
+      }
+      if (metaTypes.includes('meta')) filtered.meta = meta.meta;
+      if (metaTypes.includes('og')) filtered.og = meta.og;
+      if (metaTypes.includes('twitter')) filtered.twitter = meta.twitter;
+      if (includeTitle) filtered.title = meta.title;
+      if (includeCanonical) filtered.canonical = meta.canonical;
+      
+      return filtered;
+    };
+    
+    // Helper: Extract structured data from selector
+    const extractStructured = async (sel, wait = false, timeout = 10000) => {
+      if (wait) {
+        await page.waitForSelector(sel, { timeout });
+      }
+      
+      const element = await page.$(sel);
+      if (!element) {
+        return { error: `Element not found: ${sel}` };
+      }
+      
+      const data = await element.evaluate(el => ({
+        tagName: el.tagName,
+        text: el.innerText,
+        html: el.innerHTML,
+        attributes: Object.fromEntries([...el.attributes].map(a => [a.name, a.value])),
+        childCount: el.children.length,
+        boundingBox: el.getBoundingClientRect ? {
+          x: el.getBoundingClientRect().x,
+          y: el.getBoundingClientRect().y,
+          width: el.getBoundingClientRect().width,
+          height: el.getBoundingClientRect().height
+        } : null
+      }));
+      
+      return data;
+    };
+    
+    // Helper: Auto-detect and extract all
+    const extractAuto = async () => {
+      const autoResults = {
+        meta: null,
+        json: null,
+        structured: null,
+        patterns: []
+      };
+      
+      // Extract meta tags
+      try {
+        autoResults.meta = await extractMeta(['all']);
+      } catch (e) {}
+      
+      // Extract JSON-LD
+      try {
+        autoResults.json = await extractJson('ld+json');
+      } catch (e) {}
+      
+      // Look for common data patterns
+      const commonPatterns = [
+        { name: 'emails', pattern: '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}' },
+        { name: 'phones', pattern: '(\+?1?[-.\s]?)?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}' },
+        { name: 'urls', pattern: 'https?://[^\s<>"{}|\\^`\[\]]+' },
+        { name: 'ipv4', pattern: '\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b' }
+      ];
+      
+      const pageText = await page.evaluate(() => document.body.innerText);
+      for (const { name, pattern } of commonPatterns) {
+        const regex = new RegExp(pattern, 'gi');
+        const matches = [...new Set(pageText.match(regex) || [])];
+        if (matches.length > 0) {
+          autoResults.patterns.push({ type: name, count: matches.length, samples: matches.slice(0, 10) });
+        }
+      }
+      
+      return autoResults;
+    };
+    
+    // Main switch based on type
+    switch(type) {
+      case 'regex': {
+        if (!pattern) {
+          return { success: false, error: 'Pattern is required for regex extraction' };
+        }
+        results.extracted = await extractRegex(pattern, flags, source);
+        notifyProgress('extract_data', 'completed', `Regex: ${results.extracted.matchCount} matches`);
+        break;
+      }
+      
+      case 'json': {
+        results.extracted = await extractJson(source, selector, jsonPath);
+        results.count = Array.isArray(results.extracted) ? results.extracted.length : 0;
+        notifyProgress('extract_data', 'completed', `JSON: ${results.count} objects`);
+        break;
+      }
+      
+      case 'meta': {
+        results.extracted = await extractMeta(types);
+        const tagCount = Object.values(results.extracted).reduce((sum, val) => {
+          if (typeof val === 'object' && val !== null) {
+            return sum + Object.keys(val).length;
+          }
+          return sum + (val ? 1 : 0);
+        }, 0);
+        notifyProgress('extract_data', 'completed', `Meta: ${tagCount} tags`);
+        break;
+      }
+      
+      case 'structured': {
+        if (!selector) {
+          return { success: false, error: 'Selector is required for structured extraction' };
+        }
+        results.extracted = await extractStructured(selector, waitForSelector, selectorTimeout);
+        if (results.extracted.error) {
+          results.success = false;
+          results.error = results.extracted.error;
+          delete results.extracted;
+        }
+        notifyProgress('extract_data', 'completed', results.success ? 'Structured data extracted' : 'Extraction failed');
+        break;
+      }
+      
+      case 'auto': {
+        results.extracted = await extractAuto();
+        const summary = [];
+        if (results.extracted.meta) summary.push('meta');
+        if (results.extracted.json?.length) summary.push('json');
+        if (results.extracted.patterns?.length) summary.push('patterns');
+        notifyProgress('extract_data', 'completed', `Auto: ${summary.join(', ')}`);
+        break;
+      }
+      
+      default:
+        return { success: false, error: `Unknown type: ${type}. Supported: regex, json, meta, structured, auto` };
+    }
+    
+    return results;
   }
 };
 
