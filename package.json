@@ -86,11 +86,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server.git"
+    "url": "https://github.com/withLinda/puppeteer-real-browser-mcp-server.git"
   },
   "bugs": {
-    "url": "https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server/issues"
+    "url": "https://github.com/withLinda/puppeteer-real-browser-mcp-server/issues"
   },
-  "homepage": "https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server",
+  "homepage": "https://github.com/withLinda/puppeteer-real-browser-mcp-server",
   "readme": "README.md"
 }
