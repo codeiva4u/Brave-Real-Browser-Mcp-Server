@@ -1,0 +1,74 @@
+{
+  "name": "brave-real-playwright-core",
+  "version": "1.57.0-patch.16",
+  "description": "Brave-optimized Playwright Core (v1.57.0) with comprehensive stealth patches and error stack sanitization",
+  "keywords": [
+    "playwright",
+    "brave",
+    "stealth",
+    "automation",
+    "bot-detection",
+    "undetectable",
+    "cross-platform",
+    "rebrowser",
+    "patches",
+    "anti-detection"
+  ],
+  "main": "index.js",
+  "types": "index.d.ts",
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server.git",
+    "directory": "packages/brave-real-playwright-core"
+  },
+  "bugs": {
+    "url": "https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server/issues"
+  },
+  "homepage": "https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server/tree/main/packages/brave-real-playwright-core",
+  "author": {
+    "name": "codeiva4u",
+    "url": "https://github.com/codeiva4u"
+  },
+  "license": "MIT",
+  "bin": {
+    "playwright": "cli.js"
+  },
+  "files": [
+    "lib",
+    "src",
+    "index.js",
+    "index.d.ts",
+    "cli.js",
+    "stealth-injection.js",
+    "advanced-stealth.js",
+    "README.md"
+  ],
+  "brave": {
+    "optimized": true,
+    "version": "1.57.0-patch.16",
+    "basedOn": {
+      "playwright-core": "1.57.0",
+      "patches-version": "1.57.0-patch.16",
+      "release-info": "Brave Playwright v1.57.0-patch.16 based on Playwright Core v1.57.0"
+    },
+    "versionInfo": {
+      "braveVersion": "1.57.0-patch.16",
+      "playwrightVersion": "1.57.0",
+      "fullName": "Brave Playwright Core v1.57.0-patch.16 (Playwright 1.57.0)"
+    },
+    "features": [
+      "error-stack-sanitization",
+      "ultra-fast-timing",
+      "cross-platform-detection",
+      "utility-script-hiding"
+    ],
+    "performance": {
+      "sourceUrlLeakStatus": "GREEN",
+      "utilityscriptHidden": true,
+      "successRate": "100%"
+    }
+  }
+}

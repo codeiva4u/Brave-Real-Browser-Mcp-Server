@@ -10,6 +10,7 @@
  *       └── brave-real-puppeteer-core
  *           └── brave-real-launcher
  *               └── brave-real-blocker (singleton, shared)
+ *   brave-real-playwright-core (standalone)
  */
 
 const fs = require('fs');
@@ -20,6 +21,7 @@ const PACKAGES = [
     { name: 'brave-real-blocker', path: 'packages/brave-real-blocker/package.json' },
     { name: 'brave-real-launcher', path: 'packages/brave-real-launcher/package.json' },
     { name: 'brave-real-puppeteer-core', path: 'packages/brave-real-puppeteer-core/package.json' },
+    { name: 'brave-real-playwright-core', path: 'packages/brave-real-playwright-core/package.json' },
     { name: 'brave-real-browser-mcp-server', path: 'package.json' }
 ];
 
@@ -28,7 +30,8 @@ const WORKSPACE_DEPS = {
     'brave-real-browser-mcp-server': ['brave-real-puppeteer-core'],
     'brave-real-puppeteer-core': ['brave-real-launcher'],
     'brave-real-launcher': ['brave-real-blocker'],
-    'brave-real-blocker': []
+    'brave-real-blocker': [],
+    'brave-real-playwright-core': []  // Standalone, no local deps
 };
 
 function readPackageJson(pkgPath) {

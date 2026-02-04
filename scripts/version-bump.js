@@ -7,6 +7,7 @@
  *       └── brave-real-puppeteer-core
  *           └── brave-real-launcher
  *               └── brave-real-blocker (singleton)
+ *   brave-real-playwright-core (standalone)
  * 
  * Usage: node scripts/version-bump.js [patch|minor|major]
  * 
@@ -25,6 +26,7 @@ const PACKAGES = [
     { name: 'brave-real-blocker', path: 'packages/brave-real-blocker/package.json', npmName: 'brave-real-blocker' },
     { name: 'brave-real-launcher', path: 'packages/brave-real-launcher/package.json', npmName: 'brave-real-launcher' },
     { name: 'brave-real-puppeteer-core', path: 'packages/brave-real-puppeteer-core/package.json', npmName: 'brave-real-puppeteer-core' },
+    { name: 'brave-real-playwright-core', path: 'packages/brave-real-playwright-core/package.json', npmName: 'brave-real-playwright-core' },
     { name: 'brave-real-browser-mcp-server', path: 'package.json', npmName: 'brave-real-browser-mcp-server' }
 ];
 

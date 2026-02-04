@@ -10,6 +10,7 @@
  *       └── brave-real-puppeteer-core
  *           └── brave-real-launcher
  *               └── brave-real-blocker (singleton, shared)
+ *   brave-real-playwright-core (standalone)
  */
 
 console.log('\n🔄 Restore workspace...\n');
@@ -19,6 +20,7 @@ console.log('   brave-real-browser-mcp-server (top level)');
 console.log('       └── brave-real-puppeteer-core');
 console.log('           └── brave-real-launcher');
 console.log('               └── brave-real-blocker (singleton)');
+console.log('   brave-real-playwright-core (standalone)');
 console.log('=' .repeat(60));
 console.log('');
 console.log('✅ Using actual version numbers with npm workspaces.');
