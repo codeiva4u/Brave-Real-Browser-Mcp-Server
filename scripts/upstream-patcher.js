@@ -164,30 +164,30 @@ console.log('\n📝 Step 5: Updating package.json...');
 const localPkgPath = path.join(config.dir, 'package.json');
 const localPkgJson = JSON.parse(fs.readFileSync(localPkgPath, 'utf-8'));
 
-// Update version based on upstream
-const newVersion = `${TARGET_VERSION}-patch.1`;
+// Update version based on upstream - using new aligned versioning scheme
+// Format: {upstream-version}-brave.{patch-number}
+const newVersion = `${TARGET_VERSION}-brave.1`;
 localPkgJson.version = newVersion;
 
 // Update brave metadata
 if (PACKAGE_TYPE === 'puppeteer') {
-    // Keep existing structure, just update version references
     if (!localPkgJson.brave) {
         localPkgJson.brave = {};
     }
     localPkgJson.brave.basedOn = {
-        'puppeteer-core': TARGET_VERSION,
-        patchedVersion: newVersion
+        'puppeteer-core': TARGET_VERSION
     };
+    localPkgJson.brave.versionScheme = 'upstream-aligned';
+    localPkgJson.brave.patchedVersion = newVersion;
 } else if (PACKAGE_TYPE === 'playwright') {
     if (!localPkgJson.brave) {
         localPkgJson.brave = {};
     }
     localPkgJson.brave.basedOn = {
-        'playwright-core': TARGET_VERSION,
-        'patches-version': newVersion,
-        'release-info': `Brave Playwright v${newVersion} based on Playwright Core v${TARGET_VERSION}`
+        'playwright-core': TARGET_VERSION
     };
-    localPkgJson.brave.version = newVersion;
+    localPkgJson.brave.versionScheme = 'upstream-aligned';
+    localPkgJson.brave.patchedVersion = newVersion;
     localPkgJson.brave.versionInfo = {
         braveVersion: newVersion,
         playwrightVersion: TARGET_VERSION,
