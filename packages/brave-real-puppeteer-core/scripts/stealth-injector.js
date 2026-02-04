@@ -17,7 +17,7 @@ import {
 // DYNAMIC CHROME VERSION - Auto-synced with latest stable release
 // ============================================================================
 // Fallback version (updated to latest known stable)
-const FALLBACK_CHROME_VERSION = '144.0.7559.59';
+const FALLBACK_CHROME_VERSION = '144.0.7559.133';
 
 // Cached version for stealth injection
 let CACHED_CHROME_VERSION = FALLBACK_CHROME_VERSION;
@@ -129,15 +129,11 @@ export function injectUltraFastPerformance() {
 // Navigator spoofing with enhanced detection hiding
 export function injectNavigatorStealth() {
     return `
-        // BULLETPROOF webdriver property elimination
-        if ('webdriver' in navigator) {
-            delete navigator.webdriver;
-        }
+        // IMPORTANT: Do NOT modify navigator.webdriver via JavaScript!
+        // The browser flag --disable-blink-features=AutomationControlled handles this
+        // Bot detectors can detect JS modifications to this property
         
-        
-
-        
-        // Additional webdriver property variations
+        // Additional webdriver property variations (these are safe to clean up)
         const webdriverProps = ['__webdriver__', '_webdriver', 'webDriver'];
         webdriverProps.forEach(prop => {
             if (prop in navigator) {
@@ -3117,5 +3113,250 @@ export function injectAntiHeadlessDetection() {
                 console.log('[anti-headless] Error:', e.message);
             }
         })();
+    `;
+}
+
+// ============================================================================
+// CDP-LEVEL STEALTH BYPASSES - Critical for Cloudflare/DataDome
+// ============================================================================
+
+/**
+ * Runtime.Enable bypass - Prevents detection of CDP Runtime.Enable command
+ * This is the #1 most important CDP bypass
+ */
+export function injectRuntimeEnableBypass() {
+    return `
+        (() => {
+            // Mask Runtime.Enable detection by preventing stack trace lookups
+            // that are triggered when Runtime.Enable is active
+            
+            const origDefineProperty = Object.defineProperty;
+            Object.defineProperty = function(obj, prop, desc) {
+                // Block detection attempts that check for Runtime.Enable side effects
+                if (prop === 'stack' && desc && desc.get) {
+                    const origGetter = desc.get;
+                    desc.get = function() {
+                        const stack = origGetter.call(this);
+                        // Prevent incrementing detection counters
+                        return stack;
+                    };
+                }
+                return origDefineProperty.call(this, obj, prop, desc);
+            };
+            
+            // Mask error stack inspection timing differences
+            const origError = Error;
+            window.Error = function(...args) {
+                const error = new origError(...args);
+                // Normalize stack access timing
+                return error;
+            };
+            window.Error.prototype = origError.prototype;
+            window.Error.captureStackTrace = origError.captureStackTrace;
+            window.Error.stackTraceLimit = origError.stackTraceLimit;
+            
+            console.log('[CDP-BYPASS] Runtime.Enable bypass active');
+        })();
+    `;
+}
+
+/**
+ * Source URL masking - Prevents detection of pptr:/playwright: sourceURL comments
+ */
+export function injectSourceURLMasking() {
+    return `
+        (() => {
+            // Override Function.prototype.toString to mask sourceURL
+            const origToString = Function.prototype.toString;
+            Function.prototype.toString = function() {
+                let result = origToString.call(this);
+                
+                // Remove puppeteer/playwright sourceURL patterns
+                result = result.replace(/\\/\\/# sourceURL=pptr:[^\\n]*/g, '');
+                result = result.replace(/\\/\\/# sourceURL=playwright:[^\\n]*/g, '');
+                result = result.replace(/\\/\\/# sourceURL=__puppeteer[^\\n]*/g, '');
+                result = result.replace(/\\/\\/# sourceURL=__playwright[^\\n]*/g, '');
+                result = result.replace(/\\/\\/# sourceURL=UtilityScript[^\\n]*/g, '');
+                
+                return result;
+            };
+            
+            // Also mask in eval'd code
+            const origEval = window.eval;
+            window.eval = function(code) {
+                if (typeof code === 'string') {
+                    code = code.replace(/\\/\\/# sourceURL=pptr:[^\\n]*/g, '');
+                    code = code.replace(/\\/\\/# sourceURL=playwright:[^\\n]*/g, '');
+                }
+                return origEval.call(this, code);
+            };
+            
+            console.log('[CDP-BYPASS] SourceURL masking active');
+        })();
+    `;
+}
+
+/**
+ * Console.enable bypass - Masks Console.enable CDP command detection
+ */
+export function injectConsoleEnableBypass() {
+    return `
+        (() => {
+            // Prevent Console.enable detection by masking console method overrides
+            const origConsole = { ...console };
+            
+            // Ensure console methods don't reveal CDP attachment
+            ['log', 'warn', 'error', 'info', 'debug', 'trace'].forEach(method => {
+                const orig = console[method];
+                console[method] = function(...args) {
+                    // Filter out any CDP-revealing messages
+                    const filteredArgs = args.map(arg => {
+                        if (typeof arg === 'string') {
+                            return arg.replace(/puppeteer|playwright|cdp|chrome-devtools/gi, 'browser');
+                        }
+                        return arg;
+                    });
+                    return orig.apply(this, filteredArgs);
+                };
+            });
+            
+            // Make console.debug silent for potential detection attempts
+            const origDebug = console.debug;
+            console.debug = function(...args) {
+                // Filter out detection probe messages
+                const isProbe = args.some(a => 
+                    typeof a === 'object' && a !== null && 
+                    Object.getOwnPropertyDescriptor(a, 'stack')?.get
+                );
+                if (isProbe) return;
+                return origDebug.apply(this, args);
+            };
+            
+            console.log('[CDP-BYPASS] Console.enable bypass active');
+        })();
+    `;
+}
+
+/**
+ * ExposeFunction masking - Hides page.exposeFunction bindings
+ */
+export function injectExposeFunctionMasking() {
+    return `
+        (() => {
+            // Remove __playwright__binding__ and puppeteer bindings from window
+            const bindingsToHide = [
+                '__playwright__binding__',
+                '__pwInitScripts',
+                '__playwright_evaluation_script__'
+            ];
+            
+            // Hide bindings from enumeration
+            bindingsToHide.forEach(name => {
+                if (name in window) {
+                    try {
+                        Object.defineProperty(window, name, {
+                            value: undefined,
+                            writable: false,
+                            configurable: false,
+                            enumerable: false
+                        });
+                    } catch(e) {}
+                }
+            });
+            
+            // Hide puppeteer_ prefixed properties
+            const origGetOwnPropertyNames = Object.getOwnPropertyNames;
+            Object.getOwnPropertyNames = function(obj) {
+                const props = origGetOwnPropertyNames.call(this, obj);
+                if (obj === window) {
+                    return props.filter(p => 
+                        !p.startsWith('puppeteer_') && 
+                        !p.startsWith('__playwright') &&
+                        !p.startsWith('__pwInit')
+                    );
+                }
+                return props;
+            };
+            
+            // Hide from Object.keys as well
+            const origKeys = Object.keys;
+            Object.keys = function(obj) {
+                const keys = origKeys.call(this, obj);
+                if (obj === window) {
+                    return keys.filter(k => 
+                        !k.startsWith('puppeteer_') && 
+                        !k.startsWith('__playwright')
+                    );
+                }
+                return keys;
+            };
+            
+            // Mask exposed function toString()
+            const origFuncToString = Function.prototype.toString;
+            Function.prototype.toString = function() {
+                const str = origFuncToString.call(this);
+                // Hide Puppeteer binding signature
+                if (str.includes('This is the Puppeteer binding')) {
+                    return 'function () { [native code] }';
+                }
+                // Hide Playwright binding signature
+                if (str.includes('exposeBindingHandle supports a single argument')) {
+                    return 'function () { [native code] }';
+                }
+                return str;
+            };
+            
+            console.log('[CDP-BYPASS] ExposeFunction masking active');
+        })();
+    `;
+}
+
+/**
+ * Utility World Name masking - Hides __puppeteer_utility_world__ name
+ */
+export function injectUtilityWorldMasking() {
+    return `
+        (() => {
+            // Mask utility world name in any context
+            const utilityWorldPatterns = [
+                '__puppeteer_utility_world__',
+                '__playwright_utility_world__',
+                'UtilityScript',
+                'utilityWorld'
+            ];
+            
+            // Override Error stack to remove utility world references
+            const origPrepareStackTrace = Error.prepareStackTrace;
+            Error.prepareStackTrace = function(error, structuredStackTrace) {
+                if (origPrepareStackTrace) {
+                    const result = origPrepareStackTrace(error, structuredStackTrace);
+                    if (typeof result === 'string') {
+                        let cleaned = result;
+                        utilityWorldPatterns.forEach(pattern => {
+                            cleaned = cleaned.replace(new RegExp(pattern, 'g'), 'app');
+                        });
+                        return cleaned;
+                    }
+                    return result;
+                }
+                return structuredStackTrace;
+            };
+            
+            console.log('[CDP-BYPASS] Utility World masking active');
+        })();
+    `;
+}
+
+/**
+ * Get all CDP bypass scripts combined
+ */
+export function getCDPBypassScripts() {
+    return `
+        ${injectRuntimeEnableBypass()}
+        ${injectSourceURLMasking()}
+        ${injectConsoleEnableBypass()}
+        ${injectExposeFunctionMasking()}
+        ${injectUtilityWorldMasking()}
+        console.log('[CDP-BYPASS] All CDP-level stealth bypasses active');
     `;
 }

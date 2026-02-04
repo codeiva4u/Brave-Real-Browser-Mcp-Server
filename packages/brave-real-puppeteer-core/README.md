@@ -8,8 +8,7 @@
 - ⚡ **1-5ms Ultra-Fast Timing** - Optimized performance
 - 🦁 **Brave Browser Integration** - Auto-detection on all platforms
 - 🤖 **AI-Powered Testing** - Intelligent validation
-- 🔄 **Auto-Updates** - Daily sync with Puppeteer/Playwright releases
-- 🎭 **CAPTCHA Handling** - Built-in solver support
+- 🔄 **Version Sync** - Check for latest Puppeteer/Playwright releases
 - 📱 **Device Emulation** - Mobile and tablet emulation
 - 🌍 **Geo Spoofing** - Location spoofing
 - 🖱️ **Human Mouse** - Realistic mouse movements
@@ -37,11 +36,6 @@ npm test                         # Run 8 unit tests
 npm run test-bot-detector        # GUI bot detection test
 npm run test-bot-detector-headless # Headless bot detection test
 npm run test-bot-detector-mobile # Mobile bot detection test
-npm run test-puppeteer           # Puppeteer tests
-npm run test-playwright          # Playwright tests
-npm run test-cloudflare          # Cloudflare bypass test
-npm run test-recaptcha           # reCAPTCHA test
-npm run test-features            # All features test
 npm run ai-agent                 # AI-powered testing
 ```
 
@@ -79,8 +73,7 @@ brave-real-puppeteer-core/
 │   ├── playwright-core/         # Playwright patches  
 │   └── stealth-core/            # Core stealth patches
 ├── scripts/
-│   ├── patcher.js               # Main patcher (CLI)
-│   ├── enhanced-patcher.js      # Comprehensive patching
+│   ├── patcher.js               # Main patcher with stealth (CLI)
 │   ├── stealth-injector.js      # 131KB stealth code
 │   ├── ai-agent.js              # AI testing assistant
 │   ├── test-bot-detector.js     # Bot detection tests
@@ -90,7 +83,7 @@ brave-real-puppeteer-core/
 │   ├── human_mouse.js           # Human-like mouse
 │   ├── session-manager.js       # Session management
 │   ├── proxy-manager.js         # Proxy rotation
-│   └── ...28 total scripts
+│   └── ...21 total scripts
 └── test/
     └── test.cjs                 # Unit tests (8 tests)
 ```
@@ -112,18 +105,56 @@ brave-real-puppeteer-core/
 
 | Category | Features |
 |----------|----------|
+| **CDP Bypasses** | Runtime.Enable, sourceURL masking, Console.enable, exposeFunction |
 | Navigator | webdriver, plugins, languages, userAgentData |
 | Canvas | Fingerprint noise, toDataURL spoofing |
 | WebGL | GPU profiles, renderer spoofing |
 | Performance | 1-5ms timing, instant responses |
 | Automation | All bot signatures removed |
 | Mouse | Human-like movements (ghost-cursor) |
-| CAPTCHA | Auto-solving support |
 | Geolocation | Location spoofing |
 
 ## 💡 Usage
 
-### Puppeteer
+### Easy Integration (Recommended)
+
+#### Puppeteer - One-Liner
+```javascript
+import puppeteer from 'puppeteer-core';
+import { applyStealthToPuppeteer } from 'brave-real-puppeteer-core';
+
+const browser = await puppeteer.launch({ executablePath: '/path/to/brave' });
+const page = await browser.newPage();
+await applyStealthToPuppeteer(page); // That's it!
+
+await page.goto('https://bot-detector.rebrowser.net/');
+```
+
+#### Playwright - One-Liner
+```javascript
+import { chromium } from 'playwright-core';
+import { applyStealthToPlaywright } from 'brave-real-puppeteer-core';
+
+const browser = await chromium.launch({ executablePath: '/path/to/brave' });
+const page = await browser.newPage();
+await applyStealthToPlaywright(page); // That's it!
+
+await page.goto('https://bot-detector.rebrowser.net/');
+```
+
+### With brave-real-browser (Full Integration)
+```javascript
+const { connect } = require('brave-real-browser');
+
+const { browser, page } = await connect({
+  headless: false,
+  turnstile: true  // Auto-solve Cloudflare
+});
+
+await page.goto('https://example.com');
+```
+
+### Manual Puppeteer
 ```javascript
 const puppeteer = require('puppeteer-core');
 // Patches are auto-applied at npm install time
@@ -134,18 +165,6 @@ const browser = await puppeteer.launch({
 });
 const page = await browser.newPage();
 await page.goto('https://bot.sannysoft.com');
-```
-
-### With brave-real-browser (Recommended)
-```javascript
-const { connect } = require('brave-real-browser');
-
-const { browser, page } = await connect({
-  headless: false,
-  turnstile: true  // Auto-solve Cloudflare
-});
-
-await page.goto('https://example.com');
 ```
 
 ## 🔧 Environment Variables
@@ -163,6 +182,80 @@ REBROWSER_ULTRA_FAST_PERFORMANCE=1
 - **Datadome**: 100% pass
 - **Cloudflare Turnstile**: ✅ Auto-solved
 - **reCAPTCHA v3**: High score
+- **Bot Detector**: 80% pass (8/10 tests) - All critical tests pass
+
+## 📦 Module Support
+
+This package supports multiple module formats for maximum compatibility:
+
+| Format | File | Usage | Node.js Version |
+|--------|------|-------|-----------------|
+| **ESM** | `index.js` | Modern JavaScript (ES6+) | 18+ (Recommended) |
+| **CJS** | `index.cjs` | CommonJS | 12+ |
+| **ES5** | N/A | Legacy JavaScript | 10+ (Requires build) |
+
+### Usage Examples
+
+#### ESM (Recommended for Node.js 18+)
+```javascript
+import puppeteer from 'brave-real-puppeteer-core';
+const browser = await puppeteer.launch();
+```
+
+#### CJS (For Node.js 12-17)
+```javascript
+const puppeteer = require('brave-real-puppeteer-core');
+const browser = await puppeteer.launch();
+```
+
+### ES5 Support
+
+ES5 support requires additional transpilation setup. The package targets Node.js 18+ which natively supports ES6+ features, so ES5 transpilation is not required for the default use case.
+
+**To add ES5 support:**
+1. Install Babel: `npm install --save-dev @babel/core @babel/preset-env`
+2. Create `.babelrc`:
+```json
+{
+  "presets": [["@babel/preset-env", {
+    "targets": {
+      "node": "10"
+    }
+  }]]
+}
+```
+3. Add build script to package.json:
+```json
+{
+  "scripts": {
+    "build:es5": "babel index.js --out-file index.es5.js"
+  }
+}
+```
+
+## 🔄 Refresh Persistence
+
+The package includes robust refresh persistence to ensure stealth scripts survive page refreshes:
+
+- **CDP Scripts**: Automatically injected on every new document
+- **Manual Refresh Handler**: Re-injects scripts after F5 refresh
+- **Lifecycle Monitoring**: Monitors page visibility and load events
+- **Error Stack Sanitization**: Persists across refreshes for sourceUrlLeak test
+- **Continuous Monitoring**: Active monitoring for 60 seconds after page load
+
+### Testing Refresh Persistence
+
+Run the bot detector test to verify refresh persistence:
+
+```bash
+npm run test-bot-detector
+```
+
+The test will:
+1. Navigate to https://bot-detector.rebrowser.net/
+2. Wait for all tests to pass (initial load)
+3. Refresh the page (F5)
+4. Verify all critical tests still pass after refresh
 
 ## 📄 License
 

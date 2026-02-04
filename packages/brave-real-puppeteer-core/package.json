@@ -1,6 +1,6 @@
 {
   "name": "brave-real-puppeteer-core",
-  "version": "24.52.0",
+  "version": "24.52.5",
   "description": "🦁 Brave Real-World Optimized Puppeteer & Playwright Core with 1-5ms ultra-fast timing, 50+ professional stealth features, intelligent browser auto-detection, and 100% bot detection bypass. Features cross-platform Brave browser integration, comprehensive anti-detection, and breakthrough performance improvements.",
   "keywords": [
     "automation",
@@ -57,16 +57,25 @@
   "files": [
     "/patches",
     "/scripts",
+    "/lib",
     "index.js",
-    "index.cjs"
+    "index.cjs",
+    "index.es5.js"
   ],
   "homepage": "https://github.com/codeiva4u/Brave-Real-Browser/tree/main/packages/brave-real-puppeteer-core",
-  "main": "index.js",
+  "main": "index.cjs",
+  "module": "index.js",
   "types": "index.d.ts",
   "exports": {
     ".": {
+      "types": "./index.d.ts",
       "import": "./index.js",
-      "require": "./index.cjs"
+      "require": "./index.cjs",
+      "default": "./index.cjs"
+    },
+    "./es5": {
+      "require": "./index.es5.js",
+      "default": "./index.es5.js"
     },
     "./patcher": "./scripts/patcher.js"
   },
@@ -88,11 +97,11 @@
     "cjs_test": "node ./scripts/test_cjs.cjs",
     "esm_test": "node ./scripts/test-bot-detector.js",
     "patch": "node ./scripts/patcher.js patch",
-    "patch-puppeteer": "node ./scripts/enhanced-patcher.js patch-comprehensive --packageName=puppeteer-core && npm run create-brave-puppeteer && npm run ai-agent",
-    "patch-playwright": "node ./scripts/enhanced-patcher.js patch-comprehensive --packageName=playwright-core && npm run create-brave-playwright && npm run ai-agent",
+    "patch-puppeteer": "node ./scripts/patcher.js patch-comprehensive --packageName=puppeteer-core && npm run create-brave-puppeteer && npm run ai-agent",
+    "patch-playwright": "node ./scripts/patcher.js patch-comprehensive --packageName=playwright-core && npm run create-brave-playwright && npm run ai-agent",
     "patch-both": "npm run version-sync && npm run patch-puppeteer-basic && npm run patch-playwright-basic && npm run create-brave-packages && npm run ai-agent && npm run check-versions",
-    "patch-puppeteer-basic": "node ./scripts/enhanced-patcher.js patch-comprehensive --packageName=puppeteer-core",
-    "patch-playwright-basic": "node ./scripts/enhanced-patcher.js patch-comprehensive --packageName=playwright-core",
+    "patch-puppeteer-basic": "node ./scripts/patcher.js patch-comprehensive --packageName=puppeteer-core",
+    "patch-playwright-basic": "node ./scripts/patcher.js patch-comprehensive --packageName=playwright-core",
     "setup-puppeteer": "npm install puppeteer-core && npm run patch-puppeteer && npm run test-bot-detector-headless && echo 🎭 Puppeteer-core setup completed with EVERYTHING!",
     "setup-playwright": "npm install playwright-core && npm run patch-playwright && npm run test-bot-detector-headless && echo 🎪 Playwright-core setup completed with EVERYTHING!",
     "setup-both": "npm install puppeteer-core playwright-core && npm run patch-both && npm run test-bot-detector-headless && echo 🎯 Both engines setup completed with ALL FEATURES!",
@@ -111,13 +120,6 @@
     "test-bot-detector": "node ./scripts/test-bot-detector.js",
     "test-bot-detector-headless": "node ./scripts/test-bot-detector.js --headless",
     "test-bot-detector-mobile": "node ./scripts/test-bot-detector.js --mobile",
-    "test-puppeteer": "node ./scripts/test-bot-detector.js",
-    "test-puppeteer-headless": "node ./scripts/test-bot-detector.js --headless",
-    "test-puppeteer-mobile": "node ./scripts/test-bot-detector.js --mobile",
-    "test-playwright": "node ./scripts/test-playwright-bot-detector.js",
-    "test-playwright-headless": "node ./scripts/test-playwright-bot-detector.js --headless",
-    "test-playwright-mobile": "node ./scripts/test-playwright-bot-detector.js --mobile",
-    "test-features": "node ./scripts/test-features.js",
     "test": "node ./test/test.cjs",
     "test:unit": "node ./test/test.cjs",
     "setup-ai-enhanced": "npm install puppeteer-core playwright-core && npm run patch-both && npm run create-brave-packages && npm run ai-agent && echo 🤖 AI-Enhanced setup with Brave packages completed!",
@@ -132,13 +134,13 @@
     "test-version": "node ./scripts/test-version-management.js"
   },
   "dependencies": {
-    "brave-real-launcher": "^1.19.0",
+    "brave-real-launcher": "^1.19.5",
     "get-east-asian-width": "^1.4.0",
     "yargs": "^18.0.0"
   },
   "optionalDependencies": {
-    "playwright-core": "^1.57.0",
-    "puppeteer-core": "^24.34.0"
+    "playwright-core": "^1.58.1",
+    "puppeteer-core": "^24.36.1"
   },
   "devDependencies": {
     "test": "^3.3.0"

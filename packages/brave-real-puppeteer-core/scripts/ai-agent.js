@@ -167,7 +167,7 @@ class AITestAgent {
                 
                 // Now patch it with stealth features
                 console.log('🤖 AI Agent: Applying stealth patches to Puppeteer...');
-                await this.runCommand('node scripts/enhanced-patcher.js patch-comprehensive --packageName=puppeteer-core');
+                await this.runCommand('node scripts/patcher.js patch-comprehensive --packageName=puppeteer-core');
                 console.log('✅ Puppeteer Core patched with stealth features');
                 
             } catch (error) {
@@ -183,7 +183,7 @@ class AITestAgent {
                 
                 // Now patch it with stealth features
                 console.log('🤖 AI Agent: Applying stealth patches to Playwright...');
-                await this.runCommand('node scripts/enhanced-patcher.js patch-comprehensive --packageName=playwright-core');
+                await this.runCommand('node scripts/patcher.js patch-comprehensive --packageName=playwright-core');
                 console.log('✅ Playwright Core patched with stealth features');
                 
             } catch (error) {

@@ -13,7 +13,7 @@ let cacheTimestamp: number = 0;
 const CACHE_DURATION_MS = 60 * 60 * 1000; // 1 hour
 
 // Fallback version if all APIs fail (updated to latest known stable)
-export const FALLBACK_VERSION = '144.0.7559.59';
+export const FALLBACK_VERSION = '144.0.7559.133';
 
 /**
  * Fetches the latest stable Chrome version from Chromium Dashboard API

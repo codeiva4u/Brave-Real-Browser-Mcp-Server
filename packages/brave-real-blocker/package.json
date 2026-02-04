@@ -1,6 +1,6 @@
 {
   "name": "brave-real-blocker",
-  "version": "1.13.0",
+  "version": "1.13.5",
   "description": "Advanced uBlock Origin management and stealth features for Brave Real Browser",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -53,17 +53,18 @@
   },
   "homepage": "https://github.com/codeiva4u/Brave-Real-Browser/tree/main/packages/brave-real-blocker",
   "dependencies": {
-    "@cliqz/adblocker-puppeteer": "^1.23.8",
+    "@cliqz/adblocker-puppeteer": "^1.34.0",
+    "@ghostery/adblocker-puppeteer": "^2.13.4",
     "adm-zip": "^0.5.10",
     "cross-fetch": "^4.1.0",
-    "fs-extra": "^11.2.0",
+    "fs-extra": "^11.3.3",
     "got": "^13.0.0"
   },
   "devDependencies": {
     "@types/adm-zip": "^0.5.5",
     "@types/fs-extra": "^11.0.4",
     "@types/node": "^20.0.0",
-    "brave-real-puppeteer-core": "^24.52.0",
+    "brave-real-puppeteer-core": "^24.52.5",
     "mocha": "^10.4.0",
     "puppeteer-core": "^24.35.0",
     "sinon": "^17.0.1",

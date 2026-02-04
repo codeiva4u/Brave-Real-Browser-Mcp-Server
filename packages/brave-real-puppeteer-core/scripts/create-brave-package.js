@@ -245,10 +245,8 @@ class BravePackageCreator {
             // Create minimal stealth files as fallback
             const minimalStealth = `
               // Minimal stealth fallback
+              // Note: navigator.webdriver is handled by browser flag, not JS modification
               console.log('[REBROWSER-STEALTH] Minimal stealth mode active');
-              if (typeof window !== 'undefined' && 'webdriver' in navigator) {
-                delete navigator.webdriver;
-              }
             `;
             
             writeFileSync(join(packageDir, 'stealth-injection.js'), minimalStealth);
