@@ -1,0 +1,248 @@
+name: 🔄 Upstream Monitor - Auto Patch & Publish
+
+# Weekly check for new puppeteer-core and playwright-core versions
+on:
+  schedule:
+    # Every Sunday at 6 AM UTC (11:30 AM IST)
+    - cron: '0 6 * * 0'
+  
+  # Manual trigger for testing
+  workflow_dispatch:
+    inputs:
+      force_update:
+        description: '🔥 Force update even if versions match'
+        required: false
+        default: false
+        type: boolean
+      package:
+        description: '📦 Which package to update'
+        required: false
+        default: 'both'
+        type: choice
+        options:
+          - both
+          - puppeteer
+          - playwright
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  # ==================== CHECK UPSTREAM VERSIONS ====================
+  check-versions:
+    name: 🔍 Check Upstream Versions
+    runs-on: ubuntu-latest
+    outputs:
+      puppeteer_update_needed: ${{ steps.check.outputs.puppeteer_update }}
+      playwright_update_needed: ${{ steps.check.outputs.playwright_update }}
+      puppeteer_upstream_version: ${{ steps.check.outputs.puppeteer_upstream }}
+      playwright_upstream_version: ${{ steps.check.outputs.playwright_upstream }}
+      puppeteer_current_version: ${{ steps.check.outputs.puppeteer_current }}
+      playwright_current_version: ${{ steps.check.outputs.playwright_current }}
+    
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_TOKEN || github.token }}
+          fetch-depth: 0
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: 🔍 Check Upstream Versions
+        id: check
+        run: |
+          echo "🔍 Checking upstream versions..."
+          
+          # Get latest upstream versions from NPM
+          PUPPETEER_UPSTREAM=$(npm view puppeteer-core version 2>/dev/null || echo "0.0.0")
+          PLAYWRIGHT_UPSTREAM=$(npm view playwright-core version 2>/dev/null || echo "0.0.0")
+          
+          echo "📦 Upstream puppeteer-core: $PUPPETEER_UPSTREAM"
+          echo "📦 Upstream playwright-core: $PLAYWRIGHT_UPSTREAM"
+          
+          # Get current brave-real versions (extract base version)
+          PUPPETEER_CURRENT=$(npm view brave-real-puppeteer-core version 2>/dev/null || echo "0.0.0")
+          PLAYWRIGHT_CURRENT=$(npm view brave-real-playwright-core version 2>/dev/null || echo "0.0.0")
+          
+          # Extract base version from brave-real versions (e.g., 24.52.9 from 24.52.9 or 1.57.0 from 1.57.0-patch.15)
+          PUPPETEER_BASE=$(echo "$PUPPETEER_CURRENT" | grep -oE '^[0-9]+\.[0-9]+\.[0-9]+')
+          PLAYWRIGHT_BASE=$(echo "$PLAYWRIGHT_CURRENT" | grep -oE '^[0-9]+\.[0-9]+\.[0-9]+')
+          
+          echo "📦 Current brave-real-puppeteer-core base: $PUPPETEER_BASE (full: $PUPPETEER_CURRENT)"
+          echo "📦 Current brave-real-playwright-core base: $PLAYWRIGHT_BASE (full: $PLAYWRIGHT_CURRENT)"
+          
+          # Compare versions
+          PUPPETEER_UPDATE="false"
+          PLAYWRIGHT_UPDATE="false"
+          
+          if [ "$PUPPETEER_UPSTREAM" != "$PUPPETEER_BASE" ]; then
+            echo "🆕 New puppeteer-core version available: $PUPPETEER_UPSTREAM"
+            PUPPETEER_UPDATE="true"
+          fi
+          
+          if [ "$PLAYWRIGHT_UPSTREAM" != "$PLAYWRIGHT_BASE" ]; then
+            echo "🆕 New playwright-core version available: $PLAYWRIGHT_UPSTREAM"
+            PLAYWRIGHT_UPDATE="true"
+          fi
+          
+          # Force update if requested
+          if [ "${{ github.event.inputs.force_update }}" = "true" ]; then
+            echo "🔥 Force update requested"
+            if [ "${{ github.event.inputs.package }}" = "puppeteer" ] || [ "${{ github.event.inputs.package }}" = "both" ]; then
+              PUPPETEER_UPDATE="true"
+            fi
+            if [ "${{ github.event.inputs.package }}" = "playwright" ] || [ "${{ github.event.inputs.package }}" = "both" ]; then
+              PLAYWRIGHT_UPDATE="true"
+            fi
+          fi
+          
+          # Set outputs
+          echo "puppeteer_update=$PUPPETEER_UPDATE" >> $GITHUB_OUTPUT
+          echo "playwright_update=$PLAYWRIGHT_UPDATE" >> $GITHUB_OUTPUT
+          echo "puppeteer_upstream=$PUPPETEER_UPSTREAM" >> $GITHUB_OUTPUT
+          echo "playwright_upstream=$PLAYWRIGHT_UPSTREAM" >> $GITHUB_OUTPUT
+          echo "puppeteer_current=$PUPPETEER_CURRENT" >> $GITHUB_OUTPUT
+          echo "playwright_current=$PLAYWRIGHT_CURRENT" >> $GITHUB_OUTPUT
+          
+          echo ""
+          echo "📋 Summary:"
+          echo "   puppeteer-core: $PUPPETEER_BASE → $PUPPETEER_UPSTREAM (update: $PUPPETEER_UPDATE)"
+          echo "   playwright-core: $PLAYWRIGHT_BASE → $PLAYWRIGHT_UPSTREAM (update: $PLAYWRIGHT_UPDATE)"
+
+  # ==================== PATCH PUPPETEER ====================
+  patch-puppeteer:
+    name: 🔧 Patch Puppeteer Core
+    runs-on: ubuntu-latest
+    needs: check-versions
+    if: needs.check-versions.outputs.puppeteer_update_needed == 'true'
+    
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_TOKEN || github.token }}
+          fetch-depth: 0
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: ⚙️ Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: 📦 Install Dependencies
+        run: npm install
+
+      - name: 🔧 Patch Puppeteer Core
+        run: |
+          echo "🔧 Patching puppeteer-core ${{ needs.check-versions.outputs.puppeteer_upstream_version }}..."
+          node scripts/upstream-patcher.js puppeteer ${{ needs.check-versions.outputs.puppeteer_upstream_version }}
+
+      - name: 🔨 Build Package
+        run: |
+          cd packages/brave-real-puppeteer-core
+          npm run build 2>/dev/null || echo "No build script"
+
+      - name: 🚀 Publish brave-real-puppeteer-core
+        run: |
+          cd packages/brave-real-puppeteer-core
+          npm publish --access public
+          echo "✅ Published brave-real-puppeteer-core"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: 📝 Commit Changes
+        run: |
+          git add .
+          git commit -m "🔄 Auto-patch: puppeteer-core ${{ needs.check-versions.outputs.puppeteer_upstream_version }} [skip ci]" || echo "No changes"
+          git push origin HEAD || echo "Push failed"
+
+  # ==================== PATCH PLAYWRIGHT ====================
+  patch-playwright:
+    name: 🎭 Patch Playwright Core
+    runs-on: ubuntu-latest
+    needs: check-versions
+    if: needs.check-versions.outputs.playwright_update_needed == 'true'
+    
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_TOKEN || github.token }}
+          fetch-depth: 0
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: ⚙️ Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: 📦 Install Dependencies
+        run: npm install
+
+      - name: 🎭 Patch Playwright Core
+        run: |
+          echo "🎭 Patching playwright-core ${{ needs.check-versions.outputs.playwright_upstream_version }}..."
+          node scripts/upstream-patcher.js playwright ${{ needs.check-versions.outputs.playwright_upstream_version }}
+
+      - name: 🔨 Build Package
+        run: |
+          cd packages/brave-real-playwright-core
+          npm run build 2>/dev/null || echo "No build script"
+
+      - name: 🚀 Publish brave-real-playwright-core
+        run: |
+          cd packages/brave-real-playwright-core
+          npm publish --access public
+          echo "✅ Published brave-real-playwright-core"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: 📝 Commit Changes
+        run: |
+          git add .
+          git commit -m "🔄 Auto-patch: playwright-core ${{ needs.check-versions.outputs.playwright_upstream_version }} [skip ci]" || echo "No changes"
+          git push origin HEAD || echo "Push failed"
+
+  # ==================== SUMMARY ====================
+  summary:
+    name: 📋 Summary
+    runs-on: ubuntu-latest
+    needs: [check-versions, patch-puppeteer, patch-playwright]
+    if: always()
+    
+    steps:
+      - name: 📋 Workflow Summary
+        run: |
+          echo "## 🔄 Upstream Monitor Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Version Check Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Package | Upstream | Current | Update Needed |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|----------|---------|---------------|" >> $GITHUB_STEP_SUMMARY
+          echo "| puppeteer-core | ${{ needs.check-versions.outputs.puppeteer_upstream_version }} | ${{ needs.check-versions.outputs.puppeteer_current_version }} | ${{ needs.check-versions.outputs.puppeteer_update_needed }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| playwright-core | ${{ needs.check-versions.outputs.playwright_upstream_version }} | ${{ needs.check-versions.outputs.playwright_current_version }} | ${{ needs.check-versions.outputs.playwright_update_needed }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔧 Patch Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Package | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| brave-real-puppeteer-core | ${{ needs.patch-puppeteer.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| brave-real-playwright-core | ${{ needs.patch-playwright.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "*Weekly upstream check - Every Sunday 6 AM UTC*" >> $GITHUB_STEP_SUMMARY
