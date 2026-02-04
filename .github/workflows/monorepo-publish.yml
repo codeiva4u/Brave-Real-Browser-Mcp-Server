@@ -67,18 +67,19 @@ jobs:
       - name: 🔍 Detect Changes
         id: changes
         run: |
-          # For manual trigger or schedule, publish all
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "${{ github.event_name }}" = "schedule" ]; then
+          # For manual trigger, schedule, or push - publish all packages
+          # Push events already filtered by paths-ignore, so any push that reaches here has real changes
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event_name }}" = "push" ]; then
             echo "launcher=true" >> $GITHUB_OUTPUT
             echo "puppeteer=true" >> $GITHUB_OUTPUT
             echo "blocker=true" >> $GITHUB_OUTPUT
             echo "mcp=true" >> $GITHUB_OUTPUT
             echo "any=true" >> $GITHUB_OUTPUT
-            echo "📦 Manual/Schedule trigger - all packages will be processed"
+            echo "📦 ${{ github.event_name }} trigger - all packages will be processed"
             exit 0
           fi
 
-          # For push/PR, detect actual changes
+          # For PR only, detect actual changes
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             BASE_SHA=${{ github.event.pull_request.base.sha }}
           else
