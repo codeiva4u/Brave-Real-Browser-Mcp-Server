@@ -1,6 +1,6 @@
 {
   "name": "brave-real-playwright-core",
-  "version": "1.57.0-patch.19",
+  "version": "1.57.0-patch.20",
   "description": "Brave-optimized Playwright Core (v1.57.0) with comprehensive stealth patches and error stack sanitization",
   "keywords": [
     "playwright",
