@@ -65,29 +65,32 @@ jobs:
           echo "📦 Upstream puppeteer-core: $PUPPETEER_UPSTREAM"
           echo "📦 Upstream playwright-core: $PLAYWRIGHT_UPSTREAM"
           
-          # Get current brave-real versions (extract base version)
-          PUPPETEER_CURRENT=$(npm view brave-real-puppeteer-core version 2>/dev/null || echo "0.0.0")
-          PLAYWRIGHT_CURRENT=$(npm view brave-real-playwright-core version 2>/dev/null || echo "0.0.0")
+          # Get basedOn version from local package.json (the actual upstream version we're based on)
+          # This is stored in package.json under "brave.basedOn.puppeteer-core" or similar
+          npm install
           
-          # Extract base version from brave-real versions (e.g., 24.52.9 from 24.52.9 or 1.57.0 from 1.57.0-patch.15)
-          PUPPETEER_BASE=$(echo "$PUPPETEER_CURRENT" | grep -oE '^[0-9]+\.[0-9]+\.[0-9]+')
-          PLAYWRIGHT_BASE=$(echo "$PLAYWRIGHT_CURRENT" | grep -oE '^[0-9]+\.[0-9]+\.[0-9]+')
+          PUPPETEER_BASED_ON=$(node -p "try { require('./packages/brave-real-puppeteer-core/package.json').brave?.basedOn?.['puppeteer-core'] || '0.0.0' } catch(e) { '0.0.0' }" 2>/dev/null || echo "0.0.0")
+          PLAYWRIGHT_BASED_ON=$(node -p "try { require('./packages/brave-real-playwright-core/package.json').brave?.basedOn?.['playwright-core'] || '0.0.0' } catch(e) { '0.0.0' }" 2>/dev/null || echo "0.0.0")
           
-          echo "📦 Current brave-real-puppeteer-core base: $PUPPETEER_BASE (full: $PUPPETEER_CURRENT)"
-          echo "📦 Current brave-real-playwright-core base: $PLAYWRIGHT_BASE (full: $PLAYWRIGHT_CURRENT)"
+          echo "📦 brave-real-puppeteer-core based on: $PUPPETEER_BASED_ON"
+          echo "📦 brave-real-playwright-core based on: $PLAYWRIGHT_BASED_ON"
           
-          # Compare versions
+          # Compare versions - update needed if upstream is newer than what we're based on
           PUPPETEER_UPDATE="false"
           PLAYWRIGHT_UPDATE="false"
           
-          if [ "$PUPPETEER_UPSTREAM" != "$PUPPETEER_BASE" ]; then
-            echo "🆕 New puppeteer-core version available: $PUPPETEER_UPSTREAM"
+          if [ "$PUPPETEER_UPSTREAM" != "$PUPPETEER_BASED_ON" ]; then
+            echo "🆕 New puppeteer-core version available: $PUPPETEER_UPSTREAM (current base: $PUPPETEER_BASED_ON)"
             PUPPETEER_UPDATE="true"
+          else
+            echo "✅ puppeteer-core is up to date"
           fi
           
-          if [ "$PLAYWRIGHT_UPSTREAM" != "$PLAYWRIGHT_BASE" ]; then
-            echo "🆕 New playwright-core version available: $PLAYWRIGHT_UPSTREAM"
+          if [ "$PLAYWRIGHT_UPSTREAM" != "$PLAYWRIGHT_BASED_ON" ]; then
+            echo "🆕 New playwright-core version available: $PLAYWRIGHT_UPSTREAM (current base: $PLAYWRIGHT_BASED_ON)"
             PLAYWRIGHT_UPDATE="true"
+          else
+            echo "✅ playwright-core is up to date"
           fi
           
           # Force update if requested
@@ -106,13 +109,13 @@ jobs:
           echo "playwright_update=$PLAYWRIGHT_UPDATE" >> $GITHUB_OUTPUT
           echo "puppeteer_upstream=$PUPPETEER_UPSTREAM" >> $GITHUB_OUTPUT
           echo "playwright_upstream=$PLAYWRIGHT_UPSTREAM" >> $GITHUB_OUTPUT
-          echo "puppeteer_current=$PUPPETEER_CURRENT" >> $GITHUB_OUTPUT
-          echo "playwright_current=$PLAYWRIGHT_CURRENT" >> $GITHUB_OUTPUT
+          echo "puppeteer_based_on=$PUPPETEER_BASED_ON" >> $GITHUB_OUTPUT
+          echo "playwright_based_on=$PLAYWRIGHT_BASED_ON" >> $GITHUB_OUTPUT
           
           echo ""
           echo "📋 Summary:"
-          echo "   puppeteer-core: $PUPPETEER_BASE → $PUPPETEER_UPSTREAM (update: $PUPPETEER_UPDATE)"
-          echo "   playwright-core: $PLAYWRIGHT_BASE → $PLAYWRIGHT_UPSTREAM (update: $PLAYWRIGHT_UPDATE)"
+          echo "   puppeteer-core: $PUPPETEER_BASED_ON → $PUPPETEER_UPSTREAM (update: $PUPPETEER_UPDATE)"
+          echo "   playwright-core: $PLAYWRIGHT_BASED_ON → $PLAYWRIGHT_UPSTREAM (update: $PLAYWRIGHT_UPDATE)"
 
   # ==================== PATCH PUPPETEER ====================
   patch-puppeteer:

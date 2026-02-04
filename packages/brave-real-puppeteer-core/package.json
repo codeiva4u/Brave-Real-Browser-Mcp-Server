@@ -144,5 +144,18 @@
   },
   "devDependencies": {
     "test": "^3.3.0"
+  },
+  "brave": {
+    "optimized": true,
+    "basedOn": {
+      "puppeteer-core": "24.36.1"
+    },
+    "features": [
+      "stealth-injection",
+      "webdriver-hide",
+      "sourceurl-masking",
+      "fingerprint-spoofing",
+      "ultra-fast-timing"
+    ]
   }
 }
