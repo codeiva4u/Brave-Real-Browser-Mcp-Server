@@ -64,7 +64,7 @@
     "@types/adm-zip": "^0.5.5",
     "@types/fs-extra": "^11.0.4",
     "@types/node": "^20.0.0",
-    "brave-real-puppeteer-core": "^24.37.0.1",
+    "brave-real-puppeteer-core": "^24.36.1-brave.1",
     "mocha": "^10.4.0",
     "puppeteer-core": ">=24.0.0",
     "sinon": "^17.0.1",
