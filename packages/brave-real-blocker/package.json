@@ -43,15 +43,15 @@
   "files": [
     "dist"
   ],
-  "repository": {
+"repository": {
     "type": "git",
-    "url": "https://github.com/codeiva4u/Brave-Real-Browser.git",
+    "url": "https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server.git",
     "directory": "packages/brave-real-blocker"
   },
   "bugs": {
-    "url": "https://github.com/codeiva4u/Brave-Real-Browser/issues"
+    "url": "https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server/issues"
   },
-  "homepage": "https://github.com/codeiva4u/Brave-Real-Browser/tree/main/packages/brave-real-blocker",
+  "homepage": "https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server/tree/main/packages/brave-real-blocker",
   "dependencies": {
     "@cliqz/adblocker-puppeteer": "^1.34.0",
     "@ghostery/adblocker-puppeteer": "^2.13.4",
@@ -64,9 +64,9 @@
     "@types/adm-zip": "^0.5.5",
     "@types/fs-extra": "^11.0.4",
     "@types/node": "^20.0.0",
-    "brave-real-puppeteer-core": "^24.36.NaN.1",
+    "brave-real-puppeteer-core": "^24.36.1-brave.1",
     "mocha": "^10.4.0",
-    "puppeteer-core": "^24.35.0",
+    "puppeteer-core": "^24.36.1",
     "sinon": "^17.0.1",
     "ts-node": "^10.9.2",
     "tsup": "^8.0.0",

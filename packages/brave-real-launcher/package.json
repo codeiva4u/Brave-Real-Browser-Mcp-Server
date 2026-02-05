@@ -60,9 +60,9 @@
     "which": "^6.0.0"
   },
   "types": "./dist/index.d.ts",
-  "repository": {
+"repository": {
     "type": "git",
-    "url": "https://github.com/codeiva4u/Brave-Real-Browser.git",
+    "url": "https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server.git",
     "directory": "packages/brave-real-launcher"
   },
   "author": "codeiva4u",
@@ -78,9 +78,9 @@
     "chromium",
     "stealth"
   ],
-  "homepage": "https://github.com/codeiva4u/Brave-Real-Browser/tree/main/packages/brave-real-launcher",
+"homepage": "https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server/tree/main/packages/brave-real-launcher",
   "bugs": {
-    "url": "https://github.com/codeiva4u/Brave-Real-Browser/issues"
+    "url": "https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server/issues"
   },
   "publishConfig": {
     "access": "public"
