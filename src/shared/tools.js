@@ -173,21 +173,34 @@ const TOOLS = [
     }
   },
 
-  // 8. Solve Captcha
+  // 8. Solve Captcha (Enhanced with OCR for text captchas)
   {
     name: 'solve_captcha',
     emoji: '🔓',
-    description: 'Auto-solve CAPTCHA with AI (Turnstile, reCAPTCHA, hCaptcha)',
-    descriptionHindi: 'CAPTCHA हल करना (AI-powered)',
+    description: 'Auto-solve CAPTCHA with AI (Turnstile, reCAPTCHA, hCaptcha, Text/Image OCR)',
+    descriptionHindi: 'CAPTCHA हल करना (AI + OCR powered)',
     category: 'interaction',
     requiresBrowser: true,
     requiresPage: true,
     inputSchema: {
       type: 'object',
       properties: {
-        type: { type: 'string', enum: ['turnstile', 'recaptcha', 'hcaptcha', 'auto'], default: 'auto' },
+        type: { 
+          type: 'string', 
+          enum: ['turnstile', 'recaptcha', 'hcaptcha', 'text', 'image', 'auto'], 
+          default: 'auto',
+          description: 'Captcha type: turnstile/recaptcha/hcaptcha (JS-based), text/image (OCR-based), auto (detect)'
+        },
         timeout: { type: 'number', default: 30000 },
-        aiMode: { type: 'boolean', default: true, description: 'Use AI vision for complex CAPTCHAs' }
+        aiMode: { type: 'boolean', default: true, description: 'Use AI vision for complex CAPTCHAs' },
+        // OCR-specific options for text/image captchas
+        captchaSelector: { type: 'string', description: 'CSS selector for captcha image (required for text/image type)' },
+        inputSelector: { type: 'string', description: 'CSS selector for input field to fill result' },
+        refreshSelector: { type: 'string', description: 'CSS selector for captcha refresh button' },
+        lang: { type: 'string', default: 'eng', description: 'OCR language: eng, hin, eng+hin' },
+        expectedLength: { type: 'number', description: 'Expected captcha text length' },
+        allowedChars: { type: 'string', description: 'Allowed characters in captcha' },
+        maxRetries: { type: 'number', default: 3, description: 'Max refresh attempts for OCR' }
       }
     }
   },

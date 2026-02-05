@@ -506,13 +506,105 @@ const handlers = {
     return { success: true, message: 'Browser closed' };
   },
 
-  // 8. Solve Captcha
+// 8. Solve Captcha (Enhanced with OCR for text captchas)
   async solve_captcha(params = {}) {
     const { page } = requireBrowser();
-    const { type = 'auto', timeout = 30000 } = params;
+    const { 
+      type = 'auto', 
+      timeout = 30000,
+      // OCR-specific options
+      captchaSelector,
+      inputSelector,
+      refreshSelector,
+      lang = 'eng',
+      expectedLength,
+      allowedChars,
+      maxRetries = 3
+    } = params;
     
     notifyProgress('solve_captcha', 'started', `Solving ${type} captcha...`);
     
+    // Handle text/image captcha with OCR
+    if (type === 'text' || type === 'image') {
+      if (!captchaSelector) {
+        return { success: false, error: 'captchaSelector is required for text/image captcha' };
+      }
+      
+      try {
+        // Dynamic import for OCR solver
+        const ocrSolver = require('../../lib/ocr-captcha-solver');
+        
+        if (inputSelector) {
+          // Solve and fill
+          const result = await ocrSolver.solveCaptchaAndFill(page, captchaSelector, inputSelector, {
+            lang,
+            expectedLength,
+            allowedChars,
+            refreshSelector,
+            maxRefreshAttempts: maxRetries,
+            humanLike: true
+          });
+          
+          notifyProgress('solve_captcha', result.success ? 'completed' : 'error', 
+            result.success ? `OCR solved: "${result.text}"` : `OCR failed: ${result.error}`);
+          
+          return {
+            success: result.success,
+            type: 'ocr',
+            text: result.text,
+            confidence: result.confidence,
+            attempts: result.attempts,
+            filled: true
+          };
+        } else {
+          // Just solve (don't fill)
+          const result = await ocrSolver.solveTextCaptcha(page, captchaSelector, {
+            lang,
+            expectedLength,
+            allowedChars,
+            retries: maxRetries
+          });
+          
+          notifyProgress('solve_captcha', result.success ? 'completed' : 'error',
+            result.success ? `OCR result: "${result.text}"` : 'OCR failed');
+          
+          return {
+            success: result.success,
+            type: 'ocr',
+            text: result.text,
+            confidence: result.confidence,
+            attempts: result.attempts,
+            filled: false
+          };
+        }
+      } catch (err) {
+        notifyProgress('solve_captcha', 'error', `OCR error: ${err.message}`);
+        return { success: false, error: err.message, type: 'ocr' };
+      }
+    }
+    
+    // Auto-detect captcha type
+    if (type === 'auto') {
+      // Check for text/image captcha first
+      const hasTextCaptcha = await page.evaluate(() => {
+        const captchaIndicators = [
+          'img[src*="captcha"]',
+          'img[alt*="captcha"]',
+          'img[id*="captcha"]',
+          '.captcha-image',
+          '#captcha-image',
+          'img[src*="Captcha"]'
+        ];
+        return captchaIndicators.some(sel => document.querySelector(sel));
+      });
+      
+      if (hasTextCaptcha && captchaSelector) {
+        // Recursively call with text type
+        return this.solve_captcha({ ...params, type: 'text' });
+      }
+    }
+    
+    // Original Turnstile/reCAPTCHA/hCaptcha handling
     const start = Date.now();
     let attempts = 0;
     

@@ -73,12 +73,13 @@
   ],
   "author": "codeiva4u",
   "license": "ISC",
-  "dependencies": {
+"dependencies": {
     "@modelcontextprotocol/sdk": "^1.25.3",
     "brave-real-puppeteer-core": "^24.37.0.1",
     "ghost-cursor": "^1.4.2",
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "tesseract.js": "^5.1.1",
     "tree-kill": "^1.2.2",
     "vscode-languageserver": "^9.0.1",
     "vscode-languageserver-textdocument": "^1.0.12",
