@@ -31,6 +31,9 @@ const PACKAGES = [
 ];
 
 function incrementVersion(version, type) {
+    // Clean the version string first
+    version = String(version).trim();
+    
     // Handle versions with -patch suffix (e.g., "1.57.0-patch.15")
     const patchSuffixMatch = version.match(/^(.+)-patch\.(\d+)$/);
     if (patchSuffixMatch) {
@@ -39,26 +42,49 @@ function incrementVersion(version, type) {
         return `${baseVersion}-patch.${patchNum + 1}`;
     }
     
-    // Standard semver handling
-    const parts = version.split('.').map(Number);
+    // Handle versions with -brave suffix (e.g., "24.36.1-brave.1")
+    const braveSuffixMatch = version.match(/^(.+)-brave\.(\d+)$/);
+    if (braveSuffixMatch) {
+        const baseVersion = braveSuffixMatch[1];
+        const braveNum = parseInt(braveSuffixMatch[2], 10);
+        return `${baseVersion}-brave.${braveNum + 1}`;
+    }
+    
+    // Extract only the semver part (ignore any prerelease/build metadata)
+    const semverMatch = version.match(/^(\d+)\.(\d+)\.(\d+)/);
+    if (!semverMatch) {
+        console.warn(`  ⚠️ Invalid version format: "${version}", defaulting to 1.0.0`);
+        return '1.0.1';
+    }
+    
+    // Parse version parts, ensuring valid numbers
+    let major = parseInt(semverMatch[1], 10) || 0;
+    let minor = parseInt(semverMatch[2], 10) || 0;
+    let patch = parseInt(semverMatch[3], 10) || 0;
+    
+    // Validate - must be valid numbers
+    if (isNaN(major) || isNaN(minor) || isNaN(patch)) {
+        console.warn(`  ⚠️ Version contains NaN: "${version}", defaulting to 1.0.1`);
+        return '1.0.1';
+    }
     
     switch (type) {
         case 'major':
-            parts[0]++;
-            parts[1] = 0;
-            parts[2] = 0;
+            major++;
+            minor = 0;
+            patch = 0;
             break;
         case 'minor':
-            parts[1]++;
-            parts[2] = 0;
+            minor++;
+            patch = 0;
             break;
         case 'patch':
         default:
-            parts[2]++;
+            patch++;
             break;
     }
     
-    return parts.join('.');
+    return `${major}.${minor}.${patch}`;
 }
 
 function getNpmVersion(packageName) {
@@ -91,12 +117,48 @@ function writePackageJson(pkgPath, data) {
 function compareVersions(v1, v2) {
     // Returns: 1 if v1 > v2, -1 if v1 < v2, 0 if equal
     const parse = (v) => {
+        v = String(v).trim();
+        
+        // Handle -patch suffix
         const patchMatch = v.match(/^(.+)-patch\.(\d+)$/);
         if (patchMatch) {
-            const base = patchMatch[1].split('.').map(Number);
-            return [...base, parseInt(patchMatch[2], 10)];
+            const semverMatch = patchMatch[1].match(/^(\d+)\.(\d+)\.(\d+)/);
+            if (semverMatch) {
+                return [
+                    parseInt(semverMatch[1], 10) || 0,
+                    parseInt(semverMatch[2], 10) || 0,
+                    parseInt(semverMatch[3], 10) || 0,
+                    parseInt(patchMatch[2], 10) || 0
+                ];
+            }
         }
-        return v.split('.').map(Number);
+        
+        // Handle -brave suffix
+        const braveMatch = v.match(/^(.+)-brave\.(\d+)$/);
+        if (braveMatch) {
+            const semverMatch = braveMatch[1].match(/^(\d+)\.(\d+)\.(\d+)/);
+            if (semverMatch) {
+                return [
+                    parseInt(semverMatch[1], 10) || 0,
+                    parseInt(semverMatch[2], 10) || 0,
+                    parseInt(semverMatch[3], 10) || 0,
+                    parseInt(braveMatch[2], 10) || 0
+                ];
+            }
+        }
+        
+        // Standard semver parsing - extract only digits
+        const semverMatch = v.match(/^(\d+)\.(\d+)\.(\d+)/);
+        if (semverMatch) {
+            return [
+                parseInt(semverMatch[1], 10) || 0,
+                parseInt(semverMatch[2], 10) || 0,
+                parseInt(semverMatch[3], 10) || 0
+            ];
+        }
+        
+        // Fallback - return zeros
+        return [0, 0, 0];
     };
     
     const parts1 = parse(v1);
@@ -105,8 +167,11 @@ function compareVersions(v1, v2) {
     for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
         const a = parts1[i] || 0;
         const b = parts2[i] || 0;
-        if (a > b) return 1;
-        if (a < b) return -1;
+        // Extra safety - ensure numbers
+        const numA = isNaN(a) ? 0 : a;
+        const numB = isNaN(b) ? 0 : b;
+        if (numA > numB) return 1;
+        if (numA < numB) return -1;
     }
     return 0;
 }
