@@ -54,7 +54,7 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "brave-real-blocker": "^1.16.2",
+    "brave-real-blocker": ">=1.0.0",
     "escape-string-regexp": "^5.0.0",
     "is-wsl": "^3.1.0",
     "which": "^6.0.0"

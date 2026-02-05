@@ -134,13 +134,13 @@
     "test-version": "node ./scripts/test-version-management.js"
   },
   "dependencies": {
-    "brave-real-launcher": "^1.22.2",
+    "brave-real-launcher": ">=1.0.0",
     "get-east-asian-width": "^1.4.0",
     "yargs": "^18.0.0"
   },
-  "optionalDependencies": {
-    "playwright-core": "^1.58.1",
-    "puppeteer-core": "^24.36.1"
+"optionalDependencies": {
+    "playwright-core": ">=1.40.0",
+    "puppeteer-core": ">=24.0.0"
   },
   "devDependencies": {
     "test": "^3.3.0"

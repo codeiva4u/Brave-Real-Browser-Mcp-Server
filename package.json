@@ -27,7 +27,7 @@
     "brave-mcp": "./dist/index.js",
     "brave-lsp": "./src/lsp/index.js"
   },
-  "scripts": {
+"scripts": {
     "start": "node src/index.js",
     "dev": "node src/index.js",
     "mcp": "node src/index.js mcp",
@@ -43,7 +43,10 @@
     "lint": "echo 'No linting configured'",
     "build:all": "npm run build --workspaces --if-present",
     "clean:all": "npm run clean --workspaces --if-present",
-    "test:all": "npm run test --workspaces --if-present"
+    "test:all": "npm run test --workspaces --if-present",
+    "postinstall": "node scripts/auto-update-deps.js || true",
+    "update-deps": "node scripts/auto-update-deps.js",
+    "upstream-patch": "node scripts/upstream-patcher.js"
   },
   "keywords": [
     "mcp-server",
@@ -72,7 +75,7 @@
   "license": "ISC",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.25.3",
-    "brave-real-puppeteer-core": "^24.36.NaN.1",
+    "brave-real-puppeteer-core": ">=24.0.0",
     "ghost-cursor": "^1.4.2",
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
