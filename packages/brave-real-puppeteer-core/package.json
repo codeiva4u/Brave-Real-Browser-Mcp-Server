@@ -1,6 +1,6 @@
 {
   "name": "brave-real-puppeteer-core",
-  "version": "24.36.1-brave.1",
+  "version": "24.36.1-brave.2",
   "description": "🦁 Brave Real-World Optimized Puppeteer & Playwright Core with 1-5ms ultra-fast timing, 50+ professional stealth features, intelligent browser auto-detection, and 100% bot detection bypass. Features cross-platform Brave browser integration, comprehensive anti-detection, and breakthrough performance improvements.",
   "keywords": [
     "automation",
@@ -134,7 +134,7 @@
     "test-version": "node ./scripts/test-version-management.js"
   },
   "dependencies": {
-    "brave-real-launcher": "^1.23.1",
+    "brave-real-launcher": "^1.23.2",
     "get-east-asian-width": "^1.4.0",
     "yargs": "^18.0.0"
   },
