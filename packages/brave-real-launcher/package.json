@@ -1,6 +1,6 @@
 {
   "name": "brave-real-launcher",
-  "version": "1.22.1",
+  "version": "1.22.2",
   "description": "Launch Brave Browser with ease from node. Based on chrome-launcher with Brave-specific support.",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -54,13 +54,13 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "brave-real-blocker": "^1.16.1",
+    "brave-real-blocker": "^1.16.2",
     "escape-string-regexp": "^5.0.0",
     "is-wsl": "^3.1.0",
     "which": "^6.0.0"
   },
   "types": "./dist/index.d.ts",
-"repository": {
+  "repository": {
     "type": "git",
     "url": "https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server.git",
     "directory": "packages/brave-real-launcher"
@@ -78,7 +78,7 @@
     "chromium",
     "stealth"
   ],
-"homepage": "https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server/tree/main/packages/brave-real-launcher",
+  "homepage": "https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server/tree/main/packages/brave-real-launcher",
   "bugs": {
     "url": "https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server/issues"
   },

@@ -1,6 +1,6 @@
 {
   "name": "brave-real-playwright-core",
-  "version": "1.58.1-brave.1",
+  "version": "1.58.NaN.1",
   "description": "Brave-optimized Playwright Core (v1.57.0) with comprehensive stealth patches and error stack sanitization",
   "keywords": [
     "playwright",
@@ -46,7 +46,7 @@
     "advanced-stealth.js",
     "README.md"
   ],
-"brave": {
+  "brave": {
     "optimized": true,
     "version": "1.58.1-brave.1",
     "basedOn": {
