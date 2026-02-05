@@ -1,6 +1,6 @@
 {
   "name": "brave-real-puppeteer-core",
-  "version": "24.36.NaN.1",
+  "version": "24.37.0-brave.1",
   "description": "🦁 Brave Real-World Optimized Puppeteer & Playwright Core with 1-5ms ultra-fast timing, 50+ professional stealth features, intelligent browser auto-detection, and 100% bot detection bypass. Features cross-platform Brave browser integration, comprehensive anti-detection, and breakthrough performance improvements.",
   "keywords": [
     "automation",
@@ -46,13 +46,13 @@
   "contributors": [
     "Nick Webson <nwebson@rebrowser.net>"
   ],
-  "repository": {
+"repository": {
     "type": "git",
-    "url": "https://github.com/codeiva4u/Brave-Real-Browser.git",
+    "url": "https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server.git",
     "directory": "packages/brave-real-puppeteer-core"
   },
   "bugs": {
-    "url": "https://github.com/codeiva4u/Brave-Real-Browser/issues"
+    "url": "https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server/issues"
   },
   "files": [
     "/patches",
@@ -62,7 +62,7 @@
     "index.cjs",
     "index.es5.js"
   ],
-  "homepage": "https://github.com/codeiva4u/Brave-Real-Browser/tree/main/packages/brave-real-puppeteer-core",
+  "homepage": "https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server/tree/main/packages/brave-real-puppeteer-core",
   "main": "index.cjs",
   "module": "index.js",
   "types": "index.d.ts",
@@ -140,15 +140,15 @@
   },
   "optionalDependencies": {
     "playwright-core": "^1.58.1",
-    "puppeteer-core": "^24.36.1"
+    "puppeteer-core": "^24.37.0"
   },
   "devDependencies": {
     "test": "^3.3.0"
   },
   "brave": {
     "optimized": true,
-    "basedOn": {
-      "puppeteer-core": "24.36.1"
+"basedOn": {
+      "puppeteer-core": "24.37.0"
     },
     "features": [
       "stealth-injection",

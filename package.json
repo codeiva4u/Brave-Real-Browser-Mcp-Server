@@ -72,7 +72,7 @@
   "license": "ISC",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.25.3",
-    "brave-real-puppeteer-core": "^24.36.1-brave.1",
+    "brave-real-puppeteer-core": "^24.37.0-brave.1",
     "ghost-cursor": "^1.4.2",
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
@@ -88,9 +88,9 @@
     "type": "git",
     "url": "https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server.git"
   },
-  "bugs": {
-    "url": "https://github.com/withLinda/puppeteer-real-browser-mcp-server/issues"
+"bugs": {
+    "url": "https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server/issues"
   },
-  "homepage": "https://github.com/withLinda/puppeteer-real-browser-mcp-server",
+  "homepage": "https://github.com/codeiva4u/Brave-Real-Browser-Mcp-Server",
   "readme": "README.md"
 }
