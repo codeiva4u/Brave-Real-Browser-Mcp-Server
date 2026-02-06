@@ -1,5 +1,5 @@
 
-import puppeteer from 'puppeteer-core';
+import puppeteer from 'brave-real-puppeteer-core';
 import { log } from '../src/logger.js';
 import assert from 'assert';
 import * as fs from 'fs';
@@ -19,7 +19,7 @@ async function runVisualTest() {
     logToFile('Starting Visual Test for Brave Real Blocker...');
 
     try {
-        // Use puppeteer-core directly for testing
+        // Use brave-real-puppeteer-core for testing
         const browser = await puppeteer.launch({
             headless: false,
             args: []
@@ -175,11 +175,11 @@ async function runVisualTest() {
             const testResult = window.open('about:blank', '_blank');
             const isBlocked = testResult === null;
             if (testResult) testResult.close();
-            
+
             // Also check if the function has been modified
             const fnStr = window.open.toString();
             const isWrapped = !fnStr.includes('[native code]') || fnStr.length > 50;
-            
+
             return isBlocked || isWrapped;
         });
 
