@@ -104,7 +104,7 @@ export class BraveBlocker {
 
     constructor(options: BraveBlockerOptions = {}) {
         this.options = options;
-        
+
         // Initialize filter updater if auto-update is enabled (default: true)
         if (this.options.enableFilterAutoUpdate !== false) {
             this.filterUpdater = getFilterUpdater({
@@ -119,26 +119,26 @@ export class BraveBlocker {
      */
     async init() {
         if (this.initialized) return;
-        
+
         try {
             // Start with prebuilt lists as base
             this.blocker = await PuppeteerBlocker.fromPrebuiltAdsAndTracking(fetch);
-            
+
             // Collect additional filter strings
             let additionalFilters = BUILTIN_CUSTOM_FILTERS;
-            
+
             // Try to fetch latest filters using FilterUpdater (auto-update from uBlock Origin)
             if (this.filterUpdater) {
                 try {
-                    console.log('[BraveBlocker] Fetching latest uBlock Origin filters...');
+                    console.error('[BraveBlocker] Fetching latest uBlock Origin filters...');
                     const latestFilters = await this.filterUpdater.getFilters();
-                    
+
                     if (latestFilters && latestFilters.length > 0) {
                         additionalFilters += '\n' + latestFilters;
-                        
+
                         const cacheInfo = this.filterUpdater.getCacheInfo();
-                        console.log('[BraveBlocker] Loaded latest uBlock Origin filters');
-                        console.log('[BraveBlocker] Cache expires:', cacheInfo.expiresAt?.toISOString());
+                        console.error('[BraveBlocker] Loaded latest uBlock Origin filters');
+                        console.error('[BraveBlocker] Cache expires:', cacheInfo.expiresAt?.toISOString());
                     }
                 } catch (filterError) {
                     console.warn('[BraveBlocker] Failed to fetch latest filters:', (filterError as Error).message);
@@ -149,19 +149,19 @@ export class BraveBlocker {
                 // No filter updater, use local custom filters only
                 additionalFilters += '\n' + this.loadLocalCustomFiltersString();
             }
-            
+
             // Parse additional filters and enable them separately
             // Note: We keep prebuilt as base and parse custom separately to avoid conflicts
             try {
                 const customBlocker = await PuppeteerBlocker.parse(additionalFilters);
                 // Store for later reference but don't try to merge serialized data
-                console.log('[BraveBlocker] Parsed additional filters successfully');
+                console.error('[BraveBlocker] Parsed additional filters successfully');
             } catch (parseError) {
                 console.warn('[BraveBlocker] Failed to parse additional filters:', (parseError as Error).message);
             }
-            
+
             this.initialized = true;
-            console.log('[BraveBlocker] Initialized with ad blocking engine');
+            console.error('[BraveBlocker] Initialized with ad blocking engine');
         } catch (e) {
             console.error('[BraveBlocker] Failed to initialize:', e);
             // Fallback to basic blocker
@@ -169,18 +169,18 @@ export class BraveBlocker {
             this.initialized = true;
         }
     }
-    
+
     /**
      * Load local custom filters as string
      */
     private loadLocalCustomFiltersString(): string {
-        const customFiltersPath = this.options.customFiltersPath || 
+        const customFiltersPath = this.options.customFiltersPath ||
             path.join(currentDir, '..', 'assets', 'ublock-custom-filters.txt');
-        
+
         try {
             if (fs.existsSync(customFiltersPath)) {
                 const content = fs.readFileSync(customFiltersPath, 'utf-8');
-                console.log('[BraveBlocker] Loaded custom filters from:', customFiltersPath);
+                console.error('[BraveBlocker] Loaded custom filters from:', customFiltersPath);
                 return content;
             }
         } catch (e) {
@@ -231,10 +231,10 @@ export class BraveBlocker {
         if (opts.enableRedirectBlocking) {
             await injectRedirectBlocking(page);
         }
-        
-        console.log('[BraveBlocker] All protections enabled for page');
+
+        console.error('[BraveBlocker] All protections enabled for page');
     }
-    
+
     /**
      * Check if a URL should be blocked
      */

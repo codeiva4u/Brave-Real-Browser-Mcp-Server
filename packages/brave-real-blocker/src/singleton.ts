@@ -38,16 +38,16 @@ if (!globalObj[SINGLETON_KEY]) {
  */
 export function getBraveBlockerSingleton(options: BraveBlockerOptions = {}): BraveBlocker {
     const storage = globalObj[SINGLETON_KEY];
-    
+
     if (!storage.instance) {
         storage.instance = new BraveBlocker(options);
         storage.options = options;
-        console.log('[BraveBlocker] Created singleton instance');
+        console.error('[BraveBlocker] Created singleton instance');
     } else if (Object.keys(options).length > 0 && !storage.initialized) {
         // Allow updating options before initialization
-        console.log('[BraveBlocker] Using existing singleton (options ignored after first creation)');
+        console.error('[BraveBlocker] Using existing singleton (options ignored after first creation)');
     }
-    
+
     return storage.instance;
 }
 
@@ -60,13 +60,13 @@ export function getBraveBlockerSingleton(options: BraveBlockerOptions = {}): Bra
 export async function initBraveBlockerSingleton(options: BraveBlockerOptions = {}): Promise<BraveBlocker> {
     const storage = globalObj[SINGLETON_KEY];
     const blocker = getBraveBlockerSingleton(options);
-    
+
     if (!storage.initialized) {
         await blocker.init();
         storage.initialized = true;
-        console.log('[BraveBlocker] Singleton initialized successfully');
+        console.error('[BraveBlocker] Singleton initialized successfully');
     }
-    
+
     return blocker;
 }
 
@@ -87,7 +87,7 @@ export function resetBraveBlockerSingleton(): void {
     storage.instance = null;
     storage.initialized = false;
     storage.options = null;
-    console.log('[BraveBlocker] Singleton reset');
+    console.error('[BraveBlocker] Singleton reset');
 }
 
 /**

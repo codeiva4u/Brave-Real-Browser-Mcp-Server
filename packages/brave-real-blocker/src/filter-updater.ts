@@ -34,14 +34,14 @@ export const UBLOCK_FILTER_LISTS = {
     ublock_unbreak: 'https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/unbreak.txt',
     ublock_quick_fixes: 'https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/quick-fixes.txt',
     ublock_annoyances: 'https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/annoyances.txt',
-    
+
     // EasyList
     easylist: 'https://easylist.to/easylist/easylist.txt',
     easyprivacy: 'https://easylist.to/easylist/easyprivacy.txt',
-    
+
     // uBlock Origin scriptlets and resources
     ublock_scriptlets: 'https://raw.githubusercontent.com/AzagraMac/nicholast-adblock-list/main/nicholast-adblock-list.txt',
-    
+
     // Anti-popup and anti-redirect lists
     anti_popup: 'https://raw.githubusercontent.com/nicholast/nicholast-anti-popup-list/main/nicholast-anti-popup-list.txt',
     anti_redirect: 'https://raw.githubusercontent.com/nicholast/nicholast-anti-redirect-list/main/nicholast-anti-redirect-list.txt',
@@ -82,7 +82,7 @@ const DEFAULT_OPTIONS: Required<FilterUpdaterOptions> = {
     cacheExpiry: 7 * 24 * 60 * 60 * 1000, // 7 days
     enabledLists: [
         'ublock_filters',
-        'ublock_badware', 
+        'ublock_badware',
         'ublock_privacy',
         'ublock_quick_fixes',
         'ublock_annoyances',
@@ -132,7 +132,7 @@ export class FilterUpdater {
     private saveCache(cache: FilterCache): void {
         try {
             fs.writeFileSync(this.cacheFilePath, JSON.stringify(cache, null, 2));
-            console.log('[FilterUpdater] Cache saved successfully');
+            console.error('[FilterUpdater] Cache saved successfully');
         } catch (e) {
             console.error('[FilterUpdater] Failed to save cache:', e);
         }
@@ -143,16 +143,16 @@ export class FilterUpdater {
      */
     private isCacheValid(): boolean {
         if (this.options.forceUpdate) return false;
-        
+
         const cache = this.loadCache();
         if (!cache) return false;
-        
+
         const now = Date.now();
         if (now >= cache.expiresAt) {
-            console.log('[FilterUpdater] Cache expired, will update');
+            console.error('[FilterUpdater] Cache expired, will update');
             return false;
         }
-        
+
         this.cache = cache;
         return true;
     }
@@ -165,30 +165,30 @@ export class FilterUpdater {
             try {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), this.options.fetchTimeout);
-                
-                const response = await fetch(url, { 
+
+                const response = await fetch(url, {
                     signal: controller.signal,
                     headers: {
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
                     }
                 });
-                
+
                 clearTimeout(timeoutId);
-                
+
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
-                
+
                 const text = await response.text();
-                console.log(`[FilterUpdater] Fetched ${name}: ${text.length} bytes`);
+                console.error(`[FilterUpdater] Fetched ${name}: ${text.length} bytes`);
                 return text;
             } catch (e: any) {
                 console.warn(`[FilterUpdater] Failed to fetch ${name} (attempt ${attempt + 1}):`, e.message);
-                
+
                 // Try backup URL if available
                 const backupUrl = BACKUP_FILTER_LISTS[name as keyof typeof BACKUP_FILTER_LISTS];
                 if (attempt === retries && backupUrl) {
-                    console.log(`[FilterUpdater] Trying backup URL for ${name}`);
+                    console.error(`[FilterUpdater] Trying backup URL for ${name}`);
                     try {
                         const response = await fetch(backupUrl);
                         if (response.ok) {
@@ -198,11 +198,11 @@ export class FilterUpdater {
                         // Backup also failed
                     }
                 }
-                
+
                 if (attempt === retries) {
                     return ''; // Return empty string on final failure
                 }
-                
+
                 // Wait before retry
                 await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
             }
@@ -217,7 +217,7 @@ export class FilterUpdater {
         try {
             if (fs.existsSync(this.options.customFiltersPath)) {
                 const content = fs.readFileSync(this.options.customFiltersPath, 'utf-8');
-                console.log(`[FilterUpdater] Loaded custom filters: ${content.length} bytes`);
+                console.error(`[FilterUpdater] Loaded custom filters: ${content.length} bytes`);
                 return content;
             }
         } catch (e) {
@@ -230,11 +230,11 @@ export class FilterUpdater {
      * Fetch all enabled filter lists and combine them
      */
     async updateFilters(): Promise<string> {
-        console.log('[FilterUpdater] Starting filter update...');
-        
+        console.error('[FilterUpdater] Starting filter update...');
+
         // Check cache first
         if (this.isCacheValid() && this.cache) {
-            console.log('[FilterUpdater] Using cached filters (valid until:', new Date(this.cache.expiresAt).toISOString(), ')');
+            console.error('[FilterUpdater] Using cached filters (valid until:', new Date(this.cache.expiresAt).toISOString(), ')');
             return this.cache.combinedFilters;
         }
 
@@ -277,7 +277,7 @@ export class FilterUpdater {
         this.cache = cache;
         this.saveCache(cache);
 
-        console.log(`[FilterUpdater] Updated filters: ${combinedFilters.length} bytes total`);
+        console.error(`[FilterUpdater] Updated filters: ${combinedFilters.length} bytes total`);
         return combinedFilters;
     }
 
@@ -334,7 +334,7 @@ ${content}
         if (!cache) {
             return { valid: false, expiresAt: null, lastUpdated: null };
         }
-        
+
         return {
             valid: Date.now() < cache.expiresAt,
             expiresAt: new Date(cache.expiresAt),
@@ -349,7 +349,7 @@ ${content}
         try {
             if (fs.existsSync(this.cacheFilePath)) {
                 fs.unlinkSync(this.cacheFilePath);
-                console.log('[FilterUpdater] Cache cleared');
+                console.error('[FilterUpdater] Cache cleared');
             }
         } catch (e) {
             console.error('[FilterUpdater] Failed to clear cache:', e);

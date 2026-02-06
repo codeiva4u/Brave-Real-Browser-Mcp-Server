@@ -32,7 +32,7 @@ export {
 } from 'brave-real-launcher';
 
 // Import stealth functions for easy integration
-import { 
+import {
   getComprehensiveStealthScript,
   getPuppeteerOptimizedScript,
   getPlaywrightOptimizedScript,
@@ -81,11 +81,11 @@ export async function applyStealthToPuppeteer(page, options = {}) {
     comprehensiveStealth = true,
     userAgent = null
   } = options;
-  
+
   try {
     // Get CDP session
     const client = await page.target().createCDPSession();
-    
+
     // Apply CDP bypasses first (before any other scripts)
     if (cdpBypasses) {
       const cdpScript = getCDPBypassScripts();
@@ -94,7 +94,7 @@ export async function applyStealthToPuppeteer(page, options = {}) {
         runImmediately: true
       });
     }
-    
+
     // Apply comprehensive stealth
     if (comprehensiveStealth) {
       const stealthScript = getPuppeteerOptimizedScript(options);
@@ -103,11 +103,11 @@ export async function applyStealthToPuppeteer(page, options = {}) {
         runImmediately: true
       });
     }
-    
+
     // Set user agent if provided or use dynamic
     const ua = userAgent || getDynamicUserAgent(false);
     const uaMetadata = getDynamicUserAgentMetadata(false);
-    
+
     await client.send('Emulation.setUserAgentOverride', {
       userAgent: ua,
       userAgentMetadata: {
@@ -122,8 +122,8 @@ export async function applyStealthToPuppeteer(page, options = {}) {
         wow64: uaMetadata.wow64
       }
     });
-    
-    console.log('[brave-real-puppeteer-core] Stealth applied to Puppeteer page');
+
+    console.error('[brave-real-puppeteer-core] Stealth applied to Puppeteer page');
     return true;
   } catch (error) {
     console.error('[brave-real-puppeteer-core] Failed to apply stealth:', error.message);
@@ -149,20 +149,20 @@ export async function applyStealthToPlaywright(page, options = {}) {
     comprehensiveStealth = true,
     userAgent = null
   } = options;
-  
+
   try {
     // For Playwright, use addInitScript
     if (cdpBypasses) {
       const cdpScript = getCDPBypassScripts();
       await page.addInitScript(cdpScript);
     }
-    
+
     if (comprehensiveStealth) {
       const stealthScript = getPlaywrightOptimizedScript(options);
       await page.addInitScript(stealthScript);
     }
-    
-    console.log('[brave-real-puppeteer-core] Stealth applied to Playwright page');
+
+    console.error('[brave-real-puppeteer-core] Stealth applied to Playwright page');
     return true;
   } catch (error) {
     console.error('[brave-real-puppeteer-core] Failed to apply stealth:', error.message);
@@ -181,19 +181,19 @@ export async function applyStealthToPlaywrightContext(context, options = {}) {
     cdpBypasses = true,
     comprehensiveStealth = true
   } = options;
-  
+
   try {
     if (cdpBypasses) {
       const cdpScript = getCDPBypassScripts();
       await context.addInitScript(cdpScript);
     }
-    
+
     if (comprehensiveStealth) {
       const stealthScript = getPlaywrightOptimizedScript(options);
       await context.addInitScript(stealthScript);
     }
-    
-    console.log('[brave-real-puppeteer-core] Stealth applied to Playwright context');
+
+    console.error('[brave-real-puppeteer-core] Stealth applied to Playwright context');
     return true;
   } catch (error) {
     console.error('[brave-real-puppeteer-core] Failed to apply stealth:', error.message);
@@ -209,18 +209,18 @@ export async function applyStealthToPlaywrightContext(context, options = {}) {
  */
 export async function connectWithBlocker(options = {}, launchedBrave = null) {
   const browser = await puppeteerCore.connect(options);
-  
+
   // If launchedBrave has blocker, setup ecosystem chain
   if (launchedBrave?.blocker) {
     launchedBrave.setupEcosystemChain?.(browser);
-    
+
     // Enable blocker on existing pages
     const pages = await browser.pages();
     for (const page of pages) {
       await launchedBrave.enableBlockerOnPage?.(page);
     }
   }
-  
+
   return {
     browser,
     blocker: launchedBrave?.blocker || null
