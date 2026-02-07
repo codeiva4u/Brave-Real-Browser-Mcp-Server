@@ -241,6 +241,67 @@ const decoders = {
  */
 const handlers = {
   // ═══════════════════════════════════════════════════════════════
+  // HELPER: Auto-Close Blocking Modals/Popups
+  // ═══════════════════════════════════════════════════════════════
+  async _handleBlockingModals(page) {
+    try {
+      const closed = await page.evaluate(() => {
+        // Selectors for common modal close buttons
+        const closeSelectors = [
+          // Bootstrap/Standard Modals
+          '.modal.show .btn-close', 
+          '.modal.show .close', 
+          '.modal.in .close',
+          '.modal-footer .btn-primary', // "OK" button usually
+          '.modal-footer .btn-secondary', // "Close" button
+          // Custom Overlays
+          '#modal-close', 
+          '.popup-close', 
+          '.overlay-close',
+          // Generic "X" buttons in overlays
+          'div[role="dialog"] button[aria-label="Close"]',
+          'div[role="dialog"] .close',
+          // SweetAlert / specific libraries
+          '.swal2-confirm',
+          '.swal2-cancel',
+          '.ui-dialog-titlebar-close',
+          // eCourts specific if known (generic fallback)
+          '.modal-header .close',
+          'button[data-dismiss="modal"]'
+        ];
+
+        let clicked = false;
+        // Check if any modal is visible (display block/flex and opacity > 0)
+        const modals = document.querySelectorAll('.modal, .popup, .overlay, .dialog, [role="dialog"]');
+        for (const modal of modals) {
+          const style = window.getComputedStyle(modal);
+          if (style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0') {
+            // Modal is visible, find a close button inside
+            for (const selector of closeSelectors) {
+              const btn = modal.querySelector(selector);
+              if (btn && btn.offsetParent !== null) { // Visible button
+                btn.click();
+                clicked = true;
+                break; // Clicked one, break inner loop
+              }
+            }
+            if (clicked) break; // Handled one modal, break outer loop
+          }
+        }
+        return clicked;
+      });
+
+      if (closed) {
+        // notifyProgress('helper', 'progress', '🧹 Auto-closed a blocking modal/popup');
+        await new Promise(r => setTimeout(r, 500)); // Wait for animation
+      }
+      return closed;
+    } catch (e) {
+      return false;
+    }
+  },
+
+  // ═══════════════════════════════════════════════════════════════
   // HELPER: Full Page Analyzer - Detect ALL inputs on page
   // ═══════════════════════════════════════════════════════════════
   async _analyzeFullPage(page) {
@@ -305,7 +366,7 @@ const handlers = {
     const unfilledFields = [];
 
     // First, analyze the full page
-    const pageInfo = await this._analyzeFullPage(page);
+    const pageInfo = await handlers._analyzeFullPage(page);
     notifyProgress('solve_captcha', 'progress', `🔍 Page analyzed: ${pageInfo.totalInputs} inputs found`);
 
     for (const [field, value] of Object.entries(formData || {})) {
@@ -504,23 +565,61 @@ const handlers = {
     blockerInstance = result.blocker;
 
     // ═══════════════════════════════════════════════════════════════
-    // GLOBAL DIALOG HANDLER - Auto-accept all dialogs (alerts/confirms/prompts)
-    // This prevents browser from getting stuck on JavaScript dialogs
+    // GLOBAL DIALOG HANDLER - Auto-handle dialogs
+    // Logic: BLOCK redirects to external sites, ACCEPT everything else
     // ═══════════════════════════════════════════════════════════════
     pageInstance.on('dialog', async (dialog) => {
       const dialogType = dialog.type();
-      const dialogMessage = dialog.message();
+      const msg = dialog.message().toLowerCase();
       
       notifyProgress('browser_init', 'progress', 
-        `🔔 Auto-accepting ${dialogType}: ${dialogMessage.substring(0, 100)}...`);
+        `🔔 Handling dialog: ${dialogType} - ${dialog.message().substring(0, 100)}...`);
       
       try {
-        await dialog.accept();
-        notifyProgress('browser_init', 'progress', `✅ Dialog accepted: ${dialogType}`);
+        // Critical Fix: BLOCK redirects to external sites (e.g., eCommittee)
+        // These redirects take the user away from the search page
+        if (msg.includes('redirect') || msg.includes('external') || msg.includes('leaving')) {
+           console.log('🚫 Blocking redirect dialog (Dismiss)');
+           await dialog.dismiss(); // Simulate clicking 'Cancel'
+        } else {
+           // Auto-accept other dialogs (like alerts or simple confirmations)
+           await dialog.accept(); // Simulate clicking 'OK'
+        }
       } catch (e) {
-        // Dialog might already be handled
-        console.error(`Dialog handling error: ${e.message}`);
+        // Ignore errors (dialog might be closed by injected script)
       }
+    });
+
+    // ═══════════════════════════════════════════════════════════════
+    // INJECTED SCRIPT - Silent Handling of Popups
+    // Override window.confirm/alert to handle them inside the page context
+    // Note: Using evaluateOnNewDocument (Puppeteer) instead of addInitScript (Playwright)
+    // ═══════════════════════════════════════════════════════════════
+    await pageInstance.evaluateOnNewDocument(() => {
+      window.originalConfirm = window.confirm;
+      window.originalAlert = window.alert;
+      
+      // Smart Confirm Handler
+      window.confirm = (msg) => {
+        console.log('Intercepted Confirm Dialog:', msg);
+        if (msg && (msg.toLowerCase().includes('redirect') || msg.toLowerCase().includes('external'))) {
+          console.log('🚫 Blocking redirect confirmation inside page');
+          return false; // Return FALSE = Click Cancel
+        }
+        return true; // Return TRUE = Click OK
+      };
+      
+      // Silently ignore alerts (always OK)
+      window.alert = (msg) => {
+        console.log('Blocked Alert Dialog:', msg);
+        return true;
+      };
+      
+      // Silently return null for prompts
+      window.prompt = (msg) => {
+        console.log('Blocked Prompt Dialog:', msg);
+        return null;
+      };
     });
 
     const pid = browserInstance.process()?.pid;
@@ -701,6 +800,9 @@ const handlers = {
 
     notifyProgress('click', 'started', `Clicking: ${selector}`);
 
+    // Auto-close any blocking modals before clicking
+    await handlers._handleBlockingModals(page);
+
     // Auto-handle dialogs (alerts, confirms, prompts) to prevent blocking
     let dialogHandled = false;
     const dialogHandler = async (dialog) => {
@@ -753,6 +855,9 @@ const handlers = {
     const { selector, text, delay = 50, clear = false } = params;
 
     notifyProgress('type', 'started', `Typing ${text.length} characters into ${selector}`);
+
+    // Auto-close any blocking modals before typing
+    await handlers._handleBlockingModals(page);
 
     if (clear) {
       await page.click(selector, { clickCount: 3 });
@@ -825,7 +930,7 @@ const handlers = {
     let formResult = null;
     if (formData && Object.keys(formData).length > 0) {
       notifyProgress('solve_captcha', 'started', `📋 Smart Form + Captcha Mode: Filling ${Object.keys(formData).length} fields...`);
-      formResult = await this._fillFormFields(page, formData, formSelector, humanLike, aiMatch);
+      formResult = await handlers._fillFormFields(page, formData, formSelector, humanLike, aiMatch);
     } else {
       notifyProgress('solve_captcha', 'started', `🎯 100% Accuracy Mode: Solving ${type} captcha...`);
     }
@@ -1028,7 +1133,7 @@ const handlers = {
               // MERGED: Handle form submission if requested
               if (submit) {
                 notifyProgress('solve_captcha', 'progress', '🚀 Submitting form...');
-                const submitResult = await this._submitForm(page);
+                const submitResult = await handlers._submitForm(page);
                 return {
                   success: true,
                   type: 'ocr',
@@ -1111,7 +1216,7 @@ const handlers = {
         // MERGED: Handle form submission if requested
         if (submit) {
           notifyProgress('solve_captcha', 'progress', '🚀 Submitting form...');
-          const submitResult = await this._submitForm(page);
+          const submitResult = await handlers._submitForm(page);
           return {
             success: true,
             type: 'turnstile',
@@ -1141,7 +1246,7 @@ const handlers = {
     try {
       // Pre-submit validation
       if (validateFirst) {
-        const validation = await this._validateBeforeSubmit(page);
+        const validation = await handlers._validateBeforeSubmit(page);
         if (!validation.valid) {
           notifyProgress('solve_captcha', 'warn', `⚠️ Validation failed: ${validation.errors.length} issue(s)`);
           return { success: false, message: 'Pre-submit validation failed', errors: validation.errors };
@@ -1187,7 +1292,7 @@ const handlers = {
         return { success: true, message: 'Form submitted and navigation complete', navigated: true };
       } catch (e) {
         // No navigation - check for errors on same page
-        const postErrors = await this._detectPostSubmitErrors(page);
+        const postErrors = await handlers._detectPostSubmitErrors(page);
 
         if (postErrors.hasErrors) {
           notifyProgress('solve_captcha', 'warn', `⚠️ Submit detected errors: ${postErrors.errors[0]}`);
