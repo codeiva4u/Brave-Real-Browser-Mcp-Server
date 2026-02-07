@@ -1,12 +1,13 @@
 /**
  * Brave Real Browser MCP Server - Shared Tool Definitions
  * 
- * OPTIMIZED: 23 tools (merged from 28)
+ * OPTIMIZED: 22 tools (merged from 28)
  * 
  * Merges Applied:
  * - iframe_handler + stream_extractor + player_api_hook → media_extractor
  * - get_content + js_scrape → get_content (enhanced)
  * - search_regex + extract_json + scrape_meta_tags → extract_data
+ * - solve_captcha + form_automator → solve_captcha (enhanced)
  * 
  * New Features:
  * - URL/Base64/AES Decoders built into media_extractor
@@ -125,6 +126,7 @@ const TOOLS = [
         selector: { type: 'string', description: 'CSS selector (AI auto-heals if element not found)' },
         humanLike: { type: 'boolean', default: true, description: 'Ghost cursor human movement' },
         aiHeal: { type: 'boolean', default: true, description: 'Auto-find alternative selector if broken' },
+        autoAcceptDialogs: { type: 'boolean', default: true, description: 'Auto-accept alerts/confirms to prevent blocking' },
         retries: { type: 'number', default: 3 },
         clickCount: { type: 'number', default: 1 },
         delay: { type: 'number', default: 0 }
@@ -173,34 +175,42 @@ const TOOLS = [
     }
   },
 
-  // 8. Solve Captcha (Enhanced with OCR for text captchas)
+  // 8. Solve Captcha (MERGED with form_automator - Enhanced with OCR + Form Automation)
   {
     name: 'solve_captcha',
     emoji: '🔓',
-    description: 'Auto-solve CAPTCHA with AI (Turnstile, reCAPTCHA, hCaptcha, Text/Image OCR)',
-    descriptionHindi: 'CAPTCHA हल करना (AI + OCR powered)',
+    description: 'Auto-solve CAPTCHA with AI + Smart Form Automation (Turnstile, reCAPTCHA, hCaptcha, Text/Image OCR)',
+    descriptionHindi: 'CAPTCHA हल करना + फॉर्म भरना (AI + OCR powered)',
     category: 'interaction',
     requiresBrowser: true,
     requiresPage: true,
     inputSchema: {
       type: 'object',
       properties: {
-        type: { 
-          type: 'string', 
-          enum: ['turnstile', 'recaptcha', 'hcaptcha', 'text', 'image', 'auto'], 
+        // === CAPTCHA OPTIONS ===
+        type: {
+          type: 'string',
+          enum: ['turnstile', 'recaptcha', 'hcaptcha', 'text', 'image', 'auto'],
           default: 'auto',
           description: 'Captcha type: turnstile/recaptcha/hcaptcha (JS-based), text/image (OCR-based), auto (detect)'
         },
         timeout: { type: 'number', default: 30000 },
         aiMode: { type: 'boolean', default: true, description: 'Use AI vision for complex CAPTCHAs' },
-        // OCR-specific options for text/image captchas
         captchaSelector: { type: 'string', description: 'CSS selector for captcha image (required for text/image type)' },
         inputSelector: { type: 'string', description: 'CSS selector for input field to fill result' },
         refreshSelector: { type: 'string', description: 'CSS selector for captcha refresh button' },
         lang: { type: 'string', default: 'eng', description: 'OCR language: eng, hin, eng+hin' },
         expectedLength: { type: 'number', description: 'Expected captcha text length' },
         allowedChars: { type: 'string', description: 'Allowed characters in captcha' },
-        maxRetries: { type: 'number', default: 3, description: 'Max refresh attempts for OCR' }
+        maxRetries: { type: 'number', default: 3, description: 'Max refresh attempts for OCR' },
+
+        // === FORM AUTOMATION OPTIONS (merged from form_automator) ===
+        formData: { type: 'object', description: 'Form field data to fill (AI matches fields automatically)' },
+        formSelector: { type: 'string', description: 'Form selector (AI auto-detects if not provided)' },
+        submit: { type: 'boolean', default: false, description: 'Auto-submit form after filling and captcha solving' },
+        humanLike: { type: 'boolean', default: true, description: 'Human-like typing with random delays' },
+        aiMatch: { type: 'boolean', default: true, description: 'AI matches fields even if names differ' },
+        aiValidate: { type: 'boolean', default: true, description: 'AI validates form before submission' }
       }
     }
   },
@@ -483,10 +493,10 @@ const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        action: { 
-          type: 'string', 
-          enum: ['extract', 'list_iframes', 'switch_iframe', 'player_control', 'decode_url', 'batch_extract'], 
-          default: 'extract' 
+        action: {
+          type: 'string',
+          enum: ['extract', 'list_iframes', 'switch_iframe', 'player_control', 'decode_url', 'batch_extract'],
+          default: 'extract'
         },
         // For extraction
         types: { type: 'array', items: { type: 'string' }, default: ['all'], description: 'video, audio, hls, dash, download, iframes' },
@@ -530,30 +540,6 @@ const TOOLS = [
       },
       required: ['code']
     }
-  },
-
-  // 23. Form Automator
-  {
-    name: 'form_automator',
-    emoji: '📋',
-    description: 'Smart form automation with AI field detection and validation',
-    descriptionHindi: 'फॉर्म भरना (AI detection)',
-    category: 'interaction',
-    requiresBrowser: true,
-    requiresPage: true,
-    inputSchema: {
-      type: 'object',
-      properties: {
-        selector: { type: 'string', description: 'Form selector (AI auto-detects if not provided)' },
-        data: { type: 'object', description: 'Field data (AI matches fields if names differ)' },
-        submit: { type: 'boolean', default: false },
-        humanLike: { type: 'boolean', default: true },
-        aiMatch: { type: 'boolean', default: true, description: 'AI matches fields even if names differ' },
-        aiValidate: { type: 'boolean', default: true, description: 'AI validates form before submission' },
-        captcha: { type: 'boolean', default: true, description: 'Auto-solve CAPTCHA if present' }
-      },
-      required: ['data']
-    }
   }
 ];
 
@@ -586,9 +572,9 @@ const TOOL_DISPLAY = TOOLS.map(t => ({
   category: t.category
 }));
 
-module.exports = { 
-  TOOLS, 
-  TOOL_DISPLAY, 
+module.exports = {
+  TOOLS,
+  TOOL_DISPLAY,
   CATEGORIES,
   getToolByName,
   getToolsByCategory,

@@ -11,7 +11,7 @@ module.exports = {
     click: { label: 'क्लिक करें', detail: 'मानव-जैसा क्लिक', documentation: 'ghost-cursor से क्लिक करता है।', parameters: { selector: 'एलीमेंट selector', humanLike: 'वास्तविक मूवमेंट', clickCount: 'क्लिक संख्या', delay: 'देरी' } },
     type: { label: 'टाइप करें', detail: 'इनपुट में टाइप', documentation: 'वास्तविक कीस्ट्रोक के साथ टाइप करता है।', parameters: { selector: 'इनपुट selector', text: 'टेक्स्ट', delay: 'कीस्ट्रोक देरी', clear: 'पहले साफ करें' } },
     browser_close: { label: 'ब्राउज़र बंद करें', detail: 'बंद और क्लीनअप', documentation: 'ब्राउज़र बंद करता है।', parameters: { force: 'फोर्स क्लोज़' } },
-    solve_captcha: { label: 'CAPTCHA हल करें', detail: 'ऑटो-सॉल्व', documentation: 'Turnstile, reCAPTCHA हल करता है।', parameters: { type: 'CAPTCHA प्रकार', timeout: 'अधिकतम समय' } },
+    solve_captcha: { label: 'CAPTCHA + फॉर्म', detail: 'ऑटो-सॉल्व + फॉर्म भरें', documentation: 'CAPTCHA हल करता है और फॉर्म भी भरता है।', parameters: { type: 'CAPTCHA प्रकार', timeout: 'अधिकतम समय', formData: 'फॉर्म डेटा', submit: 'सबमिट करें' } },
     random_scroll: { label: 'रैंडम स्क्रॉल', detail: 'मानव-जैसा स्क्रॉल', documentation: 'रैंडम स्क्रॉल करता है।', parameters: { direction: 'दिशा', amount: 'मात्रा', smooth: 'स्मूथ' } },
     find_element: { label: 'एलीमेंट खोजें', detail: 'पेज पर खोजें', documentation: 'selector/xpath से खोजता है।', parameters: { selector: 'CSS selector', xpath: 'XPath', text: 'टेक्स्ट', multiple: 'सभी लौटाएं' } },
     save_content_as_markdown: { label: 'MD में सेव', detail: 'Markdown एक्सपोर्ट', documentation: 'Markdown फाइल में सेव करता है।', parameters: { filename: 'फाइलनेम', selector: 'कंटेंट selector', includeImages: 'इमेज शामिल', includeMeta: 'मेटा शामिल' } },
@@ -30,8 +30,7 @@ module.exports = {
     stream_extractor: { label: 'स्ट्रीम निकालें', detail: 'वीडियो/ऑडियो URL', documentation: 'स्ट्रीम URLs निकालता है।', parameters: { types: 'प्रकार', quality: 'क्वालिटी' } },
     js_scrape: { label: 'JS स्क्रैप', detail: 'JS कंटेंट', documentation: 'JS-रेंडर्ड कंटेंट।', parameters: { selector: 'selector', waitForJS: 'JS इंतजार', timeout: 'अधिकतम' } },
     execute_js: { label: 'JS चलाएं', detail: 'JavaScript रन', documentation: 'कस्टम JS चलाता है।', parameters: { code: 'कोड', returnValue: 'रिज़ल्ट लौटाएं' } },
-    player_api_hook: { label: 'Player Hook', detail: 'वीडियो प्लेयर', documentation: 'प्लेयर में हुक करता है।', parameters: { playerType: 'प्लेयर', action: 'एक्शन' } },
-    form_automator: { label: 'फॉर्म ऑटोमेट', detail: 'फॉर्म भरें', documentation: 'फॉर्म भरता और सबमिट करता है।', parameters: { selector: 'फॉर्म selector', data: 'डेटा', submit: 'सबमिट', humanLike: 'मानव देरी' } }
+    player_api_hook: { label: 'Player Hook', detail: 'वीडियो प्लेयर', documentation: 'प्लेयर में हुक करता है।', parameters: { playerType: 'प्लेयर', action: 'एक्शन' } }
   },
   diagnostics: {
     browserNotInit: 'ब्राउज़र इनिशियलाइज़ नहीं। पहले browser_init करें।',

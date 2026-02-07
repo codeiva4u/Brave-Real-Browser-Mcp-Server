@@ -240,93 +240,242 @@ const decoders = {
  * Tool Handlers Object
  */
 const handlers = {
-  // 0. Smart Form Filler (NEW - Universal Form Automation)
-  async smart_form_filler(params = {}) {
-    const { page } = requireBrowser();
-    const {
-      formData = {},
-      validateBeforeSubmit = true,
-      humanLike = true,
-      submitAfter = false,
-      submitSelector = 'button[type="submit"], input[type="submit"], .btn-primary',
-      solveCaptcha = false,
-      captchaOptions = {}
-    } = params;
+  // ═══════════════════════════════════════════════════════════════
+  // HELPER: Full Page Analyzer - Detect ALL inputs on page
+  // ═══════════════════════════════════════════════════════════════
+  async _analyzeFullPage(page) {
+    return await page.evaluate(() => {
+      const inputs = [];
+      const allInputs = document.querySelectorAll('input, textarea, select');
 
-    notifyProgress('smart_form_filler', 'started', '🤖 Universal form automation started');
+      allInputs.forEach((el, index) => {
+        if (el.type === 'hidden' || el.offsetParent === null) return;
 
-    try {
-      // Load universal form analyzer
-      const formAnalyzer = require('../../lib/universal-form-analyzer');
+        // Find associated label
+        let label = '';
+        if (el.id) {
+          const labelEl = document.querySelector(`label[for="${el.id}"]`);
+          if (labelEl) label = labelEl.textContent.trim();
+        }
+        if (!label) {
+          const parent = el.closest('label, .form-group, .field');
+          if (parent) label = parent.textContent?.split('\n')[0]?.trim() || '';
+        }
 
-      // Step 1: Analyze forms on page
-      notifyProgress('smart_form_filler', 'progress', '🔍 Analyzing page forms...');
-      const forms = await formAnalyzer.analyzeAllForms(page);
-
-      if (forms.length === 0) {
-        return { success: false, error: 'No forms found on page' };
-      }
-
-      notifyProgress('smart_form_filler', 'progress', `Found ${forms.length} form(s) with ${forms[0].fields.length} fields`);
-
-      // Step 2: Fill form with smart field matching
-      const result = await formAnalyzer.fillForm(page, formData, {
-        validateBeforeSubmit,
-        humanLike,
-        submitAfter: false, // We'll handle submit separately
+        inputs.push({
+          index,
+          tag: el.tagName.toLowerCase(),
+          type: el.type || 'text',
+          name: el.name || '',
+          id: el.id || '',
+          placeholder: el.placeholder || '',
+          label: label,
+          required: el.required,
+          value: el.value || '',
+          selector: el.id ? `#${el.id}` : (el.name ? `[name="${el.name}"]` : `input[type="${el.type}"]:nth-of-type(${index + 1})`)
+        });
       });
 
-      if (!result.success) {
-        notifyProgress('smart_form_filler', 'error', result.error);
-        return result;
-      }
-
-      notifyProgress('smart_form_filler', 'progress', `✅ Filled ${result.filledFields.length} fields`);
-
-      // Step 3: Solve CAPTCHA if requested
-      if (solveCaptcha) {
-        notifyProgress('smart_form_filler', 'progress', '🔓 Solving CAPTCHA...');
-        const captchaResult = await handlers.solve_captcha(captchaOptions);
-        
-        if (!captchaResult.success) {
-          return {
-            success: false,
-            error: 'CAPTCHA solving failed',
-            captchaError: captchaResult.error,
-            filledFields: result.filledFields
-          };
-        }
-
-        notifyProgress('smart_form_filler', 'progress', `✅ CAPTCHA solved: ${captchaResult.text}`);
-      }
-
-      // Step 4: Submit if requested
-      if (submitAfter) {
-        notifyProgress('smart_form_filler', 'progress', '📤 Submitting form...');
-        try {
-          await page.click(submitSelector);
-          await new Promise(r => setTimeout(r, 2000)); // Wait for submission
-        } catch (submitErr) {
-          notifyProgress('smart_form_filler', 'error', `Submit failed: ${submitErr.message}`);
-        }
-      }
-
-      notifyProgress('smart_form_filler', 'completed', `Form automation completed successfully`);
-
-      return {
-        success: true,
-        formsAnalyzed: forms.length,
-        fieldsDetected: forms[0].fields.length,
-        fieldsFilled: result.filledFields.length,
-        filledFields: result.filledFields,
-        captchaSolved: solveCaptcha,
-        submitted: submitAfter
+      // Detect captcha elements
+      const captcha = {
+        image: document.querySelector('img[src*="captcha"], img[id*="captcha"], .captcha-image')?.src || null,
+        input: document.querySelector('input[name*="captcha"], input[id*="captcha"]')?.id || null
       };
 
-    } catch (error) {
-      notifyProgress('smart_form_filler', 'error', error.message);
-      return { success: false, error: error.message };
+      // Detect submit button
+      const submitBtn = document.querySelector('button[type="submit"], input[type="submit"], button.submit');
+
+      return {
+        inputs,
+        captcha,
+        submitButton: submitBtn ? (submitBtn.id ? `#${submitBtn.id}` : 'button[type="submit"]') : null,
+        totalInputs: inputs.length
+      };
+    });
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // HELPER: Fill form fields with Sequential Tab Navigation
+  // ═══════════════════════════════════════════════════════════════
+  async _fillFormFields(page, formData, formSelector, humanLike = true, aiMatch = true) {
+    const targetForm = formSelector || 'form';
+    const fields = Object.keys(formData || {});
+    let filledCount = 0;
+    const filledFields = [];
+    const unfilledFields = [];
+
+    // First, analyze the full page
+    const pageInfo = await this._analyzeFullPage(page);
+    notifyProgress('solve_captcha', 'progress', `🔍 Page analyzed: ${pageInfo.totalInputs} inputs found`);
+
+    for (const [field, value] of Object.entries(formData || {})) {
+      // Enhanced AI Field Matching - uses pageInfo for better matching
+      let bestMatch = null;
+      let bestScore = 0;
+
+      for (const input of pageInfo.inputs) {
+        let score = 0;
+        const fieldLower = field.toLowerCase();
+
+        // Exact matches
+        if (input.name.toLowerCase() === fieldLower) score = 100;
+        else if (input.id.toLowerCase() === fieldLower) score = 95;
+        // Partial matches
+        else if (input.name.toLowerCase().includes(fieldLower)) score = 80;
+        else if (input.id.toLowerCase().includes(fieldLower)) score = 75;
+        else if (input.placeholder.toLowerCase().includes(fieldLower)) score = 70;
+        else if (input.label.toLowerCase().includes(fieldLower)) score = 65;
+        // Type-based matching
+        else if (fieldLower.includes('email') && input.type === 'email') score = 60;
+        else if (fieldLower.includes('pass') && input.type === 'password') score = 60;
+        else if (fieldLower.includes('phone') && input.type === 'tel') score = 60;
+
+        if (score > bestScore) {
+          bestScore = score;
+          bestMatch = input;
+        }
+      }
+
+      if (!bestMatch || bestScore < 50) {
+        unfilledFields.push(field);
+        continue;
+      }
+
+      try {
+        const element = await page.$(bestMatch.selector);
+        if (!element) {
+          unfilledFields.push(field);
+          continue;
+        }
+
+        // Focus element first (human-like)
+        await element.focus();
+        await new Promise(r => setTimeout(r, 100 + Math.random() * 150));
+
+        if (bestMatch.tag === 'select') {
+          // Smart Select
+          await page.evaluate((sel, val) => {
+            const el = document.querySelector(sel);
+            if (!el) return;
+            el.value = val;
+            if (el.value !== val) {
+              for (const opt of el.options) {
+                if (opt.text.toLowerCase().includes(val.toLowerCase())) {
+                  el.value = opt.value;
+                  break;
+                }
+              }
+            }
+            el.dispatchEvent(new Event('change', { bubbles: true }));
+          }, bestMatch.selector, String(value));
+        } else if (bestMatch.type === 'checkbox' || bestMatch.type === 'radio') {
+          if (value) await element.click();
+        } else {
+          // Text input - clear and type with human behavior
+          await element.click({ clickCount: 3 });
+          await page.keyboard.press('Backspace');
+          await new Promise(r => setTimeout(r, 50));
+
+          if (humanLike) {
+            // Human-like typing with variable delays
+            for (let i = 0; i < String(value).length; i++) {
+              const char = String(value)[i];
+              await page.keyboard.type(char);
+              // Variable delay based on character type
+              const delay = char === ' ' ? 80 : (30 + Math.random() * 70);
+              await new Promise(r => setTimeout(r, delay));
+            }
+          } else {
+            await page.type(bestMatch.selector, String(value));
+          }
+        }
+
+        // Tab to next field (human-like navigation)
+        if (humanLike) {
+          await new Promise(r => setTimeout(r, 100 + Math.random() * 200));
+          await page.keyboard.press('Tab');
+          await new Promise(r => setTimeout(r, 50));
+        }
+
+        filledCount++;
+        filledFields.push({ field, selector: bestMatch.selector, matchScore: bestScore });
+        notifyProgress('solve_captcha', 'progress', `📝 Filled: ${field} (score: ${bestScore})`, { field, filledCount });
+      } catch (e) {
+        unfilledFields.push(field);
+      }
     }
+
+    return {
+      success: filledCount > 0,
+      filledCount,
+      filledFields,
+      unfilledFields,
+      totalFields: fields.length,
+      pageInfo
+    };
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // HELPER: Pre-Submit Validation - Check all required fields filled
+  // ═══════════════════════════════════════════════════════════════
+  async _validateBeforeSubmit(page) {
+    return await page.evaluate(() => {
+      const errors = [];
+      const requiredFields = document.querySelectorAll('[required], .required input');
+
+      requiredFields.forEach(field => {
+        if (!field.value || field.value.trim() === '') {
+          const label = field.name || field.id || field.placeholder || 'Unknown';
+          errors.push({ field: label, error: 'Required field is empty' });
+        }
+      });
+
+      // Check for visible error messages
+      const errorMsgs = document.querySelectorAll('.error, .error-message, .invalid-feedback, [class*="error"]');
+      errorMsgs.forEach(el => {
+        if (el.offsetParent !== null && el.textContent.trim()) {
+          errors.push({ field: 'form', error: el.textContent.trim() });
+        }
+      });
+
+      return { valid: errors.length === 0, errors };
+    });
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // HELPER: Post-Submit Error Detection
+  // ═══════════════════════════════════════════════════════════════
+  async _detectPostSubmitErrors(page) {
+    await new Promise(r => setTimeout(r, 1500)); // Wait for page response
+
+    return await page.evaluate(() => {
+      const errors = [];
+
+      // Check for error messages
+      const errorSelectors = [
+        '.error', '.error-message', '.alert-danger', '.invalid',
+        '[class*="error"]', '[class*="invalid"]', '.captcha-error'
+      ];
+
+      for (const sel of errorSelectors) {
+        document.querySelectorAll(sel).forEach(el => {
+          if (el.offsetParent !== null && el.textContent.trim()) {
+            errors.push(el.textContent.trim());
+          }
+        });
+      }
+
+      // Check if captcha input is still visible (might indicate wrong captcha)
+      const captchaInput = document.querySelector('input[name*="captcha"], input[id*="captcha"]');
+      if (captchaInput && captchaInput.offsetParent !== null && !captchaInput.value) {
+        errors.push('Captcha may have failed - input is empty');
+      }
+
+      return {
+        hasErrors: errors.length > 0,
+        errors: [...new Set(errors)].slice(0, 5) // Unique errors, max 5
+      };
+    });
   },
 
   // 1. Browser Init
@@ -353,6 +502,26 @@ const handlers = {
     browserInstance = result.browser;
     pageInstance = result.page;
     blockerInstance = result.blocker;
+
+    // ═══════════════════════════════════════════════════════════════
+    // GLOBAL DIALOG HANDLER - Auto-accept all dialogs (alerts/confirms/prompts)
+    // This prevents browser from getting stuck on JavaScript dialogs
+    // ═══════════════════════════════════════════════════════════════
+    pageInstance.on('dialog', async (dialog) => {
+      const dialogType = dialog.type();
+      const dialogMessage = dialog.message();
+      
+      notifyProgress('browser_init', 'progress', 
+        `🔔 Auto-accepting ${dialogType}: ${dialogMessage.substring(0, 100)}...`);
+      
+      try {
+        await dialog.accept();
+        notifyProgress('browser_init', 'progress', `✅ Dialog accepted: ${dialogType}`);
+      } catch (e) {
+        // Dialog might already be handled
+        console.error(`Dialog handling error: ${e.message}`);
+      }
+    });
 
     const pid = browserInstance.process()?.pid;
 
@@ -528,26 +697,54 @@ const handlers = {
   // 5. Click
   async click(params) {
     const { page } = requireBrowser();
-    const { selector, humanLike = true, clickCount = 1, delay = 0 } = params;
+    const { selector, humanLike = true, clickCount = 1, delay = 0, autoAcceptDialogs = true } = params;
 
     notifyProgress('click', 'started', `Clicking: ${selector}`);
 
-    if (humanLike) {
+    // Auto-handle dialogs (alerts, confirms, prompts) to prevent blocking
+    let dialogHandled = false;
+    const dialogHandler = async (dialog) => {
+      dialogHandled = true;
+      const type = dialog.type();
+      const message = dialog.message();
+      notifyProgress('click', 'progress', `🔔 Auto-accepting ${type}: ${message.substring(0, 50)}...`);
       try {
-        const { createCursor } = require('ghost-cursor');
-        const cursor = createCursor(page);
-        await cursor.click(selector);
-        notifyProgress('click', 'progress', 'Used human-like cursor movement');
+        await dialog.accept();
       } catch (e) {
-        await page.click(selector, { clickCount, delay });
+        // Ignore if already handled by global handler
       }
-    } else {
-      await page.click(selector, { clickCount, delay });
+    };
+
+    if (autoAcceptDialogs) {
+      page.on('dialog', dialogHandler);
     }
 
-    notifyProgress('click', 'completed', `Clicked: ${selector}`, { selector, humanLike });
+    try {
+      if (humanLike) {
+        try {
+          const { createCursor } = require('ghost-cursor');
+          const cursor = createCursor(page);
+          await cursor.click(selector);
+          notifyProgress('click', 'progress', 'Used human-like cursor movement');
+        } catch (e) {
+          await page.click(selector, { clickCount, delay });
+        }
+      } else {
+        await page.click(selector, { clickCount, delay });
+      }
 
-    return { success: true, selector, clicked: true };
+      // Small wait to allow dialogs to appear and be handled
+      await new Promise(r => setTimeout(r, 300));
+
+      notifyProgress('click', 'completed', `Clicked: ${selector}${dialogHandled ? ' (dialog auto-accepted)' : ''}`, { selector, humanLike, dialogHandled });
+
+      return { success: true, selector, clicked: true, dialogHandled };
+    } finally {
+      // Remove dialog handler to prevent memory leaks
+      if (autoAcceptDialogs) {
+        page.off('dialog', dialogHandler);
+      }
+    }
   },
 
   // 6. Type
@@ -596,7 +793,7 @@ const handlers = {
     return { success: true, message: 'Browser closed' };
   },
 
-  // 8. Solve Captcha (Enhanced with OCR + Page Analysis + 100% Accuracy)
+  // 8. Solve Captcha (MERGED with form_automator - handles both CAPTCHA and form automation)
   async solve_captcha(params = {}) {
     const { page } = requireBrowser();
     const {
@@ -614,9 +811,24 @@ const handlers = {
       analyzeFirst = true,     // Analyze page before solving
       verifyBeforeSubmit = true, // Verify captcha looks correct before typing
       autoRetry = true,        // Auto-retry until success
+      // MERGED: Form automation options (from form_automator)
+      formData,                // Form field data to fill
+      formSelector,            // Form selector (auto-detect if not provided)
+      submit = false,          // Auto-submit after filling
+      humanLike = true,        // Human-like typing delays
+      aiMatch = true,          // AI matches fields even if names differ
     } = params;
 
-    notifyProgress('solve_captcha', 'started', `🎯 100% Accuracy Mode: Solving ${type} captcha...`);
+    // ═══════════════════════════════════════════════════════════════
+    // STEP 0: FORM AUTOMATION (if formData is provided)
+    // ═══════════════════════════════════════════════════════════════
+    let formResult = null;
+    if (formData && Object.keys(formData).length > 0) {
+      notifyProgress('solve_captcha', 'started', `📋 Smart Form + Captcha Mode: Filling ${Object.keys(formData).length} fields...`);
+      formResult = await this._fillFormFields(page, formData, formSelector, humanLike, aiMatch);
+    } else {
+      notifyProgress('solve_captcha', 'started', `🎯 100% Accuracy Mode: Solving ${type} captcha...`);
+    }
 
     // ═══════════════════════════════════════════════════════════════
     // STEP 1: ANALYZE PAGE (if enabled)
@@ -813,6 +1025,26 @@ const handlers = {
 
               notifyProgress('solve_captcha', 'completed', `✅ 100% VERIFIED: "${finalText}" (${result.confidence.toFixed(0)}%)`);
 
+              // MERGED: Handle form submission if requested
+              if (submit) {
+                notifyProgress('solve_captcha', 'progress', '🚀 Submitting form...');
+                const submitResult = await this._submitForm(page);
+                return {
+                  success: true,
+                  type: 'ocr',
+                  text: finalText,
+                  originalText: result.text,
+                  confidence: result.confidence,
+                  attempts,
+                  filled: true,
+                  pageAnalysis: analyzeFirst ? pageAnalysis : null,
+                  verified: true,
+                  formResult,
+                  submitted: submitResult.success,
+                  submitMessage: submitResult.message
+                };
+              }
+
               return {
                 success: true,
                 type: 'ocr',
@@ -823,6 +1055,7 @@ const handlers = {
                 filled: true,
                 pageAnalysis: analyzeFirst ? pageAnalysis : null,
                 verified: true,
+                formResult,
               };
             } catch (typeErr) {
               notifyProgress('solve_captcha', 'error', `Type error: ${typeErr.message}`);
@@ -839,6 +1072,7 @@ const handlers = {
               filled: false,
               pageAnalysis: pageAnalysis,
               verified: true,
+              formResult,
             };
           }
         }
@@ -850,11 +1084,12 @@ const handlers = {
           error: `Failed after ${attempts} attempts`,
           lastResult,
           pageAnalysis,
+          formResult,
         };
 
       } catch (err) {
         notifyProgress('solve_captcha', 'error', `OCR error: ${err.message}`);
-        return { success: false, error: err.message, type: 'ocr' };
+        return { success: false, error: err.message, type: 'ocr', formResult };
       }
     }
 
@@ -872,7 +1107,22 @@ const handlers = {
 
       if (turnstileToken) {
         notifyProgress('solve_captcha', 'completed', `Captcha solved after ${attempts} checks`, { type: 'turnstile', attempts });
-        return { success: true, type: 'turnstile', solved: true };
+
+        // MERGED: Handle form submission if requested
+        if (submit) {
+          notifyProgress('solve_captcha', 'progress', '🚀 Submitting form...');
+          const submitResult = await this._submitForm(page);
+          return {
+            success: true,
+            type: 'turnstile',
+            solved: true,
+            formResult,
+            submitted: submitResult.success,
+            submitMessage: submitResult.message
+          };
+        }
+
+        return { success: true, type: 'turnstile', solved: true, formResult };
       }
 
       if (attempts % 10 === 0) {
@@ -883,7 +1133,78 @@ const handlers = {
     }
 
     notifyProgress('solve_captcha', 'error', 'Captcha solving timeout');
-    return { success: false, error: 'Captcha solving timeout' };
+    return { success: false, error: 'Captcha solving timeout', formResult };
+  },
+
+  // HELPER: Submit form with smart detection, validation, and error handling
+  async _submitForm(page, validateFirst = true, maxRetries = 1) {
+    try {
+      // Pre-submit validation
+      if (validateFirst) {
+        const validation = await this._validateBeforeSubmit(page);
+        if (!validation.valid) {
+          notifyProgress('solve_captcha', 'warn', `⚠️ Validation failed: ${validation.errors.length} issue(s)`);
+          return { success: false, message: 'Pre-submit validation failed', errors: validation.errors };
+        }
+        notifyProgress('solve_captcha', 'progress', '✅ Pre-submit validation passed');
+      }
+
+      const submitSelector = await page.evaluate(() => {
+        const buttons = Array.from(document.querySelectorAll('button, input[type="submit"], input[type="button"], a.btn'));
+        const candidates = buttons.filter(b => {
+          const text = (b.innerText || b.value || '').toLowerCase();
+          return text.includes('submit') || text.includes('go') || text.includes('search') ||
+            text.includes('view') || text.includes('login') || text.includes('sign in') ||
+            text.includes('register') || text.includes('send');
+        });
+        const best = candidates.find(b => b.offsetParent !== null);
+        if (best) {
+          return best.id ? `#${best.id}` : (best.name ? `[name="${best.name}"]` : 'button[type="submit"]');
+        }
+        // Fallback to any submit button
+        const fallback = document.querySelector('button[type="submit"], input[type="submit"]');
+        return fallback ? (fallback.id ? `#${fallback.id}` : 'button[type="submit"]') : null;
+      });
+
+      if (!submitSelector) {
+        notifyProgress('solve_captcha', 'warn', '⚠️ Could not auto-detect submit button');
+        return { success: false, message: 'Could not auto-detect submit button' };
+      }
+
+      // Click submit button with human-like behavior
+      try {
+        const { createCursor } = require('ghost-cursor');
+        const cursor = createCursor(page);
+        await cursor.click(submitSelector);
+      } catch (e) {
+        await page.click(submitSelector);
+      }
+
+      // Wait for response
+      try {
+        await page.waitForNavigation({ timeout: 5000, waitUntil: 'domcontentloaded' });
+        notifyProgress('solve_captcha', 'completed', '✅ Form submitted and navigation complete');
+        return { success: true, message: 'Form submitted and navigation complete', navigated: true };
+      } catch (e) {
+        // No navigation - check for errors on same page
+        const postErrors = await this._detectPostSubmitErrors(page);
+
+        if (postErrors.hasErrors) {
+          notifyProgress('solve_captcha', 'warn', `⚠️ Submit detected errors: ${postErrors.errors[0]}`);
+          return {
+            success: false,
+            message: 'Form submitted but errors detected',
+            errors: postErrors.errors,
+            needsRetry: postErrors.errors.some(e => e.toLowerCase().includes('captcha'))
+          };
+        }
+
+        notifyProgress('solve_captcha', 'completed', '✅ Form submitted (no navigation detected)');
+        return { success: true, message: 'Form submitted (no navigation detected)', navigated: false };
+      }
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
   },
 
 

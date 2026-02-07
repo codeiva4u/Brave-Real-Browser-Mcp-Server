@@ -12,38 +12,38 @@ function getDiagnostics(document, tools, lang, maxDiagnostics = 100) {
   const text = document.getText();
   const lines = text.split('\n');
   const diagnostics = [];
-  
+
   // State tracking
   let browserInitialized = false;
   let browserClosed = false;
   let currentPage = null;
   let networkRecording = false;
-  
+
   // Tool categories
   const browserRequiredTools = [
     'navigate', 'get_content', 'wait', 'click', 'type', 'solve_captcha',
     'random_scroll', 'find_element', 'save_content_as_markdown', 'search_regex',
     'extract_json', 'scrape_meta_tags', 'press_key', 'deep_analysis',
     'network_recorder', 'link_harvester', 'cookie_manager', 'iframe_handler',
-    'stream_extractor', 'js_scrape', 'execute_js', 'player_api_hook', 'form_automator',
+    'stream_extractor', 'js_scrape', 'execute_js', 'player_api_hook',
     'redirect_tracer', 'file_downloader'
   ];
-  
+
   const pageRequiredTools = [
     'get_content', 'click', 'type', 'random_scroll', 'find_element',
     'save_content_as_markdown', 'search_regex', 'extract_json', 'scrape_meta_tags',
     'deep_analysis', 'link_harvester', 'iframe_handler', 'stream_extractor',
-    'js_scrape', 'execute_js', 'player_api_hook', 'form_automator', 'press_key'
+    'js_scrape', 'execute_js', 'player_api_hook', 'press_key'
   ];
-  
+
   // Parse all tool calls with their parameters
   const toolCalls = parseAllToolCalls(text, lines, tools);
-  
+
   for (const call of toolCalls) {
     if (diagnostics.length >= maxDiagnostics) break;
-    
+
     const tool = tools.find(t => t.name === call.name);
-    
+
     // 1. Unknown tool check
     if (!tool) {
       diagnostics.push({
@@ -56,7 +56,7 @@ function getDiagnostics(document, tools, lang, maxDiagnostics = 100) {
       });
       continue;
     }
-    
+
     // 2. Browser state tracking
     if (call.name === 'browser_init') {
       if (browserInitialized && !browserClosed) {
@@ -71,7 +71,7 @@ function getDiagnostics(document, tools, lang, maxDiagnostics = 100) {
       browserInitialized = true;
       browserClosed = false;
     }
-    
+
     if (call.name === 'browser_close') {
       if (!browserInitialized) {
         diagnostics.push({
@@ -85,11 +85,11 @@ function getDiagnostics(document, tools, lang, maxDiagnostics = 100) {
       browserClosed = true;
       currentPage = null;
     }
-    
+
     if (call.name === 'navigate') {
       currentPage = call.params?.url || 'page';
     }
-    
+
     // 3. Browser required check
     if (browserRequiredTools.includes(call.name) && !browserInitialized) {
       diagnostics.push({
@@ -100,7 +100,7 @@ function getDiagnostics(document, tools, lang, maxDiagnostics = 100) {
         code: 'browser-not-init'
       });
     }
-    
+
     // 4. Browser closed check
     if (browserRequiredTools.includes(call.name) && browserClosed) {
       diagnostics.push({
@@ -111,7 +111,7 @@ function getDiagnostics(document, tools, lang, maxDiagnostics = 100) {
         code: 'browser-closed'
       });
     }
-    
+
     // 5. Page required check (navigate must be called first)
     if (pageRequiredTools.includes(call.name) && !currentPage && browserInitialized) {
       diagnostics.push({
@@ -122,7 +122,7 @@ function getDiagnostics(document, tools, lang, maxDiagnostics = 100) {
         code: 'no-page-loaded'
       });
     }
-    
+
     // 6. Network recorder state
     if (call.name === 'network_recorder') {
       if (call.params?.action === 'start') {
@@ -140,7 +140,7 @@ function getDiagnostics(document, tools, lang, maxDiagnostics = 100) {
         networkRecording = false;
       }
     }
-    
+
     // 7. Required parameters check
     if (tool.inputSchema?.required) {
       for (const reqParam of tool.inputSchema.required) {
@@ -156,12 +156,12 @@ function getDiagnostics(document, tools, lang, maxDiagnostics = 100) {
         }
       }
     }
-    
+
     // 8. Parameter validation
     if (call.params && tool.inputSchema?.properties) {
       for (const [paramName, paramValue] of Object.entries(call.params)) {
         const schema = tool.inputSchema.properties[paramName];
-        
+
         // Unknown parameter
         if (!schema) {
           diagnostics.push({
@@ -174,7 +174,7 @@ function getDiagnostics(document, tools, lang, maxDiagnostics = 100) {
           });
           continue;
         }
-        
+
         // Type validation
         const typeError = validateParamType(paramValue, schema, paramName);
         if (typeError) {
@@ -186,7 +186,7 @@ function getDiagnostics(document, tools, lang, maxDiagnostics = 100) {
             code: 'type-error'
           });
         }
-        
+
         // Enum validation
         if (schema.enum && !schema.enum.includes(paramValue)) {
           diagnostics.push({
@@ -197,7 +197,7 @@ function getDiagnostics(document, tools, lang, maxDiagnostics = 100) {
             code: 'invalid-enum'
           });
         }
-        
+
         // URL validation
         if (paramName === 'url' && typeof paramValue === 'string') {
           const urlError = validateUrl(paramValue);
@@ -211,7 +211,7 @@ function getDiagnostics(document, tools, lang, maxDiagnostics = 100) {
             });
           }
         }
-        
+
         // Selector validation
         if (paramName === 'selector' && typeof paramValue === 'string') {
           const selectorError = validateSelector(paramValue);
@@ -225,7 +225,7 @@ function getDiagnostics(document, tools, lang, maxDiagnostics = 100) {
             });
           }
         }
-        
+
         // Timeout validation
         if (paramName === 'timeout' && typeof paramValue === 'number') {
           if (paramValue < 0) {
@@ -246,7 +246,7 @@ function getDiagnostics(document, tools, lang, maxDiagnostics = 100) {
             });
           }
         }
-        
+
         // Delay validation
         if (paramName === 'delay' && typeof paramValue === 'number') {
           if (paramValue < 0) {
@@ -269,7 +269,7 @@ function getDiagnostics(document, tools, lang, maxDiagnostics = 100) {
         }
       }
     }
-    
+
     // 9. Tool-specific validations
     if (call.name === 'type' && call.params?.text === '') {
       diagnostics.push({
@@ -280,7 +280,7 @@ function getDiagnostics(document, tools, lang, maxDiagnostics = 100) {
         code: 'empty-text'
       });
     }
-    
+
     if (call.name === 'wait' && call.params?.type === 'timeout') {
       const waitValue = parseInt(call.params?.value);
       if (waitValue > 30000) {
@@ -293,7 +293,7 @@ function getDiagnostics(document, tools, lang, maxDiagnostics = 100) {
         });
       }
     }
-    
+
     if (call.name === 'execute_js' && call.params?.code) {
       const jsCode = call.params.code;
       if (jsCode.includes('eval(') || jsCode.includes('Function(')) {
@@ -306,7 +306,7 @@ function getDiagnostics(document, tools, lang, maxDiagnostics = 100) {
         });
       }
     }
-    
+
     if (call.name === 'file_downloader' && call.params?.directory) {
       const dir = call.params.directory;
       if (dir.includes('..') || dir.startsWith('/')) {
@@ -320,7 +320,7 @@ function getDiagnostics(document, tools, lang, maxDiagnostics = 100) {
       }
     }
   }
-  
+
   // 10. Document-level checks
   if (browserInitialized && !browserClosed) {
     diagnostics.push({
@@ -331,7 +331,7 @@ function getDiagnostics(document, tools, lang, maxDiagnostics = 100) {
       code: 'missing-cleanup'
     });
   }
-  
+
   if (networkRecording) {
     diagnostics.push({
       severity: DiagnosticSeverity.Information,
@@ -341,7 +341,7 @@ function getDiagnostics(document, tools, lang, maxDiagnostics = 100) {
       code: 'network-not-stopped'
     });
   }
-  
+
   // 11. Check for duplicate tool calls (potential bugs)
   const navigateCalls = toolCalls.filter(c => c.name === 'navigate');
   if (navigateCalls.length > 5) {
@@ -353,7 +353,7 @@ function getDiagnostics(document, tools, lang, maxDiagnostics = 100) {
       code: 'many-navigates'
     });
   }
-  
+
   return diagnostics.slice(0, maxDiagnostics);
 }
 
@@ -364,15 +364,15 @@ function parseAllToolCalls(text, lines, tools) {
   const calls = [];
   const toolNames = tools.map(t => t.name);
   const toolRegex = new RegExp(`(${toolNames.join('|')})\\s*\\(\\s*(\\{[^}]*\\})?`, 'g');
-  
+
   for (let lineNum = 0; lineNum < lines.length; lineNum++) {
     const line = lines[lineNum];
     let match;
-    
+
     while ((match = toolRegex.exec(line)) !== null) {
       const name = match[1];
       const paramsStr = match[2];
-      
+
       calls.push({
         name,
         params: paramsStr ? parseParams(paramsStr) : null,
@@ -383,10 +383,10 @@ function parseAllToolCalls(text, lines, tools) {
         }
       });
     }
-    
+
     toolRegex.lastIndex = 0;
   }
-  
+
   return calls;
 }
 
@@ -401,7 +401,7 @@ function parseParams(paramsStr) {
       .replace(/(\w+)\s*:/g, '"$1":')
       .replace(/,\s*}/g, '}')
       .replace(/\n/g, ' ');
-    
+
     return JSON.parse(jsonStr);
   } catch (e) {
     return null;
@@ -414,7 +414,7 @@ function parseParams(paramsStr) {
 function validateParamType(value, schema, paramName) {
   const expectedType = schema.type;
   const actualType = typeof value;
-  
+
   if (expectedType === 'string' && actualType !== 'string') {
     return `Parameter ${paramName}: Expected string, got ${actualType}`;
   }
@@ -430,7 +430,7 @@ function validateParamType(value, schema, paramName) {
   if (expectedType === 'object' && (actualType !== 'object' || value === null || Array.isArray(value))) {
     return `Parameter ${paramName}: Expected object, got ${actualType}`;
   }
-  
+
   return null;
 }
 
@@ -441,7 +441,7 @@ function validateUrl(url) {
   if (!url || url.trim() === '') {
     return 'URL cannot be empty';
   }
-  
+
   try {
     const parsed = new URL(url);
     if (!['http:', 'https:'].includes(parsed.protocol)) {
@@ -450,7 +450,7 @@ function validateUrl(url) {
   } catch (e) {
     return 'Invalid URL format. Example: https://example.com';
   }
-  
+
   return null;
 }
 
@@ -461,20 +461,20 @@ function validateSelector(selector) {
   if (!selector || selector.trim() === '') {
     return 'Selector cannot be empty';
   }
-  
+
   // Check for common mistakes
   if (selector.includes('  ')) {
     return 'Selector contains multiple consecutive spaces';
   }
-  
+
   if (/^[0-9]/.test(selector) && !selector.startsWith('[')) {
     return 'Selector cannot start with a number (unless in attribute selector)';
   }
-  
+
   // Check balanced brackets
   const brackets = { '[': ']', '(': ')' };
   const stack = [];
-  
+
   for (const char of selector) {
     if (char in brackets) {
       stack.push(brackets[char]);
@@ -484,16 +484,16 @@ function validateSelector(selector) {
       }
     }
   }
-  
+
   if (stack.length > 0) {
     return 'Unclosed bracket in selector';
   }
-  
+
   // Check for empty attribute selector
   if (selector.includes('[]')) {
     return 'Empty attribute selector []';
   }
-  
+
   return null;
 }
 
@@ -502,7 +502,7 @@ function validateSelector(selector) {
  */
 function findSimilarTools(name, tools) {
   const lowerName = name.toLowerCase();
-  
+
   return tools
     .map(t => ({
       name: t.name,
@@ -520,14 +520,14 @@ function findSimilarTools(name, tools) {
 function calculateSimilarity(s1, s2) {
   const longer = s1.length > s2.length ? s1 : s2;
   const shorter = s1.length > s2.length ? s2 : s1;
-  
+
   if (longer.length === 0) return 1.0;
-  
+
   // Quick check for common prefix
   if (longer.startsWith(shorter) || shorter.startsWith(longer.substring(0, 3))) {
     return 0.8;
   }
-  
+
   // Levenshtein distance
   const costs = [];
   for (let i = 0; i <= s1.length; i++) {
@@ -546,7 +546,7 @@ function calculateSimilarity(s1, s2) {
     }
     if (i > 0) costs[s2.length] = lastValue;
   }
-  
+
   return (longer.length - costs[s2.length]) / longer.length;
 }
 

@@ -21,7 +21,7 @@ module.exports = {
     click: { label: 'Click Element', detail: 'Click with human-like behavior', documentation: 'Clicks on an element using ghost-cursor.', parameters: { selector: 'Element selector', humanLike: 'Use realistic movement', clickCount: 'Number of clicks', delay: 'Click delay' } },
     type: { label: 'Type Text', detail: 'Type into input field', documentation: 'Types text with realistic keystroke delays.', parameters: { selector: 'Input selector', text: 'Text to type', delay: 'Keystroke delay', clear: 'Clear first' } },
     browser_close: { label: 'Close Browser', detail: 'Close and cleanup', documentation: 'Closes the browser.', parameters: { force: 'Force close' } },
-    solve_captcha: { label: 'Solve CAPTCHA', detail: 'Auto-solve CAPTCHAs', documentation: 'Automatically solves Turnstile, reCAPTCHA, hCaptcha.', parameters: { type: 'CAPTCHA type', timeout: 'Max solve time' } },
+    solve_captcha: { label: 'Solve CAPTCHA + Form', detail: 'Auto-solve + Fill forms', documentation: 'Solves CAPTCHAs and fills forms with AI field matching.', parameters: { type: 'CAPTCHA type', timeout: 'Max time', formData: 'Form data', submit: 'Submit form' } },
     random_scroll: { label: 'Random Scroll', detail: 'Human-like scrolling', documentation: 'Scrolls with human-like behavior.', parameters: { direction: 'Scroll direction', amount: 'Scroll amount', smooth: 'Smooth scrolling' } },
     find_element: { label: 'Find Element', detail: 'Locate elements', documentation: 'Finds elements by selector/xpath/text.', parameters: { selector: 'CSS selector', xpath: 'XPath', text: 'Text content', multiple: 'Return all' } },
     save_content_as_markdown: { label: 'Save as Markdown', detail: 'Export to MD', documentation: 'Saves page as Markdown file.', parameters: { filename: 'Output filename', selector: 'Content selector', includeImages: 'Include images', includeMeta: 'Include meta' } },
@@ -40,8 +40,7 @@ module.exports = {
     stream_extractor: { label: 'Extract Streams', detail: 'Get video/audio', documentation: 'Extracts stream URLs.', parameters: { types: 'Stream types', quality: 'Quality' } },
     js_scrape: { label: 'JS Scrape', detail: 'Scrape JS content', documentation: 'Scrapes JS-rendered content.', parameters: { selector: 'CSS selector', waitForJS: 'Wait for JS', timeout: 'Max wait' } },
     execute_js: { label: 'Execute JS', detail: 'Run JavaScript', documentation: 'Executes custom JavaScript.', parameters: { code: 'JS code', returnValue: 'Return result' } },
-    player_api_hook: { label: 'Player API Hook', detail: 'Video player control', documentation: 'Hooks into video players.', parameters: { playerType: 'Player type', action: 'Action' } },
-    form_automator: { label: 'Automate Form', detail: 'Fill and submit', documentation: 'Auto-fills and submits forms.', parameters: { selector: 'Form selector', data: 'Form data', submit: 'Submit', humanLike: 'Human delays' } }
+    player_api_hook: { label: 'Player API Hook', detail: 'Video player control', documentation: 'Hooks into video players.', parameters: { playerType: 'Player type', action: 'Action' } }
   },
   diagnostics: {
     browserNotInit: 'Browser not initialized. Call browser_init first.',
